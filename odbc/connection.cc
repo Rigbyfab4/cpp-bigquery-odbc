@@ -23,10 +23,6 @@ const char *kDefaultConnectionString = "DSN=SampleDSN";
 SQLSMALLINT kBufferLength = 255;
 SQLSMALLINT kMaxDsnLen = 1024; //Maximum number of characters in a data source name
 
-inline SQLSMALLINT NumSqlChar(SQLCHAR * x) {
-  return (sizeof(x) / sizeof(SQLCHAR));
-}
-
 SQLRETURN Connect(char *conn_str, ConnectionHandle *conn) {
   SQLSMALLINT buflen;
   SQLCHAR data_source[kMaxDsnLen];

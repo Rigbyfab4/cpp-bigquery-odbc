@@ -37,8 +37,10 @@ include_directories(BEFORE ./)
 
 add_executable(
   all_tests
+  odbc/commons.cc
   odbc/connection.cc
   odbc/functions.cc
+  odbc/statement.cc
   tests/connection_test.cc
 )
 target_link_libraries(
