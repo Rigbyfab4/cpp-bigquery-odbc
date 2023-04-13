@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ODBC_CONNECTION_H
-#define ODBC_CONNECTION_H
+#ifndef ODBC_FUNCTIONS_H
+#define ODBC_FUNCTIONS_H
 
 #include <iodbcext.h>
 #include <locale.h>
@@ -25,25 +25,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <map>
+
+#include "odbc/connection.h"
+
+using std::map;
+
 namespace odbc {
 
-extern const char * kDefaultConnectionString;
-
-struct ConnectionHandle {
-  HENV henv;
-  HDBC hdbc;
-  HSTMT hstmt;
-  bool connected;
-  SQLCHAR outdsn[4096];
-};
-
-SQLRETURN Connect(char *conn_str, ConnectionHandle *conn);
-SQLRETURN Disconnect(ConnectionHandle *conn);
-SQLRETURN GetDriverInfo(ConnectionHandle *conn);
-SQLRETURN GetEnvInfo(ConnectionHandle *conn);
-SQLRETURN GetDescRec(ConnectionHandle *conn);
-SQLRETURN PrintDriverVerName(ConnectionHandle *conn);
+SQLRETURN PrintSupportedFunctions(ConnectionHandle *conn);
 
 }
 
-#endif  // ODBC_CONNECTION_H
+#endif  //ODBC_FUNCTIONS_H

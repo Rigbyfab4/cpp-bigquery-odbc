@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "odbc/connection.h"
+#include "odbc/functions.h"
 #include <gtest/gtest.h>
 
 using namespace odbc;
@@ -42,5 +43,12 @@ TEST(DescriptorFieldsTest, SQLGetDescRec) {
   ConnectionHandle conn;
   EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
   EXPECT_EQ(GetDescRec(&conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+}
+
+TEST(FunctionsTest, SQLGetFunctions) {
+  ConnectionHandle conn;
+  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
+  EXPECT_EQ(PrintSupportedFunctions(&conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
 }
