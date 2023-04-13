@@ -19,6 +19,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+// Tests direct execution of statements using SQLExecDirect
 SQLRETURN InsertDirectStatement(ConnectionHandle *conn) {
   SQLRETURN status;
   const char * create_table_stmt = "CREATE OR REPLACE TABLE ODBCTESTDATASET.ODBCTRANSACTIONTEST (string_field STRING)";
@@ -29,16 +30,19 @@ SQLRETURN InsertDirectStatement(ConnectionHandle *conn) {
 
   status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
   if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLExecDirect", conn);
     return status;
   }
 
   status = SQLExecDirect(conn->hstmt, (SQLCHAR *)Cstr(insert_stmt), SQL_NTS);
   if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLExecDirect", conn);
     return status;
   }
 
-  status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS) || status;
+  status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
   if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLExecDirect", conn);
     return status;
   }
   return status;
