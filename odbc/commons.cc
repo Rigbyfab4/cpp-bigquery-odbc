@@ -20,7 +20,7 @@ namespace bigquery_odbc {
 
 const SQLSMALLINT kBufferLength = 512;
 
-int GetErrorDetails(const char *api, ConnectionHandle* conn) {
+SQLRETURN GetErrorDetails(const char *api, ConnectionHandle* conn) {
   SQLCHAR buf[kBufferLength];
   SQLCHAR sqlstate[15];
   SQLINTEGER native_error = 0;

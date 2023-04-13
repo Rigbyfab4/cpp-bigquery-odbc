@@ -63,6 +63,13 @@ TEST(StatementTest, SQLExecDirect) {
   EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
 }
 
+TEST(StatementTest, SQLExecute) {
+  ConnectionHandle conn;
+  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
+  EXPECT_EQ(InsertStatement(&conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+}
+
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google

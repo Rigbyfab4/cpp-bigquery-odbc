@@ -51,7 +51,7 @@ inline const char * Cstr(string x) {
   return x.c_str();
 }
 
-int GetErrorDetails(const char *api, ConnectionHandle* conn);
+SQLRETURN GetErrorDetails(const char *api, ConnectionHandle* conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
