@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ODBC_FUNCTIONS_H
-#define ODBC_FUNCTIONS_H
+#ifndef CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H
+#define CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H
 
 #include <iodbcext.h>
 #include <locale.h>
@@ -31,10 +31,14 @@
 
 using std::map;
 
-namespace odbc {
+namespace google {
+namespace cloud {
+namespace bigquery_odbc {
 
 SQLRETURN PrintSupportedFunctions(ConnectionHandle *conn);
 
-}
+}  // namespace bigquery_odbc
+}  // namespace cloud
+}  // namespace google
 
-#endif  //ODBC_FUNCTIONS_H
+#endif  //CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H

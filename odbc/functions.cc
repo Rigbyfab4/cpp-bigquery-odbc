@@ -14,7 +14,9 @@
 
 #include "odbc/functions.h"
 
-namespace odbc {
+namespace google {
+namespace cloud {
+namespace bigquery_odbc {
 
 const map<SQLUSMALLINT, const char *> kAllOdbc3Functions = {
   {SQL_API_SQLALLOCENV, "SQL_API_SQLALLOCENV"},
@@ -103,4 +105,6 @@ SQLRETURN PrintSupportedFunctions(ConnectionHandle *conn) {
   return status;
 }
 
-}
+}  // namespace bigquery_odbc
+}  // namespace cloud
+}  // namespace google

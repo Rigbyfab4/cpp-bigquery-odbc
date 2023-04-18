@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ODBC_CONNECTION_H
-#define ODBC_CONNECTION_H
+#ifndef CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
+#define CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
 
 #include <iodbcext.h>
 #include <locale.h>
@@ -25,7 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-namespace odbc {
+namespace google {
+namespace cloud {
+namespace bigquery_odbc {
 
 extern const char * kDefaultConnectionString;
 
@@ -44,6 +46,8 @@ SQLRETURN GetEnvInfo(ConnectionHandle *conn);
 SQLRETURN GetDescRec(ConnectionHandle *conn);
 SQLRETURN PrintDriverVerName(ConnectionHandle *conn);
 
-}
+}  // namespace bigquery_odbc
+}  // namespace cloud
+}  // namespace google
 
-#endif  // ODBC_CONNECTION_H
+#endif  // CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H

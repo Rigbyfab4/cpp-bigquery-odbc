@@ -16,7 +16,9 @@
 #include "odbc/functions.h"
 #include <gtest/gtest.h>
 
-using namespace odbc;
+namespace google {
+namespace cloud {
+namespace bigquery_odbc {
 
 TEST(ConnectionTest, SQLDriverConnect) {
   ConnectionHandle conn;
@@ -52,3 +54,7 @@ TEST(FunctionsTest, SQLGetFunctions) {
   EXPECT_EQ(PrintSupportedFunctions(&conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
 }
+
+}  // namespace bigquery_odbc
+}  // namespace cloud
+}  // namespace google
