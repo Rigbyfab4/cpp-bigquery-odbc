@@ -34,6 +34,8 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+constexpr SQLSMALLINT kBufferLength = 512;
+
 struct ConnectionHandle {
   HENV henv;
   HDBC hdbc;
@@ -46,9 +48,12 @@ inline SQLSMALLINT NumSqlChar(SQLCHAR * x) {
   return (sizeof(x) / sizeof(SQLCHAR));
 }
 
-inline const char * Cstr(string x) {
-  return x.c_str();
+//Copies a source <std::string> to a destination <char *>
+inline void StrToChar(char * dest, string src) {
+  strcpy(dest, src.c_str());
 }
+
+SQLRETURN GetErrorDetails(const char *api, ConnectionHandle* conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud

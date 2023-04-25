@@ -52,7 +52,7 @@ TEST(DescriptorFieldsTest, SQLGetDescRec) {
 TEST(FunctionsTest, SQLGetFunctions) {
   ConnectionHandle conn;
   EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(PrintSupportedFunctions(&conn), SQL_SUCCESS);
+  EXPECT_EQ(GetAllFunctions(&conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
 }
 
@@ -60,6 +60,13 @@ TEST(StatementTest, SQLExecDirect) {
   ConnectionHandle conn;
   EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
   EXPECT_EQ(InsertDirectStatement(&conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLExecute) {
+  ConnectionHandle conn;
+  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
+  EXPECT_EQ(InsertStatement(&conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
 }
 
