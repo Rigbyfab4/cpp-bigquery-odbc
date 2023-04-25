@@ -13,10 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
-#define CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
+#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CONNECTION_H
+#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CONNECTION_H
 
-#include <odbc/commons.h>
+#include <testing/commons.h>
 
 namespace google {
 namespace cloud {
@@ -35,4 +35,4 @@ SQLRETURN PrintDriverVerName(ConnectionHandle *conn);
 }  // namespace cloud
 }  // namespace google
 
-#endif  // CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CONNECTION_H

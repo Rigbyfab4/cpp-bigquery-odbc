@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CPP_BIGQUERY_ODBC_ODBC_COMMONS_H
-#define CPP_BIGQUERY_ODBC_ODBC_COMMONS_H
+#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H
+#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H
 
 #include <iodbcext.h>
 #include <locale.h>
@@ -59,4 +59,4 @@ SQLRETURN GetErrorDetails(const char *api, ConnectionHandle* conn);
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_ODBC_COMMONS_H
+#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H
