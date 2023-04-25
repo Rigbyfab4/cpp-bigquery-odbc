@@ -13,21 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H
-#define CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H
+#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_STATEMENT_H
+#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_STATEMENT_H
 
-#include "odbc/commons.h"
-
-using std::map;
+#include "testing/commons.h"
 
 namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-SQLRETURN GetAllFunctions(ConnectionHandle *conn);
+SQLRETURN InsertStatement(ConnectionHandle *conn);
+SQLRETURN InsertDirectStatement(ConnectionHandle *conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H
+#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_STATEMENT_H

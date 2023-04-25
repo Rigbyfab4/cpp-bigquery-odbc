@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "odbc/connection.h"
-#include "odbc/functions.h"
-#include "odbc/statement.h"
+#include "testing/connection.h"
+#include "testing/functions.h"
+#include "testing/statement.h"
 #include <gtest/gtest.h>
 
 namespace google {
