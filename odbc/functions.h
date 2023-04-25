@@ -24,7 +24,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-SQLRETURN PrintSupportedFunctions(ConnectionHandle *conn);
+SQLRETURN GetAllFunctions(ConnectionHandle *conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud

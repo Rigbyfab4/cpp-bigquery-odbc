@@ -19,7 +19,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const char * kDatasetName = "ODBCTESTDATASET";
+constexpr char * kDatasetName = "ODBCTESTDATASET";
 
 // Tests direct execution of statements using SQLExecDirect
 SQLRETURN InsertDirectStatement(ConnectionHandle *conn) {
@@ -30,7 +30,7 @@ SQLRETURN InsertDirectStatement(ConnectionHandle *conn) {
   StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + (string)table_name + " (string_field STRING)");
   StrToChar(drop_table_stmt, "DROP TABLE " + (string)table_name);
 
-  const char * string_field = "Test String 1";
+  constexpr char * string_field = "Test String 1";
   char insert_stmt[kBufferLength];
   sprintf(insert_stmt, "INSERT INTO %s VALUES ('%s')", table_name, string_field);
 
@@ -84,7 +84,7 @@ SQLRETURN InsertStatement(ConnectionHandle *conn) {
   }
 
   //Add param 1(string) to insert query string
-  const char * str_field = "Test String 1";
+  constexpr char * str_field = "Test String 1";
   SQLLEN len_string_field = strlen(str_field);
   status = SQLBindParameter(conn->hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
                             SQL_CHAR, len_string_field, 0, (SQLCHAR * )str_field,

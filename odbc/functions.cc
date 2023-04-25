@@ -69,38 +69,36 @@ const map<SQLUSMALLINT, const char *> kAllOdbc3Functions = {
   {SQL_API_SQLNATIVESQL, "SQL_API_SQLNATIVESQL"},
   {SQL_API_SQLBROWSECONNECT, "SQL_API_SQLBROWSECONNECT"},
   {SQL_API_SQLNUMPARAMS, "SQL_API_SQLNUMPARAMS"},
-  {SQL_API_SQLBULKOPERATIONS, "SQL_API_SQLBULKOPERATIONS"},
+  //{SQL_API_SQLBULKOPERATIONS, "SQL_API_SQLBULKOPERATIONS"},
   {SQL_API_SQLPRIMARYKEYS, "SQL_API_SQLPRIMARYKEYS"},
   {SQL_API_SQLCOLUMNPRIVILEGES, "SQL_API_SQLCOLUMNPRIVILEGES"},
   {SQL_API_SQLPROCEDURECOLUMNS, "SQL_API_SQLPROCEDURECOLUMNS"},
   {SQL_API_SQLDESCRIBEPARAM, "SQL_API_SQLDESCRIBEPARAM"},
   {SQL_API_SQLPROCEDURES, "SQL_API_SQLPROCEDURES"},
   {SQL_API_SQLDRIVERCONNECT, "SQL_API_SQLDRIVERCONNECT"},
-  {SQL_API_SQLSETPOS, "SQL_API_SQLSETPOS"},
+  //{SQL_API_SQLSETPOS, "SQL_API_SQLSETPOS"},
   {SQL_API_SQLFOREIGNKEYS, "SQL_API_SQLFOREIGNKEYS"},
   {SQL_API_SQLTABLEPRIVILEGES, "SQL_API_SQLTABLEPRIVILEGES"},
   {SQL_API_SQLMORERESULTS, "SQL_API_SQLMORERESULTS"},
   {SQL_API_SQLSETSCROLLOPTIONS, "SQL_API_SQLSETSCROLLOPTIONS"}
 };
 
-SQLRETURN PrintSupportedFunctions(ConnectionHandle *conn) {
+SQLRETURN GetAllFunctions(ConnectionHandle *conn) {
   SQLUSMALLINT supported_functions[450];
   SQLRETURN status = SQLGetFunctions(conn->hdbc, SQL_API_ODBC3_ALL_FUNCTIONS, supported_functions);
   if (status == SQL_SUCCESS) {
     printf("\n\n**************************************\n");
     printf(
-      "ODBC3 Function support by the Driver: ODBCVER[%x] \n", ODBCVER);
+      "Verifying availability of ODBC3 functions  : ODBCVER[%x] \n", ODBCVER);
     printf("**************************************\n\n");
     
     for (auto function: kAllOdbc3Functions) {
-      if (SQL_FUNC_EXISTS(supported_functions, function.first)) {
-        printf("%s: AVAILABLE\n", function.second);
-      } else {
+      if (!SQL_FUNC_EXISTS(supported_functions, function.first)) {
         printf("%s: NOT AVAILABLE\n", function.second);
+        return SQL_ERROR;
       }
     }
-    printf("\n");
-    
+    printf("\n ALL functions are available \n");
   }
   return status;
 }

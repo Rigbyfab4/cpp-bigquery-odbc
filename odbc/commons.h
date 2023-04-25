@@ -34,7 +34,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-extern const SQLSMALLINT kBufferLength;
+constexpr SQLSMALLINT kBufferLength = 512;
 
 struct ConnectionHandle {
   HENV henv;

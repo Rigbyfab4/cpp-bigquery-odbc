@@ -18,8 +18,6 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const SQLSMALLINT kBufferLength = 512;
-
 SQLRETURN GetErrorDetails(const char *api, ConnectionHandle* conn) {
   SQLCHAR buf[kBufferLength];
   SQLCHAR sqlstate[15];

@@ -22,7 +22,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-extern const char * kDefaultConnectionString;
+constexpr char * kDefaultConnectionString = "DSN=ODBCTestsDSN";
 
 SQLRETURN Connect(char *conn_str, ConnectionHandle *conn);
 SQLRETURN Disconnect(ConnectionHandle *conn);

@@ -18,8 +18,6 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const char *kDefaultConnectionString = "DSN=SampleDSN";
-
 SQLSMALLINT kMaxDsnLen = 1024; //Maximum number of characters in a data source name
 
 SQLRETURN Connect(char *conn_str, ConnectionHandle *conn) {
