@@ -16,18 +16,7 @@
 #ifndef CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H
 #define CPP_BIGQUERY_ODBC_ODBC_FUNCTIONS_H
 
-#include <iodbcext.h>
-#include <locale.h>
-#include <sql.h>
-#include <sqlext.h>
-#include <sqlucode.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <map>
-
-#include "odbc/connection.h"
+#include "odbc/commons.h"
 
 using std::map;
 

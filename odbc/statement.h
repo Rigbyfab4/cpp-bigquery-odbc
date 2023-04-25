@@ -13,26 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
-#define CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
+#ifndef CPP_BIGQUERY_ODBC_ODBC_STATEMENT_H
+#define CPP_BIGQUERY_ODBC_ODBC_STATEMENT_H
 
-#include <odbc/commons.h>
+#include "odbc/commons.h"
 
 namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-extern const char * kDefaultConnectionString;
-
-SQLRETURN Connect(char *conn_str, ConnectionHandle *conn);
-SQLRETURN Disconnect(ConnectionHandle *conn);
-SQLRETURN GetDriverInfo(ConnectionHandle *conn);
-SQLRETURN GetEnvInfo(ConnectionHandle *conn);
-SQLRETURN GetDescRec(ConnectionHandle *conn);
-SQLRETURN PrintDriverVerName(ConnectionHandle *conn);
+SQLRETURN InsertStatement(ConnectionHandle *conn);
+SQLRETURN InsertDirectStatement(ConnectionHandle *conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
 
-#endif  // CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
+#endif  //CPP_BIGQUERY_ODBC_ODBC_STATEMENT_H

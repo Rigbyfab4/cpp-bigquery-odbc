@@ -1,4 +1,3 @@
-
 // Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,26 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
-#define CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
+#ifndef CPP_BIGQUERY_ODBC_ODBC_COMMONS_H
+#define CPP_BIGQUERY_ODBC_ODBC_COMMONS_H
 
-#include <odbc/commons.h>
+#include <iodbcext.h>
+#include <locale.h>
+#include <sql.h>
+#include <sqlext.h>
+#include <sqlucode.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <string>
+#include <map>
+
+using std::string;
+using std::map;
 
 namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-extern const char * kDefaultConnectionString;
+struct ConnectionHandle {
+  HENV henv;
+  HDBC hdbc;
+  HSTMT hstmt;
+  bool connected;
+  SQLCHAR outdsn[4096];
+};
 
-SQLRETURN Connect(char *conn_str, ConnectionHandle *conn);
-SQLRETURN Disconnect(ConnectionHandle *conn);
-SQLRETURN GetDriverInfo(ConnectionHandle *conn);
-SQLRETURN GetEnvInfo(ConnectionHandle *conn);
-SQLRETURN GetDescRec(ConnectionHandle *conn);
-SQLRETURN PrintDriverVerName(ConnectionHandle *conn);
+inline SQLSMALLINT NumSqlChar(SQLCHAR * x) {
+  return (sizeof(x) / sizeof(SQLCHAR));
+}
+
+inline const char * Cstr(string x) {
+  return x.c_str();
+}
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
 
-#endif  // CPP_BIGQUERY_ODBC_ODBC_CONNECTION_H
+#endif  //CPP_BIGQUERY_ODBC_ODBC_COMMONS_H
