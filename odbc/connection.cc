@@ -14,7 +14,9 @@
 
 #include "odbc/connection.h"
 
-namespace odbc {
+namespace google {
+namespace cloud {
+namespace bigquery_odbc {
 
 const char *kDefaultConnectionString = "DSN=SampleDSN";
 
@@ -252,4 +254,6 @@ SQLRETURN PrintDriverVerName(ConnectionHandle *conn) {
   return status;
 }
 
-}
+}  // namespace bigquery_odbc
+}  // namespace cloud
+}  // namespace google
