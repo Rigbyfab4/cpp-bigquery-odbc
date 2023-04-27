@@ -83,6 +83,15 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
     return status;
   }
 
+  //Testing SQLNumParams API
+  SQLSMALLINT num_params;
+  status = SQLNumParams(conn->hstmt, &num_params);
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLNumParams", conn);
+    return status;
+  }
+  EXPECT_EQ(num_params, 2);
+
   //Add param 1(string) to insert query string
   constexpr char * str_field = "Test String 1";
   SQLLEN len_string_field = strlen(str_field);
