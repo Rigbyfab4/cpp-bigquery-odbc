@@ -56,6 +56,10 @@ inline void StrToChar(char * dest, string src) {
 
 SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn);
 
+void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema);
+void DropTable(shared_ptr<ConnectionHandle> conn, string table_name);
+void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]);
+
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
