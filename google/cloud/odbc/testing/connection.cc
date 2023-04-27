@@ -20,7 +20,7 @@ namespace bigquery_odbc {
 
 SQLSMALLINT kMaxDsnLen = 1024; //Maximum number of characters in a data source name
 
-SQLRETURN Connect(char *conn_str, ConnectionHandle *conn) {
+SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn) {
   SQLSMALLINT buflen;
   SQLCHAR data_source[kMaxDsnLen];
   SQLSMALLINT out_len;
@@ -41,7 +41,7 @@ SQLRETURN Connect(char *conn_str, ConnectionHandle *conn) {
   //Set the application name
   SQLSetConnectOption(conn->hdbc, SQL_APPLICATION_NAME, (SQLULEN)("odbctest"));
 
-  strcpy((char *)data_source, conn_str);
+  StrToChar((char *)data_source, conn_str);
 
   status = SQLDriverConnect(conn->hdbc, 0, (SQLCHAR *)data_source, SQL_NTS,
                             (SQLCHAR *)conn->outdsn, NumSqlChar(conn->outdsn), &buflen,
@@ -62,7 +62,8 @@ SQLRETURN Connect(char *conn_str, ConnectionHandle *conn) {
 }
 
 //Disconnect from the database
-SQLRETURN Disconnect(ConnectionHandle *conn) {
+//SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
   if (conn->hstmt) {
     SQLCloseCursor(conn->hstmt);
     SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
@@ -80,7 +81,7 @@ SQLRETURN Disconnect(ConnectionHandle *conn) {
 }
 
 //Gets Info about the driver.
-SQLRETURN GetDriverInfo(ConnectionHandle *conn) {
+SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn) {
   SQLCHAR out[kMaxDsnLen];
   SQLSMALLINT out_len;
   SQLRETURN status;
@@ -160,7 +161,7 @@ SQLRETURN GetDriverInfo(ConnectionHandle *conn) {
 
 
 // Prints if the environment is ODBC3
-SQLRETURN GetEnvInfo(ConnectionHandle *conn) {
+SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn) {
   SQLUINTEGER out;
   SQLRETURN status = SQLGetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)&out,
                           SQL_IS_UINTEGER, NULL);
@@ -173,7 +174,7 @@ SQLRETURN GetEnvInfo(ConnectionHandle *conn) {
   return status;
 }
 
-SQLRETURN GetDescRec(ConnectionHandle *conn) {
+SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   SQLSMALLINT desc_type;
   SQLHDESC desc_handle;
@@ -231,7 +232,8 @@ SQLRETURN GetDescRec(ConnectionHandle *conn) {
 
 
 // Print the version and the name of the connected driver
-SQLRETURN PrintDriverVerName(ConnectionHandle *conn) {
+//SQLRETURN PrintDriverVerName(unique_ptr<ConnectionHandle> conn) {
+SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn) {
   SQLCHAR driver_info[kBufferLength];
   SQLSMALLINT out_len;
   SQLRETURN status;

@@ -22,14 +22,14 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-constexpr char * kDefaultConnectionString = "DSN=ODBCTestsDSN";
+const string kDefaultConnectionString("DSN=ODBCTestsDSN");
 
-SQLRETURN Connect(char *conn_str, ConnectionHandle *conn);
-SQLRETURN Disconnect(ConnectionHandle *conn);
-SQLRETURN GetDriverInfo(ConnectionHandle *conn);
-SQLRETURN GetEnvInfo(ConnectionHandle *conn);
-SQLRETURN GetDescRec(ConnectionHandle *conn);
-SQLRETURN PrintDriverVerName(ConnectionHandle *conn);
+SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn);
+SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn);
+SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn);
+SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn);
+SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn);
+SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud

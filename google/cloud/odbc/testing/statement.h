@@ -22,8 +22,8 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-SQLRETURN InsertStatement(ConnectionHandle *conn);
-SQLRETURN InsertDirectStatement(ConnectionHandle *conn);
+SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn);
+SQLRETURN InsertDirectStatement(shared_ptr<ConnectionHandle> conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud

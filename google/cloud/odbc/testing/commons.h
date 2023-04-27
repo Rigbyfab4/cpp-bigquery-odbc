@@ -24,11 +24,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <memory>
 #include <string>
 #include <map>
 
-using std::string;
-using std::map;
+using namespace std;
 
 namespace google {
 namespace cloud {
@@ -53,7 +53,7 @@ inline void StrToChar(char * dest, string src) {
   strcpy(dest, src.c_str());
 }
 
-SQLRETURN GetErrorDetails(const char *api, ConnectionHandle* conn);
+SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud

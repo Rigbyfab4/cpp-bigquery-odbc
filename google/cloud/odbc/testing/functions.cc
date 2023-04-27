@@ -18,7 +18,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const map<SQLUSMALLINT, const char *> kAllOdbc3Functions = {
+const map<SQLUSMALLINT, const string> kAllOdbc3Functions = {
   {SQL_API_SQLALLOCENV, "SQL_API_SQLALLOCENV"},
   {SQL_API_SQLALLOCHANDLE, "SQL_API_SQLALLOCHANDLE"},
   {SQL_API_SQLGETDESCFIELD, "SQL_API_SQLGETDESCFIELD"},
@@ -83,22 +83,16 @@ const map<SQLUSMALLINT, const char *> kAllOdbc3Functions = {
   {SQL_API_SQLSETSCROLLOPTIONS, "SQL_API_SQLSETSCROLLOPTIONS"}
 };
 
-SQLRETURN GetAllFunctions(ConnectionHandle *conn) {
+SQLRETURN GetAllFunctions(shared_ptr<ConnectionHandle> conn) {
   SQLUSMALLINT supported_functions[450];
   SQLRETURN status = SQLGetFunctions(conn->hdbc, SQL_API_ODBC3_ALL_FUNCTIONS, supported_functions);
   if (status == SQL_SUCCESS) {
-    printf("\n\n**************************************\n");
-    printf(
-      "Verifying availability of ODBC3 functions  : ODBCVER[%x] \n", ODBCVER);
-    printf("**************************************\n\n");
-    
     for (auto function: kAllOdbc3Functions) {
       if (!SQL_FUNC_EXISTS(supported_functions, function.first)) {
         printf("%s: NOT AVAILABLE\n", function.second);
         return SQL_ERROR;
       }
     }
-    printf("\n ALL functions are available \n");
   }
   return status;
 }

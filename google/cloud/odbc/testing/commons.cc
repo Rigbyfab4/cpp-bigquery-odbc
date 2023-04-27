@@ -18,7 +18,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-SQLRETURN GetErrorDetails(const char *api, ConnectionHandle* conn) {
+SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
   SQLCHAR buf[kBufferLength];
   SQLCHAR sqlstate[15];
   SQLINTEGER native_error = 0;
