@@ -15,7 +15,6 @@
 #include "testing/connection.h"
 #include "testing/functions.h"
 #include "testing/statement.h"
-#include <gtest/gtest.h>
 
 namespace google {
 namespace cloud {
