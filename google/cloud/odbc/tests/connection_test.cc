@@ -22,52 +22,52 @@ namespace cloud {
 namespace bigquery_odbc {
 
 TEST(ConnectionTest, SQLDriverConnect) {
-  ConnectionHandle conn;
-  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
 
 TEST(DriverInfoTest, SQLGetInfo) {
-  ConnectionHandle conn;
-  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(GetDriverInfo(&conn), SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-
 TEST(DriverAttributesTest, SQLGetEnvAttr) {
-  ConnectionHandle conn;
-  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(GetEnvInfo(&conn), SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(GetEnvInfo(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(DescriptorFieldsTest, SQLGetDescRec) {
-  ConnectionHandle conn;
-  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(GetDescRec(&conn), SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(GetDescRec(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(FunctionsTest, SQLGetFunctions) {
-  ConnectionHandle conn;
-  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(GetAllFunctions(&conn), SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(GetAllFunctions(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(StatementTest, SQLExecDirect) {
-  ConnectionHandle conn;
-  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(InsertDirectStatement(&conn), SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(InsertDirectStatement(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(StatementTest, SQLExecute) {
-  ConnectionHandle conn;
-  EXPECT_EQ(Connect((char *)kDefaultConnectionString, &conn), SQL_SUCCESS);
-  EXPECT_EQ(InsertStatement(&conn), SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(&conn), SQL_SUCCESS);
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(InsertStatement(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 }  // namespace bigquery_odbc

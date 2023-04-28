@@ -19,18 +19,18 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-constexpr char * kDatasetName = "ODBCTESTDATASET";
+const string kDatasetName = "ODBCTESTDATASET";
 
 // Tests direct execution of statements using SQLExecDirect
-SQLRETURN InsertDirectStatement(ConnectionHandle *conn) {
+SQLRETURN InsertDirectStatement(shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
 
   char table_name[kBufferLength], create_table_stmt[kBufferLength], drop_table_stmt[kBufferLength];
-  StrToChar(table_name, (string)kDatasetName + ".ODBC_INSERT_DIRECT_TEST");
+  StrToChar(table_name, kDatasetName + ".ODBC_INSERT_DIRECT_TEST");
   StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + (string)table_name + " (string_field STRING)");
   StrToChar(drop_table_stmt, "DROP TABLE " + (string)table_name);
 
-  constexpr char * string_field = "Test String 1";
+  const string string_field = "Test String 1";
   char insert_stmt[kBufferLength];
   sprintf(insert_stmt, "INSERT INTO %s VALUES ('%s')", table_name, string_field);
 
@@ -60,11 +60,11 @@ SQLRETURN InsertDirectStatement(ConnectionHandle *conn) {
 }
 
 // Tests insertion with params using SQLPrepare, SQLBindParameter and SQLExecute
-SQLRETURN InsertStatement(ConnectionHandle *conn) {
+SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   char table_name[kBufferLength], create_table_stmt[kBufferLength], drop_table_stmt[kBufferLength];
   char insert_stmt[kBufferLength];
-  StrToChar(table_name, (string)kDatasetName + ".ODBC_INSERT_PARAMS_TEST");
+  StrToChar(table_name, kDatasetName + ".ODBC_INSERT_PARAMS_TEST");
   StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + (string)table_name + " (StringField STRING, IntegerField INTEGER)");
   StrToChar(drop_table_stmt, "DROP TABLE " + (string)table_name);
   StrToChar(insert_stmt, "INSERT INTO " +(string)table_name + " VALUES (?, ?)");
