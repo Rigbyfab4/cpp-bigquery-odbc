@@ -64,6 +64,34 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
   return status;
 }
 
+void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema) {
+  char create_table_stmt[kBufferLength];
+  StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name + " " + schema);
+  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLExecDirect", conn);
+    FAIL() << "CreateTable failed with status: " << status;
+  }
+}
+
+void DropTable(shared_ptr<ConnectionHandle> conn, string table_name) {
+  char drop_table_stmt[kBufferLength];
+  StrToChar(drop_table_stmt, "DROP TABLE " + table_name);
+  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLExecDirect", conn);
+    FAIL() << "DropTable failed with status: " << status;
+  }
+}
+
+void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]) {
+  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)stmt, SQL_NTS);
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLExecDirect", conn);
+    FAIL() << "ExecuteStatement failed with status: " << status;
+  }
+}
+
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
