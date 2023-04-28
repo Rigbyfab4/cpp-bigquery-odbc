@@ -69,6 +69,35 @@ TEST(StatementTest, SQLExecute) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(StatementTest, SQLDescribeCol) {
+  const string table_name = kDatasetName + ".ODBC_PRINT_RESULTS_TEST";
+
+  Schema schema {
+    { "StringField", SQL_VARCHAR},
+    { "IntegerField", SQL_BIGINT},
+    { "FloatField", SQL_DOUBLE}
+  };
+
+  //Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  //Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  InsertSampleData(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CheckColumnData(conn, table_name, schema);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google

@@ -22,7 +22,6 @@
 #include <sqlucode.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -37,6 +36,8 @@ namespace bigquery_odbc {
 
 constexpr SQLSMALLINT kBufferLength = 512;
 
+const string kDatasetName = "ODBCTESTDATASET";
+
 struct ConnectionHandle {
   HENV henv;
   HDBC hdbc;
@@ -44,6 +45,43 @@ struct ConnectionHandle {
   bool connected;
   SQLCHAR outdsn[4096];
 };
+
+/*
+//SQLDescribeCol(SQLHSTMT StatementHandle, 
+  SQLUSMALLINT ColumnNumber,
+  SQLCHAR *ColumnName,
+  SQLSMALLINT BufferLength,
+  SQLSMALLINT *NameLength,
+  SQLSMALLINT *DataType,
+  SQLULEN *ColumnSize,
+  SQLSMALLINT *DecimalDigits,
+  SQLSMALLINT *Nullable)
+*/
+struct Column {
+  SQLCHAR name[kBufferLength]; // Column name
+  SQLSMALLINT name_len;
+  SQLSMALLINT data_type;
+  SQLCHAR * data; //Actual column data
+  SQLULEN data_size; //max size of column data
+  SQLLEN data_len; //size of data returned
+  SQLSMALLINT decimal_digits;
+  SQLSMALLINT nullable;
+};
+
+struct ColumnMinimal {
+  string name;
+  SQLSMALLINT type;
+};
+
+using Schema = vector<ColumnMinimal>;
+
+struct StdRow {
+  string str_field;
+  int int_field;
+  float float_field;
+};
+
+using StdRows = vector<StdRow>;
 
 inline SQLSMALLINT NumSqlChar(SQLCHAR * x) {
   return (sizeof(x) / sizeof(SQLCHAR));
@@ -54,11 +92,23 @@ inline void StrToChar(char * dest, string src) {
   strcpy(dest, src.c_str());
 }
 
+void SqlToCdataTypes(shared_ptr<Column> col_ptr);
+
 SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn);
 
 void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema);
+
 void DropTable(shared_ptr<ConnectionHandle> conn, string table_name);
+
 void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]);
+
+void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRows rows);
+
+//Wrapper for DescribeCol
+void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
+
+//Wrapper for SQLBindCol
+void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
