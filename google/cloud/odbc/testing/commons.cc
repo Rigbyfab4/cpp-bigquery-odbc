@@ -18,6 +18,26 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+void SqlToCdataTypes(shared_ptr<Column> col_ptr) {
+  switch (col_ptr->data_type) {
+    case SQL_BIGINT:
+    case SQL_INTEGER:
+      col_ptr->data_type = SQL_C_LONG;
+      break;
+    case SQL_DOUBLE:
+      col_ptr->data_type = SQL_C_DOUBLE;
+    case SQL_FLOAT:
+      col_ptr->data_type = SQL_C_FLOAT;
+      break;
+    case SQL_LONGVARCHAR:
+    case SQL_VARCHAR:
+      col_ptr->data_type = SQL_C_CHAR;
+      break;
+    default:
+      FAIL() << " Invalid column data type " << col_ptr->data_type;
+    }
+}
+
 SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
   SQLCHAR buf[kBufferLength];
   SQLCHAR sqlstate[15];
@@ -33,7 +53,8 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     if (!SQL_SUCCEEDED(status)) {
       break;
     }
-    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api, buf,
+    //TODO(#10): Remove printf and support logging
+    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
             (long)native_error, sqlstate);
   }
 
@@ -45,7 +66,8 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     if (!SQL_SUCCEEDED(status)) {
       break;
     }
-    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api, buf,
+    //TODO(#10): Remove printf and support logging
+    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
         (long)native_error, sqlstate);
   }
 
@@ -57,7 +79,8 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     if (!SQL_SUCCEEDED(status)) {
       break;
     }
-    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api, buf,
+    //TODO(#10): Remove printf and support logging
+    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
         (long)native_error, sqlstate);
   }
 
@@ -89,6 +112,84 @@ void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]) {
   if (!SQL_SUCCEEDED(status)) {
     GetErrorDetails("SQLExecDirect", conn);
     FAIL() << "ExecuteStatement failed with status: " << status;
+  }
+}
+
+//TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
+void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRows rows) {
+  string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
+  int num_rows = rows.size();
+  if(!num_rows) {
+    return;
+  }
+
+  for(int i = 0; i < num_rows; i++) {
+    StdRow row = rows[i];
+    string row_str = "( ";
+
+    string str_field = row.str_field;
+    if(!str_field.empty()) {
+      row_str.append("'" + str_field + "', ");
+    } else {
+      row_str.append("NULL, ");
+    }
+    
+    int int_field = row.int_field;
+    if(int_field != NULL) {
+      row_str.append(to_string(int_field) + ", ");
+    } else {
+      row_str.append("NULL, ");
+    }
+
+    float float_field = row.float_field;
+    if(float_field != NULL) {
+      row_str.append(to_string(float_field));
+    } else {
+      row_str.append("NULL");
+    }
+
+    row_str.append(")");
+    if(i != (num_rows -1)) {
+      row_str.append(", ");
+    }
+    insert_stmt.append(row_str);
+  }
+
+  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)insert_stmt.c_str(), SQL_NTS);
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLExecDirect", conn);
+    FAIL() << "ExecuteStatement failed with status: " << status;
+  }
+}
+
+void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
+  SQLRETURN status = SQLDescribeCol (
+                conn->hstmt,
+                col_index,
+                col_ptr->name,
+                kBufferLength,
+                &col_ptr->name_len,
+                &col_ptr->data_type,
+                &col_ptr->data_size,
+                &col_ptr->decimal_digits,
+                &col_ptr->nullable);
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLDescribeCol", conn);
+    FAIL() << "SQLDescribeCol failed with status: " << status;
+  }
+}
+
+void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
+  SQLRETURN status = SQLBindCol (
+                conn->hstmt,
+                col_index,
+                col_ptr->data_type,
+                col_ptr->data,
+                col_ptr->data_size,
+                &col_ptr->data_len);
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails("SQLBindCol", conn);
+    FAIL() << "SQLBindCol failed with status: " << status;
   }
 }
 
