@@ -26,8 +26,6 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn);
 
 SQLRETURN InsertDirectStatement(shared_ptr<ConnectionHandle> conn);
 
-void InsertSampleData(shared_ptr<ConnectionHandle> conn, string table_name);
-
 void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schema schema);
 
 }  // namespace bigquery_odbc

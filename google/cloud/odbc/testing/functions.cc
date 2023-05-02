@@ -89,6 +89,7 @@ SQLRETURN GetAllFunctions(shared_ptr<ConnectionHandle> conn) {
   if (status == SQL_SUCCESS) {
     for (auto function: kAllOdbc3Functions) {
       if (!SQL_FUNC_EXISTS(supported_functions, function.first)) {
+        //TODO(#10): Remove printf and support logging
         printf("%s: NOT AVAILABLE\n", function.second);
         return SQL_ERROR;
       }

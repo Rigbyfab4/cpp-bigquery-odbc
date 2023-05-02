@@ -19,13 +19,6 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-StdRows kSampleData{
-  { "Test String 1", 1, 1.1 },
-  { .int_field = 2, .float_field = 2.2 },
-  { "Test String 3", NULL, 3.3 },
-  { "Test String 4", 4 }
-};
-
 // Tests direct execution of statements using SQLExecDirect
 SQLRETURN InsertDirectStatement(shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
@@ -105,10 +98,6 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
   DropTable(conn, table_name);
 
   return status;
-}
-
-void InsertSampleData(shared_ptr<ConnectionHandle> conn, string table_name) {
-  InsertIntoTable(conn, table_name, kSampleData);
 }
 
 void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schema schema) {

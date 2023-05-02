@@ -53,6 +53,7 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     if (!SQL_SUCCEEDED(status)) {
       break;
     }
+    //TODO(#10): Remove printf and support logging
     printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
             (long)native_error, sqlstate);
   }
@@ -65,6 +66,7 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     if (!SQL_SUCCEEDED(status)) {
       break;
     }
+    //TODO(#10): Remove printf and support logging
     printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
         (long)native_error, sqlstate);
   }
@@ -77,6 +79,7 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     if (!SQL_SUCCEEDED(status)) {
       break;
     }
+    //TODO(#10): Remove printf and support logging
     printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
         (long)native_error, sqlstate);
   }
@@ -112,6 +115,7 @@ void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]) {
   }
 }
 
+//TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
 void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRows rows) {
   string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
   int num_rows = rows.size();

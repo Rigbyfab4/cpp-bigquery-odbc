@@ -80,6 +80,7 @@ SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
   return 0;
 }
 
+//TODO(#10): Remove printf and support logging
 //Gets Info about the driver.
 SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn) {
   SQLCHAR out[kMaxDsnLen];
@@ -159,7 +160,7 @@ SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn) {
   return status;
 }
 
-
+//TODO(#10): Remove printf and support logging
 // Prints if the environment is ODBC3
 SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn) {
   SQLUINTEGER out;
@@ -174,6 +175,7 @@ SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn) {
   return status;
 }
 
+//TODO(#10): Remove printf and support logging
 SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   SQLSMALLINT desc_type;
@@ -231,8 +233,8 @@ SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
 }
 
 
+//TODO(#10): Remove printf and support logging
 // Print the version and the name of the connected driver
-//SQLRETURN PrintDriverVerName(unique_ptr<ConnectionHandle> conn) {
 SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn) {
   SQLCHAR driver_info[kBufferLength];
   SQLSMALLINT out_len;

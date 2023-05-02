@@ -20,6 +20,13 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+StdRows kSampleData{
+  { "Test String 1", 1, 1.1 },
+  { .int_field = 2, .float_field = 2.2 },
+  { "Test String 3", NULL, 3.3 },
+  { "Test String 4", 4 }
+};
+
 TEST(ConnectionTest, SQLDriverConnect) {
   shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -86,7 +93,7 @@ TEST(StatementTest, SQLDescribeCol) {
 
   //Insert data to read
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  InsertSampleData(conn, table_name);
+  InsertIntoTable(conn, table_name, kSampleData);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);

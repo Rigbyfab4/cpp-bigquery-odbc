@@ -46,17 +46,6 @@ struct ConnectionHandle {
   SQLCHAR outdsn[4096];
 };
 
-/*
-//SQLDescribeCol(SQLHSTMT StatementHandle, 
-  SQLUSMALLINT ColumnNumber,
-  SQLCHAR *ColumnName,
-  SQLSMALLINT BufferLength,
-  SQLSMALLINT *NameLength,
-  SQLSMALLINT *DataType,
-  SQLULEN *ColumnSize,
-  SQLSMALLINT *DecimalDigits,
-  SQLSMALLINT *Nullable)
-*/
 struct Column {
   SQLCHAR name[kBufferLength]; // Column name
   SQLSMALLINT name_len;
@@ -104,10 +93,8 @@ void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]);
 
 void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRows rows);
 
-//Wrapper for DescribeCol
 void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
 
-//Wrapper for SQLBindCol
 void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
 
 }  // namespace bigquery_odbc
