@@ -38,9 +38,10 @@ void SqlToCdataTypes(shared_ptr<Column> col_ptr) {
     }
 }
 
-SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
+void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
   SQLCHAR buf[kBufferLength];
   SQLCHAR sqlstate[15];
+  char error_str[kBufferLength];
   SQLINTEGER native_error = 0;
   SQLRETURN status;
   int rec_num;
@@ -51,11 +52,12 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     status = SQLGetDiagRec(SQL_HANDLE_STMT, conn->hstmt, ++rec_num, sqlstate, &native_error,
                         buf, kBufferLength, NULL);
     if (!SQL_SUCCEEDED(status)) {
+      FAIL() << "SQLGetDiagRec failed with status: " << status;
       break;
     }
-    //TODO(#10): Remove printf and support logging
-    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
+    sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
             (long)native_error, sqlstate);
+    FAIL() << error_str;
   }
 
   //Get connection errors
@@ -64,11 +66,12 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     status = SQLGetDiagRec(SQL_HANDLE_DBC, conn->hdbc, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
     if (!SQL_SUCCEEDED(status)) {
+      FAIL() << "SQLGetDiagRec failed with status: " << status;
       break;
     }
-    //TODO(#10): Remove printf and support logging
-    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
-        (long)native_error, sqlstate);
+    sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
+            (long)native_error, sqlstate);
+    FAIL() << error_str;
   }
 
   //Get environment errors
@@ -77,42 +80,39 @@ SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     status = SQLGetDiagRec(SQL_HANDLE_ENV, conn->henv, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
     if (!SQL_SUCCEEDED(status)) {
+      FAIL() << "SQLGetDiagRec failed with status: " << status;
       break;
     }
-    //TODO(#10): Remove printf and support logging
-    printf("ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
-        (long)native_error, sqlstate);
+    sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
+            (long)native_error, sqlstate);
+    FAIL() << error_str;
   }
+}
 
-  return status;
+inline void CheckError(SQLRETURN status, const string api, shared_ptr<ConnectionHandle> conn) {
+  if (!SQL_SUCCEEDED(status)) {
+    GetErrorDetails(api, conn);
+    throw std::runtime_error(api + " failed with status: " + to_string(status));
+  }
 }
 
 void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema) {
   char create_table_stmt[kBufferLength];
   StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name + " " + schema);
   SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLExecDirect", conn);
-    FAIL() << "CreateTable failed with status: " << status;
-  }
+  CheckError(status, "SQLExecDirect", conn);
 }
 
 void DropTable(shared_ptr<ConnectionHandle> conn, string table_name) {
   char drop_table_stmt[kBufferLength];
   StrToChar(drop_table_stmt, "DROP TABLE " + table_name);
   SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLExecDirect", conn);
-    FAIL() << "DropTable failed with status: " << status;
-  }
+  CheckError(status, "SQLExecDirect", conn);
 }
 
 void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]) {
   SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)stmt, SQL_NTS);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLExecDirect", conn);
-    FAIL() << "ExecuteStatement failed with status: " << status;
-  }
+  CheckError(status, "SQLExecDirect", conn);
 }
 
 //TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
@@ -156,10 +156,7 @@ void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRo
   }
 
   SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)insert_stmt.c_str(), SQL_NTS);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLExecDirect", conn);
-    FAIL() << "ExecuteStatement failed with status: " << status;
-  }
+  CheckError(status, "SQLExecDirect", conn);
 }
 
 void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
@@ -173,10 +170,7 @@ void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, 
                 &col_ptr->data_size,
                 &col_ptr->decimal_digits,
                 &col_ptr->nullable);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLDescribeCol", conn);
-    FAIL() << "SQLDescribeCol failed with status: " << status;
-  }
+  CheckError(status, "SQLDescribeCol", conn);
 }
 
 void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
@@ -187,10 +181,7 @@ void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLU
                 col_ptr->data,
                 col_ptr->data_size,
                 &col_ptr->data_len);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLBindCol", conn);
-    FAIL() << "SQLBindCol failed with status: " << status;
-  }
+  CheckError(status, "SQLBindCol", conn);
 }
 
 }  // namespace bigquery_odbc

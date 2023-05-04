@@ -27,37 +27,32 @@ SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
 
   status = SQLAllocHandle(SQL_HANDLE_ENV, NULL, &conn->henv);
-  if (!SQL_SUCCEEDED(status)){
-    return status;
-  }
-  SQLSetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3,
+  CheckError(status, "SQLAllocHandle", conn);
+
+  status = SQLSetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3,
                 SQL_IS_UINTEGER);
+  CheckError(status, "SQLSetEnvAttr", conn);
   
   status = SQLAllocHandle(SQL_HANDLE_DBC, conn->henv, &conn->hdbc);     
-  if (!SQL_SUCCEEDED(status)) {
-    return status;
-  }
+  CheckError(status, "SQLAllocHandle", conn);
 
   //Set the application name
-  SQLSetConnectOption(conn->hdbc, SQL_APPLICATION_NAME, (SQLULEN)("odbctest"));
+  status = SQLSetConnectAttr(conn->hdbc, SQL_APPLICATION_NAME, (SQLPOINTER)("odbctest"), SQL_NTS);
+  CheckError(status, "SQLSetConnectAttr", conn);
 
   StrToChar((char *)data_source, conn_str);
 
   status = SQLDriverConnect(conn->hdbc, 0, (SQLCHAR *)data_source, SQL_NTS,
                             (SQLCHAR *)conn->outdsn, NumSqlChar(conn->outdsn), &buflen,
                             SQL_DRIVER_COMPLETE);
-  if (!SQL_SUCCEEDED(status)) {
-    return status;
-  }
+  CheckError(status, "SQLDriverConnect", conn);
   conn->connected = true;
   
-  status = PrintDriverVerName(conn);
-  if (!SQL_SUCCEEDED(status)){
-    return status;
-  }
+  PrintDriverVerName(conn);
   
   //Allocate statement handle
   status = SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &conn->hstmt);
+  CheckError(status, "SQLAllocHandle", conn);
   return status;
 }
 
@@ -182,27 +177,18 @@ SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
   SQLHDESC desc_handle;
 
   status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_APP_ROW_DESC, &desc_handle, 0, NULL);
-  if (!SQL_SUCCEEDED(status)) {
-    return status;
-  }
+  CheckError(status, "SQLGetStmtAttr", conn);
   // Set the type
   status = SQLSetDescField(desc_handle, 1, SQL_DESC_TYPE,
                             (SQLPOINTER)SQL_C_DEFAULT, SQL_IS_SMALLINT);
-  if (!SQL_SUCCEEDED(status)) {
-    return status;
-  }
-  printf("SQLSetDescField Succeeded!\n\n");
+  CheckError(status, "SQLSetDescField", conn);
   
   // get number of fields in the descriptor
   status = SQLGetDescField(desc_handle, 1, SQL_DESC_TYPE, &desc_type,
                             SQL_IS_SMALLINT, NULL);
-  if (!SQL_SUCCEEDED(status)) {
-    return status;
-  }
+  CheckError(status, "SQLGetDescField", conn);
   printf("SQLGetDescField Succeeded: desc_type[%d] \n\n", desc_type);
   
-
-  printf("Trying SQLGetDescRec:\n");
   SQLSMALLINT stringLength;
   SQLSMALLINT type;
   SQLSMALLINT subType;
@@ -240,14 +226,12 @@ SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn) {
   SQLSMALLINT out_len;
   SQLRETURN status;
   status = SQLGetInfo(conn->hdbc, SQL_DRIVER_VER, driver_info, NumSqlChar(driver_info), &out_len);
-  if (SQL_SUCCEEDED(status)) {
-    printf("Driver: %s", driver_info);
-    status = SQLGetInfo(conn->hdbc, SQL_DRIVER_NAME, driver_info, NumSqlChar(driver_info),
-                        &out_len);
-    if (SQL_SUCCEEDED(status)) {
-      printf(" (%s) \n\n", driver_info);
-    }
-  }
+  CheckError(status, "SQLGetInfo", conn);
+  printf("Driver: %s", driver_info);
+  status = SQLGetInfo(conn->hdbc, SQL_DRIVER_NAME, driver_info, NumSqlChar(driver_info),
+                      &out_len);
+  CheckError(status, "SQLGetInfo", conn);
+  printf(" (%s) \n\n", driver_info);
   return status;
 }
 
