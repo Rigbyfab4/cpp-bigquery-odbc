@@ -109,8 +109,38 @@ void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schem
 
     //Verify returned column descriptions with the table schema
     EXPECT_STREQ((const char * )col_ptr->name, schema[i].name.c_str());
+    EXPECT_EQ(col_ptr->name_len, schema[i].name.length());
     EXPECT_EQ(col_ptr->data_type, schema[i].type);
     EXPECT_EQ(col_ptr->nullable, SQL_NULLABLE);
+  }
+}
+
+shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query, StdRows data) {
+  SQLRETURN status;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR * )read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+
+  SQLSMALLINT num_cols;
+  status = SQLNumResultCols (conn->hstmt, &num_cols);
+  CheckError(status, "SQLNumResultCols", conn);
+
+  vector<shared_ptr<Column>> cols(num_cols);
+  Results results;
+  for (int i = 0; i < num_cols; i++) {
+
+    shared_ptr<Column> col_ptr(new Column());
+    cols[i] = col_ptr;
+    
+    DescribeCol(conn, col_ptr, i + 1);
+
+    string col_name = (char * )col_ptr->name;
+
+    //Initializing results
+    vector<string> cols_data;
+    results[col_name] = cols_data;
 
     SqlToCdataTypes(col_ptr);
     
@@ -118,9 +148,36 @@ void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schem
     SQLCHAR col_data[col_ptr->data_size + 1];
     col_ptr->data = col_data;
 
-    //TODO: SQLBindCol will be used later when we SQLFetch the data
     BindCol(conn, col_ptr, i + 1);
   }
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+
+  //Read all the rows using SQLFetch
+  for(int i_r = 0; ;i_r++) {
+    status = SQLFetch(conn->hstmt);
+    if(status == SQL_NO_DATA) {
+      break;
+    }
+    CheckError(status, "SQLFetch", conn);
+
+    for (int i_c = 0; i_c < num_cols; i_c++) {
+      string col_name = (char * )cols[i_c]->name;
+      SQLCHAR * data = cols[i_c]->data;
+      SQLLEN data_len = cols[i_c]->data_len;
+
+      if(data_len == -1) {
+        results[col_name].push_back(string());
+        continue;
+      }
+      string val = (char *)data;
+      results[col_name].push_back(val);
+    }
+  }
+
+  auto results_ptr = make_shared<Results>(results);
+  return results_ptr;
 }
 
 }  // namespace bigquery_odbc

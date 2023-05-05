@@ -29,8 +29,8 @@ void SqlToCdataTypes(shared_ptr<Column> col_ptr) {
     case SQL_FLOAT:
       col_ptr->data_type = SQL_C_FLOAT;
       break;
-    case SQL_LONGVARCHAR:
     case SQL_VARCHAR:
+    case SQL_C_CHAR:
       col_ptr->data_type = SQL_C_CHAR;
       break;
     default:
