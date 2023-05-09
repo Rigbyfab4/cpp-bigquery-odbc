@@ -54,9 +54,11 @@ struct Column {
   SQLCHAR name[kBufferLength]; // Column name
   SQLSMALLINT name_len;
   SQLSMALLINT data_type;
-  SQLCHAR * data; //Actual column data
+  SQLCHAR * data; //Returned column data
+  SQLCHAR * result_set; //Returned column data for a result set
   SQLULEN data_size; //max size of column data
   SQLLEN data_len; //size of data returned
+  SQLLEN * row_data_len; //row-wise size of returned data while fetching result sets
   SQLSMALLINT decimal_digits;
   SQLSMALLINT nullable;
 };
@@ -104,6 +106,8 @@ void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRo
 void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
 
 void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
+
+void VerifyColumnWiseResults(StdRows input_data, Results col_wise_data, vector<string> col_names);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud

@@ -59,18 +59,26 @@ SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn) {
 //Disconnect from the database
 //SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
 SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
+  SQLRETURN status;
   if (conn->hstmt) {
-    SQLCloseCursor(conn->hstmt);
-    SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
+    //Using SQLFreeStmt rather than SQLCloseCursor(conn->hstmt) is better since it doesn't
+    //  fail if no cursor was open.
+    status = SQLFreeStmt(conn->hstmt, SQL_CLOSE);
+    CheckError(status, "SQLFreeStmt", conn);
+    status = SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
+    CheckError(status, "SQLFreeHandle", conn);
   }
   if (conn->connected) {
-    SQLDisconnect(conn->hdbc);
+    status = SQLDisconnect(conn->hdbc);
+    CheckError(status, "SQLDisconnect", conn);
   }
   if (conn->hdbc) {
-    SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
+    status = SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
+    CheckError(status, "SQLFreeHandle", conn);
   }
   if (conn->henv) {
-    SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
+    status = SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
+    CheckError(status, "SQLFreeHandle", conn);
   }
   return 0;
 }

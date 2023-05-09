@@ -20,11 +20,15 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-StdRows kSampleData{
+const StdRows kSampleData{
   { "Test String 1", 1, 1.1 },
   { .int_field = 237, .float_field = 2.22 },
   { "Test String 3", NULL, 3.333 },
-  { "Test String 4", 49 }
+  { "Test String 4", 49 },
+  { "Test String 5", 53, 5 },
+  { "Test String 6", 698, 0.31 },
+  { "Test String 7", 12, 71.6 },
+  { "Test String 8", 83, 8.8 },
 };
 
 TEST(ConnectionTest, SQLDriverConnect) {
@@ -134,24 +138,43 @@ TEST(StatementTest, SQLFetch) {
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   //TODO(#14): Add integer and floating point fields too
   string query = "SELECT StringField FROM " + table_name;
-  shared_ptr<Results> results_ptr = FetchResults(conn, query, kSampleData);
-  Results results = *results_ptr;
+  Results results = *FetchResults(conn, query);
 
-  vector<string> ret_col_values = results["StringField"];
-  //We have to sort inserted and returned values because we haven't specified the ordering
-  sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
+  VerifyColumnWiseResults(kSampleData, results, vector<string>());
 
-  vector<string> input_col_values;
-  for(auto data: kSampleData) {
-    input_col_values.push_back(data.str_field);
-  }
-  sort(input_col_values.begin(), input_col_values.end(), str_comparison);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
-  //Check if the sorted inserted and returned vectors have same values
-  EXPECT_EQ(ret_col_values.size(), input_col_values.size());
-  for(int i = 0; i < ret_col_values.size(); i++) {
-    EXPECT_EQ(ret_col_values[i], input_col_values[i]);
-  }
+  //Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLFetchScroll) {
+  const string table_name = kDatasetName + ".ODBC_SCROLL_RESULTS_TEST";
+
+  //Schema returned by the query
+  Schema schema {
+    { "StringField", SQL_VARCHAR}
+  };
+
+  //Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  //Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  InsertIntoTable(conn, table_name, kSampleData);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  //Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  string query = "SELECT StringField FROM " + table_name;
+  Results results = *ScrollResults(conn, query, 3);
+  VerifyColumnWiseResults(kSampleData, results, vector<string>());
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
