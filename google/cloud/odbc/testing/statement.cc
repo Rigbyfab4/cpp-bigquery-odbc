@@ -52,18 +52,12 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
 
   //Prepare statement with insert query string
   status = SQLPrepare(conn->hstmt, (SQLCHAR *)insert_stmt, SQL_NTS);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLPrepare", conn);
-    return status;
-  }
+  CheckError(status, "SQLPrepare", conn);
 
   //Testing SQLNumParams API
   SQLSMALLINT num_params;
   status = SQLNumParams(conn->hstmt, &num_params);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLNumParams", conn);
-    return status;
-  }
+  CheckError(status, "SQLNumParams", conn);
   EXPECT_EQ(num_params, 2);
 
   //Add param 1(string) to insert query string
@@ -72,27 +66,18 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
   status = SQLBindParameter(conn->hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
                             SQL_CHAR, len_string_field, 0, (SQLCHAR * )str_field,
                             len_string_field, NULL);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLBindParameter", conn);
-    return status;
-  }
+  CheckError(status, "SQLBindParameter", conn);
 
   //Add param 2 to insert query string
   int int_field = 42;
   status = SQLBindParameter(conn->hstmt, 2, SQL_PARAM_INPUT, SQL_C_SSHORT,
                             SQL_INTEGER, 0, 0, &int_field,
                             0, NULL);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLBindParameter", conn);
-    return status;
-  }
+  CheckError(status, "SQLBindParameter", conn);
 
   //Execute insertion
   status = SQLExecute (conn->hstmt);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLExecute", conn);
-    return status;
-  }
+  CheckError(status, "SQLExecute", conn);
 
   //Drop Table
   DropTable(conn, table_name);
@@ -106,18 +91,12 @@ void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schem
   StrToChar(read_stmt, "SELECT * FROM " + table_name);
 
   status = SQLPrepare(conn->hstmt, (SQLCHAR * )read_stmt, strlen(read_stmt));
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLPrepare", conn);
-    return;
-  }
+  CheckError(status, "SQLPrepare", conn);
 
   //Check if the number of columns returned is correct
   SQLSMALLINT num_cols;
   status = SQLNumResultCols (conn->hstmt, &num_cols);
-  if (!SQL_SUCCEEDED(status)) {
-    GetErrorDetails("SQLNumResultCols", conn);
-    return;
-  }
+  CheckError(status, "SQLNumResultCols", conn);
   EXPECT_EQ(num_cols, schema.size());
 
   //Loop through columns and verify descriptions

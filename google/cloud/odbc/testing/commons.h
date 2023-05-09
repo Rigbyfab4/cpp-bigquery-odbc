@@ -83,7 +83,9 @@ inline void StrToChar(char * dest, string src) {
 
 void SqlToCdataTypes(shared_ptr<Column> col_ptr);
 
-SQLRETURN GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn);
+void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn);
+
+inline void CheckError(SQLRETURN status, const string api, shared_ptr<ConnectionHandle> conn);
 
 void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema);
 
