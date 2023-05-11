@@ -27,12 +27,16 @@
 #include <memory>
 #include <string>
 #include <map>
+//We need sorting functions 
+#include <algorithm>
 
 using namespace std;
 
 namespace google {
 namespace cloud {
 namespace bigquery_odbc {
+
+using Results = map<string, vector<string>>;
 
 constexpr SQLSMALLINT kBufferLength = 512;
 
@@ -71,6 +75,8 @@ struct StdRow {
 };
 
 using StdRows = vector<StdRow>;
+
+inline bool str_comparison (string a, string b) { return a < b;}
 
 inline SQLSMALLINT NumSqlChar(SQLCHAR * x) {
   return (sizeof(x) / sizeof(SQLCHAR));

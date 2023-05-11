@@ -22,9 +22,9 @@ namespace bigquery_odbc {
 
 StdRows kSampleData{
   { "Test String 1", 1, 1.1 },
-  { .int_field = 2, .float_field = 2.2 },
-  { "Test String 3", NULL, 3.3 },
-  { "Test String 4", 4 }
+  { .int_field = 237, .float_field = 2.22 },
+  { "Test String 3", NULL, 3.333 },
+  { "Test String 4", 49 }
 };
 
 TEST(ConnectionTest, SQLDriverConnect) {
@@ -77,7 +77,7 @@ TEST(StatementTest, SQLExecute) {
 }
 
 TEST(StatementTest, SQLDescribeCol) {
-  const string table_name = kDatasetName + ".ODBC_PRINT_RESULTS_TEST";
+  const string table_name = kDatasetName + ".ODBC_COLUMN_DESCRIPTION_TEST";
 
   Schema schema {
     { "StringField", SQL_VARCHAR},
@@ -100,6 +100,62 @@ TEST(StatementTest, SQLDescribeCol) {
   CheckColumnData(conn, table_name, schema);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLFetch) {
+  const string table_name = kDatasetName + ".ODBC_CHECK_RESULTS_TEST";
+
+  //TODO(#14): Add integer and floating point fields too
+  //Schema returned by the query
+  Schema schema {
+    { "StringField", SQL_VARCHAR}
+  };
+
+  //Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  //Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  InsertIntoTable(conn, table_name, kSampleData);
+  SQLLEN rows_count = 0;
+  SQLRETURN status = SQLRowCount(conn->hstmt, &rows_count);
+  CheckError(status, "SQLRowCount", conn);
+  EXPECT_EQ(rows_count, kSampleData.size());
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+
+  //Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  //TODO(#14): Add integer and floating point fields too
+  string query = "SELECT StringField FROM " + table_name;
+  shared_ptr<Results> results_ptr = FetchResults(conn, query, kSampleData);
+  Results results = *results_ptr;
+
+  vector<string> ret_col_values = results["StringField"];
+  //We have to sort inserted and returned values because we haven't specified the ordering
+  sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
+
+  vector<string> input_col_values;
+  for(auto data: kSampleData) {
+    input_col_values.push_back(data.str_field);
+  }
+  sort(input_col_values.begin(), input_col_values.end(), str_comparison);
+
+  //Check if the sorted inserted and returned vectors have same values
+  EXPECT_EQ(ret_col_values.size(), input_col_values.size());
+  for(int i = 0; i < ret_col_values.size(); i++) {
+    EXPECT_EQ(ret_col_values[i], input_col_values[i]);
+  }
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  //Delete table
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   DropTable(conn, table_name);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
