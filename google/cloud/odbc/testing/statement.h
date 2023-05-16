@@ -26,9 +26,12 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn);
 
 SQLRETURN InsertDirectStatement(shared_ptr<ConnectionHandle> conn);
 
-void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schema schema);
+// Fetches results of a read query row-by-row and returns them as a map with the column as keys
+shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query);
 
-shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query, StdRows data);
+// Fetches results of a read query as a result set of size <rs_size>
+//  and returns them as a map with the column as keys
+shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string query, int rs_size);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud

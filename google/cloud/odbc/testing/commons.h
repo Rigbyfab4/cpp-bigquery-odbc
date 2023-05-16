@@ -27,7 +27,7 @@
 #include <memory>
 #include <string>
 #include <map>
-//We need sorting functions 
+// We need sorting functions 
 #include <algorithm>
 
 using namespace std;
@@ -54,9 +54,11 @@ struct Column {
   SQLCHAR name[kBufferLength]; // Column name
   SQLSMALLINT name_len;
   SQLSMALLINT data_type;
-  SQLCHAR * data; //Actual column data
-  SQLULEN data_size; //max size of column data
-  SQLLEN data_len; //size of data returned
+  SQLCHAR * data; // Returned column data
+  SQLCHAR * result_set; // Returned column data for a result set
+  SQLULEN data_size; // max size of column data
+  SQLLEN data_len; // size of data returned
+  shared_ptr<SQLLEN[]> row_data_len; // row-wise size of returned data while fetching result sets
   SQLSMALLINT decimal_digits;
   SQLSMALLINT nullable;
 };
@@ -82,15 +84,15 @@ inline SQLSMALLINT NumSqlChar(SQLCHAR * x) {
   return (sizeof(x) / sizeof(SQLCHAR));
 }
 
-//Copies a source <std::string> to a destination <char *>
+// Copies a source <std::string> to a destination <char *>
 inline void StrToChar(char * dest, string src) {
   strcpy(dest, src.c_str());
 }
 
+// Updates col_ptr->data_type to the C datatype macro to have consistency while reading results
 void SqlToCdataTypes(shared_ptr<Column> col_ptr);
 
-void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn);
-
+// If there was an error, gets description from SQLGetDiagRec and throws an error
 inline void CheckError(SQLRETURN status, const string api, shared_ptr<ConnectionHandle> conn);
 
 void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema);
@@ -101,8 +103,10 @@ void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]);
 
 void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRows rows);
 
+// Executes the SQLDescribeCol API to initialize the Column struct
 void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
 
+// Executes the BindCol API to bind the Column struct data buffers to the statement handle
 void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
 
 }  // namespace bigquery_odbc

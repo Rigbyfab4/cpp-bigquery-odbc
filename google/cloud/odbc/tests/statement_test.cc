@@ -1,0 +1,238 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "testing/connection.h"
+#include "testing/statement.h"
+
+namespace google {
+namespace cloud {
+namespace bigquery_odbc {
+
+const StdRows kSampleData{
+  { "Test String 1", 1, 1.1 },
+  { .int_field = 237, .float_field = 2.22 },
+  { "Test String 3", NULL, 3.333 },
+  { "Test String 4", 49 },
+  { "Test String 5", 53, 5 },
+  { "Test String 6", 698, 0.31 },
+  { "Test String 7", 12, 71.6 },
+  { "Test String 8", 83, 8.8 },
+};
+
+// Checks if the column description returned by DescribeCol matches the schema
+void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schema schema) {
+  SQLRETURN status;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, "SELECT * FROM " + table_name);
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR * )read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+
+  //Check if the number of columns returned is correct
+  SQLSMALLINT num_cols;
+  status = SQLNumResultCols(conn->hstmt, &num_cols);
+  CheckError(status, "SQLNumResultCols", conn);
+  EXPECT_EQ(num_cols, schema.size());
+
+  //Loop through columns and verify descriptions
+  vector<shared_ptr<Column>> cols(num_cols);
+  for (int i = 0; i < num_cols; i++) {
+    shared_ptr<Column> col_ptr(new Column());
+    cols[i] = col_ptr;
+
+    DescribeCol(conn, col_ptr, i + 1);
+
+    // Verify returned column descriptions with the table schema
+    EXPECT_STREQ((const char * )col_ptr->name, schema[i].name.c_str());
+    EXPECT_EQ(col_ptr->name_len, schema[i].name.length());
+    EXPECT_EQ(col_ptr->data_type, schema[i].type);
+    EXPECT_EQ(col_ptr->nullable, SQL_NULLABLE);
+  }
+}
+
+// Verify if the inserted data(<input_data>) is the same as the data fetched col-wise
+// Note: This doesn't verify the integrity of the fetched rows
+void VerifyColumnWiseResults(StdRows input_data, Results col_wise_data, vector<string> col_names) {
+  if(!col_names.size()) {
+    vector<string> all_col_names;
+    for (auto it = col_wise_data.begin(); it != col_wise_data.end(); it++) {
+      all_col_names.emplace_back(it->first);
+    }
+    col_names = all_col_names;
+  }
+  for(string col_name: col_names) {
+    auto ret_col_values = col_wise_data[col_name];
+    
+    // We have to sort inserted and returned values because we haven't specified the ordering
+    sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
+
+    vector<string> input_col_values;
+    for(auto data: input_data) {
+      input_col_values.emplace_back(data.str_field);
+    }
+    sort(input_col_values.begin(), input_col_values.end(), str_comparison);
+
+    // Check if the sorted inserted and returned vectors have same values
+    EXPECT_EQ(ret_col_values.size(), input_col_values.size());
+    for(int i = 0; i < ret_col_values.size(); i++) {
+      EXPECT_EQ(ret_col_values[i], input_col_values[i]);
+    }
+  }
+}
+
+TEST(StatementTest, SQLExecDirect) {
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(InsertDirectStatement(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLExecute) {
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(InsertStatement(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLNumParams) {
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  string table_name = kDatasetName + ".ODBC_NUM_PARAMS_TEST";
+  string insert_stmt = "INSERT INTO " + table_name + " VALUES (?, ?, ?)";
+  
+  // Create Table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  SQLSMALLINT num_params;
+  auto  status = SQLPrepare(conn->hstmt, (SQLCHAR *)insert_stmt.c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+  status = SQLNumParams(conn->hstmt, &num_params);
+  CheckError(status, "SQLNumParams", conn);
+  EXPECT_EQ(num_params, 3);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLDescribeCol) {
+  const string table_name = kDatasetName + ".ODBC_COLUMN_DESCRIPTION_TEST";
+
+  Schema schema {
+    { "StringField", SQL_VARCHAR},
+    { "IntegerField", SQL_BIGINT},
+    { "FloatField", SQL_DOUBLE}
+  };
+
+  // Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  InsertIntoTable(conn, table_name, kSampleData);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CheckColumnData(conn, table_name, schema);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLFetch) {
+  const string table_name = kDatasetName + ".ODBC_CHECK_RESULTS_TEST";
+
+  // TODO(#14): Add integer and floating point fields too
+  // Schema returned by the query
+  Schema schema {
+    { "StringField", SQL_VARCHAR}
+  };
+
+  // Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  InsertIntoTable(conn, table_name, kSampleData);
+  SQLLEN rows_count = 0;
+  auto status = SQLRowCount(conn->hstmt, &rows_count);
+  CheckError(status, "SQLRowCount", conn);
+  EXPECT_EQ(rows_count, kSampleData.size());
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  //TODO(#14): Add integer and floating point fields too
+  string query = "SELECT StringField FROM " + table_name;
+  auto results = *FetchResults(conn, query);
+
+  VerifyColumnWiseResults(kSampleData, results, vector<string>());
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLFetchScroll) {
+  const string table_name = kDatasetName + ".ODBC_SCROLL_RESULTS_TEST";
+
+  // Schema returned by the query
+  Schema schema {
+    { "StringField", SQL_VARCHAR}
+  };
+
+  // Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  InsertIntoTable(conn, table_name, kSampleData);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  string query = "SELECT StringField FROM " + table_name;
+  auto results = *ScrollResults(conn, query, 3);
+  VerifyColumnWiseResults(kSampleData, results, vector<string>());
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+}  // namespace bigquery_odbc
+}  // namespace cloud
+}  // namespace google

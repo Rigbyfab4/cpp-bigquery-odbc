@@ -13,22 +13,30 @@
 // limitations under the License.
 
 #include "testing/connection.h"
+#include "testing/functions.h"
 
 namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-TEST(ConnectionTest, SQLDriverConnect) {
+TEST(DriverAttributesTest, SQLGetEnvAttr) {
   shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(GetEnvInfo(conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-
-TEST(DriverInfoTest, SQLGetInfo) {
+TEST(DescriptorFieldsTest, SQLGetDescRec) {
   shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
+  EXPECT_EQ(GetDescRec(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(FunctionsTest, SQLGetFunctions) {
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(GetAllFunctions(conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

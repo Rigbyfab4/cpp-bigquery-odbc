@@ -57,20 +57,27 @@ SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn) {
 }
 
 //Disconnect from the database
-//SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
 SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
+  SQLRETURN status;
   if (conn->hstmt) {
-    SQLCloseCursor(conn->hstmt);
-    SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
+    //Using SQLFreeStmt rather than SQLCloseCursor(conn->hstmt) is better since it doesn't
+    //  fail if no cursor was open.
+    status = SQLFreeStmt(conn->hstmt, SQL_CLOSE);
+    CheckError(status, "SQLFreeStmt", conn);
+    status = SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
+    CheckError(status, "SQLFreeHandle", conn);
   }
   if (conn->connected) {
-    SQLDisconnect(conn->hdbc);
+    status = SQLDisconnect(conn->hdbc);
+    CheckError(status, "SQLDisconnect", conn);
   }
   if (conn->hdbc) {
-    SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
+    status = SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
+    CheckError(status, "SQLFreeHandle", conn);
   }
   if (conn->henv) {
-    SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
+    status = SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
+    CheckError(status, "SQLFreeHandle", conn);
   }
   return 0;
 }
@@ -159,7 +166,7 @@ SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn) {
 // Prints if the environment is ODBC3
 SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn) {
   SQLUINTEGER out;
-  SQLRETURN status = SQLGetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)&out,
+  auto status = SQLGetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)&out,
                           SQL_IS_UINTEGER, NULL);
   if (SQL_SUCCEEDED(status) && out == SQL_OV_ODBC3) {
     printf("****************************************\n");
@@ -219,7 +226,7 @@ SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
 }
 
 
-//TODO(#10): Remove printf and support logging
+// TODO(#10): Remove printf and support logging
 // Print the version and the name of the connected driver
 SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn) {
   SQLCHAR driver_info[kBufferLength];

@@ -18,7 +18,7 @@ cmake_minimum_required(VERSION 3.14)
 project(my_project)
 
 # GoogleTest requires at least C++14
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 include_directories(BEFORE $ENV{IODBC_INCLUDE_PATH})
 
@@ -42,6 +42,8 @@ add_executable(
   testing/functions.cc
   testing/statement.cc
   tests/connection_test.cc
+  tests/misc_test.cc
+  tests/statement_test.cc
 )
 target_link_libraries(
   all_tests

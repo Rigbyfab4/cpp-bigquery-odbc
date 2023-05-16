@@ -24,11 +24,17 @@ namespace bigquery_odbc {
 
 const string kDefaultConnectionString("DSN=ODBCTestsDSN");
 
+// Connect using a <conn_str> and populate the ConnectionHandle
 SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn);
+
 SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn);
+
 SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn);
+
 SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn);
+
 SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn);
+
 SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn);
 
 }  // namespace bigquery_odbc
