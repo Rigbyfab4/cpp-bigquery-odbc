@@ -46,7 +46,7 @@ void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   int rec_num;
 
-  //Get statement errors
+  // Get statement errors
   rec_num = 0;
   while (conn->hstmt && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_STMT, conn->hstmt, ++rec_num, sqlstate, &native_error,
@@ -60,7 +60,7 @@ void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     FAIL() << error_str;
   }
 
-  //Get connection errors
+  // Get connection errors
   rec_num = 0;
   while (conn->hdbc && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_DBC, conn->hdbc, ++rec_num, sqlstate, &native_error, buf,
@@ -74,7 +74,7 @@ void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
     FAIL() << error_str;
   }
 
-  //Get environment errors
+  // Get environment errors
   rec_num = 0;
   while (conn->henv && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_ENV, conn->henv, ++rec_num, sqlstate, &native_error, buf,
@@ -99,23 +99,23 @@ inline void CheckError(SQLRETURN status, const string api, shared_ptr<Connection
 void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema) {
   char create_table_stmt[kBufferLength];
   StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name + " " + schema);
-  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
 void DropTable(shared_ptr<ConnectionHandle> conn, string table_name) {
   char drop_table_stmt[kBufferLength];
   StrToChar(drop_table_stmt, "DROP TABLE " + table_name);
-  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
 void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]) {
-  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)stmt, SQL_NTS);
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
-//TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
+// TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
 void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRows rows) {
   string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
   int num_rows = rows.size();
@@ -124,7 +124,7 @@ void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRo
   }
 
   for(int i = 0; i < num_rows; i++) {
-    StdRow row = rows[i];
+    auto row = rows[i];
     string row_str = "( ";
 
     string str_field = row.str_field;
@@ -134,14 +134,14 @@ void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRo
       row_str.append("NULL, ");
     }
     
-    int int_field = row.int_field;
+    auto int_field = row.int_field;
     if(int_field != NULL) {
       row_str.append(to_string(int_field) + ", ");
     } else {
       row_str.append("NULL, ");
     }
 
-    float float_field = row.float_field;
+    auto float_field = row.float_field;
     if(float_field != NULL) {
       row_str.append(to_string(float_field));
     } else {
@@ -155,7 +155,7 @@ void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRo
     insert_stmt.append(row_str);
   }
 
-  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)insert_stmt.c_str(), SQL_NTS);
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)insert_stmt.c_str(), SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
@@ -174,7 +174,7 @@ void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, 
 }
 
 void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
-  SQLRETURN status = SQLBindCol (
+  auto status = SQLBindCol (
                 conn->hstmt,
                 col_index,
                 col_ptr->data_type,
@@ -182,33 +182,6 @@ void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLU
                 col_ptr->data_size,
                 &col_ptr->data_len);
   CheckError(status, "SQLBindCol", conn);
-}
-
-void VerifyColumnWiseResults(StdRows input_data, Results col_wise_data, vector<string> col_names) {
-  if(!col_names.size()) {
-    vector<string> all_col_names;
-    for (auto it = col_wise_data.begin(); it != col_wise_data.end(); it++) {
-      all_col_names.push_back(it->first);
-    }
-    col_names = all_col_names;
-  }
-  for(string col_name: col_names) {
-    vector<string> ret_col_values = col_wise_data[col_name];
-    //We have to sort inserted and returned values because we haven't specified the ordering
-    sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
-
-    vector<string> input_col_values;
-    for(auto data: input_data) {
-      input_col_values.push_back(data.str_field);
-    }
-    sort(input_col_values.begin(), input_col_values.end(), str_comparison);
-
-    //Check if the sorted inserted and returned vectors have same values
-    EXPECT_EQ(ret_col_values.size(), input_col_values.size());
-    for(int i = 0; i < ret_col_values.size(); i++) {
-      EXPECT_EQ(ret_col_values[i], input_col_values[i]);
-    }
-  }
 }
 
 }  // namespace bigquery_odbc

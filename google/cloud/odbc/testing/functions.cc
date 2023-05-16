@@ -69,14 +69,14 @@ const map<SQLUSMALLINT, const string> kAllOdbc3Functions = {
   {SQL_API_SQLNATIVESQL, "SQL_API_SQLNATIVESQL"},
   {SQL_API_SQLBROWSECONNECT, "SQL_API_SQLBROWSECONNECT"},
   {SQL_API_SQLNUMPARAMS, "SQL_API_SQLNUMPARAMS"},
-  //{SQL_API_SQLBULKOPERATIONS, "SQL_API_SQLBULKOPERATIONS"},
+  // {SQL_API_SQLBULKOPERATIONS, "SQL_API_SQLBULKOPERATIONS"},
   {SQL_API_SQLPRIMARYKEYS, "SQL_API_SQLPRIMARYKEYS"},
   {SQL_API_SQLCOLUMNPRIVILEGES, "SQL_API_SQLCOLUMNPRIVILEGES"},
   {SQL_API_SQLPROCEDURECOLUMNS, "SQL_API_SQLPROCEDURECOLUMNS"},
   {SQL_API_SQLDESCRIBEPARAM, "SQL_API_SQLDESCRIBEPARAM"},
   {SQL_API_SQLPROCEDURES, "SQL_API_SQLPROCEDURES"},
   {SQL_API_SQLDRIVERCONNECT, "SQL_API_SQLDRIVERCONNECT"},
-  //{SQL_API_SQLSETPOS, "SQL_API_SQLSETPOS"},
+  // {SQL_API_SQLSETPOS, "SQL_API_SQLSETPOS"},
   {SQL_API_SQLFOREIGNKEYS, "SQL_API_SQLFOREIGNKEYS"},
   {SQL_API_SQLTABLEPRIVILEGES, "SQL_API_SQLTABLEPRIVILEGES"},
   {SQL_API_SQLMORERESULTS, "SQL_API_SQLMORERESULTS"},
@@ -85,11 +85,11 @@ const map<SQLUSMALLINT, const string> kAllOdbc3Functions = {
 
 SQLRETURN GetAllFunctions(shared_ptr<ConnectionHandle> conn) {
   SQLUSMALLINT supported_functions[450];
-  SQLRETURN status = SQLGetFunctions(conn->hdbc, SQL_API_ODBC3_ALL_FUNCTIONS, supported_functions);
+  auto status = SQLGetFunctions(conn->hdbc, SQL_API_ODBC3_ALL_FUNCTIONS, supported_functions);
   if (status == SQL_SUCCESS) {
     for (auto function: kAllOdbc3Functions) {
       if (!SQL_FUNC_EXISTS(supported_functions, function.first)) {
-        //TODO(#10): Remove printf and support logging
+        // TODO(#10): Remove printf and support logging
         printf("%s: NOT AVAILABLE\n", function.second);
         return SQL_ERROR;
       }

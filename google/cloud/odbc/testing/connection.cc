@@ -57,7 +57,6 @@ SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn) {
 }
 
 //Disconnect from the database
-//SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
 SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   if (conn->hstmt) {
@@ -167,7 +166,7 @@ SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn) {
 // Prints if the environment is ODBC3
 SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn) {
   SQLUINTEGER out;
-  SQLRETURN status = SQLGetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)&out,
+  auto status = SQLGetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)&out,
                           SQL_IS_UINTEGER, NULL);
   if (SQL_SUCCEEDED(status) && out == SQL_OV_ODBC3) {
     printf("****************************************\n");
@@ -227,7 +226,7 @@ SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
 }
 
 
-//TODO(#10): Remove printf and support logging
+// TODO(#10): Remove printf and support logging
 // Print the version and the name of the connected driver
 SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn) {
   SQLCHAR driver_info[kBufferLength];
