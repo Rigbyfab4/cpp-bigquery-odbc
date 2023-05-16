@@ -33,6 +33,10 @@ shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query
 //  and returns them as a map with the column as keys
 shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string query, int rs_size);
 
+// Fetches results of a read query using SQLFetch and SQLGetData
+// Returns the results as a map with the column as keys
+shared_ptr<Results> FetchResultsWithSqlGetData(shared_ptr<ConnectionHandle> conn, string query);
+
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
