@@ -61,6 +61,7 @@ void CheckColumnData(shared_ptr<ConnectionHandle> conn, string table_name, Schem
   }
 }
 
+
 // Verify if the inserted data(<input_data>) is the same as the data fetched col-wise
 // Note: This doesn't verify the integrity of the fetched rows
 void VerifyColumnWiseResults(StdRows input_data, Results col_wise_data, vector<string> col_names) {
@@ -223,6 +224,43 @@ TEST(StatementTest, SQLFetchScroll) {
 
   string query = "SELECT StringField FROM " + table_name;
   auto results = *ScrollResults(conn, query, 3);
+  VerifyColumnWiseResults(kSampleData, results, vector<string>());
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLGetData) {
+  const string table_name = kDatasetName + ".ODBC_GET_DATA_TEST";
+
+  // TODO(#14): Add integer and floating point fields too
+  // Schema returned by the query
+  Schema schema {
+    { "StringField", SQL_VARCHAR}
+  };
+
+  // Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  InsertIntoTable(conn, table_name, kSampleData);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  // TODO(#14): Add integer and floating point fields too
+  string query = "SELECT StringField FROM " + table_name;
+  auto results = *FetchResultsWithSqlGetData(conn, query);
+
   VerifyColumnWiseResults(kSampleData, results, vector<string>());
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
