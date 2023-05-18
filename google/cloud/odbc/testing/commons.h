@@ -89,6 +89,8 @@ inline void StrToChar(char * dest, string src) {
   strcpy(dest, src.c_str());
 }
 
+string GetRandomString(int len);
+
 // Updates col_ptr->data_type to the C datatype macro to have consistency while reading results
 void SqlToCdataTypes(shared_ptr<Column> col_ptr);
 

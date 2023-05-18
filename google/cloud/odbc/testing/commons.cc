@@ -18,6 +18,19 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+string GetRandomString(int len) {
+  static const char chars[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  string str;
+  str.reserve(len);
+  for (int i = 0; i < len; i++) {
+    str += chars[rand() % (sizeof(chars) - 1)];
+  }
+  return str;
+}
+
 void SqlToCdataTypes(shared_ptr<Column> col_ptr) {
   switch (col_ptr->data_type) {
     case SQL_BIGINT:

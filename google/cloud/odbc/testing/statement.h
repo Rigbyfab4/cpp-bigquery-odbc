@@ -37,6 +37,8 @@ shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string quer
 // Returns the results as a map with the column as keys
 shared_ptr<Results> FetchResultsWithSqlGetData(shared_ptr<ConnectionHandle> conn, string query);
 
+void InsertDataWithSqlPut(shared_ptr<ConnectionHandle> conn, string query, vector<string> data);
+
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google

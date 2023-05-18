@@ -72,21 +72,21 @@ void VerifyColumnWiseResults(StdRows input_data, Results col_wise_data, vector<s
     }
     col_names = all_col_names;
   }
-  for(string col_name: col_names) {
+  for (string col_name: col_names) {
     auto ret_col_values = col_wise_data[col_name];
     
     // We have to sort inserted and returned values because we haven't specified the ordering
     sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
 
     vector<string> input_col_values;
-    for(auto data: input_data) {
+    for (auto data: input_data) {
       input_col_values.emplace_back(data.str_field);
     }
     sort(input_col_values.begin(), input_col_values.end(), str_comparison);
 
     // Check if the sorted inserted and returned vectors have same values
     EXPECT_EQ(ret_col_values.size(), input_col_values.size());
-    for(int i = 0; i < ret_col_values.size(); i++) {
+    for (int i = 0; i < ret_col_values.size(); i++) {
       EXPECT_EQ(ret_col_values[i], input_col_values[i]);
     }
   }
@@ -263,6 +263,52 @@ TEST(StatementTest, SQLGetData) {
 
   VerifyColumnWiseResults(kSampleData, results, vector<string>());
 
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLPutData) {
+  const string table_name = kDatasetName + ".ODBC_PUT_DATA_TEST";
+
+  // TODO(#14): Add integer and floating point fields too
+  // Schema returned by the query
+  Schema schema {
+    { "StringField1", SQL_VARCHAR},
+    { "StringField2", SQL_VARCHAR},
+    { "StringField3", SQL_VARCHAR}
+  };
+
+  // Create Table
+  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  // TODO(#14): Add integer and floating point fields too
+  CreateTable(conn, table_name, "(StringField1 STRING, StringField2 STRING, StringField3 STRING)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+
+  // Insert a row
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  string query = "INSERT INTO " + table_name + " VALUES (?, ?, ?)";
+  vector<string> data;
+  for(int i = 0; i < schema.size(); i++) {
+    data.emplace_back(GetRandomString(50));
+  }
+  InsertDataWithSqlPut(conn, query, data);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  query = "SELECT StringField1, StringField2, StringField3 FROM " + table_name;
+  auto results = *FetchResultsWithSqlGetData(conn, query);
+
+  for(int i = 0; i < schema.size(); i++) {
+    auto col_name = schema[i].name;
+    EXPECT_EQ(results[col_name][0], data[i]);
+  }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Delete table

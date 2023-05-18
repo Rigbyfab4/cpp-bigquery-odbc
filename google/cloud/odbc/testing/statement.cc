@@ -73,7 +73,7 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
   status = SQLExecute (conn->hstmt);
   CheckError(status, "SQLExecute", conn);
 
-  //Drop Table
+  // Drop Table
   DropTable(conn, table_name);
 
   return status;
@@ -101,7 +101,7 @@ shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query
 
     string col_name = (char *)col_ptr->name;
 
-    //Initializing results
+    // Initializing results
     vector<string> cols_data;
     results[col_name] = cols_data;
 
@@ -269,7 +269,7 @@ shared_ptr<Results> FetchResultsWithSqlGetData(shared_ptr<ConnectionHandle> conn
     if(!SQL_SUCCEEDED(status)) {
       CheckError(status, "SQLFetch", conn);
     }
-    for(int i_c = 0; i_c < num_cols; i_c++) {
+    for (int i_c = 0; i_c < num_cols; i_c++) {
       SQLSMALLINT resp_status, resp_status_len;
       while(1) {
         status = SQLGetData(conn->hstmt, i_c + 1, SQL_CHAR, data, kBufferLength, &strlen_or_ind);
@@ -294,6 +294,83 @@ shared_ptr<Results> FetchResultsWithSqlGetData(shared_ptr<ConnectionHandle> conn
   }
   auto results_ptr = make_shared<Results>(results);
   return results_ptr;
+}
+
+void InsertDataWithSqlPut(shared_ptr<ConnectionHandle> conn, string query, vector<string> data) {
+  SQLRETURN status;
+  SQLSMALLINT num_params;
+  SQLSMALLINT data_type, decimal_digits, nullable;
+  SQLULEN bytes_left;
+  SQLLEN batch_size = 8;
+  SQLCHAR * data_ptr;
+  vector<SQLCHAR *> data_to_insert;
+  for(int i = 0; i < data.size(); i++) {
+    data_to_insert.push_back((SQLCHAR *)data[i].c_str());
+  }
+
+  char insert_stmt[kBufferLength];
+  StrToChar(insert_stmt, query);
+
+  // Prepare statement with insert query string
+  status = SQLPrepare(conn->hstmt, (SQLCHAR *)insert_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLNumParams(conn->hstmt, &num_params);
+  CheckError(status, "SQLNumParams", conn);
+
+
+  for (int i = 0; i < num_params; i++) {
+    status = SQLDescribeParam(conn->hstmt, i + 1, &data_type, &bytes_left, &decimal_digits, &nullable);
+    CheckError(status, "SQLDescribeParam", conn);
+
+    SQLULEN param_bytes = kBufferLength;
+    SQLLEN chunk_size = SQL_LEN_DATA_AT_EXEC(param_bytes);
+    data_ptr = data_to_insert[i];
+    // TODO: This should ideally be done based on the parameter descriptions: data_type and bytes_left
+    status = SQLBindParameter(
+            conn->hstmt,
+            i + 1,
+            SQL_PARAM_INPUT,
+            SQL_C_CHAR,
+            SQL_LONGVARCHAR,
+            param_bytes,
+            0,
+            (SQLPOINTER)data_ptr,
+            0,
+            &chunk_size);
+    CheckError(status, "SQLBindParameter", conn);
+  }
+
+  SQLPOINTER bounded_data_ptr;
+  status = SQLExecute(conn->hstmt);
+  if (status != SQL_NEED_DATA) {
+    CheckError(status, "SQLExecute", conn);
+  }
+  if (status == SQL_NEED_DATA) {
+    status = SQLParamData(conn->hstmt, &bounded_data_ptr);
+    if (status != SQL_NEED_DATA) {
+      CheckError(status, "SQLParamData", conn);
+    }
+    data_ptr = (SQLCHAR *)bounded_data_ptr;
+    bytes_left = strlen((char *)data_ptr);
+  }
+  while (status == SQL_NEED_DATA) {
+    while (bytes_left > 0) {
+      SQLLEN bytes_to_put = min((int)batch_size, (int)bytes_left);
+      status = SQLPutData(conn->hstmt, data_ptr, bytes_to_put);
+      CheckError(status, "SQLPutData", conn);
+      data_ptr += bytes_to_put;
+      bytes_left -= bytes_to_put;
+    }
+    status = SQLParamData(conn->hstmt, &bounded_data_ptr);
+    if (status != SQL_NEED_DATA) {
+      CheckError(status, "SQLParamData", conn);
+    }
+    data_ptr = (SQLCHAR *)bounded_data_ptr;
+    if (status == SQL_NEED_DATA) {
+      bytes_left = strlen((char *)data_ptr);
+    }
+  }
 }
 
 }  // namespace bigquery_odbc
