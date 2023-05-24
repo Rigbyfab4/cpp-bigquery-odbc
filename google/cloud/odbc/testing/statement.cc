@@ -20,11 +20,11 @@ namespace cloud {
 namespace bigquery_odbc {
 
 // Tests direct execution of statements using SQLExecDirect
-SQLRETURN InsertDirectStatement(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN InsertDirectStatement(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
-  const string table_name = kDatasetName + ".ODBC_INSERT_DIRECT_TEST";
+  const std::string table_name = kDatasetName + ".ODBC_INSERT_DIRECT_TEST";
 
-  const string string_field = "Test String 1";
+  const std::string string_field = "Test String 1";
   char insert_stmt[kBufferLength];
   sprintf(insert_stmt, "INSERT INTO %s VALUES ('%s')", table_name.c_str(), string_field.c_str());
 
@@ -41,9 +41,9 @@ SQLRETURN InsertDirectStatement(shared_ptr<ConnectionHandle> conn) {
 }
 
 // Tests insertion with params using SQLPrepare, SQLBindParameter and SQLExecute
-SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN InsertStatement(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
-  const string table_name = kDatasetName + ".ODBC_INSERT_PARAMS_TEST";
+  const std::string table_name = kDatasetName + ".ODBC_INSERT_PARAMS_TEST";
   char insert_stmt[kBufferLength];
   StrToChar(insert_stmt, "INSERT INTO " + table_name + " VALUES (?, ?)");
 
@@ -79,7 +79,7 @@ SQLRETURN InsertStatement(shared_ptr<ConnectionHandle> conn) {
   return status;
 }
 
-shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query) {
+std::shared_ptr<Results> FetchResults(std::shared_ptr<ConnectionHandle> conn, std::string query) {
   SQLRETURN status;
   char read_stmt[kBufferLength];
   StrToChar(read_stmt, query);
@@ -91,18 +91,18 @@ shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query
   status = SQLNumResultCols (conn->hstmt, &num_cols);
   CheckError(status, "SQLNumResultCols", conn);
 
-  vector<shared_ptr<Column>> cols(num_cols);
+  std::vector<std::shared_ptr<Column>> cols(num_cols);
   Results results;
   for (int i = 0; i < num_cols; i++) {
-    shared_ptr<Column> col_ptr(new Column());
+    std::shared_ptr<Column> col_ptr(new Column());
     cols[i] = col_ptr;
 
     DescribeCol(conn, col_ptr, i + 1);
 
-    string col_name = (char *)col_ptr->name;
+    std::string col_name = (char *)col_ptr->name;
 
     // Initializing results
-    vector<string> cols_data;
+    std::vector<std::string> cols_data;
     results[col_name] = cols_data;
 
     SqlToCdataTypes(col_ptr);
@@ -134,19 +134,19 @@ shared_ptr<Results> FetchResults(shared_ptr<ConnectionHandle> conn, string query
       auto data_len = cols[i_c]->data_len;
 
       if(data_len == -1) {
-        results[col_name].emplace_back(string());
+        results[col_name].emplace_back(std::string());
         continue;
       }
-      string val = (char *)data;
+      std::string val = (char *)data;
       results[col_name].push_back(val);
     }
   }
 
-  auto results_ptr = make_shared<Results>(results);
+  auto results_ptr = std::make_shared<Results>(results);
   return results_ptr;
 }
 
-shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string query, int rs_size) {
+std::shared_ptr<Results> ScrollResults(std::shared_ptr<ConnectionHandle> conn, std::string query, int rs_size) {
   SQLRETURN status;
   int num_rows_fetched = 0;
 
@@ -167,10 +167,10 @@ shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string quer
   status = SQLNumResultCols (conn->hstmt, &num_cols);
   CheckError(status, "SQLNumResultCols", conn);
 
-  vector<shared_ptr<Column>> cols(num_cols);
+  std::vector<std::shared_ptr<Column>> cols(num_cols);
   Results results;
   for (int i = 0; i < num_cols; i++) {
-    shared_ptr<Column> col_ptr(new Column());
+    std::shared_ptr<Column> col_ptr(new Column());
     cols[i] = col_ptr;
 
     DescribeCol(conn, col_ptr, 1);
@@ -178,11 +178,11 @@ shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string quer
     SQLCHAR result_set[rs_size * col_ptr->data_size];
     col_ptr->result_set = result_set;
 
-    string col_name = (char *)col_ptr->name;
+    std::string col_name = (char *)col_ptr->name;
 
     SqlToCdataTypes(col_ptr);
 
-    shared_ptr<SQLLEN[]> row_data_len(new SQLLEN[rs_size]);
+    std::shared_ptr<SQLLEN[]> row_data_len(new SQLLEN[rs_size]);
     col_ptr->row_data_len = row_data_len;
     status = SQLBindCol (
               conn->hstmt,
@@ -208,10 +208,10 @@ shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string quer
 
     for (int i_r = 0; i_r < num_rows_fetched; i_r++) {
       for (int i_c = 0; i_c < num_cols; i_c++) {
-        string col_name = (char *)cols[i_c]->name;
+        std::string col_name = (char *)cols[i_c]->name;
         auto data_len = cols[i_c]->data_len;
         if(cols[i_c]->row_data_len[i_r] < 0) {
-          results[col_name].emplace_back(string());
+          results[col_name].emplace_back(std::string());
           continue;
         }
         auto data_size = cols[i_c]->data_size;
@@ -220,11 +220,11 @@ shared_ptr<Results> ScrollResults(shared_ptr<ConnectionHandle> conn, string quer
       }
     }
   }
-  auto results_ptr = make_shared<Results>(results);
+  auto results_ptr = std::make_shared<Results>(results);
   return results_ptr;
 }
 
-vector<shared_ptr<Column>> GetCols(shared_ptr<ConnectionHandle> conn, string query) {
+std::vector<std::shared_ptr<Column>> GetCols(std::shared_ptr<ConnectionHandle> conn, std::string query) {
   SQLRETURN status;
   char read_stmt[kBufferLength];
   StrToChar(read_stmt, query);
@@ -236,9 +236,9 @@ vector<shared_ptr<Column>> GetCols(shared_ptr<ConnectionHandle> conn, string que
   status = SQLNumResultCols (conn->hstmt, &num_cols);
   CheckError(status, "SQLNumResultCols", conn);
 
-  vector<shared_ptr<Column>> cols(num_cols);
+  std::vector<std::shared_ptr<Column>> cols(num_cols);
   for (int i = 0; i < num_cols; i++) {
-    shared_ptr<Column> col_ptr(new Column());
+    std::shared_ptr<Column> col_ptr(new Column());
     cols[i] = col_ptr;
 
     DescribeCol(conn, col_ptr, i + 1);
@@ -248,7 +248,7 @@ vector<shared_ptr<Column>> GetCols(shared_ptr<ConnectionHandle> conn, string que
   return cols;
 }
 
-shared_ptr<Results> FetchResultsWithSqlGetData(shared_ptr<ConnectionHandle> conn, string query) {
+std::shared_ptr<Results> FetchResultsWithSqlGetData(std::shared_ptr<ConnectionHandle> conn, std::string query) {
   SQLRETURN status;
   SQLCHAR data[kBufferLength];
   SQLLEN strlen_or_ind;
@@ -284,27 +284,27 @@ shared_ptr<Results> FetchResultsWithSqlGetData(shared_ptr<ConnectionHandle> conn
           break;
         }
       }
-      string col_name = (char *)cols[i_c]->name;
+      std::string col_name = (char *)cols[i_c]->name;
       if(strlen_or_ind < 0) {
-        results[col_name].emplace_back(string());
+        results[col_name].emplace_back(std::string());
       } else {
         results[col_name].push_back((char *)data);
       }
     }
   }
-  auto results_ptr = make_shared<Results>(results);
+  auto results_ptr = std::make_shared<Results>(results);
   return results_ptr;
 }
 
-void InsertDataWithSqlPut(shared_ptr<ConnectionHandle> conn, string query, vector<string> data) {
+void InsertDataWithSqlPut(std::shared_ptr<ConnectionHandle> conn, std::string query, std::vector<std::string> data) {
   SQLRETURN status;
   SQLSMALLINT num_params;
   SQLSMALLINT data_type, decimal_digits, nullable;
   SQLULEN bytes_left;
   SQLLEN batch_size = 8;
   SQLCHAR * data_ptr;
-  vector<SQLCHAR *> data_to_insert;
-  for(int i = 0; i < data.size(); i++) {
+  std::vector<SQLCHAR *> data_to_insert;
+  for (int i = 0; i < data.size(); i++) {
     data_to_insert.push_back((SQLCHAR *)data[i].c_str());
   }
 
@@ -356,7 +356,7 @@ void InsertDataWithSqlPut(shared_ptr<ConnectionHandle> conn, string query, vecto
   }
   while (status == SQL_NEED_DATA) {
     while (bytes_left > 0) {
-      SQLLEN bytes_to_put = min((int)batch_size, (int)bytes_left);
+      SQLLEN bytes_to_put = std::min((int)batch_size, (int)bytes_left);
       status = SQLPutData(conn->hstmt, data_ptr, bytes_to_put);
       CheckError(status, "SQLPutData", conn);
       data_ptr += bytes_to_put;

@@ -20,7 +20,7 @@ namespace bigquery_odbc {
 
 SQLSMALLINT kMaxDsnLen = 1024; // Maximum number of characters in a data source name
 
-SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn) {
+SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn) {
   SQLSMALLINT buflen;
   SQLCHAR data_source[kMaxDsnLen];
   SQLSMALLINT out_len;
@@ -57,7 +57,7 @@ SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn) {
 }
 
 // Disconnect from the database
-SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN Disconnect(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   if (conn->hstmt) {
     // Using SQLFreeStmt rather than SQLCloseCursor(conn->hstmt) is better since it doesn't
@@ -84,7 +84,7 @@ SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn) {
 
 // TODO(#10): Remove printf and support logging
 // Gets Info about the driver.
-SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN GetDriverInfo(std::shared_ptr<ConnectionHandle> conn) {
   SQLCHAR out[kMaxDsnLen];
   SQLSMALLINT out_len;
   SQLRETURN status;
@@ -164,7 +164,7 @@ SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn) {
 
 // TODO(#10): Remove printf and support logging
 // Prints if the environment is ODBC3
-SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN GetEnvInfo(std::shared_ptr<ConnectionHandle> conn) {
   SQLUINTEGER out;
   auto status = SQLGetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)&out,
                           SQL_IS_UINTEGER, NULL);
@@ -178,7 +178,7 @@ SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn) {
 }
 
 // TODO(#10): Remove printf and support logging
-SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN GetDescRec(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   SQLSMALLINT desc_type;
   SQLHDESC desc_handle;
@@ -228,7 +228,7 @@ SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn) {
 
 // TODO(#10): Remove printf and support logging
 // Print the version and the name of the connected driver
-SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN PrintDriverVerName(std::shared_ptr<ConnectionHandle> conn) {
   SQLCHAR driver_info[kBufferLength];
   SQLSMALLINT out_len;
   SQLRETURN status;

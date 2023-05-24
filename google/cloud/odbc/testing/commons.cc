@@ -18,20 +18,20 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-string GetRandomString(int len) {
-  static const char chars[] =
+std::string GetRandomString(int len) {
+  static constexpr char kChars[] =
       "0123456789"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "abcdefghijklmnopqrstuvwxyz";
-  string str;
+  std::string str;
   str.reserve(len);
   for (int i = 0; i < len; i++) {
-    str += chars[rand() % (sizeof(chars) - 1)];
+    str += kChars[rand() % (sizeof(kChars) - 1)];
   }
   return str;
 }
 
-void SqlToCdataTypes(shared_ptr<Column> col_ptr) {
+void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
   switch (col_ptr->data_type) {
     case SQL_BIGINT:
     case SQL_INTEGER:
@@ -51,7 +51,7 @@ void SqlToCdataTypes(shared_ptr<Column> col_ptr) {
     }
 }
 
-void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
+void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> conn) {
   SQLCHAR buf[kBufferLength];
   SQLCHAR sqlstate[15];
   char error_str[kBufferLength];
@@ -102,45 +102,45 @@ void GetErrorDetails(const string api, shared_ptr<ConnectionHandle> conn) {
   }
 }
 
-inline void CheckError(SQLRETURN status, const string api, shared_ptr<ConnectionHandle> conn) {
+inline void CheckError(SQLRETURN status, const std::string api, std::shared_ptr<ConnectionHandle> conn) {
   if (!SQL_SUCCEEDED(status)) {
     GetErrorDetails(api, conn);
-    throw std::runtime_error(api + " failed with status: " + to_string(status));
+    throw std::runtime_error(api + " failed with status: " + std::to_string(status));
   }
 }
 
-void CreateTable(shared_ptr<ConnectionHandle> conn, string table_name, string schema) {
+void CreateTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, std::string schema) {
   char create_table_stmt[kBufferLength];
   StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name + " " + schema);
   auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
-void DropTable(shared_ptr<ConnectionHandle> conn, string table_name) {
+void DropTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name) {
   char drop_table_stmt[kBufferLength];
   StrToChar(drop_table_stmt, "DROP TABLE " + table_name);
   auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
-void ExecuteStatement(shared_ptr<ConnectionHandle> conn, char stmt[]) {
+void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]) {
   auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
 // TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
-void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRows rows) {
-  string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
+void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows) {
+  std::string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
   int num_rows = rows.size();
-  if(!num_rows) {
+  if (!num_rows) {
     return;
   }
 
-  for(int i = 0; i < num_rows; i++) {
+  for (int i = 0; i < num_rows; i++) {
     auto row = rows[i];
-    string row_str = "( ";
+    std::string row_str = "( ";
 
-    string str_field = row.str_field;
+    std::string str_field = row.str_field;
     if(!str_field.empty()) {
       row_str.append("'" + str_field + "', ");
     } else {
@@ -149,14 +149,14 @@ void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRo
     
     auto int_field = row.int_field;
     if(int_field != NULL) {
-      row_str.append(to_string(int_field) + ", ");
+      row_str.append(std::to_string(int_field) + ", ");
     } else {
       row_str.append("NULL, ");
     }
 
     auto float_field = row.float_field;
     if(float_field != NULL) {
-      row_str.append(to_string(float_field));
+      row_str.append(std::to_string(float_field));
     } else {
       row_str.append("NULL");
     }
@@ -172,7 +172,7 @@ void InsertIntoTable(shared_ptr<ConnectionHandle> conn, string table_name, StdRo
   CheckError(status, "SQLExecDirect", conn);
 }
 
-void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
+void DescribeCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
   SQLRETURN status = SQLDescribeCol (
                 conn->hstmt,
                 col_index,
@@ -186,7 +186,7 @@ void DescribeCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, 
   CheckError(status, "SQLDescribeCol", conn);
 }
 
-void BindCol(shared_ptr<ConnectionHandle> conn, shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
+void BindCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
   auto status = SQLBindCol (
                 conn->hstmt,
                 col_index,

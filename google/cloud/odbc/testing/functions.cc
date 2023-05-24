@@ -18,7 +18,7 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const map<SQLUSMALLINT, const string> kAllOdbc3Functions = {
+const map<SQLUSMALLINT, const std::string> kAllOdbc3Functions = {
   {SQL_API_SQLALLOCENV, "SQL_API_SQLALLOCENV"},
   {SQL_API_SQLALLOCHANDLE, "SQL_API_SQLALLOCHANDLE"},
   {SQL_API_SQLGETDESCFIELD, "SQL_API_SQLGETDESCFIELD"},
@@ -83,7 +83,7 @@ const map<SQLUSMALLINT, const string> kAllOdbc3Functions = {
   {SQL_API_SQLSETSCROLLOPTIONS, "SQL_API_SQLSETSCROLLOPTIONS"}
 };
 
-SQLRETURN GetAllFunctions(shared_ptr<ConnectionHandle> conn) {
+SQLRETURN GetAllFunctions(std::shared_ptr<ConnectionHandle> conn) {
   SQLUSMALLINT supported_functions[450];
   auto status = SQLGetFunctions(conn->hdbc, SQL_API_ODBC3_ALL_FUNCTIONS, supported_functions);
   if (status == SQL_SUCCESS) {

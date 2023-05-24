@@ -22,20 +22,20 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const string kDefaultConnectionString("DSN=ODBCTestsDSN");
+const std::string kDefaultConnectionString("DSN=ODBCTestsDSN");
 
 // Connect using a <conn_str> and populate the ConnectionHandle
-SQLRETURN Connect(string conn_str, shared_ptr<ConnectionHandle> conn);
+SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn);
 
-SQLRETURN Disconnect(shared_ptr<ConnectionHandle> conn);
+SQLRETURN Disconnect(std::shared_ptr<ConnectionHandle> conn);
 
-SQLRETURN GetDriverInfo(shared_ptr<ConnectionHandle> conn);
+SQLRETURN GetDriverInfo(std::shared_ptr<ConnectionHandle> conn);
 
-SQLRETURN GetEnvInfo(shared_ptr<ConnectionHandle> conn);
+SQLRETURN GetEnvInfo(std::shared_ptr<ConnectionHandle> conn);
 
-SQLRETURN GetDescRec(shared_ptr<ConnectionHandle> conn);
+SQLRETURN GetDescRec(std::shared_ptr<ConnectionHandle> conn);
 
-SQLRETURN PrintDriverVerName(shared_ptr<ConnectionHandle> conn);
+SQLRETURN PrintDriverVerName(std::shared_ptr<ConnectionHandle> conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
