@@ -19,14 +19,14 @@ namespace cloud {
 namespace bigquery_odbc {
 
 TEST(ConnectionTest, SQLDriverConnect) {
-  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 
 TEST(DriverInfoTest, SQLGetInfo) {
-  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
