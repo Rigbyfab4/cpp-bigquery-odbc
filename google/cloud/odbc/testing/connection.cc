@@ -20,13 +20,8 @@ namespace bigquery_odbc {
 
 SQLSMALLINT kMaxDsnLen = 1024; // Maximum number of characters in a data source name
 
-SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn) {
-  SQLSMALLINT buflen;
-  SQLCHAR data_source[kMaxDsnLen];
-  SQLSMALLINT out_len;
-  SQLRETURN status;
-
-  status = SQLAllocHandle(SQL_HANDLE_ENV, NULL, &conn->henv);
+void SetAttributes(std::shared_ptr<ConnectionHandle> conn, int timeout) {
+  auto status = SQLAllocHandle(SQL_HANDLE_ENV, NULL, &conn->henv);
   CheckError(status, "SQLAllocHandle", conn);
 
   status = SQLSetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3,
@@ -39,6 +34,22 @@ SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn) 
   // Set the application name
   status = SQLSetConnectAttr(conn->hdbc, SQL_APPLICATION_NAME, (SQLPOINTER)("odbctest"), SQL_NTS);
   CheckError(status, "SQLSetConnectAttr", conn);
+
+  status = SQLSetConnectAttr(conn->hdbc, SQL_LOGIN_TIMEOUT, (SQLPOINTER)10, 0);
+  CheckError(status, "SQLSetConnectAttr", conn);
+
+  status = SQLSetConnectAttr(conn->hdbc, SQL_ATTR_CONNECTION_TIMEOUT, (SQLPOINTER)timeout, 0);
+  CheckError(status, "SQLSetConnectAttr", conn);
+
+}
+
+SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn, int timeout) {
+  SQLSMALLINT buflen;
+  SQLCHAR data_source[kMaxDsnLen];
+  SQLSMALLINT out_len;
+  SQLRETURN status;
+
+  SetAttributes(conn, timeout);
 
   StrToChar((char *)data_source, conn_str);
 
@@ -56,24 +67,12 @@ SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn) 
   return status;
 }
 
-SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ConnectionHandle> conn) {
+SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ConnectionHandle> conn, int timeout) {
   SQLSMALLINT buflen;
   SQLSMALLINT out_len;
   SQLRETURN status;
 
-  status = SQLAllocHandle(SQL_HANDLE_ENV, NULL, &conn->henv);
-  CheckError(status, "SQLAllocHandle", conn);
-
-  status = SQLSetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3,
-                SQL_IS_UINTEGER);
-  CheckError(status, "SQLSetEnvAttr", conn);
-
-  status = SQLAllocHandle(SQL_HANDLE_DBC, conn->henv, &conn->hdbc);
-  CheckError(status, "SQLAllocHandle", conn);
-
-  //Set the application name
-  status = SQLSetConnectAttr(conn->hdbc, SQL_APPLICATION_NAME, (SQLPOINTER)("odbctest"), SQL_NTS);
-  CheckError(status, "SQLSetConnectAttr", conn);
+  SetAttributes(conn, timeout);
 
   status = SQLConnect(conn->hdbc, (SQLCHAR *)dsn.c_str(), SQL_NTS,
                             (SQLCHAR *)conn->outdsn, NumSqlChar(conn->outdsn), NULL, 0);
