@@ -40,12 +40,22 @@ constexpr SQLSMALLINT kBufferLength = 512;
 
 const std::string kDatasetName = "ODBCTESTDATASET";
 
+struct Metadata {
+  std::string dsn_name;
+  std::string db_name;
+  std::string db_odbc_ver;
+  std::string driver_name;
+  std::string driver_odbc_ver;
+  std::string driver_ver;
+};
+
 struct ConnectionHandle {
   HENV henv;
   HDBC hdbc;
   HSTMT hstmt;
   bool connected;
   SQLCHAR outdsn[4096];
+  Metadata metadata;
 };
 
 struct Column {
