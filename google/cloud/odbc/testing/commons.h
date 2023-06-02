@@ -38,8 +38,10 @@ using Results = std::map<std::string, std::vector<std::string>>;
 
 constexpr SQLSMALLINT kBufferLength = 512;
 
-const std::string kDatasetName = "ODBCTESTDATASET_NEW";
+const std::string kDatasetName = "ODBCTESTDATASET";
 
+// Stores information about the driver fetched from SQLGetInfo within the ConnectionHandle.
+// This is populated in the ConnectionHandle after calling GetDriverInfo.
 struct Metadata {
   std::string dsn_name;
   std::string project_id;
@@ -49,15 +51,17 @@ struct Metadata {
   std::string driver_ver;
 };
 
+// Stores the various ODBC handles required to create a connection and execute statements.
 struct ConnectionHandle {
   HENV henv;
   HDBC hdbc;
   HSTMT hstmt;
   bool connected;
   SQLCHAR outdsn[4096];
-  Metadata metadata;  // This is populated only after calling GetDriverInfo
+  Metadata metadata;
 };
 
+// The fields correspond to the ones set/retrieved by SQLBind/SQLDescribeCol.
 struct Column {
   SQLCHAR name[kBufferLength]; // Column name
   SQLSMALLINT name_len;
