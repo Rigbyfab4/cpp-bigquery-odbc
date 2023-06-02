@@ -22,10 +22,14 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const std::string kDefaultConnectionString("DSN=ODBCTestsDSN");
+const std::string kDefaultDataSource = "ODBCTestsDSN";
+const std::string kDefaultConnectionString("DSN="+kDefaultDataSource);
 
 // Connect using a <conn_str> and populate the ConnectionHandle
 SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn);
+
+// Connect using a datasource name directly and populate the ConnectionHandle
+SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ConnectionHandle> conn);
 
 SQLRETURN Disconnect(std::shared_ptr<ConnectionHandle> conn);
 

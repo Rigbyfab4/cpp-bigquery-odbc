@@ -18,9 +18,37 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+std::vector<int> GetMajorMinorVer(std::string version_str) {
+  std::vector<int> versions;
+  int start, end = -1;
+
+  do {
+    start = end + 1;
+    end = version_str.find(".", start);
+    versions.emplace_back(stoi(version_str.substr(start, end - start)));
+  } while (end != -1);
+
+  return versions;
+}
+
+void VerifyDriverInfo(std::shared_ptr<ConnectionHandle> conn) {
+  EXPECT_EQ(conn->metadata.dsn_name, "ODBCTestsDSN");
+  std::vector<int> db_odbc_versions = GetMajorMinorVer(conn->metadata.db_odbc_ver);
+  EXPECT_EQ(db_odbc_versions[0], 3);
+  std::vector<int> driver_odbc_versions = GetMajorMinorVer(conn->metadata.driver_odbc_ver);
+  EXPECT_EQ(driver_odbc_versions[0], 3);
+  EXPECT_EQ(conn->metadata.driver_name, "Simba ODBC Driver for Google BigQuery");
+}
+
 TEST(ConnectionTest, SQLDriverConnect) {
   std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(ConnectionTest, SQLConnect) {
+  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
@@ -29,6 +57,7 @@ TEST(DriverInfoTest, SQLGetInfo) {
   std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
+  VerifyDriverInfo(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
