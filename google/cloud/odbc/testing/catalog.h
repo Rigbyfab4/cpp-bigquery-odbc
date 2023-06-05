@@ -29,4 +29,4 @@ std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_METADATA_H
+#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CATALOG_H

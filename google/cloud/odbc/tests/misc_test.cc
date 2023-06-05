@@ -13,11 +13,41 @@
 // limitations under the License.
 
 #include "testing/connection.h"
-#include "testing/functions.h"
+#include "testing/misc.h"
 
 namespace google {
 namespace cloud {
 namespace bigquery_odbc {
+
+void CheckDataTypes(std::shared_ptr<ConnectionHandle> conn) {
+  auto status = SQLGetTypeInfo(conn->hstmt, SQL_ALL_TYPES);
+  CheckError(status, "SQLGetTypeInfo", conn);
+
+  SQLCHAR type_name[kBufferLength];
+  SQLSMALLINT sql_data_type;
+  SQLINTEGER col_size;
+  SQLLEN type_name_len = 0, data_type_len = 0, col_size_len = 0;
+
+  status = SQLBindCol(conn->hstmt, 1, SQL_C_CHAR, (SQLPOINTER)type_name, (SQLLEN)sizeof(type_name), &type_name_len);
+  CheckError(status, "SQLBindCol", conn);
+
+  status = SQLBindCol(conn->hstmt, 2, SQL_C_SHORT, (SQLPOINTER)&sql_data_type, (SQLLEN)sizeof(sql_data_type), &data_type_len);
+  CheckError(status, "SQLBindCol", conn);
+
+  while (1) {
+    status = SQLFetch(conn->hstmt);
+    if(status == SQL_NO_DATA) {
+      break;
+    }
+    if(!SQL_SUCCEEDED(status)) {
+      CheckError(status, "SQLFetch", conn);
+      break;
+    }
+
+    std::string bq_data_type = (char *)type_name;
+    EXPECT_EQ(kBqToSqlDataTypes.at(bq_data_type), sql_data_type);
+  }
+}
 
 TEST(DriverAttributesTest, SQLGetEnvAttr) {
   std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
@@ -33,10 +63,17 @@ TEST(DescriptorFieldsTest, SQLGetDescRec) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(FunctionsTest, SQLGetFunctions) {
+TEST(DriverPropertiesTest, SQLGetFunctions) {
   std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(GetAllFunctions(conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(DriverPropertiesTest, SQLGetTypeInfo) {
+  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CheckDataTypes(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

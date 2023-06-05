@@ -38,7 +38,7 @@ using Results = std::map<std::string, std::vector<std::string>>;
 
 constexpr SQLSMALLINT kBufferLength = 512;
 
-const std::string kDatasetName = "ODBCTESTDATASET";
+const std::string kDatasetName = "ODBC_TEST_DATASET";
 
 // Stores information about the driver fetched from SQLGetInfo within the ConnectionHandle.
 // This is populated in the ConnectionHandle after calling GetDriverInfo.
@@ -101,8 +101,8 @@ inline void StrToChar(char * dest, std::string src) {
   strcpy(dest, src.c_str());
 }
 
-inline std::string ToBqFieldType(SQLSMALLINT odbcType) {
-  switch (odbcType) {
+inline std::string ToBqFieldType(SQLSMALLINT odbc_data_type) {
+  switch (odbc_data_type) {
     case SQL_VARCHAR:
       return "STRING";
     case SQL_NUMERIC:
@@ -115,7 +115,7 @@ inline std::string ToBqFieldType(SQLSMALLINT odbcType) {
     case SQL_DATETIME:
       return "DATETIME";
     default:
-      throw std::runtime_error("Invalid odbc data type: " + odbcType);
+      throw std::runtime_error("Invalid odbc data type: " + odbc_data_type);
   }
 }
 

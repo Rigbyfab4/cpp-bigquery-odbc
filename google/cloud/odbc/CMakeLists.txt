@@ -39,7 +39,7 @@ add_executable(
   all_tests
   testing/commons.cc
   testing/connection.cc
-  testing/functions.cc
+  testing/misc.cc
   testing/statement.cc
   testing/catalog.cc
   tests/connection_test.cc
