@@ -199,6 +199,33 @@ TEST(DescriptorFieldsTest, SQLCopyDesc) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(DescriptorFieldsTest, SQLSetDescField) {
+  const std::string table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, getSchemaStr(kStdSchema));
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  SQLHDESC ipd_handle; // Implementation param descriptor
+  auto status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_PARAM_DESC, &ipd_handle, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_PARAM_DESC)", conn);
+  status = SQLSetDescField(ipd_handle, 1, SQL_DESC_PARAMETER_TYPE,
+              (SQLPOINTER)SQL_PARAM_INPUT, SQL_IS_INTEGER);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
+
+  SQLSMALLINT type;
+  status = SQLGetDescField(ipd_handle, 1, SQL_DESC_PARAMETER_TYPE, &type,
+              SQL_IS_SMALLINT, NULL);
+  EXPECT_EQ(type, SQL_PARAM_INPUT);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 TEST(DriverPropertiesTest, SQLGetFunctions) {
   std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
