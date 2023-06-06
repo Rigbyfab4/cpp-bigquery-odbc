@@ -83,6 +83,54 @@ void SetGetDescRec(std::shared_ptr<ConnectionHandle> conn, std::string table_nam
   }
 }
 
+void CopyDescRec(std::shared_ptr<ConnectionHandle> conn, std::string table_name, Schema schema) {
+  SQLSMALLINT desc_type;
+  SQLHDESC ird_handle; // Implementation row descriptor
+  SQLHDESC ipd_handle; // Implementation parameter descriptor
+  int num_cols = schema.size();
+
+  auto status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &ird_handle, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
+  status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_PARAM_DESC, &ipd_handle, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_PARAM_DESC)", conn);
+
+  status = SQLExecDirect(conn->hstmt, (SQLCHAR *)("SELECT * FROM "+ table_name).c_str(), SQL_NTS);
+  CheckError(status, "SQLExecDirect", conn);
+
+  Descriptor desc, desc_copy;
+
+  for (int i = 0; i < num_cols; i++) {
+    // Reads multiple descriptor fields for a column
+    status = SQLGetDescRec(ird_handle, i + 1, desc.name, kBufferLength, &desc.string_len, &desc.type,
+                &desc.sub_type, &desc.length, &desc.precision, &desc.scale, &desc.nullable);
+    CheckError(status, "SQLGetDescRec", conn);
+    std::string col_name = (char *)desc.name;
+    EXPECT_EQ(col_name, schema[i].name);
+    // We are checking if the bigquery data type corresponding to the returned
+    //  sql data type correct.
+    EXPECT_EQ(ToBqFieldType(desc.type), ToBqFieldType(schema[i].type));
+  }
+
+  status = SQLCopyDesc(ird_handle, ipd_handle);
+  CheckError(status, "SQLCopyDesc", conn);
+
+  // We use SQLGetDescField to read the descriptor fields one at a time,
+  //  and check if they were copied correctly.
+  for (int i = 0; i < num_cols; i++) {
+    // Reads a single field from the column descriptor
+    status = SQLGetDescField(ipd_handle, i + 1, SQL_DESC_NAME, &desc_copy.name,
+                kBufferLength, NULL);
+    CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
+    std::string col_name = (char *)desc_copy.name;
+    EXPECT_EQ(col_name, schema[i].name);
+
+    status = SQLGetDescField(ipd_handle, i + 1, SQL_DESC_TYPE, &desc_copy.type,
+                SQL_IS_SMALLINT, NULL);
+    CheckError(status, "SQLGetDescField(SQL_DESC_TYPE)", conn);
+    EXPECT_EQ(ToBqFieldType(desc_copy.type), ToBqFieldType(schema[i].type));
+  }
+}
+
 void CheckDataTypes(std::shared_ptr<ConnectionHandle> conn) {
   auto status = SQLGetTypeInfo(conn->hstmt, SQL_ALL_TYPES);
   CheckError(status, "SQLGetTypeInfo", conn);
@@ -127,6 +175,23 @@ TEST(DescriptorFieldsTest, SQLSetDescRec) {
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   SetGetDescRec(conn, table_name, kStdSchema);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(DescriptorFieldsTest, SQLCopyDesc) {
+  const std::string table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, getSchemaStr(kStdSchema));
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CopyDescRec(conn, table_name, kStdSchema);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
