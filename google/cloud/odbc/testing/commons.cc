@@ -57,8 +57,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->hstmt && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_STMT, conn->hstmt, ++rec_num, sqlstate, &native_error,
                         buf, kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_STMT) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -71,8 +74,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->hdbc && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_DBC, conn->hdbc, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_DBC) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -85,8 +91,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->henv && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_ENV, conn->henv, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_ENV) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,

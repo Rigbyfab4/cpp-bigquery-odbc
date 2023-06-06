@@ -37,8 +37,6 @@ SQLRETURN GetDriverInfo(std::shared_ptr<ConnectionHandle> conn);
 
 SQLRETURN GetEnvInfo(std::shared_ptr<ConnectionHandle> conn);
 
-SQLRETURN GetDescRec(std::shared_ptr<ConnectionHandle> conn);
-
 SQLRETURN PrintDriverVerName(std::shared_ptr<ConnectionHandle> conn);
 
 }  // namespace bigquery_odbc

@@ -19,6 +19,70 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+// Defines the idiomatic ODBC descriptors
+// These fields can populated by a call to SQLGetDescRec
+struct Descriptor {
+  SQLSMALLINT string_len;
+  SQLSMALLINT type;
+  SQLSMALLINT sub_type;
+  SQLLEN length;
+  SQLSMALLINT precision;
+  SQLSMALLINT scale;
+  SQLSMALLINT nullable;
+  SQLCHAR name[kBufferLength];
+};
+
+Schema kStdSchema = {
+  { "Str2", SQL_VARCHAR },
+  { "Int2", SQL_INTEGER },
+  { "Float2", SQL_FLOAT },
+};
+
+void SetGetDescRec(std::shared_ptr<ConnectionHandle> conn, std::string table_name, Schema schema) {
+  SQLSMALLINT desc_type;
+  SQLHDESC ird_handle; // Implementation row descriptor
+  SQLHDESC ipd_handle; // Implementation parameter descriptor
+  int num_cols = schema.size();
+
+  auto status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &ird_handle, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
+  status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_PARAM_DESC, &ipd_handle, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_PARAM_DESC)", conn);
+
+  status = SQLExecDirect(conn->hstmt, (SQLCHAR *)("SELECT * FROM "+ table_name).c_str(), SQL_NTS);
+  CheckError(status, "SQLExecDirect", conn);
+
+  Descriptor desc, desc_copy;
+
+  for (int i = 0; i < num_cols; i++) {
+    // Reads multiple descriptor fields for a column
+    status = SQLGetDescRec(ird_handle, i + 1, desc.name, kBufferLength, &desc.string_len, &desc.type,
+                &desc.sub_type, &desc.length, &desc.precision, &desc.scale, &desc.nullable);
+    CheckError(status, "SQLGetDescRec", conn);
+    std::string col_name = (char *)desc.name;
+    EXPECT_EQ(col_name, schema[i].name);
+    // We are checking if the bigquery data type corresponding to the returned
+    //  sql data type correct.
+    EXPECT_EQ(ToBqFieldType(desc.type), ToBqFieldType(schema[i].type));
+
+    // Set the same values for another descriptor handle
+    status = SQLSetDescRec(ipd_handle, i + 1, desc.type, desc.sub_type, desc.length, desc.precision,
+                desc.scale, desc.name, (SQLLEN *)&kBufferLength, NULL);
+    CheckError(status, "SQLSetDescRec", conn);
+    status = SQLGetDescRec(ird_handle, i + 1, desc_copy.name, kBufferLength, &desc_copy.string_len, &desc_copy.type,
+                &desc_copy.sub_type, &desc_copy.length, &desc_copy.precision, &desc_copy.scale, &desc_copy.nullable);
+    CheckError(status, "SQLGetDescRec", conn);
+    // Check if the values were set correctly by SQLSetDescRec
+    EXPECT_EQ(desc_copy.string_len, desc.string_len);
+    EXPECT_EQ(desc_copy.type, desc.type);
+    EXPECT_EQ(desc_copy.sub_type, desc.sub_type);
+    EXPECT_EQ(desc_copy.length, desc.length);
+    EXPECT_EQ(desc_copy.precision, desc.precision);
+    EXPECT_EQ(desc_copy.scale, desc.scale);
+    EXPECT_EQ(desc_copy.nullable, desc.nullable);
+  }
+}
+
 void CheckDataTypes(std::shared_ptr<ConnectionHandle> conn) {
   auto status = SQLGetTypeInfo(conn->hstmt, SQL_ALL_TYPES);
   CheckError(status, "SQLGetTypeInfo", conn);
@@ -39,10 +103,7 @@ void CheckDataTypes(std::shared_ptr<ConnectionHandle> conn) {
     if(status == SQL_NO_DATA) {
       break;
     }
-    if(!SQL_SUCCEEDED(status)) {
-      CheckError(status, "SQLFetch", conn);
-      break;
-    }
+    CheckError(status, "SQLFetch", conn);
 
     std::string bq_data_type = (char *)type_name;
     EXPECT_EQ(kBqToSqlDataTypes.at(bq_data_type), sql_data_type);
@@ -56,10 +117,20 @@ TEST(DriverAttributesTest, SQLGetEnvAttr) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(DescriptorFieldsTest, SQLGetDescRec) {
+TEST(DescriptorFieldsTest, SQLSetDescRec) {
+  const std::string table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
   std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  EXPECT_EQ(GetDescRec(conn), SQL_SUCCESS);
+  CreateTable(conn, table_name, getSchemaStr(kStdSchema));
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  SetGetDescRec(conn, table_name, kStdSchema);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  DropTable(conn, table_name);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

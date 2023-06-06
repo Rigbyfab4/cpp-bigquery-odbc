@@ -107,6 +107,7 @@ inline std::string ToBqFieldType(SQLSMALLINT odbc_data_type) {
       return "STRING";
     case SQL_NUMERIC:
       return "NUMERIC";
+    case SQL_BIGINT:
     case SQL_INTEGER:
       return "INT64";
     case SQL_FLOAT:
