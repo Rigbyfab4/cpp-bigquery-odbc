@@ -317,6 +317,23 @@ TEST(StatementTest, SQLPutData) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(StatementTest, SQLSetCursorName) {
+  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  SQLCHAR cursor_name[kBufferLength] = "INSERT_CURSOR", cursor_name_ret[kBufferLength];
+
+  auto status = SQLSetCursorName(conn->hstmt, cursor_name, kBufferLength);
+  CheckError(status, "SQLSetCursorName", conn);
+
+  status = SQLGetCursorName(conn->hstmt, cursor_name_ret, kBufferLength, NULL);
+  CheckError(status, "SQLGetCursorName", conn);
+
+  EXPECT_STREQ((char *)cursor_name_ret, (char *)cursor_name);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google

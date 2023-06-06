@@ -89,10 +89,8 @@ SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ConnectionHandle> conn, in
 SQLRETURN Disconnect(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   if (conn->hstmt) {
-    // Using SQLFreeStmt rather than SQLCloseCursor(conn->hstmt) is better since it doesn't
-    //  fail if no cursor was open.
-    status = SQLFreeStmt(conn->hstmt, SQL_CLOSE);
-    CheckError(status, "SQLFreeStmt", conn);
+    // Not checking for error after SQLCloseCursor because it fails when no cursor is open.
+    SQLCloseCursor(conn->hstmt);
     status = SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
     CheckError(status, "SQLFreeHandle", conn);
   }
