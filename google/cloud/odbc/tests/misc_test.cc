@@ -159,15 +159,15 @@ void CheckDataTypes(std::shared_ptr<ConnectionHandle> conn) {
 }
 
 TEST(DriverAttributesTest, SQLGetEnvAttr) {
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(GetEnvInfo(conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(DescriptorFieldsTest, SQLSetDescRec) {
-  const std::string table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  auto conn = std::make_shared<ConnectionHandle>();
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   CreateTable(conn, table_name, getSchemaStr(kStdSchema));
@@ -183,8 +183,8 @@ TEST(DescriptorFieldsTest, SQLSetDescRec) {
 }
 
 TEST(DescriptorFieldsTest, SQLCopyDesc) {
-  const std::string table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  auto conn = std::make_shared<ConnectionHandle>();
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   CreateTable(conn, table_name, getSchemaStr(kStdSchema));
@@ -200,8 +200,8 @@ TEST(DescriptorFieldsTest, SQLCopyDesc) {
 }
 
 TEST(DescriptorFieldsTest, SQLSetDescField) {
-  const std::string table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  auto conn = std::make_shared<ConnectionHandle>();
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   CreateTable(conn, table_name, getSchemaStr(kStdSchema));
@@ -227,14 +227,14 @@ TEST(DescriptorFieldsTest, SQLSetDescField) {
 }
 
 TEST(DriverPropertiesTest, SQLGetFunctions) {
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(GetAllFunctions(conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(DriverPropertiesTest, SQLGetTypeInfo) {
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   CheckDataTypes(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);

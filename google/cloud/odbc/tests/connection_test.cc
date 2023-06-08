@@ -41,19 +41,19 @@ void VerifyDriverInfo(std::shared_ptr<ConnectionHandle> conn) {
 }
 
 TEST(ConnectionTest, SQLDriverConnect) {
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(ConnectionTest, SQLConnect) {
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(DriverInfoTest, SQLGetInfo) {
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
   VerifyDriverInfo(conn);
@@ -64,7 +64,7 @@ TEST(ConnectionTest, SQLGetConnectAttr) {
   srand(time(NULL));
   int timeout = (rand() % 30) + 1;
   SQLUINTEGER timeout_ret;
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn, timeout), SQL_SUCCESS);
 
   auto status = SQLGetConnectAttr(conn->hdbc, SQL_ATTR_CONNECTION_TIMEOUT, (SQLPOINTER)&timeout_ret, (SQLINTEGER)sizeof(timeout_ret), NULL);
