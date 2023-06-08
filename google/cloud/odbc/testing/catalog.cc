@@ -44,7 +44,7 @@ std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::
     CheckError(status, "SQLBindCol", conn);
   }
   // No results are returned if we don't append "%"
-  std::string project_id = conn->metadata.project_id + "%";
+  auto project_id = conn->metadata.project_id + "%";
 
   if (dataset.length()) {
     status = SQLTables(conn->hstmt, (SQLCHAR *)project_id.c_str(), SQL_NTS, (SQLCHAR *)dataset.c_str(), SQL_NTS, NULL, 0, NULL,0);

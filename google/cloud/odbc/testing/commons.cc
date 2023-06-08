@@ -57,8 +57,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->hstmt && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_STMT, conn->hstmt, ++rec_num, sqlstate, &native_error,
                         buf, kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_STMT) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -71,8 +74,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->hdbc && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_DBC, conn->hdbc, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_DBC) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -85,8 +91,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->henv && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_ENV, conn->henv, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_ENV) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -123,7 +132,7 @@ void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]) {
 
 // TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
 void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows) {
-  std::string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
+  auto insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
   int num_rows = rows.size();
   if (!num_rows) {
     return;
@@ -133,7 +142,7 @@ void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_n
     auto row = rows[i];
     std::string row_str = "( ";
 
-    std::string str_field = row.str_field;
+    auto str_field = row.str_field;
     if(!str_field.empty()) {
       row_str.append("'" + str_field + "', ");
     } else {
