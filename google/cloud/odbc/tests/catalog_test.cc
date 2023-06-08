@@ -42,7 +42,7 @@ std::map<std::string, Schema> kTables = {
 
 // Drops all tables in a dataset
 void ClearDataset(string kDatasetName, shared_ptr<vector<string>> table_names_ptr = nullptr) {
-  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   vector<string> table_names;
   if(!table_names_ptr) {
     EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
@@ -64,7 +64,7 @@ void ClearDataset(string kDatasetName, shared_ptr<vector<string>> table_names_pt
 
 TEST(CatalogTest, SQLTables) {
   ClearDataset(kDatasetName);
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
 
   // Create tables
   for (auto it: kTables) {

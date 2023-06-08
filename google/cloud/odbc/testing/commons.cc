@@ -132,7 +132,7 @@ void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]) {
 
 // TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
 void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows) {
-  std::string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
+  auto insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
   int num_rows = rows.size();
   if (!num_rows) {
     return;
@@ -142,7 +142,7 @@ void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_n
     auto row = rows[i];
     std::string row_str = "( ";
 
-    std::string str_field = row.str_field;
+    auto str_field = row.str_field;
     if(!str_field.empty()) {
       row_str.append("'" + str_field + "', ");
     } else {
