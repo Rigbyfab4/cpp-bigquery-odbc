@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "testing/connection.h"
-#include "testing/misc.h"
+#include "testing/common_utils.h"
 
 namespace google {
 namespace cloud {
@@ -168,9 +168,10 @@ TEST(DriverAttributesTest, SQLGetEnvAttr) {
 TEST(DescriptorFieldsTest, SQLSetDescRec) {
   auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
   auto conn = std::make_shared<ConnectionHandle>();
+  Table table(table_name);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, getSchemaStr(kStdSchema));
+  table.Create(conn, getSchemaStr(kStdSchema));
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -178,16 +179,17 @@ TEST(DescriptorFieldsTest, SQLSetDescRec) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(DescriptorFieldsTest, SQLCopyDesc) {
   auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
   auto conn = std::make_shared<ConnectionHandle>();
+  Table table(table_name);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, getSchemaStr(kStdSchema));
+  table.Create(conn, getSchemaStr(kStdSchema));
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -195,16 +197,17 @@ TEST(DescriptorFieldsTest, SQLCopyDesc) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(DescriptorFieldsTest, SQLSetDescField) {
   auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
   auto conn = std::make_shared<ConnectionHandle>();
+  Table table(table_name);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, getSchemaStr(kStdSchema));
+  table.Create(conn, getSchemaStr(kStdSchema));
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -222,7 +225,7 @@ TEST(DescriptorFieldsTest, SQLSetDescField) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

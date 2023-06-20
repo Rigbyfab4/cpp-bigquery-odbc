@@ -141,6 +141,22 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
     }
 }
 
+class Table {
+ public:
+  Table(std::string table_name) {
+    table_name_ = table_name;
+  };
+
+  void Create(std::shared_ptr<ConnectionHandle> conn, std::string schema_str);
+
+  void Drop(std::shared_ptr<ConnectionHandle> conn);
+
+  void Insert(std::shared_ptr<ConnectionHandle> conn, StdRows rows);
+
+  private:
+    std::string table_name_;
+};
+
 std::string GetRandomString(int len);
 
 std::string getSchemaStr(Schema schema);
@@ -148,13 +164,7 @@ std::string getSchemaStr(Schema schema);
 // If there was an error, gets description from SQLGetDiagRec and throws an error
 inline void CheckError(SQLRETURN status, const std::string api, std::shared_ptr<ConnectionHandle> conn);
 
-void CreateTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, std::string schema_str);
-
-void DropTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name);
-
 void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]);
-
-void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows);
 
 // Executes the SQLDescribeCol API to initialize the Column struct
 void DescribeCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
@@ -166,4 +176,4 @@ void BindCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H

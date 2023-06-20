@@ -43,4 +43,4 @@ void InsertDataWithSqlPut(std::shared_ptr<ConnectionHandle> conn, std::string qu
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_STATEMENT_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_STATEMENT_H

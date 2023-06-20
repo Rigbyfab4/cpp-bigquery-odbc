@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "testing/misc.h"
+#include "testing/common_utils.h"
 
 namespace google {
 namespace cloud {

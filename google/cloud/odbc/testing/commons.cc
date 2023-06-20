@@ -111,16 +111,16 @@ inline void CheckError(SQLRETURN status, const std::string api, std::shared_ptr<
   }
 }
 
-void CreateTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, std::string schema_str) {
+void Table::Create(std::shared_ptr<ConnectionHandle> conn, std::string schema_str) {
   char create_table_stmt[kBufferLength];
-  StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name + " " + schema_str);
+  StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name_ + " " + schema_str);
   SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
-void DropTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name) {
+void Table::Drop(std::shared_ptr<ConnectionHandle> conn) {
   char drop_table_stmt[kBufferLength];
-  StrToChar(drop_table_stmt, "DROP TABLE " + table_name);
+  StrToChar(drop_table_stmt, "DROP TABLE " + table_name_);
   auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
@@ -131,8 +131,8 @@ void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]) {
 }
 
 // TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
-void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows) {
-  auto insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
+void Table::Insert(std::shared_ptr<ConnectionHandle> conn, StdRows rows) {
+  auto insert_stmt =  "INSERT INTO " + table_name_ + " VALUES ";
   int num_rows = rows.size();
   if (!num_rows) {
     return;

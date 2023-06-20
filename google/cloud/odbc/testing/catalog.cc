@@ -19,14 +19,9 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-struct Catalog {
-   SQLSMALLINT target_type;
-   SQLPOINTER target_value;
-   SQLINTEGER buffer_length;
-   SQLLEN str_len;
-};
+Catalog::~Catalog() = default;
 
-std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::string dataset) {
+std::shared_ptr<Results> Catalog::GetTables(std::shared_ptr<ConnectionHandle> conn, std::string dataset) {
   SQLRETURN status;
   int res_cols = 5;
   Catalog catalog_result[res_cols];
@@ -54,7 +49,7 @@ std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::
   CheckError(status, "SQLTables", conn);
 
   int i = 0, count = 0;
-  while(1){
+  while(1) {
     status = SQLFetch(conn->hstmt);
     if(status == SQL_NO_DATA) {
       break;
@@ -69,8 +64,7 @@ std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::
     results[dataset_name].emplace_back(table_name);
   }
 
-  auto results_ptr = std::make_shared<Results>(results);
-  return results_ptr;
+  return std::make_shared<Results>(results);;
 }
 
 }  // namespace bigquery_odbc

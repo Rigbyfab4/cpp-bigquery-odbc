@@ -110,10 +110,11 @@ TEST(StatementTest, SQLNumParams) {
   auto conn = std::make_shared<ConnectionHandle>();
   auto const table_name = kDatasetName + ".ODBC_NUM_PARAMS_TEST";
   auto const insert_stmt = "INSERT INTO " + table_name + " VALUES (?, ?, ?)";
+  Table table(table_name);
   
   // Create Table
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  table.Create(conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -126,12 +127,13 @@ TEST(StatementTest, SQLNumParams) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(StatementTest, SQLDescribeCol) {
   auto const table_name = kDatasetName + ".ODBC_COLUMN_DESCRIPTION_TEST";
+  Table table(table_name);
 
   Schema schema {
     { "StringField", SQL_VARCHAR},
@@ -142,12 +144,12 @@ TEST(StatementTest, SQLDescribeCol) {
   // Create Table
   auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  table.Create(conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Insert data to read
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  InsertIntoTable(conn, table_name, kSampleData);
+  table.Insert(conn, kSampleData);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -155,12 +157,13 @@ TEST(StatementTest, SQLDescribeCol) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(StatementTest, SQLFetch) {
   auto const table_name = kDatasetName + ".ODBC_CHECK_RESULTS_TEST";
+  Table table(table_name);
 
   // TODO(#14): Add integer and floating point fields too
   // Schema returned by the query
@@ -171,12 +174,12 @@ TEST(StatementTest, SQLFetch) {
   // Create Table
   auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  table.Create(conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Insert data to read
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  InsertIntoTable(conn, table_name, kSampleData);
+  table.Insert(conn, kSampleData);
   SQLLEN rows_count = 0;
   auto status = SQLRowCount(conn->hstmt, &rows_count);
   CheckError(status, "SQLRowCount", conn);
@@ -196,12 +199,13 @@ TEST(StatementTest, SQLFetch) {
 
   // Delete table
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(StatementTest, SQLFetchScroll) {
   auto const table_name = kDatasetName + ".ODBC_SCROLL_RESULTS_TEST";
+  Table table(table_name);
 
   // Schema returned by the query
   Schema schema {
@@ -211,12 +215,12 @@ TEST(StatementTest, SQLFetchScroll) {
   // Create Table
   auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  table.Create(conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Insert data to read
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  InsertIntoTable(conn, table_name, kSampleData);
+  table.Insert(conn, kSampleData);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Execute a read query and check whether the results returned are as expected
@@ -230,12 +234,13 @@ TEST(StatementTest, SQLFetchScroll) {
 
   // Delete table
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(StatementTest, SQLGetData) {
   auto const table_name = kDatasetName + ".ODBC_GET_DATA_TEST";
+  Table table(table_name);
 
   // TODO(#14): Add integer and floating point fields too
   // Schema returned by the query
@@ -246,12 +251,12 @@ TEST(StatementTest, SQLGetData) {
   // Create Table
   auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  table.Create(conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Insert data to read
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  InsertIntoTable(conn, table_name, kSampleData);
+  table.Insert(conn, kSampleData);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
 
@@ -267,12 +272,13 @@ TEST(StatementTest, SQLGetData) {
 
   // Delete table
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 TEST(StatementTest, SQLPutData) {
   auto const table_name = kDatasetName + ".ODBC_PUT_DATA_TEST";
+  Table table(table_name);
 
   // TODO(#14): Add integer and floating point fields too
   // Schema returned by the query
@@ -286,7 +292,7 @@ TEST(StatementTest, SQLPutData) {
   auto conn = std::make_shared<ConnectionHandle>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   // TODO(#14): Add integer and floating point fields too
-  CreateTable(conn, table_name, "(StringField1 STRING, StringField2 STRING, StringField3 STRING)");
+  table.Create(conn, "(StringField1 STRING, StringField2 STRING, StringField3 STRING)");
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
 
@@ -313,7 +319,7 @@ TEST(StatementTest, SQLPutData) {
 
   // Delete table
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  DropTable(conn, table_name);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
