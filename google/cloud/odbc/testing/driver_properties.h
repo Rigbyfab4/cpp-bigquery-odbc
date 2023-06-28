@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_FUNCTIONS_H
-#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_FUNCTIONS_H
+#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_DRIVER_PROPERTIES_H
+#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_DRIVER_PROPERTIES_H
 
 #include "testing/commons.h"
 
@@ -24,10 +24,29 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
+const map<std::string, SQLSMALLINT> kBqToSqlDataTypes = {
+    { "INT64", SQL_BIGINT },
+    { "BOOL", SQL_BIT },
+    { "DATE", SQL_TYPE_DATE },
+    { "FLOAT64", SQL_DOUBLE },
+    { "TIME", SQL_TYPE_TIME },
+    { "TIMESTAMP", SQL_TYPE_TIMESTAMP },
+    { "DATETIME", SQL_TYPE_TIMESTAMP },
+    { "BYTES", SQL_VARBINARY },
+    { "STRING", SQL_VARCHAR },
+    { "ARRAY", SQL_VARCHAR },
+    { "STRUCT", SQL_VARCHAR },
+    { "INTERVAL", SQL_VARCHAR },
+    { "JSON", SQL_VARCHAR },
+    { "GEOGRAPHY", SQL_VARCHAR },
+    { "NUMERIC", SQL_NUMERIC },
+    { "BIGNUMERIC", SQL_NUMERIC }
+};
+
 SQLRETURN GetAllFunctions(std::shared_ptr<ConnectionHandle> conn);
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_FUNCTIONS_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_DRIVER_PROPERTIES_H

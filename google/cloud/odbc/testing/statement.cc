@@ -22,20 +22,21 @@ namespace bigquery_odbc {
 // Tests direct execution of statements using SQLExecDirect
 SQLRETURN InsertDirectStatement(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
-  const std::string table_name = kDatasetName + ".ODBC_INSERT_DIRECT_TEST";
+  auto const table_name = kDatasetName + ".ODBC_INSERT_DIRECT_TEST";
+  Table table(table_name);
 
   const std::string string_field = "Test String 1";
   char insert_stmt[kBufferLength];
   sprintf(insert_stmt, "INSERT INTO %s VALUES ('%s')", table_name.c_str(), string_field.c_str());
 
   // Create Table
-  CreateTable(conn, table_name, "(string_field STRING)");
+  table.Create(conn, "(string_field STRING)");
 
   // Execute insertion
   ExecuteStatement(conn, insert_stmt);
 
   // Drop Table
-  DropTable(conn, table_name);
+  table.Drop(conn);
 
   return status;
 }
@@ -43,12 +44,14 @@ SQLRETURN InsertDirectStatement(std::shared_ptr<ConnectionHandle> conn) {
 // Tests insertion with params using SQLPrepare, SQLBindParameter and SQLExecute
 SQLRETURN InsertStatement(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
-  const std::string table_name = kDatasetName + ".ODBC_INSERT_PARAMS_TEST";
+  auto const table_name = kDatasetName + ".ODBC_INSERT_PARAMS_TEST";
   char insert_stmt[kBufferLength];
   StrToChar(insert_stmt, "INSERT INTO " + table_name + " VALUES (?, ?)");
 
+  Table table(table_name);
+
   // Create Table
-  CreateTable(conn, table_name, "(StringField STRING, IntegerField INTEGER)");
+  table.Create(conn, "(StringField STRING, IntegerField INTEGER)");
 
   // Prepare statement with insert query string
   status = SQLPrepare(conn->hstmt, (SQLCHAR *)insert_stmt, SQL_NTS);
@@ -74,7 +77,7 @@ SQLRETURN InsertStatement(std::shared_ptr<ConnectionHandle> conn) {
   CheckError(status, "SQLExecute", conn);
 
   // Drop Table
-  DropTable(conn, table_name);
+  table.Drop(conn);
 
   return status;
 }
@@ -94,7 +97,7 @@ std::shared_ptr<Results> FetchResults(std::shared_ptr<ConnectionHandle> conn, st
   std::vector<std::shared_ptr<Column>> cols(num_cols);
   Results results;
   for (int i = 0; i < num_cols; i++) {
-    std::shared_ptr<Column> col_ptr(new Column());
+    auto col_ptr = std::make_shared<Column>();
     cols[i] = col_ptr;
 
     DescribeCol(conn, col_ptr, i + 1);
@@ -142,8 +145,7 @@ std::shared_ptr<Results> FetchResults(std::shared_ptr<ConnectionHandle> conn, st
     }
   }
 
-  auto results_ptr = std::make_shared<Results>(results);
-  return results_ptr;
+  return std::make_shared<Results>(results);;
 }
 
 std::shared_ptr<Results> ScrollResults(std::shared_ptr<ConnectionHandle> conn, std::string query, int rs_size) {
@@ -170,7 +172,7 @@ std::shared_ptr<Results> ScrollResults(std::shared_ptr<ConnectionHandle> conn, s
   std::vector<std::shared_ptr<Column>> cols(num_cols);
   Results results;
   for (int i = 0; i < num_cols; i++) {
-    std::shared_ptr<Column> col_ptr(new Column());
+    auto col_ptr = std::make_shared<Column>();
     cols[i] = col_ptr;
 
     DescribeCol(conn, col_ptr, 1);
@@ -220,8 +222,7 @@ std::shared_ptr<Results> ScrollResults(std::shared_ptr<ConnectionHandle> conn, s
       }
     }
   }
-  auto results_ptr = std::make_shared<Results>(results);
-  return results_ptr;
+  return std::make_shared<Results>(results);;
 }
 
 std::vector<std::shared_ptr<Column>> GetCols(std::shared_ptr<ConnectionHandle> conn, std::string query) {
@@ -238,7 +239,7 @@ std::vector<std::shared_ptr<Column>> GetCols(std::shared_ptr<ConnectionHandle> c
 
   std::vector<std::shared_ptr<Column>> cols(num_cols);
   for (int i = 0; i < num_cols; i++) {
-    std::shared_ptr<Column> col_ptr(new Column());
+    auto col_ptr = std::make_shared<Column>();
     cols[i] = col_ptr;
 
     DescribeCol(conn, col_ptr, i + 1);
@@ -292,8 +293,7 @@ std::shared_ptr<Results> FetchResultsWithSqlGetData(std::shared_ptr<ConnectionHa
       }
     }
   }
-  auto results_ptr = std::make_shared<Results>(results);
-  return results_ptr;
+  return std::make_shared<Results>(results);;
 }
 
 void InsertDataWithSqlPut(std::shared_ptr<ConnectionHandle> conn, std::string query, std::vector<std::string> data) {

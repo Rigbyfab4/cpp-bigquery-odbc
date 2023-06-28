@@ -42,12 +42,12 @@ std::map<std::string, Schema> kTables = {
 
 // Drops all tables in a dataset
 void ClearDataset(string kDatasetName, shared_ptr<vector<string>> table_names_ptr = nullptr) {
-  shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
   vector<string> table_names;
   if(!table_names_ptr) {
     EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
     EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
-    table_names = (*GetTables(conn, kDatasetName))[kDatasetName];
+    table_names = (*Catalog::GetTables(conn, kDatasetName))[kDatasetName];
     EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
   } else {
     table_names = *table_names_ptr;
@@ -56,7 +56,7 @@ void ClearDataset(string kDatasetName, shared_ptr<vector<string>> table_names_pt
   EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
   for(auto table_name: table_names) {
     string table_name_full = kDatasetName + "." + table_name;
-    DropTable(conn, table_name_full);
+    Table(table_name_full).Drop(conn);
   }
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
@@ -64,7 +64,7 @@ void ClearDataset(string kDatasetName, shared_ptr<vector<string>> table_names_pt
 
 TEST(CatalogTest, SQLTables) {
   ClearDataset(kDatasetName);
-  std::shared_ptr<ConnectionHandle> conn(new ConnectionHandle());
+  auto conn = std::make_shared<ConnectionHandle>();
 
   // Create tables
   for (auto it: kTables) {
@@ -72,7 +72,7 @@ TEST(CatalogTest, SQLTables) {
     string table_name_full = kDatasetName + "." + table_name;
     // Create Table
     EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
-    CreateTable(conn, table_name_full, getSchemaStr(it.second));
+    Table(table_name_full).Create(conn, getSchemaStr(it.second));
     EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
   }
 
@@ -80,7 +80,8 @@ TEST(CatalogTest, SQLTables) {
   EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
 
   EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
-  auto table_names = (*GetTables(conn, kDatasetName))[kDatasetName];
+
+  auto table_names = (*Catalog::GetTables(conn, kDatasetName))[kDatasetName];
   for(auto it: kTables) {
     EXPECT_NE(std::find(table_names.begin(), table_names.end(), it.first), table_names.end());
   }

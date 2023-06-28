@@ -38,7 +38,7 @@ using Results = std::map<std::string, std::vector<std::string>>;
 
 constexpr SQLSMALLINT kBufferLength = 512;
 
-const std::string kDatasetName = "ODBCTESTDATASET";
+const std::string kDatasetName = "ODBC_TEST_DATASET";
 
 // Stores information about the driver fetched from SQLGetInfo within the ConnectionHandle.
 // This is populated in the ConnectionHandle after calling GetDriverInfo.
@@ -101,12 +101,13 @@ inline void StrToChar(char * dest, std::string src) {
   strcpy(dest, src.c_str());
 }
 
-inline std::string ToBqFieldType(SQLSMALLINT odbcType) {
-  switch (odbcType) {
+inline std::string ToBqFieldType(SQLSMALLINT odbc_data_type) {
+  switch (odbc_data_type) {
     case SQL_VARCHAR:
       return "STRING";
     case SQL_NUMERIC:
-      return "NUMERIC";
+      return "BIGNUMERIC";
+    case SQL_BIGINT:
     case SQL_INTEGER:
       return "INT64";
     case SQL_FLOAT:
@@ -115,7 +116,7 @@ inline std::string ToBqFieldType(SQLSMALLINT odbcType) {
     case SQL_DATETIME:
       return "DATETIME";
     default:
-      throw std::runtime_error("Invalid odbc data type: " + odbcType);
+      throw std::runtime_error("Invalid odbc data type: " + odbc_data_type);
   }
 }
 
@@ -140,6 +141,22 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
     }
 }
 
+class Table {
+ public:
+  Table(std::string table_name) {
+    table_name_ = table_name;
+  };
+
+  void Create(std::shared_ptr<ConnectionHandle> conn, std::string schema_str);
+
+  void Drop(std::shared_ptr<ConnectionHandle> conn);
+
+  void Insert(std::shared_ptr<ConnectionHandle> conn, StdRows rows);
+
+  private:
+    std::string table_name_;
+};
+
 std::string GetRandomString(int len);
 
 std::string getSchemaStr(Schema schema);
@@ -147,13 +164,7 @@ std::string getSchemaStr(Schema schema);
 // If there was an error, gets description from SQLGetDiagRec and throws an error
 inline void CheckError(SQLRETURN status, const std::string api, std::shared_ptr<ConnectionHandle> conn);
 
-void CreateTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, std::string schema_str);
-
-void DropTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name);
-
 void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]);
-
-void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows);
 
 // Executes the SQLDescribeCol API to initialize the Column struct
 void DescribeCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
@@ -165,4 +176,4 @@ void BindCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H

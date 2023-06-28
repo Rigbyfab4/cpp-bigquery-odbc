@@ -22,11 +22,21 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-// Uses the SQLTables API to fetch tables in a dataset.
-std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::string dataset = "");
+class Catalog {
+ public:
+  ~Catalog();
+
+  SQLSMALLINT target_type;
+  SQLPOINTER target_value;
+  SQLINTEGER buffer_length;
+  SQLLEN str_len;
+
+  // Uses the SQLTables API to fetch tables in a dataset.
+  static std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::string dataset = "");
+};
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_METADATA_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CATALOG_H

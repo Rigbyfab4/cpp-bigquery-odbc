@@ -89,10 +89,8 @@ SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ConnectionHandle> conn, in
 SQLRETURN Disconnect(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   if (conn->hstmt) {
-    // Using SQLFreeStmt rather than SQLCloseCursor(conn->hstmt) is better since it doesn't
-    //  fail if no cursor was open.
-    status = SQLFreeStmt(conn->hstmt, SQL_CLOSE);
-    CheckError(status, "SQLFreeStmt", conn);
+    // Not checking for error after SQLCloseCursor because it fails when no cursor is open.
+    SQLCloseCursor(conn->hstmt);
     status = SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
     CheckError(status, "SQLFreeHandle", conn);
   }
@@ -159,55 +157,6 @@ SQLRETURN GetEnvInfo(std::shared_ptr<ConnectionHandle> conn) {
   }
   return status;
 }
-
-// TODO(#10): Remove printf and support logging
-SQLRETURN GetDescRec(std::shared_ptr<ConnectionHandle> conn) {
-  SQLRETURN status;
-  SQLSMALLINT desc_type;
-  SQLHDESC desc_handle;
-
-  status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_APP_ROW_DESC, &desc_handle, 0, NULL);
-  CheckError(status, "SQLGetStmtAttr", conn);
-  // Set the type
-  status = SQLSetDescField(desc_handle, 1, SQL_DESC_TYPE,
-                            (SQLPOINTER)SQL_C_DEFAULT, SQL_IS_SMALLINT);
-  CheckError(status, "SQLSetDescField", conn);
-  
-  // get number of fields in the descriptor
-  status = SQLGetDescField(desc_handle, 1, SQL_DESC_TYPE, &desc_type,
-                            SQL_IS_SMALLINT, NULL);
-  CheckError(status, "SQLGetDescField", conn);
-  printf("SQLGetDescField Succeeded: desc_type[%d] \n\n", desc_type);
-  
-  SQLSMALLINT stringLength;
-  SQLSMALLINT type;
-  SQLSMALLINT subType;
-  SQLLEN length;
-  SQLSMALLINT precision;
-  SQLSMALLINT scale;
-  SQLSMALLINT nullable;
-  SQLCHAR name[kBufferLength];
-  status =
-      SQLGetDescRec(desc_handle, 1, name, kBufferLength, &stringLength, &type,
-                    &subType, &length, &precision, &scale, &nullable);
-  if (!SQL_SUCCEEDED(status)) {
-    if (status == SQL_NO_DATA) {
-      printf("\nNo records for SQLGetDescRec !\n");
-    } else {
-      return status;
-    }
-  } else {
-    printf("\nName %s, ", name);
-    printf("Type %i, ", (int)type);
-    printf("SubType %i, ", (int)subType);
-    printf("Length %i, ", (int)length);
-    printf("Precision %i, ", (int)precision);
-    printf(" Scale %i, ", (int)scale);
-    printf("Nullable %i\n\n", (int)nullable);
-  }
-  return status;
-}
-
 
 // TODO(#10): Remove printf and support logging
 // Print the version and the name of the connected driver
