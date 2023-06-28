@@ -18,8 +18,6 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-SQLSMALLINT kMaxDsnLen = 1024; // Maximum number of characters in a data source name
-
 void SetAttributes(std::shared_ptr<ConnectionHandle> conn, int timeout) {
   auto status = SQLAllocHandle(SQL_HANDLE_ENV, NULL, &conn->henv);
   CheckError(status, "SQLAllocHandle", conn);
@@ -45,7 +43,7 @@ void SetAttributes(std::shared_ptr<ConnectionHandle> conn, int timeout) {
 
 SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn, int timeout) {
   SQLSMALLINT buflen;
-  SQLCHAR data_source[kMaxDsnLen];
+  SQLCHAR data_source[kBufferLength];
   SQLSMALLINT out_len;
   SQLRETURN status;
 
@@ -91,10 +89,8 @@ SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ConnectionHandle> conn, in
 SQLRETURN Disconnect(std::shared_ptr<ConnectionHandle> conn) {
   SQLRETURN status;
   if (conn->hstmt) {
-    // Using SQLFreeStmt rather than SQLCloseCursor(conn->hstmt) is better since it doesn't
-    //  fail if no cursor was open.
-    status = SQLFreeStmt(conn->hstmt, SQL_CLOSE);
-    CheckError(status, "SQLFreeStmt", conn);
+    // Not checking for error after SQLCloseCursor because it fails when no cursor is open.
+    SQLCloseCursor(conn->hstmt);
     status = SQLFreeHandle(SQL_HANDLE_STMT, conn->hstmt);
     CheckError(status, "SQLFreeHandle", conn);
   }
@@ -113,78 +109,35 @@ SQLRETURN Disconnect(std::shared_ptr<ConnectionHandle> conn) {
   return 0;
 }
 
-// TODO(#10): Remove printf and support logging
-// Gets Info about the driver.
+// Gets Info about the driver and populates conn.metadata
 SQLRETURN GetDriverInfo(std::shared_ptr<ConnectionHandle> conn) {
-  SQLCHAR buf[kMaxDsnLen];
+  SQLCHAR buf[kBufferLength];
   SQLSMALLINT out_len;
   SQLRETURN status;
 
-  status = SQLGetInfo(conn->hdbc, SQL_DATA_SOURCE_NAME, buf, sizeof(buf),
-                   &out_len);
-  CheckError(status, "SqlGetInfo(SQL_DATA_SOURCE_NAME)", conn);
-  if(SQL_SUCCEEDED(status)) {
-    if (status == SQL_SUCCESS_WITH_INFO) {
-      printf("[Truncated]");
-    }
-    std::string dsn_name = (char *)buf;
-    conn->metadata.dsn_name = dsn_name;
-  }
+  const std::vector<std::tuple<SQLUSMALLINT, std::string, std::string *>> kMetadataFieldsMap {
+    {SQL_DATA_SOURCE_NAME, "SQL_DATA_SOURCE_NAME", &conn->metadata.dsn_name},
+    {SQL_ODBC_VER, "SQL_ODBC_VER", &conn->metadata.db_odbc_ver},
+    {SQL_DATABASE_NAME, "SQL_DATABASE_NAME", &conn->metadata.project_id},
+    {SQL_DRIVER_NAME, "SQL_DRIVER_NAME", &conn->metadata.driver_name},
+    {SQL_DRIVER_ODBC_VER, "SQL_DRIVER_ODBC_VER", &conn->metadata.driver_odbc_ver},
+    {SQL_DRIVER_VER, "SQL_DRIVER_VER", &conn->metadata.driver_ver}
+  };
 
-  status = SQLGetInfo(conn->hdbc, SQL_ODBC_VER, buf, sizeof(buf),
-                   &out_len);
-  CheckError(status, "SqlGetInfo(SQL_ODBC_VER)", conn);
-  if(SQL_SUCCEEDED(status)) {
-    if (status == SQL_SUCCESS_WITH_INFO) {
-      printf("[Truncated]");
+  for (auto elem: kMetadataFieldsMap) {
+    auto info_type = std::get<0>(elem);
+    auto info_name = std::get<1>(elem);
+    auto metadata_field_ptr = std::get<2>(elem);
+    status = SQLGetInfo(conn->hdbc, info_type, buf, sizeof(buf),
+                     &out_len);
+    CheckError(status, "SqlGetInfo(" + info_name + ")", conn);
+    if(SQL_SUCCEEDED(status)) {
+      if (status == SQL_SUCCESS_WITH_INFO) {
+        std::runtime_error("Buffer size is not enough for " + info_name + " InfoType");
+      }
+      std::string val = (char *)buf;
+      *metadata_field_ptr = val;
     }
-    std::string db_odbc_ver = (char *)buf;
-    conn->metadata.db_odbc_ver = db_odbc_ver;
-  }
-
-  status = SQLGetInfo(conn->hdbc, SQL_DATABASE_NAME, buf, sizeof(buf),
-                   &out_len);
-  CheckError(status, "SqlGetInfo(SQL_DATABASE_NAME)", conn);
-  if(SQL_SUCCEEDED(status)) {
-    if (status == SQL_SUCCESS_WITH_INFO) {
-      printf("[Truncated]");
-    }
-    std::string db_name = (char *)buf;
-    conn->metadata.db_name = db_name;
-  }
-
-  status = SQLGetInfo(conn->hdbc, SQL_DRIVER_NAME, buf, sizeof(buf),
-                   &out_len);
-  CheckError(status, "SqlGetInfo(SQL_DRIVER_NAME)", conn);
-  if(SQL_SUCCEEDED(status)) {
-    if (status == SQL_SUCCESS_WITH_INFO) {
-      printf("[Truncated]");
-    }
-    std::string driver_name = (char *)buf;
-    conn->metadata.driver_name = driver_name;
-  }
-
-  status = SQLGetInfo(conn->hdbc, SQL_DRIVER_ODBC_VER, buf, sizeof(buf),
-                   &out_len);
-  CheckError(status, "SqlGetInfo(SQL_DRIVER_ODBC_VER)", conn);
-  if(SQL_SUCCEEDED(status)) {
-    if (status == SQL_SUCCESS_WITH_INFO) {
-      printf("[Truncated]");
-    }
-    std::string driver_odbc_ver = (char *)buf;
-    conn->metadata.driver_odbc_ver = driver_odbc_ver;
-  }
-
-  status = SQLGetInfo(conn->hdbc, SQL_DRIVER_VER, buf, sizeof(buf),
-                   &out_len);
-  CheckError(status, "SqlGetInfo(SQL_DRIVER_VER)", conn);
-  if(SQL_SUCCEEDED(status))
-  {
-    if (status == SQL_SUCCESS_WITH_INFO) {
-      printf("[Truncated]");
-    }
-    std::string driver_ver = (char *)buf;
-    conn->metadata.driver_ver = driver_ver;
   }
 
   return status;
@@ -204,55 +157,6 @@ SQLRETURN GetEnvInfo(std::shared_ptr<ConnectionHandle> conn) {
   }
   return status;
 }
-
-// TODO(#10): Remove printf and support logging
-SQLRETURN GetDescRec(std::shared_ptr<ConnectionHandle> conn) {
-  SQLRETURN status;
-  SQLSMALLINT desc_type;
-  SQLHDESC desc_handle;
-
-  status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_APP_ROW_DESC, &desc_handle, 0, NULL);
-  CheckError(status, "SQLGetStmtAttr", conn);
-  // Set the type
-  status = SQLSetDescField(desc_handle, 1, SQL_DESC_TYPE,
-                            (SQLPOINTER)SQL_C_DEFAULT, SQL_IS_SMALLINT);
-  CheckError(status, "SQLSetDescField", conn);
-  
-  // get number of fields in the descriptor
-  status = SQLGetDescField(desc_handle, 1, SQL_DESC_TYPE, &desc_type,
-                            SQL_IS_SMALLINT, NULL);
-  CheckError(status, "SQLGetDescField", conn);
-  printf("SQLGetDescField Succeeded: desc_type[%d] \n\n", desc_type);
-  
-  SQLSMALLINT stringLength;
-  SQLSMALLINT type;
-  SQLSMALLINT subType;
-  SQLLEN length;
-  SQLSMALLINT precision;
-  SQLSMALLINT scale;
-  SQLSMALLINT nullable;
-  SQLCHAR name[kBufferLength];
-  status =
-      SQLGetDescRec(desc_handle, 1, name, kBufferLength, &stringLength, &type,
-                    &subType, &length, &precision, &scale, &nullable);
-  if (!SQL_SUCCEEDED(status)) {
-    if (status == SQL_NO_DATA) {
-      printf("\nNo records for SQLGetDescRec !\n");
-    } else {
-      return status;
-    }
-  } else {
-    printf("\nName %s, ", name);
-    printf("Type %i, ", (int)type);
-    printf("SubType %i, ", (int)subType);
-    printf("Length %i, ", (int)length);
-    printf("Precision %i, ", (int)precision);
-    printf(" Scale %i, ", (int)scale);
-    printf("Nullable %i\n\n", (int)nullable);
-  }
-  return status;
-}
-
 
 // TODO(#10): Remove printf and support logging
 // Print the version and the name of the connected driver

@@ -13,21 +13,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_FUNCTIONS_H
-#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_FUNCTIONS_H
+#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CATALOG_H
+#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CATALOG_H
 
 #include "testing/commons.h"
-
-using std::map;
 
 namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-SQLRETURN GetAllFunctions(std::shared_ptr<ConnectionHandle> conn);
+class Catalog {
+ public:
+  ~Catalog();
+
+  SQLSMALLINT target_type;
+  SQLPOINTER target_value;
+  SQLINTEGER buffer_length;
+  SQLLEN str_len;
+
+  // Uses the SQLTables API to fetch tables in a dataset.
+  static std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::string dataset = "");
+};
 
 }  // namespace bigquery_odbc
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_FUNCTIONS_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CATALOG_H

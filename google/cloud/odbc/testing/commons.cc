@@ -31,24 +31,17 @@ std::string GetRandomString(int len) {
   return str;
 }
 
-void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
-  switch (col_ptr->data_type) {
-    case SQL_BIGINT:
-    case SQL_INTEGER:
-      col_ptr->data_type = SQL_C_LONG;
-      break;
-    case SQL_DOUBLE:
-      col_ptr->data_type = SQL_C_DOUBLE;
-    case SQL_FLOAT:
-      col_ptr->data_type = SQL_C_FLOAT;
-      break;
-    case SQL_VARCHAR:
-    case SQL_C_CHAR:
-      col_ptr->data_type = SQL_C_CHAR;
-      break;
-    default:
-      FAIL() << " Invalid column data type " << col_ptr->data_type;
+std::string getSchemaStr(Schema schema) {
+  std::string schema_str = "(";
+  for (int i = 0; i < schema.size(); i++) {
+    ColumnMinimal col = schema[i];
+    schema_str.append(col.name + " " + ToBqFieldType(col.type));
+    if(i < schema.size() - 1) {
+      schema_str.append(", ");
     }
+  }
+  schema_str.append(")");
+  return schema_str;
 }
 
 void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> conn) {
@@ -64,8 +57,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->hstmt && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_STMT, conn->hstmt, ++rec_num, sqlstate, &native_error,
                         buf, kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_STMT) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -78,8 +74,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->hdbc && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_DBC, conn->hdbc, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_DBC) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -92,8 +91,11 @@ void GetErrorDetails(const std::string api, std::shared_ptr<ConnectionHandle> co
   while (conn->henv && rec_num < 5) {
     status = SQLGetDiagRec(SQL_HANDLE_ENV, conn->henv, ++rec_num, sqlstate, &native_error, buf,
                         kBufferLength, NULL);
+    if (status == SQL_NO_DATA) {
+      continue;
+    }
     if (!SQL_SUCCEEDED(status)) {
-      FAIL() << "SQLGetDiagRec failed with status: " << status;
+      FAIL() << "SQLGetDiagRec(SQL_HANDLE_ENV) failed with status: " << status;
       break;
     }
     sprintf(error_str, "ERROR:: %d: %s = %s (%ld) SQLSTATE=%s\n", rec_num, api.c_str(), buf,
@@ -109,16 +111,16 @@ inline void CheckError(SQLRETURN status, const std::string api, std::shared_ptr<
   }
 }
 
-void CreateTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, std::string schema) {
+void Table::Create(std::shared_ptr<ConnectionHandle> conn, std::string schema_str) {
   char create_table_stmt[kBufferLength];
-  StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name + " " + schema);
-  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
+  StrToChar(create_table_stmt, "CREATE OR REPLACE TABLE " + table_name_ + " " + schema_str);
+  SQLRETURN status = SQLExecDirect(conn->hstmt, (SQLCHAR *)create_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
 
-void DropTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name) {
+void Table::Drop(std::shared_ptr<ConnectionHandle> conn) {
   char drop_table_stmt[kBufferLength];
-  StrToChar(drop_table_stmt, "DROP TABLE " + table_name);
+  StrToChar(drop_table_stmt, "DROP TABLE " + table_name_);
   auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }
@@ -129,8 +131,8 @@ void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]) {
 }
 
 // TODO(#11): Generic implementation of InsertIntoTable function from testing/commons.*
-void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows) {
-  std::string insert_stmt =  "INSERT INTO " + table_name + " VALUES ";
+void Table::Insert(std::shared_ptr<ConnectionHandle> conn, StdRows rows) {
+  auto insert_stmt =  "INSERT INTO " + table_name_ + " VALUES ";
   int num_rows = rows.size();
   if (!num_rows) {
     return;
@@ -140,7 +142,7 @@ void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_n
     auto row = rows[i];
     std::string row_str = "( ";
 
-    std::string str_field = row.str_field;
+    auto str_field = row.str_field;
     if(!str_field.empty()) {
       row_str.append("'" + str_field + "', ");
     } else {

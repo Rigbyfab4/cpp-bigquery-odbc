@@ -38,17 +38,20 @@ using Results = std::map<std::string, std::vector<std::string>>;
 
 constexpr SQLSMALLINT kBufferLength = 512;
 
-const std::string kDatasetName = "ODBCTESTDATASET";
+const std::string kDatasetName = "ODBC_TEST_DATASET";
 
+// Stores information about the driver fetched from SQLGetInfo within the ConnectionHandle.
+// This is populated in the ConnectionHandle after calling GetDriverInfo.
 struct Metadata {
   std::string dsn_name;
-  std::string db_name;
+  std::string project_id;
   std::string db_odbc_ver;
   std::string driver_name;
   std::string driver_odbc_ver;
   std::string driver_ver;
 };
 
+// Stores the various ODBC handles required to create a connection and execute statements.
 struct ConnectionHandle {
   HENV henv;
   HDBC hdbc;
@@ -58,6 +61,7 @@ struct ConnectionHandle {
   Metadata metadata;
 };
 
+// The fields correspond to the ones set/retrieved by SQLBind/SQLDescribeCol.
 struct Column {
   SQLCHAR name[kBufferLength]; // Column name
   SQLSMALLINT name_len;
@@ -97,21 +101,70 @@ inline void StrToChar(char * dest, std::string src) {
   strcpy(dest, src.c_str());
 }
 
-std::string GetRandomString(int len);
+inline std::string ToBqFieldType(SQLSMALLINT odbc_data_type) {
+  switch (odbc_data_type) {
+    case SQL_VARCHAR:
+      return "STRING";
+    case SQL_NUMERIC:
+      return "BIGNUMERIC";
+    case SQL_BIGINT:
+    case SQL_INTEGER:
+      return "INT64";
+    case SQL_FLOAT:
+    case SQL_DOUBLE:
+      return "FLOAT64";
+    case SQL_DATETIME:
+      return "DATETIME";
+    default:
+      throw std::runtime_error("Invalid odbc data type: " + odbc_data_type);
+  }
+}
 
 // Updates col_ptr->data_type to the C datatype macro to have consistency while reading results
-void SqlToCdataTypes(std::shared_ptr<Column> col_ptr);
+inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
+  switch (col_ptr->data_type) {
+    case SQL_BIGINT:
+    case SQL_INTEGER:
+      col_ptr->data_type = SQL_C_LONG;
+      break;
+    case SQL_DOUBLE:
+      col_ptr->data_type = SQL_C_DOUBLE;
+    case SQL_FLOAT:
+      col_ptr->data_type = SQL_C_FLOAT;
+      break;
+    case SQL_VARCHAR:
+    case SQL_C_CHAR:
+      col_ptr->data_type = SQL_C_CHAR;
+      break;
+    default:
+      throw std::runtime_error("Invalid column data type: " + col_ptr->data_type);
+    }
+}
+
+class Table {
+ public:
+  Table(std::string table_name) {
+    table_name_ = table_name;
+  };
+
+  void Create(std::shared_ptr<ConnectionHandle> conn, std::string schema_str);
+
+  void Drop(std::shared_ptr<ConnectionHandle> conn);
+
+  void Insert(std::shared_ptr<ConnectionHandle> conn, StdRows rows);
+
+  private:
+    std::string table_name_;
+};
+
+std::string GetRandomString(int len);
+
+std::string getSchemaStr(Schema schema);
 
 // If there was an error, gets description from SQLGetDiagRec and throws an error
 inline void CheckError(SQLRETURN status, const std::string api, std::shared_ptr<ConnectionHandle> conn);
 
-void CreateTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, std::string schema);
-
-void DropTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name);
-
 void ExecuteStatement(std::shared_ptr<ConnectionHandle> conn, char stmt[]);
-
-void InsertIntoTable(std::shared_ptr<ConnectionHandle> conn, std::string table_name, StdRows rows);
 
 // Executes the SQLDescribeCol API to initialize the Column struct
 void DescribeCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col_ptr, SQLUSMALLINT col_index);
@@ -123,4 +176,4 @@ void BindCol(std::shared_ptr<ConnectionHandle> conn, std::shared_ptr<Column> col
 }  // namespace cloud
 }  // namespace google
 
-#endif  //CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_COMMONS_H
