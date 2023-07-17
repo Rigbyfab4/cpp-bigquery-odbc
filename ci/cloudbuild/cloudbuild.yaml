@@ -14,7 +14,6 @@
 
 options:
   workerPool: 'projects/bigquery-devtools-drivers/locations/us-east1/workerPools/cpp-bigquery-odbc-pool'
-  #machineType: E2_HIGHCPU_32
   dynamic_substitutions: true
   env: [
     'HOME=/h',
@@ -68,19 +67,8 @@ logsBucket: 'gs://${_LOGS_BUCKET}/logs/cpp-bigquery-odbc/${_TRIGGER_SOURCE}/${CO
 
 steps:
 # Builds the docker image that will be used by the main build step.
-#- name: 'gcr.io/cloud-builders/docker'
-#  entrypoint: 'bash'
-#  # --network flag is needed for using GCP credentials in docker file.
-#  # --build-target flag passes the secret environment variable to docker file.
-#  args: [ '-c', 'docker build -t gcr.io/${PROJECT_ID}/${_IMAGE}:${BUILD_ID} -f ci/cloudbuild/dockerfiles/${_DISTRO}.Dockerfile --build-arg "odbc_secret=$$ODBC_SECRET" --build-arg "gcs_odbc_bucket=bq-dev-tools-simba-drivers-testing" --network "cloudbuild" .' ]
-#  id: simba-odbc
-#  secretEnv: [ 'ODBC_SECRET' ]
-#  waitFor: [ '-' ]
 - name: 'gcr.io/kaniko-project/executor:v1.11.0'
-  #entrypoint: 'bash'
   args: [
-  #  '-c',
-  #  'docker build -t gcr.io/${PROJECT_ID}/${_IMAGE}:${BUILD_ID} --build-arg "odbc_secret=$$ODBC_SECRET" --build-arg "gcs_odbc_bucket=bq-dev-tools-simba-drivers-testing" --network "cloudbuild" .',
     '--log-format=text',
     '--context=dir:///workspace/ci',
     '--dockerfile=ci/cloudbuild/dockerfiles/${_DISTRO}.Dockerfile',
@@ -89,10 +77,6 @@ steps:
     '--push-retry=3',
     '--image-fs-extract-retry=3',
   ]
-  #env: [
-  #  #'gcs_odbc_bucket=bq-dev-tools-simba-drivers-testing',
-  #  'odbc_secret=$$ODBC_SECRET'
-  #]
   secretEnv: [ 'ODBC_SECRET' ]
   # Pull the docker image. The step running 'ci/cloud/build.sh' would do this
   # automatically, and also fill the log with about 2-3 pages of noise.
@@ -102,6 +86,7 @@ steps:
   # Restores the homedir cache into /h in parallel with the previous step.
   # Won't break the build if this step fails.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  allowFailure: true
   waitFor: [ '-' ]
   entrypoint: 'bash'
   dir: '/h'
@@ -112,7 +97,6 @@ steps:
       --bucket_url=gs://${_CACHE_BUCKET}/build-cache/cpp-bigquery-odbc
       --key=${_TRIGGER_SOURCE}/${_DISTRO}-${_BUILD_NAME}/h
       --fallback_key=main/${_DISTRO}-${_BUILD_NAME}/h
-      || true
 
   # Runs the specified build in the image that was created in the first step.
 - name: 'gcr.io/${PROJECT_ID}/${_IMAGE}:${BUILD_ID}'
@@ -127,6 +111,7 @@ steps:
   # Caches some directories in the homedir, in the specified GCS bucket.
   # Won't break the build if this step fails.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  allowFailure: true
   entrypoint: 'bash'
   dir: '/h'
   args:
@@ -142,17 +127,16 @@ steps:
       --path=.cache/vcpkg
       --path=.cache/cpp-bigquery-odbc
       --path=.local
-      || true
 
   # Remove the images created by this build.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  allowFailure: true
   entrypoint: 'bash'
   args:
     - '-c'
     - |
       set +e
       gcloud container images delete -q gcr.io/${PROJECT_ID}/${_IMAGE}:${BUILD_ID}
-      exit 0
 
   # The previous step may not run if the build fails. Garbage collect any
   # images created by this script, and/or similar scripts in this repository.
@@ -161,6 +145,7 @@ steps:
   # likely to be in use. This step should not break the build on error, and it
   # can start running as soon as the build does.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  allowFailure: true
   waitFor: [ '-' ]
   entrypoint: 'bash'
   args:
@@ -176,6 +161,7 @@ steps:
   # Cancels *this* specific build if one is already queued up for a newer
   # commit. This frees up resources to run the build for the newer commit.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  allowFailure: true
   waitFor: [ '-' ]
   entrypoint: 'bash'
   args:
@@ -190,7 +176,7 @@ steps:
       query+=" AND substitutions.COMMIT_SHA != ${COMMIT_SHA}"
       query+=" AND create_time > ${ctime}"
       gcloud builds list --region 'us-east1' --limit 1 --format='value(id)' --filter "${query}" | \
-        grep . && gcloud builds cancel --region 'us-east1' '${BUILD_ID}' || exit 0
+        grep . && gcloud builds cancel --region 'us-east1' '${BUILD_ID}'
 
   # Cancels in-progress builds for previous commits in the current PR so we can
   # free up resources to start running the builds for the new commit.

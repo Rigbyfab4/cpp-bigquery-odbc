@@ -20,12 +20,12 @@ project(
   LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 17)
-
 include(FetchContent)
 
 function (odbc_define_tests)
-  include_directories(BEFORE $ENV{IODBC_INCLUDE_PATH})
+  if (NOT ODBC_BUILD_TESTING)
+    return()
+  endif ()
 
   # We need googletest for the odbc tests target.
   FetchContent_Declare(
@@ -37,8 +37,6 @@ function (odbc_define_tests)
   FetchContent_MakeAvailable(googletest)
 
   enable_testing()
-
-  include_directories(BEFORE ./)
 
   add_executable(
     all_tests
@@ -61,6 +59,11 @@ function (odbc_define_tests)
     GTest::gmock
   )
 
+  target_include_directories(all_tests PUBLIC ./)
+  target_include_directories(all_tests PRIVATE $ENV{IODBC_INCLUDE_PATH})
+
+  target_compile_features(all_tests PUBLIC cxx_std_17)
+
   include(GoogleTest)
   gtest_discover_tests(all_tests)
 endfunction ()
@@ -81,6 +84,4 @@ FetchContent_MakeAvailable(google-cloud-cpp)
 # This will change
 add_custom_target(odbc_client_interface ALL DEPENDS google_cloud_cpp_bigquery_rest)
 
-if (ODBC_BUILD_TESTING)
-  odbc_define_tests()
-endif ()
+odbc_define_tests()
