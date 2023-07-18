@@ -183,8 +183,7 @@ RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
 
 # #### crc32c
 
-# The project depends on the Crc32c library, we need to compile this from
-# source:
+# crc32c is a dependency of google-cloud-cpp
 
 # ```bash
 WORKDIR /var/tmp/build/crc32c
