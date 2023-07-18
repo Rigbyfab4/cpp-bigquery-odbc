@@ -173,22 +173,6 @@ RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
     ldconfig && \
     cd /var/tmp && rm -fr build
 
-WORKDIR /var/tmp/build/
-RUN curl -fsSL https://github.com/open-telemetry/opentelemetry-cpp/archive/v1.9.1.tar.gz | \
-    tar -xzf - --strip-components=1 && \
-    cmake \
-        -DCMAKE_CXX_STANDARD=14 \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
-        -DBUILD_SHARED_LIBS=ON \
-        -DWITH_EXAMPLES=OFF \
-        -DWITH_ABSEIL=ON \
-        -DBUILD_TESTING=OFF \
-        -DOPENTELEMETRY_INSTALL=ON \
-        -B cmake-out -S . -GNinja && \
-    cmake --build cmake-out --target install && \
-    ldconfig && cd /var/tmp && rm -fr build
-
 # Install sccache
 WORKDIR /var/tmp/sccache
 RUN curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.5.4/sccache-v0.5.4-x86_64-unknown-linux-musl.tar.gz | \

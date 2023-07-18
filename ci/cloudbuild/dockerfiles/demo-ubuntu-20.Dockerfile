@@ -45,7 +45,7 @@ RUN apt-get update && \
 
 # Build cmake from source to have the same version across all builds.
 WORKDIR /var/tmp/build/cmake
-RUN curl -fsSL https://github.com/Kitware/CMake/releases/download/v3.26.4/cmake-3.26.4.tar.gz | \
+RUN curl -fsSL https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-3.21.1.tar.gz | \
     tar -xzf - --strip-components=1 && \
     ./bootstrap && \
     make -j$(nproc) && \
@@ -154,6 +154,7 @@ RUN curl -fsSL https://github.com/google/re2/archive/2023-06-02.tar.gz | \
     ldconfig && \
     cd /var/tmp && rm -fr build
 
+
 WORKDIR /var/tmp/build/grpc
 RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -172,22 +173,6 @@ RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
     cmake --build cmake-out --target install && \
     ldconfig && \
     cd /var/tmp && rm -fr build
-
-WORKDIR /var/tmp/build/
-RUN curl -fsSL https://github.com/open-telemetry/opentelemetry-cpp/archive/v1.9.1.tar.gz | \
-    tar -xzf - --strip-components=1 && \
-    cmake \
-        -DCMAKE_CXX_STANDARD=14 \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
-        -DBUILD_SHARED_LIBS=ON \
-        -DWITH_EXAMPLES=OFF \
-        -DWITH_ABSEIL=ON \
-        -DBUILD_TESTING=OFF \
-        -DOPENTELEMETRY_INSTALL=ON \
-        -S . -B cmake-out -GNinja && \
-    cmake --build cmake-out --target install && \
-    ldconfig && cd /var/tmp && rm -fr build
 
 # Install sccache
 WORKDIR /var/tmp/sccache
