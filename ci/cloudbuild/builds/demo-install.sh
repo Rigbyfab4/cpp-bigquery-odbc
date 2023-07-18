@@ -27,17 +27,18 @@ source "$(dirname "$0")/../../lib/init.sh"
 source module ci/cloudbuild/builds/lib/cmake.sh
 source module ci/lib/io.sh
 
-# We cannot use `cmake --install` below. That flag was introduced
-# in CMake == 3.15, and we use (and tell folks to use this code)
-# with versions as old as 3.5.
-
 cmake_config_testing_details=(
   -DODBC_BUILD_TESTING=OFF
 )
+if command -v /usr/local/bin/sccache >/dev/null 2>&1; then
+  cmake_config_testing_details+=(
+    -DCMAKE_CXX_COMPILER_LAUNCHER=/usr/local/bin/sccache
+  )
+fi
 ## [BEGIN packaging.md]
 # Pick a location to install the artifacts, e.g., `/usr/local` or `/opt`
 PREFIX="${HOME}/cpp-bigquery-odbc-installed"
-cmake -H. -Bcmake-out \
+cmake -S. -Bcmake-out \
   "${cmake_config_testing_details[@]}"
 cmake --build cmake-out -- -j "$(nproc)"
 cmake --build cmake-out --target install
