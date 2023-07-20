@@ -16,25 +16,13 @@ FROM redhat/ubi8
 ARG NCPU=4
 ARG ARCH=amd64
 
-# Fedora includes packages for gRPC, libcurl, and OpenSSL that are recent enough
-# for `google-cloud-cpp`. Install these packages and additional development
-# tools to compile the dependencies:
 RUN dnf makecache && \
     dnf install -y autoconf automake \
         xz clang clang-analyzer clang-tools-extra \
         diffutils findutils gcc-c++ git \
         libtool libcurl-devel llvm make ninja-build \
-        openssl-devel patch python3 \
-        python3-pip tar unzip wget which zip zlib-devel
-
-# Install the Python modules needed to run the storage emulator
-RUN dnf makecache && dnf install -y python3-devel
-RUN pip3 install --upgrade pip
-RUN pip3 install setuptools wheel requests
-
-# This is used to improve the output in check-api builds
-RUN dnf makecache && dnf install -y "dnf-command(debuginfo-install)"
-RUN dnf makecache && dnf debuginfo-install -y libstdc++
+        openssl-devel patch \
+        tar unzip wget which zip zlib-devel
 
 # Sets root's password to the empty string to enable users to get a root shell
 # inside the container with `su -` and no password. Sudo would not work because
@@ -42,7 +30,8 @@ RUN dnf makecache && dnf debuginfo-install -y libstdc++
 # the container's /etc/passwd file.
 RUN echo 'root:' | chpasswd
 
-# Build cmake from source to have the same version across all builds.
+# TODO(#43): When https://github.com/googleapis/cpp-bigquery-odbc/issues/43 is fixed, remove
+# the installation of cmake from source
 # ```bash
 WORKDIR /var/tmp/build/cmake
 RUN curl -fsSL https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-3.21.1.tar.gz | \
@@ -52,12 +41,6 @@ RUN curl -fsSL https://github.com/Kitware/CMake/releases/download/v3.21.1/cmake-
     make install
 # ```
 
-# Fedora's version of `pkg-config` (https://github.com/pkgconf/pkgconf) is slow
-# when handling `.pc` files with lots of `Requires:` deps.  This problem is
-# triggered by the Abseil `.pc` files, which we use (indirectly) when testing
-# our own `.pc` files.  We install the more traditional `pkg-config` binary.
-# For more details see
-#     https://github.com/googleapis/google-cloud-cpp/issues/7052
 WORKDIR /var/tmp/build/pkg-config-cpp
 RUN curl -fsSL https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -67,22 +50,7 @@ RUN curl -fsSL https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.
     ldconfig
 ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig
 
-# Installs the yaml-cpp-devel from source. The version included with Fedora:37
-# leaves trailing whitespace in the output:
-#     https://github.com/jbeder/yaml-cpp/pull/1005
-WORKDIR /var/tmp/build
-RUN curl -fsSL https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.7.0.tar.gz | \
-    tar -xzf - --strip-components=1 && \
-    cmake \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DBUILD_SHARED_LIBS=ON \
-      -DBUILD_TESTING=OFF \
-      -GNinja -S . -B cmake-out && \
-    cmake --build cmake-out --target install && \
-    ldconfig && cd /var/tmp && rm -fr build
-
-# We expose `absl::optional<>` in our public API. An Abseil LTS update will
-# break our `check-api` build, unless we disable the inline namespace.
+# Abseil is a dependency of google-cloud-cpp
 WORKDIR /var/tmp/build
 RUN curl -fsSL https://github.com/abseil/abseil-cpp/archive/20230125.3.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -106,6 +74,8 @@ RUN curl -fsSL https://github.com/google/googletest/archive/v1.13.0.tar.gz | \
     cmake --build cmake-out --target install && \
     ldconfig && cd /var/tmp && rm -fr build
 
+
+# benchmark is a dependency of google-cloud-cpp
 WORKDIR /var/tmp/build
 RUN curl -fsSL https://github.com/google/benchmark/archive/v1.8.0.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -117,6 +87,7 @@ RUN curl -fsSL https://github.com/google/benchmark/archive/v1.8.0.tar.gz | \
     cmake --build cmake-out --target install && \
     ldconfig && cd /var/tmp && rm -fr build
 
+# crc32c is a dependency of google-cloud-cpp
 WORKDIR /var/tmp/build
 RUN curl -fsSL https://github.com/google/crc32c/archive/1.1.2.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -130,6 +101,8 @@ RUN curl -fsSL https://github.com/google/crc32c/archive/1.1.2.tar.gz | \
     cmake --build cmake-out --target install && \
     ldconfig && cd /var/tmp && rm -fr build
 
+
+# nlohmann_json is a dependency of google-cloud-cpp
 WORKDIR /var/tmp/build
 RUN curl -fsSL https://github.com/nlohmann/json/archive/v3.11.2.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -142,6 +115,7 @@ RUN curl -fsSL https://github.com/nlohmann/json/archive/v3.11.2.tar.gz | \
     cmake --build cmake-out --target install && \
     ldconfig && cd /var/tmp && rm -fr build
 
+# protobuf is a dependency of google-cloud-cpp
 WORKDIR /var/tmp/build/protobuf
 RUN curl -fsSL https://github.com/protocolbuffers/protobuf/archive/v23.2.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -154,9 +128,7 @@ RUN curl -fsSL https://github.com/protocolbuffers/protobuf/archive/v23.2.tar.gz 
     cmake --build cmake-out --target install && \
     ldconfig && cd /var/tmp && rm -fr build
 
-# The version of RE2 installed with Fedora:37 forces C++11 in its pkg-config
-# files. This may be fixed in Fedora:38, but until then it is easier to just
-# install the source code.
+# re2 is a dependency of google-cloud-cpp
 WORKDIR /var/tmp/build/re2
 RUN curl -fsSL https://github.com/google/re2/archive/2023-06-02.tar.gz | \
     tar -xzf - --strip-components=1 && \
@@ -179,8 +151,8 @@ RUN curl -fsSL https://github.com/c-ares/c-ares/archive/cares-1_14_0.tar.gz | \
     ldconfig
 # ```
 
+# grpc is a dependency of google-cloud-cpp
 WORKDIR /var/tmp/build/grpc
-#RUN dnf makecache && dnf install -y c-ares-devel
 RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
     tar -xzf - --strip-components=1 && \
     cmake \
@@ -198,26 +170,6 @@ RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
       -GNinja -S . -B cmake-out && \
     cmake --build cmake-out --target install && \
     ldconfig && cd /var/tmp && rm -fr build
-
-# Installs Universal Ctags (which is different than the default "Exuberant
-# Ctags"), which is needed by the ABI checker. See https://ctags.io/
-WORKDIR /var/tmp/build
-RUN curl -fsSL https://github.com/universal-ctags/ctags/archive/refs/tags/p5.9.20210418.0.tar.gz | \
-    tar -xzf - --strip-components=1 && \
-    ./autogen.sh && \
-    ./configure --prefix=/usr/local && \
-    make && \
-    make install && \
-    cd /var/tmp && rm -fr build
-
-# Installs the abi-dumper with the integer overflow fix from
-# https://github.com/lvc/abi-dumper/pull/29. We can switch back to `dnf install
-# abi-dumper` once it has the fix.
-WORKDIR /var/tmp/build
-RUN curl -fsSL https://github.com/lvc/abi-dumper/archive/16bb467cd7d343dd3a16782b151b56cf15509594.tar.gz | \
-    tar -xzf - --strip-components=1 && \
-    mv abi-dumper.pl /usr/local/bin/abi-dumper && \
-    chmod +x /usr/local/bin/abi-dumper
 
 # Install sccache from https://github.com/mozilla/sccache
 WORKDIR /var/tmp/sccache
