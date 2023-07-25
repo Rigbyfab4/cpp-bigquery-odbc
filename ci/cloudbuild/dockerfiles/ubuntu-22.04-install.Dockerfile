@@ -42,6 +42,9 @@ RUN apt-get update && \
         ninja-build \
         patch \
         pkg-config \
+        python3 \
+        python3-dev \
+        python3-pip \
         tar \
         unzip \
         zip \
@@ -51,6 +54,10 @@ RUN apt-get update && \
         ca-certificates \
         apt-transport-https \
         clang-tidy
+
+# clang-tidy-cache needs python
+RUN update-alternatives --install /usr/bin/python python $(which python3) 10
+RUN pip3 install setuptools wheel requests
 
 # Install all the direct (and indirect) dependencies for cpp-bigquery-odbc.
 # Use a different directory for each build, and remove the downloaded
