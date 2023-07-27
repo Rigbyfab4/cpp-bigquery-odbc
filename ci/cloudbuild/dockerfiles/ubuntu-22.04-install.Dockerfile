@@ -1,0 +1,283 @@
+# Copyright 2023 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+FROM ubuntu:22.04
+
+# ENV for unixODBC driver manager
+ENV GCS_BUCKET=bq-dev-tools-simba-drivers-testing
+RUN echo 'GCS_BUCKET='${GCS_BUCKET}
+ARG odbc_secret
+ENV ODBC_CONN_KEYS=${odbc_secret}
+RUN echo 'ODBC_CONN_KEYS='${ODBC_CONN_KEYS}
+RUN echo 'ODBC_SECRET='${ODBC_SECRET}
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get --no-install-recommends install -y \
+        automake \
+        build-essential \
+        clang \
+        cmake \
+        curl \
+        gawk \
+        git \
+        gcc \
+        g++ \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libtool \
+        lsb-release \
+        make \
+        ninja-build \
+        patch \
+        pkg-config \
+        tar \
+        unzip \
+        zip \
+        wget \
+        zlib1g-dev \
+        apt-utils \
+        ca-certificates \
+        apt-transport-https \
+        clang-tidy
+
+# Install all the direct (and indirect) dependencies for cpp-bigquery-odbc.
+# Use a different directory for each build, and remove the downloaded
+# files and any temporary artifacts after a successful build to keep the
+# image smaller (and with fewer layers)
+
+WORKDIR /var/tmp/build/abseil-cpp
+RUN curl -fsSL https://github.com/abseil/abseil-cpp/archive/20230125.3.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+      -DCMAKE_BUILD_TYPE="Release" \
+      -DABSL_BUILD_TESTING=OFF \
+      -DABSL_PROPAGATE_CXX_STD=ON \
+      -DBUILD_SHARED_LIBS=yes \
+      -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/googletest
+RUN curl -fsSL https://github.com/google/googletest/archive/v1.13.0.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+      -DCMAKE_BUILD_TYPE="Release" \
+      -DBUILD_SHARED_LIBS=yes \
+      -S . -B cmake-out -GNinja  && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/benchmark
+RUN curl -fsSL https://github.com/google/benchmark/archive/v1.8.0.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+        -DCMAKE_BUILD_TYPE="Release" \
+        -DBUILD_SHARED_LIBS=yes \
+        -DBENCHMARK_ENABLE_TESTING=OFF \
+        -S . -B cmake-out -GNinja  && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/crc32c
+RUN curl -fsSL https://github.com/google/crc32c/archive/1.1.2.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+      -DCMAKE_BUILD_TYPE="Release" \
+      -DBUILD_SHARED_LIBS=yes \
+      -DCRC32C_BUILD_TESTS=OFF \
+      -DCRC32C_BUILD_BENCHMARKS=OFF \
+      -DCRC32C_USE_GLOG=OFF \
+      -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/nlohmann-json
+RUN curl -fsSL https://github.com/nlohmann/json/archive/v3.11.2.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+      -DCMAKE_BUILD_TYPE="Release" \
+      -DBUILD_SHARED_LIBS=yes \
+      -DBUILD_TESTING=OFF \
+      -DJSON_BuildTests=OFF \
+      -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/protobuf
+RUN curl -fsSL https://github.com/protocolbuffers/protobuf/archive/v23.2.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=yes \
+        -Dprotobuf_BUILD_TESTS=OFF \
+        -Dprotobuf_ABSL_PROVIDER=package \
+        -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/c-ares
+RUN curl -fsSL https://github.com/c-ares/c-ares/archive/refs/tags/cares-1_17_1.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=yes \
+        -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/re2
+RUN curl -fsSL https://github.com/google/re2/archive/2023-06-02.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=ON \
+        -DRE2_BUILD_TESTING=OFF \
+        -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+WORKDIR /var/tmp/build/grpc
+RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=ON \
+        -DgRPC_INSTALL=ON \
+        -DgRPC_BUILD_TESTS=OFF \
+        -DgRPC_ABSL_PROVIDER=package \
+        -DgRPC_CARES_PROVIDER=package \
+        -DgRPC_PROTOBUF_PROVIDER=package \
+        -DgRPC_RE2_PROVIDER=package \
+        -DgRPC_SSL_PROVIDER=package \
+        -DgRPC_ZLIB_PROVIDER=package \
+        -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out --target install && \
+    ldconfig && \
+    cd /var/tmp && rm -fr build
+
+# Install ctcache to speed up our clang-tidy build
+WORKDIR /var/tmp/build
+RUN curl -fsSL https://github.com/matus-chochlik/ctcache/archive/0ad2e227e8a981a9c1a6060ee6c8ec144bb976c6.tar.gz | \
+    tar -xzf - --strip-components=1 && \
+    cp clang-tidy /usr/local/bin/clang-tidy-wrapper && \
+    cp clang-tidy-cache /usr/local/bin/clang-tidy-cache && \
+    cd /var/tmp && rm -fr build
+
+# Install sccache from https://github.com/mozilla/sccache
+WORKDIR /var/tmp/sccache
+RUN curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.5.4/sccache-v0.5.4-x86_64-unknown-linux-musl.tar.gz | \
+    tar -zxf - --strip-components=1 && \
+    mkdir -p /usr/local/bin && \
+    mv sccache /usr/local/bin/sccache && \
+    chmod +x /usr/local/bin/sccache
+
+# Install the Cloud SDK and some of the emulators. We use the emulators to run
+# integration tests for the client libraries.
+COPY . /var/tmp/ci
+WORKDIR /var/tmp/downloads
+RUN /var/tmp/ci/install-cloud-sdk.sh
+ENV CLOUD_SDK_LOCATION=/usr/local/google-cloud-sdk
+ENV PATH=${CLOUD_SDK_LOCATION}/bin:${PATH}
+
+
+#>>>>>>>>>>>>>>>>> unixODBC setup >>>>>>>>>>>>>>>
+
+RUN echo '**** unixODBC installation START ****'
+
+## BEGIN Installs pre-requisites for the Simba ODBC Driver.
+
+# glibc 2.17 or later
+RUN echo 'Installing glibc...'
+RUN apt-get install -y --no-install-recommends libc6
+RUN echo 'Verifying glibc version...'
+RUN dpkg -l libc6
+RUN if [ $(ldd --version | grep GLIBC | awk '{print $5}') -lt 2.17 ] ; \
+    then echo 'glibc version is < 2.17: exiting...' ; exit 1 ; fi
+
+# unixODBC Driver Manager
+RUN echo 'Installing unixODBC Driver Manager...'
+RUN apt-get install -y --no-install-recommends unixodbc
+RUN echo 'Verifying unixODBC is installed...'
+RUN dpkg -l unixodbc
+RUN echo 'Verifying unixODBC Driver Manager libraries are installed...'
+RUN if [ $(dpkg --search libodbc*.so | grep -c libodbc.so) -eq 0 ] ; \
+    then echo 'unixODBC installation failed: exiting...' ; exit 1 ; fi
+
+# Configure unixODBC Driver Manager
+RUN echo "Creating Symlinks For unixODBC Driver Manager..."
+RUN ln -s /usr/lib/x86_64-linux-gnu/libodbc.so.2 /usr/local/lib/libodbc.so.2
+RUN ln -s /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 /usr/local/lib/libodbcinst.so.2
+RUN ln -s /usr/lib/x86_64-linux-gnu/libodbc.so.2 /usr/local/lib/libodbc.so
+RUN ln -s /usr/lib/x86_64-linux-gnu/libodbcinst.so.2 /usr/local/lib/libodbcinst.so
+RUN echo "Verifying Symlinks For unixODBC Driver Manager..."
+RUN if [ $(ls -l /usr/local/lib/ | grep -c "libodbc.*.so ->") -eq 0 ] ; \
+    then echo 'unixODBC symlink creation failed: exiting...' ; \
+    exit 1 ; fi
+RUN if [ $(ls -l /usr/local/lib/ | grep -c "libodbc.*.so.2 ->") -eq 0 ] ; \
+    then echo 'unixODBC symlink creation failed: exiting...' ; \
+    exit 1 ; fi
+
+## END Installs pre-requisites for the Simba ODBC Driver.
+
+# Check gcloud is installed.
+RUN echo "Verifying google cloud SDK is installed using GCS Bucket: "${GCS_BUCKET}
+RUN if [ $(gsutil ls gs://${GCS_BUCKET}/simba-odbc | grep -c simba.zip) -eq 0 ] ; \
+    then echo 'Simba deliverables not found for download: exiting...' ; exit 1 ; fi
+
+
+# Configure connection credentials for the driver.
+RUN echo 'Configuring Connection Credentials...'
+RUN mkdir -p /opt/simba/connection
+WORKDIR /opt/simba
+RUN gcloud secrets versions access latest --secret=simba-odbc-keys | tee /opt/simba/connection/key.json
+RUN echo 'Verifying Connection Keys File Size...'
+RUN if [ $(stat -c%s /opt/simba/connection/key.json) -lt 100 ] ; \
+    then echo 'Invalid connection keys: exiting...' ; exit 1 ; fi
+
+# Install Simba ODBC Driver
+RUN echo 'Installing Simba ODBC Driver...'
+RUN gsutil -m cp gs://${GCS_BUCKET}/simba-odbc/simba.zip .
+RUN unzip -qq simba.zip
+RUN echo 'Verifying Simba Install Directory...'
+RUN if [ $(ls /opt/simba/ | grep -c googlebigqueryodbc) -eq 0 ] ; \
+    then echo 'Simba driver not installed: exiting...' ; exit 1 ; fi
+
+# Configure environment variables
+RUN echo 'Configuring Environment Variables For Simba Driver...'
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/
+ENV LD_PRELOAD=/usr/local/lib/libodbc.so:/usr/local/lib/libodbcinst.so
+ENV ODBCINI=/opt/simba/googlebigqueryodbc/odbc.ini
+ENV ODBCINSTINI=/opt/simba/googlebigqueryodbc/odbcinst.ini
+ENV SIMBAGOOGLEBIGQUERYODBCINI=/opt/simba/googlebigqueryodbc/lib/simba.googlebigqueryodbc.ini
+RUN echo 'Verifying Environment Variables...'
+RUN echo 'LD_LIBRARY_PATH='${LD_LIBRARY_PATH}
+RUN echo 'ODBCINI='${ODBCINI}
+RUN echo 'ODBCINSTINI='${ODBCINSTINI}
+RUN echo 'SIMBAGOOGLEBIGQUERYODBCINI='${SIMBAGOOGLEBIGQUERYODBCINI}
+
+# Download odbc headers
+WORKDIR /workspace
+RUN echo 'Cloning iODBC github repo...'
+RUN git clone https://github.com/openlink/iODBC.git
+ENV IODBC_INCLUDE_PATH=/workspace/iODBC/include
+
+RUN echo '****unixODBC installation END****'

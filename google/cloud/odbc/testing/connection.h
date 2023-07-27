@@ -22,8 +22,17 @@ namespace google {
 namespace cloud {
 namespace bigquery_odbc {
 
-const std::string kDefaultDataSource = "ODBCTestsDSN";
-auto const kDefaultConnectionString = "DSN=" + kDefaultDataSource;
+// Returns the default DSN name after checking if ODBC_TESTS_DSN env is defined
+inline const std::string GetDefaultDSN() {
+    std::string const env_name = "ODBC_TESTS_DSN";
+    auto const* val = std::getenv(env_name.c_str());
+    if (val) return std::string{val};
+    return "ODBCTestsDSN";
+}
+
+const std::string kDefaultDataSource = GetDefaultDSN();
+
+auto const kDefaultConnectionString = "DSN=" + GetDefaultDSN();
 
 // Connect using a <conn_str> and populate the ConnectionHandle
 SQLRETURN Connect(std::string conn_str, std::shared_ptr<ConnectionHandle> conn, int timeout = 30);
