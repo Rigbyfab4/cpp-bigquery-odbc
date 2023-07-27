@@ -80,7 +80,7 @@ Checks: >
 # Turn all the warnings from the checks above into errors.
 WarningsAsErrors: "*"
 
-HeaderFilterRegex: "(google/cloud/|generator/).*\\.h$"
+HeaderFilterRegex: "(google/cloud/odbc).*\\.h$"
 
 CheckOptions:
   - { key: readability-identifier-naming.NamespaceCase,          value: lower_case }
