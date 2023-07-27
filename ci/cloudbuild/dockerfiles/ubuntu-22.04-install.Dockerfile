@@ -274,4 +274,10 @@ RUN echo 'ODBCINI='${ODBCINI}
 RUN echo 'ODBCINSTINI='${ODBCINSTINI}
 RUN echo 'SIMBAGOOGLEBIGQUERYODBCINI='${SIMBAGOOGLEBIGQUERYODBCINI}
 
+# Download odbc headers
+WORKDIR /workspace
+RUN echo 'Cloning iODBC github repo...'
+RUN git clone https://github.com/openlink/iODBC.git
+ENV IODBC_INCLUDE_PATH=/workspace/iODBC/include
+
 RUN echo '****unixODBC installation END****'

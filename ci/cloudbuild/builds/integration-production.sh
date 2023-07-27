@@ -18,13 +18,12 @@ set -euo pipefail
 
 source "$(dirname "$0")/../../lib/init.sh"
 source module ci/cloudbuild/builds/lib/cmake.sh
-source module ci/cloudbuild/builds/lib/integration.sh
 source module ci/lib/io.sh
 
 mapfile -t cmake_args < <(cmake::common_args)
 
-# We need to download the headers before we can use ODBC_BUILD_TESTING=ON
-integration::odbc_headers
+# This is the name of DSN set in odbc.ini from simba.zip
+export ODBC_TESTS_DSN="SampleDSN"
 
 io::run cmake "${cmake_args[@]}" \
   -DCMAKE_CXX_STANDARD=14 \
