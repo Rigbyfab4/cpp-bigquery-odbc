@@ -42,6 +42,9 @@ RUN apt-get update && \
         ninja-build \
         patch \
         pkg-config \
+        python3 \
+        python3-dev \
+        python3-pip \
         tar \
         unzip \
         zip \
@@ -51,6 +54,10 @@ RUN apt-get update && \
         ca-certificates \
         apt-transport-https \
         clang-tidy
+
+# clang-tidy-cache needs python
+RUN update-alternatives --install /usr/bin/python python $(which python3) 10
+RUN pip3 install setuptools wheel requests
 
 # Install all the direct (and indirect) dependencies for cpp-bigquery-odbc.
 # Use a different directory for each build, and remove the downloaded
@@ -189,6 +196,19 @@ RUN curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.5.4/sccac
     mkdir -p /usr/local/bin && \
     mv sccache /usr/local/bin/sccache && \
     chmod +x /usr/local/bin/sccache
+
+WORKDIR /var/tmp/google-cloud-cpp
+RUN curl -fsSL https://github.com/googleapis/google-cloud-cpp/archive/90ad988fa439de20b79774b1ee737a1dcb15f9c8.tar.gz | \
+    tar -zxf - --strip-components=1 && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DGOOGLE_CLOUD_CPP_ENABLE_CTYPE_CORD_WORKAROUND=ON \
+        -DBUILD_TESTING=OFF \
+        -DGOOGLE_CLOUD_CPP_ENABLE_EXAMPLES=OFF \
+        -DGOOGLE_CLOUD_CPP_ENABLE=experimental-bigquery_rest \
+        -S . -B cmake-out -GNinja && \
+    cmake --build cmake-out -- -j $(nproc) && \
+    cmake --build cmake-out --target install
 
 # Install the Cloud SDK and some of the emulators. We use the emulators to run
 # integration tests for the client libraries.

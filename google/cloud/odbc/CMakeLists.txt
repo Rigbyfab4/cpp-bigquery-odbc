@@ -68,20 +68,26 @@ function (odbc_define_tests)
   gtest_discover_tests(all_tests)
 endfunction ()
 
-# These flags need to be set to build google_cloud_cpp_bigquery_rest without tests 
-set(GOOGLE_CLOUD_CPP_ENABLE_CTYPE_CORD_WORKAROUND ON)
-set(BUILD_TESTING OFF)
-set(GOOGLE_CLOUD_CPP_ENABLE_EXAMPLES OFF)
-set(GOOGLE_CLOUD_CPP_ENABLE experimental-bigquery_rest)
+find_package(google_cloud_cpp_bigquery_rest CONFIG QUIET)
+if (NOT google_cloud_cpp_bigquery_rest_FOUND)
+  # These flags need to be set to build google_cloud_cpp_bigquery_rest without tests 
+  set(GOOGLE_CLOUD_CPP_ENABLE_CTYPE_CORD_WORKAROUND ON)
+  set(BUILD_TESTING OFF)
+  set(GOOGLE_CLOUD_CPP_ENABLE_EXAMPLES OFF)
+  set(GOOGLE_CLOUD_CPP_ENABLE experimental-bigquery_rest)
 
-FetchContent_Declare(
-  google-cloud-cpp
-  URL https://github.com/googleapis/google-cloud-cpp/archive/refs/heads/main.zip
-)
-FetchContent_MakeAvailable(google-cloud-cpp)
+  FetchContent_Declare(
+    google-cloud-cpp
+    URL https://github.com/googleapis/google-cloud-cpp/archive/refs/heads/main.zip
+  )
+  FetchContent_MakeAvailable(google-cloud-cpp)
+else()
+  find_package(google_cloud_cpp_bigquery_rest CONFIG REQUIRED)
+endif()
 
 # For now, I am adding a default target which just depends on google_cloud_cpp_bigquery_rest.
 # This will change
-add_custom_target(odbc_client_interface ALL DEPENDS google_cloud_cpp_bigquery_rest)
+add_library(odbc_client_interface dummy.cc)
+target_link_libraries(odbc_client_interface PRIVATE google_cloud_cpp_bigquery_rest)
 
 odbc_define_tests()
