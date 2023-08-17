@@ -7,17 +7,13 @@ on:
         required: true
         description: "The ref we want to compile"
         type: string
-      full-matrix:
-        required: true
-        description: "Build the full matrix"
-        type: boolean
 
 permissions:
   contents: read
 
 jobs:
   cmake:
-    name: cmake + ${{ matrix.msvc }} + ${{ matrix.arch }} + ${{ matrix.build_type }} + ${{ matrix.shard }}
+    name: cmake + ${{ matrix.msvc }} + ${{ matrix.arch }} + ${{ matrix.shard }}
     runs-on:
       group: cpp-runners
       labels: ${{ endsWith(matrix.msvc, '-2019') && 'windows-2019' || 'windows-2022' }}
@@ -28,9 +24,7 @@ jobs:
       # Continue other builds even if one fails
       fail-fast: false
       matrix:
-        exclude-from-full-trick: [ true ]
         msvc: [ msvc-2022, msvc-2019 ]
-        build_type: [ Debug ]
         arch: [ x64 ]
         shard: [ Core ]
     steps:
@@ -85,10 +79,10 @@ jobs:
         # Put the CMake output in a directory with more space and keep it short
         # to avoid running into the MSVC limits.
         export CMAKE_OUT='c:\b'
-        ci/gha/builds/windows-cmake.sh ${{ matrix.build_type }}
+        ci/gha/builds/windows-cmake.sh
     env:
       SCCACHE_GCS_BUCKET: cpp-bigquery-odbc-gha-cache
-      SCCACHE_GCS_KEY_PREFIX: sccache/${{ matrix.msvc }}/${{ matrix.arch}}/${{ matrix.build_type }}
+      SCCACHE_GCS_KEY_PREFIX: sccache/${{ matrix.msvc }}/${{ matrix.arch}}
       SCCACHE_GCS_RW_MODE: READ_WRITE
       SCCACHE_IGNORE_SERVER_IO_ERROR: 1
       VCPKG_BINARY_SOURCES: x-gcs,gs://cpp-bigquery-odbc-gha-cache/vcpkg-cache/${{ matrix.msvc }},readwrite

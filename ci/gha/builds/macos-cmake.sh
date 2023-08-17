@@ -22,9 +22,7 @@ source module ci/gha/builds/lib/cmake.sh
 
 mapfile -t args < <(cmake::common_args)
 args+=(
-  # This build uses vcpkg, we can turn off the warning about using the
-  # system's OpenSSL.
-  -DBUILD_TESTING=OFF
+  -DODBC_BUILD_TESTING=OFF
 )
 mapfile -t vcpkg_args < <(cmake::vcpkg_args)
 mapfile -t ctest_args < <(ctest::common_args)
