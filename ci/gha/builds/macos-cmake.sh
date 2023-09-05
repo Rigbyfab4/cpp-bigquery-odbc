@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright 2023 Google LLC
 #
@@ -17,22 +17,28 @@
 set -euo pipefail
 
 source "$(dirname "$0")/../../lib/init.sh"
-source module ci/cloudbuild/builds/lib/cmake.sh
-source module ci/lib/io.sh
+source module ci/gha/builds/lib/macos.sh
+source module ci/gha/builds/lib/cmake.sh
 
-cmake_config_testing_details=(
+mapfile -t args < <(cmake::common_args)
+args+=(
   -DODBC_BUILD_TESTING=OFF
 )
-if command -v /usr/local/bin/sccache >/dev/null 2>&1; then
-  cmake_config_testing_details+=(
-    -DCMAKE_CXX_COMPILER_LAUNCHER=/usr/local/bin/sccache
-  )
-fi
-## [BEGIN packaging.md]
-# Pick a location to install the artifacts, e.g., `/usr/local` or `/opt`
-PREFIX="${HOME}/cpp-bigquery-odbc-installed"
-cmake -S. -Bcmake-out \
-  "${cmake_config_testing_details[@]}"
-cmake --build cmake-out -- -j "$(nproc)"
-cmake --build cmake-out --target install
-## [DONE packaging.md]
+mapfile -t vcpkg_args < <(cmake::vcpkg_args)
+mapfile -t ctest_args < <(ctest::common_args)
+
+io::log_h1 "Starting Build"
+TIMEFORMAT="==> 🕑 CMake configuration done in %R seconds"
+time {
+  io::run cmake "${args[@]}" "${vcpkg_args[@]}"
+}
+
+TIMEFORMAT="==> 🕑 CMake build done in %R seconds"
+time {
+  io::run cmake --build cmake-out
+}
+
+TIMEFORMAT="==> 🕑 CMake test done in %R seconds"
+time {
+  io::run ctest "${ctest_args[@]}" --test-dir cmake-out -LE integration-test
+}
