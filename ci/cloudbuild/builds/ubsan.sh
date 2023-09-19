@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Please see https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html for features of UndefinedBehaviorSanitizer.
+# The options we are enabling for this sanitizer can be seen in .bazelrc
+
 set -euo pipefail
 
 source "$(dirname "$0")/../../lib/init.sh"

@@ -31,8 +31,7 @@ build:macos --host_cxxopt=-std=c++17
 # runs inside a docker image.
 build --experimental_convenience_symlinks=ignore
 
-# It is frustrating when long-running builds/tests fail, but it is even more
-# frustrating when they fail and don't give any output. So, remove the limit.
+# For build output, remove the limit on the stdout size
 build --experimental_ui_max_stdouterr_bytes=-1
 
 # Inject ${GTEST_SHUFFLE} and ${GTEST_RANDOM_SEED} into the test environment
@@ -71,6 +70,8 @@ build:ubsan --copt=-Og
 build:ubsan --copt=-g
 build:ubsan --copt=-fsanitize=undefined
 build:ubsan --copt=-fno-omit-frame-pointer
+build:ubsan --copt=-fsanitize=float-divide-by-zero
+build:ubsan --copt=-fsanitize=nullability
 build:ubsan --linkopt=-fsanitize=undefined
 build:ubsan --linkopt=-fsanitize-link-c++-runtime
 build:ubsan --action_env=UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
@@ -78,22 +79,6 @@ build:ubsan --cxxopt=-stdlib=libc++
 build:ubsan --linkopt=-stdlib=libc++
 build:ubsan --linkopt=-lc++
 build:ubsan --linkopt=-lc++abi
-
-# --config xsan: Runs misc. sanitizers that aren't covered elsewhere.
-build:xsan --strip=never
-build:xsan --copt=-Og
-build:xsan --copt=-g
-build:xsan --copt=-fsanitize=float-divide-by-zero
-build:xsan --copt=-fsanitize=nullability
-build:xsan --copt=-fno-omit-frame-pointer
-build:xsan --cxxopt=-stdlib=libc++
-build:xsan --linkopt=-stdlib=libc++
-build:xsan --linkopt=-lc++
-build:xsan --linkopt=-lc++abi
-build:xsan --linkopt=-fsanitize-link-c++-runtime
-build:xsan --linkopt=-fsanitize=float-divide-by-zero
-build:xsan --linkopt=-fsanitize=nullability
-build:xsan --action_env=UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
 
 # --config msan: Memory Sanitizer
 build:msan --strip=never
