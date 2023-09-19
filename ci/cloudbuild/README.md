@@ -24,6 +24,20 @@ we prefer to configure them with version controlled YAML files that live in the
 also, but we have the local `trigger.sh` script to make this process a bit
 easier. See `trigger.sh --help` for more details.
 
+## Prerequisites for adding a new build
+
+It is more efficient to test a new build locally before adding it. These steps can be skipped
+if you are planning to test the build on gcb through pr checks, but that is not recommended.
+
+1. For testing a build locally, you will need to install docker and run it.
+   See the internal-only [doc](http://go/installdocker).
+2. Some builds(e.g. `integration-production`) might require gcloud authentication within docker. An
+   example of how this can be done can be seen from the internal-only
+   [doc](https://g3doc.corp.google.com/company/teams/bigquery-developer-tools/odbc/odbc_tests.md#running-odbc-tests-on-docker).
+3. For creating triggers you need to [install gcloud cli](https://cloud.google.com/sdk/docs/install).
+   Make sure to authenticate it with your service/user account and point it to the project where
+   the triggers would reside and cloudbuild will run.
+
 ## Adding a new build
 
 Adding a new build can be done in a single PR. For
@@ -94,8 +108,7 @@ likelihood of the code working for our customers.
 ## GCB Worker Pool
 
 Our GCB builds are run in a [custom worker pool][custom-worker-pool] to make scaling up resources easier.
-You can see our worker pool(s) in the web UI at
-https://console.cloud.google.com/cloud-build/settings/worker-pool?project=bigquery-devtools-drivers
+You can see our worker pool(s) in the [web UI](https://console.cloud.google.com/cloud-build/settings/worker-pool?project=bigquery-devtools-drivers).
 See `gcloud beta builds worker-pools --help` for more info about worker pools.
 
 We initially created the pool with the following command:
