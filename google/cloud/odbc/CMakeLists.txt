@@ -75,6 +75,7 @@ if (NOT google_cloud_cpp_bigquery_rest_FOUND)
   # These flags need to be set to build google_cloud_cpp_bigquery_rest without examples
   set(GOOGLE_CLOUD_CPP_ENABLE_CTYPE_CORD_WORKAROUND ON)
   set(GOOGLE_CLOUD_CPP_ENABLE_EXAMPLES OFF)
+  set(BUILD_TESTING OFF)
   set(GOOGLE_CLOUD_CPP_ENABLE experimental-bigquery_rest)
 
   FetchContent_Declare(

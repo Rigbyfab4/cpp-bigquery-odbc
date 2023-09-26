@@ -27,9 +27,10 @@
 #include "google/cloud/common_options.h"
 #include "google/cloud/credentials.h"
 #include "google/cloud/internal/getenv.h"
-#include "google/cloud/testing_util/example_driver.h"
 
+#include "testing_util/example_driver.h"
 #include "testing_util/status_matchers.h"
+
 #include <gmock/gmock.h>
 
 #include <fstream>
@@ -39,71 +40,8 @@ namespace google {
 namespace cloud {
 namespace bigquery_v2_minimal_internal {
 
-void SetClientEndpoint(std::vector<std::string> const& argv) {
-  if (!argv.empty()) {
-    throw google::cloud::testing_util::Usage{"set-client-endpoint"};
-  }
-  //! [set-client-endpoint]
-  // This configuration is common with Private Google Access:
-  //     https://cloud.google.com/vpc/docs/private-google-access
-  auto options = google::cloud::Options{}.set<google::cloud::EndpointOption>(
-      "private.googleapis.com");
-  auto client = DatasetClient(MakeDatasetConnection(options));
-  //! [set-client-endpoint]
-}
-
-//! [custom-idempotency-policy]
-class CustomIdempotencyPolicy
-    : public DatasetIdempotencyPolicy {
- public:
-  ~CustomIdempotencyPolicy() override = default;
-  std::unique_ptr<DatasetIdempotencyPolicy>
-  clone() const override {
-    return std::make_unique<CustomIdempotencyPolicy>(*this);
-  }
-  // Override inherited functions to define as needed.
-};
-//! [custom-idempotency-policy]
-
-void SetRetryPolicy(std::vector<std::string> const& argv) {
-  if (!argv.empty()) {
-    throw google::cloud::testing_util::Usage{"set-client-retry-policy"};
-  }
-  //! [set-retry-policy]
-  auto options =
-      google::cloud::Options{}
-          .set<DatasetIdempotencyPolicyOption>(
-              CustomIdempotencyPolicy().clone())
-          .set<DatasetRetryPolicyOption>(DatasetLimitedErrorCountRetryPolicy(3)
-                      .clone())
-          .set<DatasetBackoffPolicyOption>(
-              google::cloud::ExponentialBackoffPolicy(
-                  /*initial_delay=*/std::chrono::milliseconds(200),
-                  /*maximum_delay=*/std::chrono::seconds(45),
-                  /*scaling=*/2.0)
-                  .clone());
-  auto connection = MakeDatasetConnection(options);
-
-  // c1 and c2 share the same retry policies
-  auto c1 = DatasetClient(connection);
-  auto c2 = DatasetClient(connection);
-
-  // You can override any of the policies in a new client. This new client
-  // will share the policies from c1 (or c2) *except* for the retry policy.
-  auto c3 = DatasetClient(
-      connection, google::cloud::Options{}
-                      .set<DatasetRetryPolicyOption>(DatasetLimitedTimeRetryPolicy(
-                                  std::chrono::minutes(5))
-                                  .clone()));
-
-  // You can also override the policies in a single call:
-  // c3.SomeRpc(..., google::cloud::Options{}
-  //     .set<google::cloud::bigquery_biglake_v1::MetastoreServiceRetryPolicyOption>(
-  //       google::cloud::bigquery_biglake_v1::MetastoreServiceLimitedErrorCountRetryPolicy(10).clone()));
-  //! [set-retry-policy]
-}
-
 void ExplicitADCs(std::vector<std::string> const& argv) {
+  using ::google::cloud::internal::GetEnv;
   if (argv.size() == 1 && argv[0] == "--help") {
     throw google::cloud::testing_util::Usage{
         "explicit-adcs"};
@@ -115,19 +53,20 @@ void ExplicitADCs(std::vector<std::string> const& argv) {
   auto dataset_client = DatasetClient(MakeDatasetConnection(options));
   
   GetDatasetRequest request;
-  request.set_project_id("google.com:bq-devtools-test");
-  request.set_dataset_id("ODBCTESTDATASET");
+  std::string project_id = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT").value_or("");
+  std::string dataset_id = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET").value_or("");
+  request.set_project_id(project_id);
+  request.set_dataset_id(dataset_id);
   auto dataset = dataset_client.GetDataset(request);
   ASSERT_STATUS_OK(dataset);
   EXPECT_EQ(dataset->kind, "bigquery#dataset");
-  EXPECT_EQ(dataset->id, "google.com:bq-devtools-test:ODBCTESTDATASET");
-  EXPECT_EQ(dataset->self_link, "https://bigquery.googleapis.com/bigquery/v2/projects/google.com:bq-devtools-test/datasets/ODBCTESTDATASET");
-  EXPECT_EQ(dataset->dataset_reference.project_id, "google.com:bq-devtools-test");
-  EXPECT_EQ(dataset->dataset_reference.dataset_id, "ODBCTESTDATASET");
+  EXPECT_EQ(dataset->dataset_reference.project_id, project_id);
+  EXPECT_EQ(dataset->dataset_reference.dataset_id, dataset_id);
   std::cout << "All checks passed" << std::endl;
 }
 
 void WithServiceAccount(std::vector<std::string> const& argv) {
+  using ::google::cloud::internal::GetEnv;
   if (argv.size() != 1 || argv[0] == "--help") {
     throw google::cloud::testing_util::Usage{"with-service-account <keyfile>"};
   }
@@ -142,32 +81,15 @@ void WithServiceAccount(std::vector<std::string> const& argv) {
             google::cloud::MakeServiceAccountCredentials(contents));
     auto dataset_client = DatasetClient(MakeDatasetConnection(options));
     GetDatasetRequest request;
-    request.set_project_id("moonlit-byway-383018");
-    request.set_dataset_id("ODBCTESTDATASET");
+    std::string project_id = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT").value_or("");
+    std::string dataset_id = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET").value_or("");
+    request.set_project_id(project_id);
+    request.set_dataset_id(dataset_id);
     auto dataset = dataset_client.GetDataset(request);
     ASSERT_STATUS_OK(dataset);
   }
   //! [with-service-account]
   (argv.at(0));
-}
-
-void AutoRun(std::vector<std::string> const& argv) {
-  namespace examples = ::google::cloud::testing_util;
-  using ::google::cloud::internal::GetEnv;
-  if (!argv.empty()) throw examples::Usage{"auto"};
-  examples::CheckEnvironmentVariablesAreSet(
-      {"GOOGLE_CLOUD_CPP_TEST_SERVICE_ACCOUNT_KEYFILE"});
-  auto const keyfile =
-      GetEnv("GOOGLE_CLOUD_CPP_TEST_SERVICE_ACCOUNT_KEYFILE").value();
-
-  std::cout << "\nRunning SetClientEndpoint() example" << std::endl;
-  SetClientEndpoint({});
-
-  std::cout << "\nRunning SetRetryPolicy() example" << std::endl;
-  SetRetryPolicy({});
-
-  std::cout << "\nRunning WithServiceAccount() example" << std::endl;
-  WithServiceAccount({keyfile});
 }
 
 }  // namespace bigquery_v2_minimal_internal
@@ -176,11 +98,8 @@ void AutoRun(std::vector<std::string> const& argv) {
 
 int main(int argc, char* argv[]) {  // NOLINT(bugprone-exception-escape)
   google::cloud::testing_util::Example example({
-      {"set-client-endpoint", google::cloud::bigquery_v2_minimal_internal::SetClientEndpoint},
-      {"set-retry-policy", google::cloud::bigquery_v2_minimal_internal::SetRetryPolicy},
       {"explicit-adcs", google::cloud::bigquery_v2_minimal_internal::ExplicitADCs},
       {"with-service-account", google::cloud::bigquery_v2_minimal_internal::WithServiceAccount},
-      {"auto", google::cloud::bigquery_v2_minimal_internal::AutoRun},
   });
   return example.Run(argc, argv);
 }

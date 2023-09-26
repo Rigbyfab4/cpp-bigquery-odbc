@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "google/cloud/testing_util/status_matchers.h"
+#include "status_matchers.h"
 
 namespace google {
 namespace cloud {
-GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
 namespace testing_util_internal {
 
 using ::testing::Matcher;
@@ -79,6 +78,5 @@ void StatusIsMatcher::DescribeNegationTo(std::ostream* os) const {
 }
 
 }  // namespace testing_util_internal
-GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
 }  // namespace cloud
 }  // namespace google

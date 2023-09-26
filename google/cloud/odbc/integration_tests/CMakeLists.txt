@@ -19,14 +19,15 @@ project(
   cpp-bigquery-odbc-integration-testing
   LANGUAGES CXX
 )
-include(CppBigqueryOdbcCommon)
 
-add_subdirectory(testing_util)
+include(CppBigqueryOdbcCommon)
 
 function (define_integration_tests)
   if (NOT INTEGRATION_TESTING)
     return()
   endif ()
+
+  add_subdirectory(testing_util)
 
   file(
     GLOB client_library_tests_cc

@@ -21,10 +21,12 @@ endif ()
 add_library(
     cpp_bigquery_odbc_integration_testing
     status_matchers.cc
-    status_matchers.h)
+    status_matchers.h
+    example_driver.cc
+    example_driver.h)
 
 target_link_libraries(
     cpp_bigquery_odbc_integration_testing
-    google_cloud_cpp_testing
+    google_cloud_cpp_common
     GTest::gmock
     GTest::gtest_main)
