@@ -56,8 +56,8 @@ adds the build for running integration tests. The steps to add a new build are:
    - You can test this script right away with `build.sh` by explicitly
      specifying the `--distro` you want your build to run in. For example:
    ```
-   $ ./build.sh --distro ubuntu-22.04-install <new-build-name> # or ...
-   $ ./build.sh --distro ubuntu-22.04-install <new-build-name> --docker
+   $ ./build.sh --distro ubuntu-22.04-install --build <new-build-name> # or ...
+   $ ./build.sh --distro ubuntu-22.04-install --build <new-build-name> --docker
    ```
 3. Create your trigger file(s) in the `triggers/` directory. If you want both PR
    (presubmit) and CI (postsubmit) builds you can generate the trigger files
