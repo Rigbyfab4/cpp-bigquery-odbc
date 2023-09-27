@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,27 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-licenses(["notice"])  # Apache v2
+# Please see https://clang.llvm.org/docs/AddressSanitizer.html for features of AddressSanitizer.
+# The options we are enabling for this sanitizer can be seen in .bazelrc
 
-package(default_visibility = ["//visibility:private"])
+set -euo pipefail
 
-cc_library(
-    name = "odbc_client_interface",
-    srcs = [],
-    hdrs = [],
-    include_prefix = "odbc_client_interface",
-    deps = [
-        "@com_google_googletest//:gtest_main",
-        "@com_google_cloud_cpp//:experimental-bigquery-rest"
-    ],
-    visibility = ["//:__pkg__"],
-)
+source "$(dirname "$0")/../../lib/init.sh"
+source module ci/cloudbuild/builds/lib/bazel.sh
 
-cc_test(
-    name = "odbc_client_interface_test",
-    srcs = ["tests/dummy_test.cc"],
-    tags = ["integration-test"],
-    deps = [
-        "//:odbc_client_interface"
-    ]
-)
+export CC=clang
+export CXX=clang++
+
+mapfile -t args < <(bazel::common_args)
+args+=("--config=asan")
+bazel test "${args[@]}" --test_tag_filters=integration-test ...
