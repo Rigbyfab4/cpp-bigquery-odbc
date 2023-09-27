@@ -12,6 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+/**
+ * This file is copied from google/cloud/testing_util/example_driver.h because
+ * we don't want dependency on google_cloud_cpp_testing.
+ * 
+ * Following changes have been made to the original file at the time of copying:
+ * 1) Removed the usage of GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_* because if
+ * anything breaks in this file because of some version change in google-cloud-cpp,
+ * we will have to anyways manually fix that, since this file isn't synced to the
+ * corresponding updated file.
+ * 2) GOOGLE_CLOUD_CPP_HAVE_EXCEPTIONS is not necessary here.
+*/
+
 #ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_EXAMPLE_DRIVER_H
 #define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_EXAMPLE_DRIVER_H
 
