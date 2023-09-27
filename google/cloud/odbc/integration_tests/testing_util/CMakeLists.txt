@@ -1,5 +1,5 @@
 # ~~~
-# Copyright 2023 Google Inc.
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +14,19 @@
 # limitations under the License.
 # ~~~
 
-cmake_minimum_required(VERSION 3.14)
+if (NOT INTEGRATION_TESTING)
+    return()
+endif ()
 
-project(
-    cpp-bigquery-odbc
-    VERSION 1.0.0
-    LANGUAGES CXX)
-set(PROJECT_VERSION_PRE_RELEASE "rc")
+add_library(
+    cpp_bigquery_odbc_integration_testing
+    status_matchers.cc
+    status_matchers.h
+    example_driver.cc
+    example_driver.h)
 
-include(CTest)
-
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
-add_subdirectory(google/cloud/odbc)
+target_link_libraries(
+    cpp_bigquery_odbc_integration_testing
+    google_cloud_cpp_common
+    GTest::gmock
+    GTest::gtest_main)

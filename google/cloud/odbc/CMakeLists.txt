@@ -20,21 +20,23 @@ project(
   LANGUAGES CXX
 )
 
+add_subdirectory(integration_tests)
+
 include(FetchContent)
+
+# We need googletest for all our tests target.
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/v1.13.0.tar.gz
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 function (odbc_define_tests)
   if (NOT ODBC_BUILD_TESTING)
     return()
   endif ()
-
-  # We need googletest for the odbc tests target.
-  FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/v1.13.0.tar.gz
-  )
-  # For Windows: Prevent overriding the parent project's compiler/linker settings
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(googletest)
 
   enable_testing()
 
@@ -70,10 +72,10 @@ endfunction ()
 
 find_package(google_cloud_cpp_bigquery_rest CONFIG QUIET)
 if (NOT google_cloud_cpp_bigquery_rest_FOUND)
-  # These flags need to be set to build google_cloud_cpp_bigquery_rest without tests 
+  # These flags need to be set to build google_cloud_cpp_bigquery_rest without examples
   set(GOOGLE_CLOUD_CPP_ENABLE_CTYPE_CORD_WORKAROUND ON)
-  set(BUILD_TESTING OFF)
   set(GOOGLE_CLOUD_CPP_ENABLE_EXAMPLES OFF)
+  set(BUILD_TESTING OFF)
   set(GOOGLE_CLOUD_CPP_ENABLE experimental-bigquery_rest)
 
   FetchContent_Declare(
