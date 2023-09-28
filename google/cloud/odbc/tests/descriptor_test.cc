@@ -131,11 +131,13 @@ void CopyDescRec(std::shared_ptr<ConnectionHandle> conn, std::string table_name,
 }
 
 TEST(DescriptorFieldsTest, SQLSetDescRec) {
-  auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  auto const table_name = kDatasetName + ".ODBC_SET_DESCRIPTOR_REC_TEST";
   auto conn = std::make_shared<ConnectionHandle>();
   Table table(table_name);
-
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  // Delete any existing table
+  table.Drop(conn);
+
   table.Create(conn, getSchemaStr(kStdSchema));
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
@@ -149,11 +151,13 @@ TEST(DescriptorFieldsTest, SQLSetDescRec) {
 }
 
 TEST(DescriptorFieldsTest, SQLCopyDesc) {
-  auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  auto const table_name = kDatasetName + ".ODBC_COPY_DESCRIPTOR_TEST";
   auto conn = std::make_shared<ConnectionHandle>();
   Table table(table_name);
-
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  // Delete any existing table
+  table.Drop(conn);
+
   table.Create(conn, getSchemaStr(kStdSchema));
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
@@ -167,11 +171,13 @@ TEST(DescriptorFieldsTest, SQLCopyDesc) {
 }
 
 TEST(DescriptorFieldsTest, SQLSetDescField) {
-  auto const table_name = kDatasetName + ".ODBC_DESCRIPTORS_TEST";
+  auto const table_name = kDatasetName + ".ODBC_SET_DESCRIPTOR_FIELD_TEST";
   auto conn = std::make_shared<ConnectionHandle>();
   Table table(table_name);
-
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  // Delete any existing table
+  table.Drop(conn);
+
   table.Create(conn, getSchemaStr(kStdSchema));
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 

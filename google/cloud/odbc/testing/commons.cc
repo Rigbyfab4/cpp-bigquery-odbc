@@ -120,7 +120,7 @@ void Table::Create(std::shared_ptr<ConnectionHandle> conn, std::string schema_st
 
 void Table::Drop(std::shared_ptr<ConnectionHandle> conn) {
   char drop_table_stmt[kBufferLength];
-  StrToChar(drop_table_stmt, "DROP TABLE " + table_name_);
+  StrToChar(drop_table_stmt, "DROP TABLE IF EXISTS " + table_name_);
   auto status = SQLExecDirect(conn->hstmt, (SQLCHAR *)drop_table_stmt, SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
 }

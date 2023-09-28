@@ -36,7 +36,7 @@ namespace bigquery_odbc {
 
 using Results = std::map<std::string, std::vector<std::string>>;
 
-constexpr SQLSMALLINT kBufferLength = 512;
+constexpr SQLSMALLINT kBufferLength = 1024;
 
 const std::string kDatasetName = "ODBC_TEST_DATASET";
 
