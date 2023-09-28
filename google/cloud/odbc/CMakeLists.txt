@@ -20,8 +20,6 @@ project(
   LANGUAGES CXX
 )
 
-add_subdirectory(integration_tests)
-
 include(FetchContent)
 
 # We need googletest for all our tests target.
@@ -93,3 +91,5 @@ add_library(odbc_client_interface dummy.cc)
 target_link_libraries(odbc_client_interface PRIVATE google_cloud_cpp_bigquery_rest)
 
 odbc_define_tests()
+
+add_subdirectory(integration_tests)

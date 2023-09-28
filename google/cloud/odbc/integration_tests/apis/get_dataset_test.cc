@@ -28,8 +28,8 @@
 #include "google/cloud/credentials.h"
 #include "google/cloud/internal/getenv.h"
 
-#include "testing_util/example_driver.h"
-#include "testing_util/status_matchers.h"
+#include "google/cloud/odbc/integration_tests/testing_util/example_driver.h"
+#include "google/cloud/odbc/integration_tests/testing_util/status_matchers.h"
 
 #include <gmock/gmock.h>
 
@@ -55,6 +55,7 @@ void ExplicitADCs(std::vector<std::string> const& argv) {
   GetDatasetRequest request;
   std::string project_id = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT").value_or("");
   std::string dataset_id = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET").value_or("");
+  std::cout << "dataset_id::: " << dataset_id << std::endl;
   request.set_project_id(project_id);
   request.set_dataset_id(dataset_id);
   auto dataset = dataset_client.GetDataset(request);
@@ -72,7 +73,6 @@ void WithServiceAccount(std::vector<std::string> const& argv) {
   }
   //! [with-service-account]
   [](std::string const& keyfile) {
-    std::cout << "WithServiceAccount::: " << keyfile << std::endl;
     auto is = std::ifstream(keyfile);
     is.exceptions(std::ios::badbit);  // Minimal error handling in examples
     auto contents = std::string(std::istreambuf_iterator<char>(is.rdbuf()), {});

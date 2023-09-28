@@ -28,8 +28,8 @@
 #include "google/cloud/credentials.h"
 #include "google/cloud/internal/getenv.h"
 
-#include "testing_util/example_driver.h"
-#include "testing_util/status_matchers.h"
+#include "google/cloud/odbc/integration_tests/testing_util/example_driver.h"
+#include "google/cloud/odbc/integration_tests/testing_util/status_matchers.h"
 
 #include <gmock/gmock.h>
 
@@ -75,7 +75,6 @@ void WithServiceAccount(std::vector<std::string> const& argv) {
   }
   //! [with-service-account]
   [](std::string const& keyfile) {
-    std::cout << "WithServiceAccount::: " << keyfile << std::endl;
     auto is = std::ifstream(keyfile);
     is.exceptions(std::ios::badbit);  // Minimal error handling in examples
     auto contents = std::string(std::istreambuf_iterator<char>(is.rdbuf()), {});
