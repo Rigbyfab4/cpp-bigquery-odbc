@@ -20,7 +20,6 @@ licenses(["notice"])  # Apache 2.0
     name = api_test.replace("/", "_").replace(".cc", ""),
     timeout = "long",
     srcs = [api_test],
-    tags = ["integration-test"],
     deps = [
         "@com_google_cloud_cpp//:experimental-bigquery-rest",
         "//google/cloud/odbc/integration_tests/testing_util:cpp_bigquery_odbc_integration_testing_util",
