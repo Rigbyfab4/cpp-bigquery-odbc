@@ -135,7 +135,6 @@ TEST(DescriptorFieldsTest, SQLSetDescRec) {
   auto conn = std::make_shared<ConnectionHandle>();
   Table table(table_name);
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  // Delete any existing table
   table.Drop(conn);
 
   table.Create(conn, getSchemaStr(kStdSchema));
@@ -155,7 +154,6 @@ TEST(DescriptorFieldsTest, SQLCopyDesc) {
   auto conn = std::make_shared<ConnectionHandle>();
   Table table(table_name);
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  // Delete any existing table
   table.Drop(conn);
 
   table.Create(conn, getSchemaStr(kStdSchema));
@@ -175,7 +173,6 @@ TEST(DescriptorFieldsTest, SQLSetDescField) {
   auto conn = std::make_shared<ConnectionHandle>();
   Table table(table_name);
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  // Delete any existing table
   table.Drop(conn);
 
   table.Create(conn, getSchemaStr(kStdSchema));

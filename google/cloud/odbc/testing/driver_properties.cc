@@ -19,7 +19,7 @@ namespace cloud {
 namespace bigquery_odbc {
 
 const map<SQLUSMALLINT, const std::string> kAllOdbc3Functions = {
-  {SQL_API_SQLALLOCENV, "SQL_API_SQLALLOCENV"},
+  //{SQL_API_SQLALLOCENV, "SQL_API_SQLALLOCENV"},
   {SQL_API_SQLALLOCHANDLE, "SQL_API_SQLALLOCHANDLE"},
   {SQL_API_SQLGETDESCFIELD, "SQL_API_SQLGETDESCFIELD"},
   {SQL_API_SQLBINDCOL, "SQL_API_SQLBINDCOL"},
@@ -80,7 +80,7 @@ const map<SQLUSMALLINT, const std::string> kAllOdbc3Functions = {
   {SQL_API_SQLFOREIGNKEYS, "SQL_API_SQLFOREIGNKEYS"},
   {SQL_API_SQLTABLEPRIVILEGES, "SQL_API_SQLTABLEPRIVILEGES"},
   {SQL_API_SQLMORERESULTS, "SQL_API_SQLMORERESULTS"},
-  {SQL_API_SQLSETSCROLLOPTIONS, "SQL_API_SQLSETSCROLLOPTIONS"}
+  //{SQL_API_SQLSETSCROLLOPTIONS, "SQL_API_SQLSETSCROLLOPTIONS"}
 };
 
 SQLRETURN GetAllFunctions(std::shared_ptr<ConnectionHandle> conn) {
@@ -90,7 +90,7 @@ SQLRETURN GetAllFunctions(std::shared_ptr<ConnectionHandle> conn) {
     for (auto function: kAllOdbc3Functions) {
       if (!SQL_FUNC_EXISTS(supported_functions, function.first)) {
         // TODO(#10): Remove printf and support logging
-        printf("%s: NOT AVAILABLE\n", function.second);
+        printf("%s: NOT AVAILABLE\n", function.second.c_str());
         return SQL_ERROR;
       }
     }
