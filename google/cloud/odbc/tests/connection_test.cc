@@ -32,7 +32,7 @@ std::vector<int> GetMajorMinorVer(std::string version_str) {
 }
 
 void VerifyDriverInfo(std::shared_ptr<ConnectionHandle> conn) {
-  EXPECT_EQ(conn->metadata.dsn_name, "ODBCTestsDSN");
+  EXPECT_EQ(conn->metadata.dsn_name, GetDefaultDSN());
   std::vector<int> db_odbc_versions = GetMajorMinorVer(conn->metadata.db_odbc_ver);
   EXPECT_EQ(db_odbc_versions[0], 3);
   std::vector<int> driver_odbc_versions = GetMajorMinorVer(conn->metadata.driver_odbc_ver);

@@ -60,7 +60,7 @@ std::shared_ptr<Results> Catalog::GetTables(std::shared_ptr<ConnectionHandle> co
     }
     // Col1: Catalog Name/Project Id, Col2: Dataset name, Col3: Table Name
     std::string dataset_name = (char *)catalog_result[1].target_value;
-    std:: string table_name = (char *)catalog_result[2].target_value;
+    std::string table_name = (char *)catalog_result[2].target_value;
     results[dataset_name].emplace_back(table_name);
   }
 
