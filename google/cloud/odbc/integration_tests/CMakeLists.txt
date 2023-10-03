@@ -38,9 +38,9 @@ function (define_integration_tests)
     target_link_libraries(
       ${target}
       google_cloud_cpp_bigquery_rest
-      cpp_bigquery_odbc_integration_testing
+      cpp_bigquery_odbc_integration_testing_util
     )
-    target_include_directories(${target} PUBLIC ./)
+    target_include_directories(${target} PUBLIC ${CMAKE_SOURCE_DIR})
   endforeach ()
   
 endfunction ()
