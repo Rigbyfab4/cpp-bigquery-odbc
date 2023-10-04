@@ -8,7 +8,7 @@ github:
 name: msan-pr
 substitutions:
   _BUILD_NAME: msan
-  _DISTRO: ubuntu-22.04-install
+  _DISTRO: ubuntu-msan
   _TRIGGER_TYPE: pr
 includeBuildLogs: INCLUDE_BUILD_LOGS_WITH_STATUS
 tags:
