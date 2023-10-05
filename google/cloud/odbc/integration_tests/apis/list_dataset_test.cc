@@ -60,7 +60,7 @@ void ExplicitADCs(std::vector<std::string> const& argv) {
   ASSERT_NE(begin, range.end());
   std::vector<std::string> actual_dataset_ids;
   for (auto const& dataset : range) {
-    ASSERT_STATUS_OK(dataset);
+    assert(dataset.ok());
     actual_dataset_ids.push_back(dataset->id);
   }
   for (auto dataset_id: actual_dataset_ids) {

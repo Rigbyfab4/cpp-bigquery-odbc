@@ -59,7 +59,7 @@ void ExplicitADCs(std::vector<std::string> const& argv) {
   request.set_project_id(project_id);
   request.set_dataset_id(dataset_id);
   auto dataset = dataset_client.GetDataset(request);
-  ASSERT_STATUS_OK(dataset);
+  assert(dataset.ok());
   EXPECT_EQ(dataset->kind, "bigquery#dataset");
   EXPECT_EQ(dataset->dataset_reference.project_id, project_id);
   EXPECT_EQ(dataset->dataset_reference.dataset_id, dataset_id);

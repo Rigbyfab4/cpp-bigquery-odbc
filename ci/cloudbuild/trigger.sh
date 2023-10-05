@@ -17,17 +17,18 @@
 # This script manages Google Cloud Build triggers. The triggers are defined by
 # yaml files that live in the `triggers/` directory. The `--generate=<name>`
 # argument creates files named `triggers/name-pr.yaml` and
-# `triggers/name-pr.yaml`. These files can then be uploaded to GCB to start
+# `triggers/name-ci.yaml`. These files can then be uploaded to GCB to start
 # running with the `--import` flag.
 #
 # Usage: trigger.sh [options]
 #
 #   Options:
-#     --generate=name     Outputs CI and PR YAML configs for the named build
-#     -l|--list           List all triggers for this repo on the server
-#     -d|--describe=name  Describe the named trigger
-#     -i|--import=file    Uploads the local yaml file to create/update a trigger
-#     -h|--help           Print this help message
+#     --generate=name         Outputs CI and PR YAML configs for the named build
+#     --generate_manual=name  Outputs MANUAL YAML configs for the named build
+#     -l|--list               List all triggers for this repo on the server
+#     -d|--describe=name      Describe the named trigger
+#     -i|--import=file        Uploads the local yaml file to create/update a trigger
+#     -h|--help               Print this help message
 
 set -euo pipefail
 
@@ -83,6 +84,24 @@ tags:
 EOF
 }
 
+function generate_manual() {
+  local name="$1"
+  cat >"${PROGRAM_DIR}/triggers/${name}-manual.yaml" <<EOF
+filename: ci/cloudbuild/cloudbuild.yaml
+name: ${name}-manual
+sourceToBuild:
+  ref: refs/heads/main
+  repoType: GITHUB
+  uri: https://github.com/googleapis/cpp-bigquery-odbc
+substitutions:
+  _BUILD_NAME: ${name}
+  _DISTRO: demo-ubuntu-20
+  _TRIGGER_TYPE: manual
+tags:
+- manual
+EOF
+}
+
 function list_triggers() {
   gcloud beta builds triggers list \
     --project "${CLOUD_PROJECT}" \
@@ -105,7 +124,7 @@ function import_trigger() {
 # Use getopt to parse and normalize all the args.
 PARSED="$(getopt -a \
   --options="d:i:lh" \
-  --longoptions="generate:,describe:,import:,list,help" \
+  --longoptions="generate:,generate_manual:,describe:,import:,list,help" \
   --name="${PROGRAM_NAME}" \
   -- "$@")"
 eval set -- "${PARSED}"
@@ -114,6 +133,9 @@ case "$1" in
   --generate)
     generate_ci "$2"
     generate_pr "$2"
+    ;;
+  --generate_manual)
+    generate_manual "$2"
     ;;
   -d | --describe)
     describe_trigger "$2"
