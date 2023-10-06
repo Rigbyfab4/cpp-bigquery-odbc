@@ -23,12 +23,12 @@
 # Usage: trigger.sh [options]
 #
 #   Options:
-#     --generate=name         Outputs CI and PR YAML configs for the named build
-#     --generate_manual=name  Outputs MANUAL YAML configs for the named build
-#     -l|--list               List all triggers for this repo on the server
-#     -d|--describe=name      Describe the named trigger
-#     -i|--import=file        Uploads the local yaml file to create/update a trigger
-#     -h|--help               Print this help message
+#     --generate=name            Outputs CI and PR YAML configs for the named build
+#     --generate_scheduled=name  Outputs MANUAL YAML configs for the named build
+#     -l|--list                  List all triggers for this repo on the server
+#     -d|--describe=name         Describe the named trigger
+#     -i|--import=file           Uploads the local yaml file to create/update a trigger
+#     -h|--help                  Print this help message
 
 set -euo pipefail
 
@@ -84,11 +84,12 @@ tags:
 EOF
 }
 
-function generate_manual() {
+# Generates yaml file with configuration of trigger, which can be run manually or using scheduler
+function generate_scheduled() {
   local name="$1"
-  cat >"${PROGRAM_DIR}/triggers/${name}-manual.yaml" <<EOF
+  cat >"${PROGRAM_DIR}/triggers/${name}-scheduled.yaml" <<EOF
 filename: ci/cloudbuild/cloudbuild.yaml
-name: ${name}-manual
+name: ${name}-scheduled
 sourceToBuild:
   ref: refs/heads/main
   repoType: GITHUB
@@ -96,9 +97,9 @@ sourceToBuild:
 substitutions:
   _BUILD_NAME: ${name}
   _DISTRO: demo-ubuntu-20
-  _TRIGGER_TYPE: manual
+  _TRIGGER_TYPE: scheduled
 tags:
-- manual
+- scheduled
 EOF
 }
 
@@ -124,7 +125,7 @@ function import_trigger() {
 # Use getopt to parse and normalize all the args.
 PARSED="$(getopt -a \
   --options="d:i:lh" \
-  --longoptions="generate:,generate_manual:,describe:,import:,list,help" \
+  --longoptions="generate:,generate_scheduled:,describe:,import:,list,help" \
   --name="${PROGRAM_NAME}" \
   -- "$@")"
 eval set -- "${PARSED}"
@@ -134,8 +135,8 @@ case "$1" in
     generate_ci "$2"
     generate_pr "$2"
     ;;
-  --generate_manual)
-    generate_manual "$2"
+  --generate_scheduled)
+    generate_scheduled "$2"
     ;;
   -d | --describe)
     describe_trigger "$2"

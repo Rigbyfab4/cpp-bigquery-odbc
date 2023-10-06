@@ -1,12 +1,12 @@
 filename: ci/cloudbuild/cloudbuild.yaml
-name: client-library-integration-manual
+name: integration-tests-scheduled
 sourceToBuild:
   ref: refs/heads/main
   repoType: GITHUB
   uri: https://github.com/googleapis/cpp-bigquery-odbc
 substitutions:
-  _BUILD_NAME: client-library-integration
+  _BUILD_NAME: integration-tests
   _DISTRO: demo-ubuntu-20
-  _TRIGGER_TYPE: manual
+  _TRIGGER_TYPE: scheduled
 tags:
-- manual
+- scheduled

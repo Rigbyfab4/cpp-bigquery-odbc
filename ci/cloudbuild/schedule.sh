@@ -17,16 +17,19 @@
 # This script manages Google Cloud Scheduler jobs. It uses 'cloud-build-scheduler'
 # service account which can interact with Cloud Build.
 #
-# Usage: trigger.sh [options]
+# Usage: schedule.sh [options]
 #
 #   Options:
-#     --create=name            Create a new job with the specified name
-#     -t|--trigger=id          Uses specific trigger while creating a scheduler job
-#     -s|--schedule=frequency  The format is "* * * * *"
+#     --create=name               Create a new job with the specified name
+#     -t|--trigger=id             Uses specific trigger while creating a scheduler job
+#     -f|--frequency=frequency    The format is "* * * * *"
+#     -p|--project=name           The name of the GCP project
+#     -s|--service_account=email  The full email of service account, which will be used
+#                                 to run Cloud Build builds
 #
 # Example:
 #
-#    $ schedule.sh --create <name> -t <trigger_id> -s "0 0 * * *"
+#    $ schedule.sh --create integration-tests-scheduler -t c00caade-cf62-4f42-9e1e-b0c12edd516d -f "0 0 * * *" -p bigquery-devtools-drivers -s cloud-build-trigger-scheduler@bigquery-devtools-drivers.iam.gserviceaccount.com
 
 set -euo pipefail
 
@@ -38,26 +41,12 @@ function print_usage() {
   sed -n '17,/^$/s/^# \?//p' "${PROGRAM_PATH}"
 }
 
-readonly CLOUD_PROJECT="bigquery-devtools-drivers"
 readonly CREATE="create"
-
-function create_job() {
-  local name="$1"
-  local schedule="$2"
-  local trigger_uri="$3"
-  io::run gcloud beta scheduler jobs create http "${name}" \
-      --project "${CLOUD_PROJECT}" \
-      --location=us-central1 \
-      --schedule "${schedule}" \
-      --oauth-service-account-email=cloud-build-trigger-scheduler@bigquery-devtools-drivers.iam.gserviceaccount.com \
-      --oauth-token-scope=https://www.googleapis.com/auth/cloud-platform \
-      --uri "https://cloudbuild.googleapis.com/v1/projects/${CLOUD_PROJECT}/locations/us-east1/triggers/${trigger_uri}:run"
-}
 
 # Use getopt to parse and normalize all the args.
 PARSED="$(getopt -a \
-  --options="t:s:" \
-  --longoptions="create:,trigger:,schedule:,help" \
+  --options="t:f:p:s:" \
+  --longoptions="create:,trigger:,frequency:,project:,service_account:,help" \
   --name="${PROGRAM_NAME}" \
   -- "$@")"
 eval set -- "${PARSED}"
@@ -65,7 +54,9 @@ eval set -- "${PARSED}"
 VERB=""
 NAME=""
 TRIGGER=""
-SCHEDULE=""
+FREQUENCY=""
+PROJECT=""
+SERVICE_ACCOUNT=""
 while true; do
   case "$1" in
     --create)
@@ -77,8 +68,16 @@ while true; do
       TRIGGER="$2"
       shift 2
       ;;
-    -s | --schedule)
-      SCHEDULE="$2"
+    -f | --frequency)
+      FREQUENCY="$2"
+      shift 2
+      ;;
+    -p | --project)
+      PROJECT="$2"
+      shift 2
+      ;;
+    -s | --service_account)
+      SERVICE_ACCOUNT="$2"
       shift 2
       ;;
     -h | --help)
@@ -94,7 +93,13 @@ done
 
 case "${VERB}" in
   "${CREATE}")
-    create_job "${NAME}" "${SCHEDULE}" "${TRIGGER}"
+    io::run gcloud beta scheduler jobs create http "${NAME}" \
+          --project "${PROJECT}" \
+          --location=us-east1 \
+          --schedule "${FREQUENCY}" \
+          --oauth-service-account-email="${SERVICE_ACCOUNT}" \
+          --oauth-token-scope=https://www.googleapis.com/auth/cloud-platform \
+          --uri "https://cloudbuild.googleapis.com/v1/projects/${PROJECT}/locations/us-east1/triggers/${TRIGGER}:run"
     ;;
   -h | --help)
     print_usage
