@@ -55,12 +55,13 @@ void ExplicitADCs(std::vector<std::string> const& argv) {
   ListDatasetsRequest request;
   std::string project_id = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT").value_or("");
   request.set_project_id(project_id);
+  std::cout << "Project: " << project_id << std::endl;
   auto range = dataset_client.ListDatasets(request);
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   std::vector<std::string> actual_dataset_ids;
   for (auto const& dataset : range) {
-    assert(dataset.ok());
+    ASSERT_STATUS_OK(dataset);
     actual_dataset_ids.push_back(dataset->id);
   }
   for (auto dataset_id: actual_dataset_ids) {
@@ -107,5 +108,9 @@ int main(int argc, char* argv[]) {  // NOLINT(bugprone-exception-escape)
       {"explicit-adcs", google::cloud::bigquery_v2_minimal_internal::ExplicitADCs},
       {"with-service-account", google::cloud::bigquery_v2_minimal_internal::WithServiceAccount},
   });
-  return example.Run(argc, argv);
+  auto result = example.Run(argc, argv);
+  if (::testing::Test::HasFatalFailure()) {
+    throw std::runtime_error("One of assertions failed");
+  }
+  return result;
 }
