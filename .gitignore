@@ -1,3 +1,4 @@
 build/
 cmake-out/
 build-out/
+vcpkg_installed/

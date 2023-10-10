@@ -14,7 +14,6 @@ the top-level directory of the project, as in:
 ```shell
 cd $HOME
 git clone git@github.com:googleapis/cpp-bigquery-odbc.git
-cd cpp-bigquery-odbc
 ```
 
 ## Building the Client interface library

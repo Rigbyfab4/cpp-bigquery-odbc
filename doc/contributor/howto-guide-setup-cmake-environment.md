@@ -15,7 +15,6 @@ the top-level directory of the project, as in:
 ```shell
 cd $HOME
 git clone git@github.com:googleapis/cpp-bigquery-odbc.git
-cd cpp-bigquery-odbc
 ```
 
 ## Download and bootstrap `vcpkg`
@@ -44,9 +43,21 @@ export VCPKG_ROOT=$HOME/vcpkg
 ## Installing dependencies of `google-cloud-cpp` with vcpkg
 
 Now you can use `vcpkg` to install all the dependencies of `google-cloud-cpp` or install
-`google-cloud-cpp` itself. 
+`google-cloud-cpp` itself.
+
+Install all dependencies using [vcpkg.json](../../vcpkg.json):
 
 ```shell
+cd $HOME/cpp-bigquery-odbc
+vcpkg install
+```
+
+We have [vcpkg.json](../../vcpkg.json) at project root, which makes it run in
+[manifest mode](https://learn.microsoft.com/en-us/vcpkg/users/manifests). So if you  want
+to install these packages individually, you have to be at some other directory:
+
+```shell
+cd $HOME
 vcpkg install abseil
 vcpkg install protobuf
 vcpkg install grpc
@@ -54,8 +65,10 @@ vcpkg install benchmark
 vcpkg install nlohmann-json
 vcpkg install gtest
 ```
+
 Optionally, you can install `google-cloud-cpp` from vcpkg, if you don't need the latest changes from their
-main branch.
+main branch:
+
 ```shell
 vcpkg install google-cloud-cpp
 ```
@@ -71,11 +84,9 @@ much faster.
 cd $HOME/cpp-bigquery-odbc
 cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake -DODBC_BUILD_TESTING=ON
 cmake  --build build -j $(nproc) 
-cd build/google/cloud/odbc
-./odbc_client_interface
 ```
 
-After this the client library would be at the path `build/google/cloud/odbc/odbc_client_interface`
+After this the client library would be at the path `build/google/cloud/odbc/`
 
 ## Running the tests
 
