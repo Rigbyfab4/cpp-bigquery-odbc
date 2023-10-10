@@ -101,5 +101,9 @@ int main(int argc, char* argv[]) {  // NOLINT(bugprone-exception-escape)
       {"explicit-adcs", google::cloud::bigquery_v2_minimal_internal::ExplicitADCs},
       {"with-service-account", google::cloud::bigquery_v2_minimal_internal::WithServiceAccount},
   });
-  return example.Run(argc, argv);
+  auto result = example.Run(argc, argv);
+  if (::testing::Test::HasFatalFailure()) {
+    throw std::runtime_error("One of assertions failed");
+  }
+  return result;
 }
