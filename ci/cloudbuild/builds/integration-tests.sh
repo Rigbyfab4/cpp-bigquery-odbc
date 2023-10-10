@@ -24,5 +24,4 @@ io::run export CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT=bigquery-devtools-dri
 io::run export CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET=ODBC_TEST_DATASET
 
 mapfile -t args < <(bazel::common_args)
-io::run bazel run //google/cloud/odbc/integration_tests:apis_list_dataset_test explicit-adcs
-io::run bazel run //google/cloud/odbc/integration_tests:apis_list_dataset_test explicit-adcs
+io::run bazel test //google/cloud/odbc/integration_tests:* --test_arg=explicit-adcs --test_env CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT=bigquery-devtools-drivers --test_env CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET=ODBC_TEST_DATASET
