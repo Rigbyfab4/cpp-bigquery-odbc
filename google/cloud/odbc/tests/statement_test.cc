@@ -276,7 +276,8 @@ TEST(StatementTest, SQLGetData) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(StatementTest, SQLPutData) {
+// This test is temporarily disabled till we are able to debug this with help from the vendor
+TEST(StatementTest, DISABLED_SQLPutData) {
   auto const table_name = kDatasetName + ".ODBC_PUT_DATA_TEST";
   Table table(table_name);
 
