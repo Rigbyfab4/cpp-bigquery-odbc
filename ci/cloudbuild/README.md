@@ -38,6 +38,20 @@ if you are planning to test the build on gcb through pr checks, but that is not 
    Make sure to authenticate it with your service/user account and point it to the project where
    the triggers would reside and cloudbuild will run.
 
+## Types of builds
+
+Before adding a new build, it is important to understand whether you can use an existing `Dockerfile`
+or an existing `build script`. Broadly speaking, we have 2 types of dockerfiles:
+
+1. [demo*.Dockerfile](https://github.com/googleapis/cpp-bigquery-odbc/blob/main/ci/cloudbuild/dockerfiles/demo-ubuntu-20.Dockerfile): The sole purpose of `demo-*` builds is to help users build our library targets, the
+driver and unit tests for their linux distribution. They don't need to install dependencies for running our
+integration tests. Any change to a particular `demo*.Dockerfile` should ideally be duplicated across all of them,
+unless it is a distribution specific change.
+
+2. [*install.Dockerfile](https://github.com/googleapis/cpp-bigquery-odbc/blob/main/ci/cloudbuild/dockerfiles/ubuntu-22.04-install.Dockerfile): These dockerfiles install additional dependencies for running our integration tests(ODBC Driver Manager, gcloud sdk etc.). Use this if your build really needs these extra dependencies.
+
+If you have additional requirements and it is non-trivial to add those in your build script, you can always create a new dockerfile.
+
 ## Adding a new build
 
 Adding a new build can be done in a single PR. For
