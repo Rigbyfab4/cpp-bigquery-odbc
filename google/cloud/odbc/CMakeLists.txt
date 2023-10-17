@@ -22,14 +22,20 @@ project(
 
 include(FetchContent)
 
+
 # We need googletest for all our tests target.
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/v1.13.0.tar.gz
-)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+find_package(GTest CONFIG QUIET)
+if (NOT GTest_FOUND)
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/v1.13.0.tar.gz
+  )
+  # For Windows: Prevent overriding the parent project's compiler/linker settings
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+else()
+  find_package(GTest CONFIG REQUIRED)
+endif()
 
 function (odbc_define_tests)
   if (NOT ODBC_BUILD_TESTING)
