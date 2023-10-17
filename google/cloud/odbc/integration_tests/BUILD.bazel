@@ -23,6 +23,6 @@ licenses(["notice"])  # Apache 2.0
     tags = ["scheduled-integration-tests"],
     deps = [
         "@com_google_cloud_cpp//:experimental-bigquery-rest",
-        "//google/cloud/odbc/integration_tests/testing_util:cpp_bigquery_odbc_integration_testing_util",
+        "@com_google_googletest//:gtest_main",
     ],
 ) for api_test in glob(["apis/*.cc"])]

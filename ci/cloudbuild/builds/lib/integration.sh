@@ -44,17 +44,20 @@ function integration::bazel_args() {
   args+=(
     "--test_env=CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT=${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}"
     "--test_env=CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET=${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}"
+    # It's required for running 'blaze test' in docker and locally for default application auth
+    "--test_env=HOME"
   )
 
   # Adds environment variables that need to reference a specific service
-  # account key file. The key files are copied from a GCS bucket and stored on
+  # account key file. The key files are copied from a GCP Secret Manager and stored on
   # the local machine. See the `rotate-keys.sh` script for details about how
   # these keys are rotated.
   readonly KEY_DIR="/dev/odbc-auth"
   mkdir "${KEY_DIR}"
   gcloud secrets versions access latest --secret=odbc-keys --out-file="${KEY_DIR}/user_service_account.json"
   args+=(
-    "--test_env=GOOGLE_APPLICATION_CREDENTIALS=${KEY_DIR}/user_service_account.json"
+    "--test_env=CPP_BIGQUERY_ODBC_TEST_DEFAULT_APPLICATION_KEY="
+    "--test_env=CPP_BIGQUERY_ODBC_TEST_USER_SERVICE_ACCOUNT_KEY=${KEY_DIR}/user_service_account.json"
   )
   printf "%s\n" "${args[@]}"
 }

@@ -25,5 +25,4 @@ mapfile -t args < <(bazel::common_args)
 mapfile -t integration_args < <(integration::bazel_args)
 io::run bazel test //google/cloud/odbc/integration_tests:* \
   "${args[@]}" \
-  --test_arg=explicit-adcs \
   "${integration_args[@]}"

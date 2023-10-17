@@ -21,28 +21,63 @@ project(
 )
 
 include(CppBigqueryOdbcCommon)
+include(FetchContent)
+
+# We need googletest for all our tests target.
+find_package(GTest CONFIG QUIET)
+if (NOT GTest_FOUND)
+  FetchContent_Declare(
+      googletest
+      URL https://github.com/google/googletest/archive/v1.13.0.tar.gz
+  )
+  # For Windows: Prevent overriding the parent project's compiler/linker settings
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+else()
+  find_package(GTest CONFIG REQUIRED)
+endif()
+
+# We need google-cloud-cpp for all our tests target.
+find_package(google_cloud_cpp_bigquery_rest CONFIG QUIET)
+if (NOT google_cloud_cpp_bigquery_rest_FOUND)
+  # These flags need to be set to build google_cloud_cpp_bigquery_rest without examples
+  set(GOOGLE_CLOUD_CPP_ENABLE_CTYPE_CORD_WORKAROUND ON)
+  set(GOOGLE_CLOUD_CPP_ENABLE_EXAMPLES OFF)
+  set(BUILD_TESTING OFF)
+  set(GOOGLE_CLOUD_CPP_ENABLE experimental-bigquery_rest)
+
+  FetchContent_Declare(
+      google-cloud-cpp
+      URL https://github.com/googleapis/google-cloud-cpp/archive/refs/heads/main.zip
+  )
+  FetchContent_MakeAvailable(google-cloud-cpp)
+else()
+  find_package(google_cloud_cpp_bigquery_rest CONFIG REQUIRED)
+endif()
 
 function (define_integration_tests)
   if (NOT INTEGRATION_TESTING)
     return()
   endif ()
+  enable_testing()
 
-  add_subdirectory(testing_util)
+  add_executable(
+      scheduled_integration_tests
+      apis/list_dataset_integration_test.cc
+  )
 
-  file(
-    GLOB client_library_tests_cc
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "apis/*.cc")
-  foreach (fname IN LISTS client_library_tests_cc)
-    cpp_bigquery_odbc_add_executable(target "client_library_integration" "${fname}")
-    target_link_libraries(
-      ${target}
+  target_link_libraries(
+      scheduled_integration_tests
+      GTest::gtest_main
       google_cloud_cpp_bigquery_rest
-      cpp_bigquery_odbc_integration_testing_util
-    )
-    target_include_directories(${target} PUBLIC ${CMAKE_SOURCE_DIR})
-  endforeach ()
-  
+  )
+
+  target_include_directories(scheduled_integration_tests PUBLIC ./)
+
+  target_compile_features(scheduled_integration_tests PUBLIC cxx_std_17)
+
+  include(GoogleTest)
+  gtest_discover_tests(scheduled_integration_tests)
 endfunction ()
 
 define_integration_tests()
