@@ -16,14 +16,14 @@ package(default_visibility = ["//:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
-[cc_test(
-    name = api_test.replace("/", "_").replace(".cc", ""),
-    timeout = "long",
-    srcs = [api_test],
-    tags = ["scheduled-integration-tests"],
+load(":cpp_bigquery_odbc_integration_testing_util.bzl", "cpp_bigquery_odbc_integration_testing_util_hdrs", "cpp_bigquery_odbc_integration_testing_util_srcs")
+
+cc_library(
+    name = "cpp_bigquery_odbc_integration_testing_util",
+    testonly = True,
+    srcs = cpp_bigquery_odbc_integration_testing_util_srcs,
+    hdrs = cpp_bigquery_odbc_integration_testing_util_hdrs,
+    visibility = ["//visibility:public"],
     deps = [
-        "@com_google_cloud_cpp//:experimental-bigquery-rest",
-        "@com_google_googletest//:gtest_main",
-        "//google/cloud/odbc/integration_tests/testing_util:cpp_bigquery_odbc_integration_testing_util",
-    ],
-) for api_test in glob(["apis/*.cc"])]
+        "@com_google_googletest//:gtest",
+])

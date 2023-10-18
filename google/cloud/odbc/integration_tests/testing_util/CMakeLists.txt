@@ -1,3 +1,4 @@
+# ~~~
 # Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,19 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# ~~~
 
-package(default_visibility = ["//:__subpackages__"])
+if (NOT INTEGRATION_TESTING)
+  return()
+endif ()
 
-licenses(["notice"])  # Apache 2.0
+add_library(
+    cpp_bigquery_odbc_integration_testing_util
+    status_matchers.h
+    status_matchers.cc)
 
-[cc_test(
-    name = api_test.replace("/", "_").replace(".cc", ""),
-    timeout = "long",
-    srcs = [api_test],
-    tags = ["scheduled-integration-tests"],
-    deps = [
-        "@com_google_cloud_cpp//:experimental-bigquery-rest",
-        "@com_google_googletest//:gtest_main",
-        "//google/cloud/odbc/integration_tests/testing_util:cpp_bigquery_odbc_integration_testing_util",
-    ],
-) for api_test in glob(["apis/*.cc"])]
+target_link_libraries(
+    cpp_bigquery_odbc_integration_testing_util
+    GTest::gtest_main)
+
+create_bazel_config(cpp_bigquery_odbc_integration_testing_util YEAR 2023)

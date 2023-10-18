@@ -19,11 +19,16 @@
 #include "google/cloud/credentials.h"
 #include "google/cloud/internal/getenv.h"
 
+#include "google/cloud/odbc/integration_tests/testing_util/status_matchers.h"
+
 namespace google {
 namespace cloud {
-namespace bigquery_v2_minimal_internal {
+namespace odbc_bigquery_v2_tests {
 
   using google::cloud::internal::GetEnv;
+  using bigquery_v2_minimal_internal::DatasetClient;
+  using bigquery_v2_minimal_internal::MakeDatasetConnection;
+  using bigquery_v2_minimal_internal::ListDatasetsRequest;
 
   void listAllDatasets(Options options) {
     auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options)));
@@ -38,7 +43,7 @@ namespace bigquery_v2_minimal_internal {
     auto begin = range.begin();
     ASSERT_NE(begin, range.end());
     for (auto const& dataset : range) {
-      ASSERT_TRUE(dataset.ok());
+      ASSERT_STATUS_OK(dataset);
     }
   }
 
@@ -57,6 +62,6 @@ namespace bigquery_v2_minimal_internal {
         google::cloud::MakeGoogleDefaultCredentials());
     listAllDatasets(options);
   }
-}
-}
-}
+} // google
+} // cloud
+} // odbc_bigquery_v2_tests
