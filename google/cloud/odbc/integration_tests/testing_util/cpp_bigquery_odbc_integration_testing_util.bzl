@@ -18,10 +18,8 @@
 
 cpp_bigquery_odbc_integration_testing_util_hdrs = [
     "status_matchers.h",
-    "example_driver.h",
 ]
 
 cpp_bigquery_odbc_integration_testing_util_srcs = [
     "status_matchers.cc",
-    "example_driver.cc",
 ]

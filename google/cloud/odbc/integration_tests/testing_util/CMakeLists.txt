@@ -15,20 +15,16 @@
 # ~~~
 
 if (NOT INTEGRATION_TESTING)
-    return()
+  return()
 endif ()
 
 add_library(
     cpp_bigquery_odbc_integration_testing_util
-    status_matchers.cc
     status_matchers.h
-    example_driver.cc
-    example_driver.h)
+    status_matchers.cc)
 
 target_link_libraries(
     cpp_bigquery_odbc_integration_testing_util
-    google_cloud_cpp_common
-    GTest::gmock
     GTest::gtest_main)
 
 create_bazel_config(cpp_bigquery_odbc_integration_testing_util YEAR 2023)

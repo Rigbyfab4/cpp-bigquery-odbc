@@ -20,8 +20,6 @@ project(
   LANGUAGES CXX
 )
 
-include(CppBigqueryOdbcCommon)
-
 function (define_integration_tests)
   if (NOT INTEGRATION_TESTING)
     return()
@@ -30,19 +28,28 @@ function (define_integration_tests)
   add_subdirectory(testing_util)
 
   file(
-    GLOB client_library_tests_cc
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "apis/*.cc")
-  foreach (fname IN LISTS client_library_tests_cc)
-    cpp_bigquery_odbc_add_executable(target "client_library_integration" "${fname}")
-    target_link_libraries(
-      ${target}
+      GLOB client_library_tests_cc
+      RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+      "apis/*.cc"
+  )
+  add_executable(
+      scheduled_integration_tests
+      ${client_library_tests_cc}
+  )
+
+  target_link_libraries(
+      scheduled_integration_tests PUBLIC
       google_cloud_cpp_bigquery_rest
       cpp_bigquery_odbc_integration_testing_util
-    )
-    target_include_directories(${target} PUBLIC ${CMAKE_SOURCE_DIR})
-  endforeach ()
-  
+      GTest::gtest_main
+  )
+
+  target_include_directories(scheduled_integration_tests PUBLIC ${CMAKE_SOURCE_DIR})
+
+  target_compile_features(scheduled_integration_tests PUBLIC cxx_std_17)
+
+  include(GoogleTest)
+  gtest_discover_tests(scheduled_integration_tests)
 endfunction ()
 
 define_integration_tests()
