@@ -1,2 +1,4 @@
 build/
+build-out/
+cmake-out/
 cmake-build-debug/
