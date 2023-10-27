@@ -39,6 +39,7 @@ namespace odbc_bigquery_v2_tests {
     auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
     ASSERT_TRUE(project_id_optional.has_value());
     ASSERT_TRUE(dataset_id_optional.has_value());
+
     GetDatasetRequest request;
     request.set_project_id(project_id_optional.value());
     request.set_dataset_id(dataset_id_optional.value());
@@ -60,7 +61,7 @@ namespace odbc_bigquery_v2_tests {
     getDataset(options.value());
   }
 
-  TEST(GetNonExistingDataset, UserAccountAuth) {
+  TEST(GetDataset, DatasetNotExist) {
     auto options = CreateServiceAccountAuthWithClientIdAuthentication();
     ASSERT_STATUS_OK(options);
     auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
@@ -76,6 +77,24 @@ namespace odbc_bigquery_v2_tests {
     ASSERT_STATUS_NOT_OK(dataset);
     EXPECT_THAT(dataset.status().message(), HasSubstr("Not found"));
     EXPECT_EQ(dataset.status().code(), StatusCode::kNotFound);
+  }
+
+  TEST(GetDataset, ProjectNotExist) {
+    auto options = CreateServiceAccountAuthWithClientIdAuthentication();
+    ASSERT_STATUS_OK(options);
+    auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
+
+    auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
+    ASSERT_TRUE(dataset_id_optional.has_value());
+    GetDatasetRequest request;
+    request.set_project_id("Non-existing-project");
+    request.set_dataset_id(dataset_id_optional.value());
+
+    auto dataset = dataset_client.GetDataset(request);
+
+    ASSERT_STATUS_NOT_OK(dataset);
+    EXPECT_THAT(dataset.status().message(), HasSubstr("Invalid resource name projects/Non-existing-project; Project id"));
+    EXPECT_EQ(dataset.status().code(), StatusCode::kInvalidArgument);
   }
 }
 }
