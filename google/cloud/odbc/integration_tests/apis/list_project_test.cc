@@ -25,68 +25,68 @@ namespace google {
 namespace cloud {
 namespace odbc_bigquery_v2_tests {
 
-  using google::cloud::internal::GetEnv;
-  using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
-  using google::cloud::odbc_testing_util_internal::CreateWrongPathToAuthFileAuthentication;
-  using google::cloud::odbc_testing_util_internal::CreateWrongAuthentication;
-  using ::testing::HasSubstr;
-  using bigquery_v2_minimal_internal::ProjectClient;
-  using bigquery_v2_minimal_internal::MakeProjectConnection;
-  using bigquery_v2_minimal_internal::ListProjectsRequest;
+using google::cloud::internal::GetEnv;
+using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
+using google::cloud::odbc_testing_util_internal::CreateWrongPathToAuthFileAuthentication;
+using google::cloud::odbc_testing_util_internal::CreateWrongAuthentication;
+using ::testing::HasSubstr;
+using bigquery_v2_minimal_internal::ProjectClient;
+using bigquery_v2_minimal_internal::MakeProjectConnection;
+using bigquery_v2_minimal_internal::ListProjectsRequest;
 
-  void listAllProjects(Options options) {
-    auto project_client = ProjectClient(MakeProjectConnection(std::move(options)));
-    ListProjectsRequest request;
+void listAllProjects(Options options) {
+  auto project_client = ProjectClient(MakeProjectConnection(std::move(options)));
+  ListProjectsRequest request;
 
-    auto range = project_client.ListProjects(request);
+  auto range = project_client.ListProjects(request);
 
-    auto begin = range.begin();
-    ASSERT_NE(begin, range.end());
-    for (auto const& project : range) {
-      ASSERT_STATUS_OK(project);
-    }
+  auto begin = range.begin();
+  ASSERT_NE(begin, range.end());
+  for (auto const& project : range) {
+    ASSERT_STATUS_OK(project);
   }
+}
 
-  // Using only this account here as it has access to only one project.
-  // ServiceAccountAuthWithClientId account timing out after 15 minutes because of a big number of available projects.
-  TEST(ListAllProjects, UserAccountAuth) {
-    auto options = CreateUserAccountAuthentication();
-    ASSERT_STATUS_OK(options);
-    listAllProjects(options.value());
+// Using only this account here as it has access to only one project.
+// ServiceAccountAuthWithClientId account timing out after 15 minutes because of a big number of available projects.
+TEST(ListAllProjects, UserAccountAuth) {
+  auto options = CreateUserAccountAuthentication();
+  ASSERT_STATUS_OK(options);
+  listAllProjects(options.value());
+}
+
+TEST(ListAllProjects, WrongPathToAuthFile) {
+  auto options = CreateWrongPathToAuthFileAuthentication();
+  auto project_client = ProjectClient(MakeProjectConnection(std::move(options)));
+  ListProjectsRequest request;
+
+  auto range = project_client.ListProjects(request);
+
+  auto begin = range.begin();
+  ASSERT_NE(begin, range.end());
+  for (auto const& project : range) {
+    ASSERT_STATUS_NOT_OK(project);
+    EXPECT_THAT(project.status().message(), HasSubstr("Cannot open credentials file"));
+    EXPECT_EQ(project.status().code(), StatusCode::kUnknown);
   }
+}
 
-  TEST(ListAllProjects, WrongPathToAuthFile) {
-    auto options = CreateWrongPathToAuthFileAuthentication();
-    auto project_client = ProjectClient(MakeProjectConnection(std::move(options)));
-    ListProjectsRequest request;
+TEST(ListAllProjects, WrongAuthntication) {
+  auto options = CreateWrongAuthentication();
+  ASSERT_STATUS_OK(options);
+  auto project_client = ProjectClient(MakeProjectConnection(std::move(options.value())));
+  ListProjectsRequest request;
 
-    auto range = project_client.ListProjects(request);
+  auto range = project_client.ListProjects(request);
 
-    auto begin = range.begin();
-    ASSERT_NE(begin, range.end());
-    for (auto const& project : range) {
-      ASSERT_STATUS_NOT_OK(project);
-      EXPECT_THAT(project.status().message(), HasSubstr("Cannot open credentials file"));
-      EXPECT_EQ(project.status().code(), StatusCode::kUnknown);
-    }
+  auto begin = range.begin();
+  ASSERT_NE(begin, range.end());
+  for (auto const& project : range) {
+    ASSERT_STATUS_NOT_OK(project);
+    EXPECT_THAT(project.status().message(), HasSubstr("Bad Request"));
+    EXPECT_EQ(project.status().code(), StatusCode::kInvalidArgument);
   }
-
-  TEST(ListAllProjects, WrongAuthntication) {
-    auto options = CreateWrongAuthentication();
-    ASSERT_STATUS_OK(options);
-    auto project_client = ProjectClient(MakeProjectConnection(std::move(options.value())));
-    ListProjectsRequest request;
-
-    auto range = project_client.ListProjects(request);
-
-    auto begin = range.begin();
-    ASSERT_NE(begin, range.end());
-    for (auto const& project : range) {
-      ASSERT_STATUS_NOT_OK(project);
-      EXPECT_THAT(project.status().message(), HasSubstr("Bad Request"));
-      EXPECT_EQ(project.status().code(), StatusCode::kInvalidArgument);
-    }
-  }
+}
 }
 }
 }

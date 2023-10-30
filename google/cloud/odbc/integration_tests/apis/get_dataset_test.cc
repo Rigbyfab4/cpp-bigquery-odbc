@@ -25,77 +25,77 @@ namespace google {
 namespace cloud {
 namespace odbc_bigquery_v2_tests {
 
-  using google::cloud::internal::GetEnv;
-  using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
-  using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
-  using ::testing::HasSubstr;
-  using bigquery_v2_minimal_internal::DatasetClient;
-  using bigquery_v2_minimal_internal::MakeDatasetConnection;
-  using bigquery_v2_minimal_internal::GetDatasetRequest;
+using google::cloud::internal::GetEnv;
+using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
+using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
+using ::testing::HasSubstr;
+using bigquery_v2_minimal_internal::DatasetClient;
+using bigquery_v2_minimal_internal::MakeDatasetConnection;
+using bigquery_v2_minimal_internal::GetDatasetRequest;
 
-  void getDataset(Options options) {
-    auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options)));
-    auto project_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT");
-    auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
-    ASSERT_TRUE(project_id_optional.has_value());
-    ASSERT_TRUE(dataset_id_optional.has_value());
+void getDataset(Options options) {
+  auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options)));
+  auto project_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT");
+  auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
+  ASSERT_TRUE(project_id_optional.has_value());
+  ASSERT_TRUE(dataset_id_optional.has_value());
 
-    GetDatasetRequest request;
-    request.set_project_id(project_id_optional.value());
-    request.set_dataset_id(dataset_id_optional.value());
+  GetDatasetRequest request;
+  request.set_project_id(project_id_optional.value());
+  request.set_dataset_id(dataset_id_optional.value());
 
-    auto dataset = dataset_client.GetDataset(request);
+  auto dataset = dataset_client.GetDataset(request);
 
-    ASSERT_STATUS_OK(dataset);
-  }
+  ASSERT_STATUS_OK(dataset);
+}
 
-  TEST(GetDataset, UserAccountAuth) {
-    auto options = CreateUserAccountAuthentication();
-    ASSERT_STATUS_OK(options);
-    getDataset(options.value());
-  }
+TEST(GetDataset, UserAccountAuth) {
+  auto options = CreateUserAccountAuthentication();
+  ASSERT_STATUS_OK(options);
+  getDataset(options.value());
+}
 
-  TEST(GetDataset, ServiceAccountAuthWithClientId) {
-    auto options = CreateServiceAccountAuthWithClientIdAuthentication();
-    ASSERT_STATUS_OK(options);
-    getDataset(options.value());
-  }
+TEST(GetDataset, ServiceAccountAuthWithClientId) {
+  auto options = CreateServiceAccountAuthWithClientIdAuthentication();
+  ASSERT_STATUS_OK(options);
+  getDataset(options.value());
+}
 
-  TEST(GetDataset, DatasetNotExist) {
-    auto options = CreateServiceAccountAuthWithClientIdAuthentication();
-    ASSERT_STATUS_OK(options);
-    auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
+TEST(GetDataset, DatasetNotExist) {
+  auto options = CreateServiceAccountAuthWithClientIdAuthentication();
+  ASSERT_STATUS_OK(options);
+  auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
 
-    auto project_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT");
-    ASSERT_TRUE(project_id_optional.has_value());
-    GetDatasetRequest request;
-    request.set_project_id(project_id_optional.value());
-    request.set_dataset_id("Non_existing_dataset");
+  auto project_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT");
+  ASSERT_TRUE(project_id_optional.has_value());
+  GetDatasetRequest request;
+  request.set_project_id(project_id_optional.value());
+  request.set_dataset_id("Non_existing_dataset");
 
-    auto dataset = dataset_client.GetDataset(request);
+  auto dataset = dataset_client.GetDataset(request);
 
-    ASSERT_STATUS_NOT_OK(dataset);
-    EXPECT_THAT(dataset.status().message(), HasSubstr("Not found"));
-    EXPECT_EQ(dataset.status().code(), StatusCode::kNotFound);
-  }
+  ASSERT_STATUS_NOT_OK(dataset);
+  EXPECT_THAT(dataset.status().message(), HasSubstr("Not found"));
+  EXPECT_EQ(dataset.status().code(), StatusCode::kNotFound);
+}
 
-  TEST(GetDataset, ProjectNotExist) {
-    auto options = CreateServiceAccountAuthWithClientIdAuthentication();
-    ASSERT_STATUS_OK(options);
-    auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
+TEST(GetDataset, ProjectNotExist) {
+  auto options = CreateServiceAccountAuthWithClientIdAuthentication();
+  ASSERT_STATUS_OK(options);
+  auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
 
-    auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
-    ASSERT_TRUE(dataset_id_optional.has_value());
-    GetDatasetRequest request;
-    request.set_project_id("Non-existing-project");
-    request.set_dataset_id(dataset_id_optional.value());
+  auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
+  ASSERT_TRUE(dataset_id_optional.has_value());
+  GetDatasetRequest request;
+  request.set_project_id("Non-existing-project");
+  request.set_dataset_id(dataset_id_optional.value());
 
-    auto dataset = dataset_client.GetDataset(request);
+  auto dataset = dataset_client.GetDataset(request);
 
-    ASSERT_STATUS_NOT_OK(dataset);
-    EXPECT_THAT(dataset.status().message(), HasSubstr("Invalid resource name projects/Non-existing-project; Project id"));
-    EXPECT_EQ(dataset.status().code(), StatusCode::kInvalidArgument);
-  }
+  ASSERT_STATUS_NOT_OK(dataset);
+  EXPECT_THAT(dataset.status().message(), HasSubstr("Invalid resource name projects/Non-existing-project; Project id"));
+  EXPECT_EQ(dataset.status().code(), StatusCode::kInvalidArgument);
+}
 }
 }
 }
