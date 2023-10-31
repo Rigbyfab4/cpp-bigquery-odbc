@@ -26,6 +26,7 @@ namespace cloud {
 namespace odbc_bigquery_v2_tests {
 
 using google::cloud::internal::GetEnv;
+using google::cloud::odbc_testing_util_internal::StatusIs;
 using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
 using ::testing::HasSubstr;
@@ -80,9 +81,7 @@ TEST(ListAllTables, DatasetNotExist) {
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& table : range) {
-    ASSERT_STATUS_NOT_OK(table);
-    EXPECT_THAT(table.status().message(), HasSubstr("Not found: Dataset"));
-    EXPECT_EQ(table.status().code(), StatusCode::kNotFound);
+    EXPECT_THAT(table, StatusIs(StatusCode::kNotFound, HasSubstr("Not found: Dataset")));
   }
 }
 
@@ -102,9 +101,8 @@ TEST(ListAllTables, ProjectNotExist) {
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& table : range) {
-    ASSERT_STATUS_NOT_OK(table);
-    EXPECT_THAT(table.status().message(), HasSubstr("Invalid resource name projects/Non-existing-project; Project id"));
-    EXPECT_EQ(table.status().code(), StatusCode::kInvalidArgument);
+    EXPECT_THAT(table, StatusIs(StatusCode::kInvalidArgument,
+      HasSubstr("Invalid resource name projects/Non-existing-project; Project id")));
   }
 }
 }

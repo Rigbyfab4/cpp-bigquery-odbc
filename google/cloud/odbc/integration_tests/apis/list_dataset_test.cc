@@ -26,6 +26,7 @@ namespace cloud {
 namespace odbc_bigquery_v2_tests {
 
 using google::cloud::internal::GetEnv;
+using google::cloud::odbc_testing_util_internal::StatusIs;
 using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
 using ::testing::HasSubstr;
@@ -110,9 +111,7 @@ TEST(ListDatasets, UsingFilterNoDatasets) {
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& dataset : range) {
-    ASSERT_STATUS_NOT_OK(dataset);
-    EXPECT_THAT(dataset.status().message(), HasSubstr("Not a valid Json DatasetList object"));
-    EXPECT_EQ(dataset.status().code(), StatusCode::kInternal);
+    EXPECT_THAT(dataset, StatusIs(StatusCode::kInternal, HasSubstr("Not a valid Json DatasetList object")));
   }
 }
 
@@ -132,9 +131,7 @@ TEST(ListDatasets, WrongFilter) {
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& dataset : range) {
-    ASSERT_STATUS_NOT_OK(dataset);
-    EXPECT_THAT(dataset.status().message(), HasSubstr("Unsupported field"));
-    EXPECT_EQ(dataset.status().code(), StatusCode::kInvalidArgument);
+    EXPECT_THAT(dataset, StatusIs(StatusCode::kInvalidArgument, HasSubstr("Unsupported field")));
   }
 }
 
@@ -179,9 +176,7 @@ TEST(ListDatasets, ProjectNotExist) {
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& dataset : range) {
-    ASSERT_STATUS_NOT_OK(dataset);
-    EXPECT_THAT(dataset.status().message(), HasSubstr("Invalid project ID"));
-    EXPECT_EQ(dataset.status().code(), StatusCode::kInvalidArgument);
+    EXPECT_THAT(dataset, StatusIs(StatusCode::kInvalidArgument, HasSubstr("Invalid project ID")));
   }
 }
 } // google

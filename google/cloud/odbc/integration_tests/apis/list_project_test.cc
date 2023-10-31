@@ -26,6 +26,7 @@ namespace cloud {
 namespace odbc_bigquery_v2_tests {
 
 using google::cloud::internal::GetEnv;
+using google::cloud::odbc_testing_util_internal::StatusIs;
 using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateWrongPathToAuthFileAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateWrongAuthentication;
@@ -65,9 +66,7 @@ TEST(ListAllProjects, WrongPathToAuthFile) {
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& project : range) {
-    ASSERT_STATUS_NOT_OK(project);
-    EXPECT_THAT(project.status().message(), HasSubstr("Cannot open credentials file"));
-    EXPECT_EQ(project.status().code(), StatusCode::kUnknown);
+    EXPECT_THAT(project, StatusIs(StatusCode::kUnknown, HasSubstr("Cannot open credentials file")));
   }
 }
 
@@ -82,9 +81,7 @@ TEST(ListAllProjects, WrongAuthntication) {
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& project : range) {
-    ASSERT_STATUS_NOT_OK(project);
-    EXPECT_THAT(project.status().message(), HasSubstr("Bad Request"));
-    EXPECT_EQ(project.status().code(), StatusCode::kInvalidArgument);
+    EXPECT_THAT(project, StatusIs(StatusCode::kInvalidArgument, HasSubstr("Bad Request")));
   }
 }
 }

@@ -15,7 +15,7 @@
 #ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_STATUS_MATCHERS_H
 #define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_STATUS_MATCHERS_H
 
-#include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 namespace google {
 namespace cloud {
@@ -24,8 +24,12 @@ namespace odbc_testing_util_internal {
 #define ASSERT_STATUS_OK(expression) \
   ASSERT_TRUE(expression.ok()) << "Error message: " << expression.status().message() << "\n"
 
-#define ASSERT_STATUS_NOT_OK(expression) \
-  ASSERT_FALSE(expression.ok())
+MATCHER_P2(StatusIs, code, matcher, "") {
+  EXPECT_EQ(arg.status().code(), code) << "Expected code to be: " << StatusCodeToString(code)
+    << ", but was: " << StatusCodeToString(arg.status().code());
+  EXPECT_THAT(arg.status().message(), matcher);
+  return true;
+}
 
 }  // namespace odbc_testing_util_internal
 }  // namespace cloud
