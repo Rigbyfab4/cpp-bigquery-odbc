@@ -109,13 +109,11 @@ TEST(ListDatasets, UsingFilterNoDatasets) {
 
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
-  int count = 0;
   for (auto const& dataset : range) {
     ASSERT_STATUS_NOT_OK(dataset);
     EXPECT_THAT(dataset.status().message(), HasSubstr("Not a valid Json DatasetList object"));
     EXPECT_EQ(dataset.status().code(), StatusCode::kInternal);
   }
-  ASSERT_EQ(count, 0);
 }
 
 TEST(ListDatasets, WrongFilter) {
