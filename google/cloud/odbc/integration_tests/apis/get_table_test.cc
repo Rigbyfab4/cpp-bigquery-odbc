@@ -136,18 +136,20 @@ TEST(GetTable, SelectedFields) {
   ASSERT_TRUE(project_id_optional.has_value());
   ASSERT_TRUE(dataset_id_optional.has_value());
   ASSERT_TRUE(table_name_optional.has_value());
+  auto column_name = GetEnv("CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_AGE");
+  ASSERT_TRUE(column_name.has_value());
 
   GetTableRequest request;
   request.set_project_id(project_id_optional.value());
   request.set_dataset_id(dataset_id_optional.value());
   request.set_table_id(table_name_optional.value());
-  request.set_selected_fields({"age"});
+  request.set_selected_fields({column_name.value()});
 
   auto table = table_client.GetTable(request);
 
   ASSERT_STATUS_OK(table);
   EXPECT_EQ(table.value().schema.fields.size(), 1);
-  EXPECT_EQ(table.value().schema.fields[0].name, "age");
+  EXPECT_EQ(table.value().schema.fields[0].name, column_name.value());
 }
 
 TEST(GetTable, SelectedFieldsNotExist) {
