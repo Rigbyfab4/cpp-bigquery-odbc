@@ -92,8 +92,9 @@ TEST(ListAllTables, ProjectNotExist) {
 
   auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
   ASSERT_TRUE(dataset_id_optional.has_value());
+  std::string project_id = "Non-existing-project";
   ListTablesRequest request;
-  request.set_project_id("Non-existing-project");
+  request.set_project_id(project_id);
   request.set_dataset_id(dataset_id_optional.value());
 
   auto range = table_client.ListTables(request);
@@ -102,7 +103,7 @@ TEST(ListAllTables, ProjectNotExist) {
   ASSERT_NE(begin, range.end());
   for (auto const& table : range) {
     EXPECT_THAT(table, StatusIs(StatusCode::kInvalidArgument,
-      HasSubstr("Invalid resource name projects/Non-existing-project; Project id")));
+      HasSubstr("Invalid resource name projects/" + project_id + "; Project id")));
   }
 }
 }

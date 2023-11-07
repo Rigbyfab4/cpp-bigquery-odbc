@@ -85,14 +85,15 @@ TEST(GetDataset, ProjectNotExist) {
 
   auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
   ASSERT_TRUE(dataset_id_optional.has_value());
+  std::string project_id = "Non-existing-project";
   GetDatasetRequest request;
-  request.set_project_id("Non-existing-project");
+  request.set_project_id(project_id);
   request.set_dataset_id(dataset_id_optional.value());
 
   auto dataset = dataset_client.GetDataset(request);
 
   EXPECT_THAT(dataset, StatusIs(StatusCode::kInvalidArgument,
-    HasSubstr("Invalid resource name projects/Non-existing-project; Project id")));
+    HasSubstr("Invalid resource name projects/" + project_id + "; Project id")));
 }
 }
 }

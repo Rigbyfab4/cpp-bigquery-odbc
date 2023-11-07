@@ -112,15 +112,16 @@ TEST(GetTable, ProjectNotExist) {
   auto table_name_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_TABLE_NAME");
   ASSERT_TRUE(dataset_id_optional.has_value());
   ASSERT_TRUE(table_name_optional.has_value());
+  std::string project_id = "Non-existing-project";
   GetTableRequest request;
-  request.set_project_id("Non-existing-project");
+  request.set_project_id(project_id);
   request.set_dataset_id(dataset_id_optional.value());
   request.set_table_id(table_name_optional.value());
 
   auto table = table_client.GetTable(request);
 
   EXPECT_THAT(table, StatusIs(StatusCode::kInvalidArgument,
-    HasSubstr("Invalid resource name projects/Non-existing-project; Project id")));
+    HasSubstr("Invalid resource name projects/" + project_id + "; Project id")));
 }
 
 TEST(GetTable, SelectedFields) {
