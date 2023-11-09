@@ -35,8 +35,10 @@ using bigquery_v2_minimal_internal::DatasetClient;
 using bigquery_v2_minimal_internal::MakeDatasetConnection;
 using bigquery_v2_minimal_internal::ListDatasetsRequest;
 
-void listAllDatasets(Options options) {
-  auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options)));
+TEST(ListAllDatasets, UserAccountAuth) {
+  auto options = CreateUserAccountAuthentication();
+  ASSERT_STATUS_OK(options);
+  auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
   auto project_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT");
   auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
   ASSERT_TRUE(project_id_optional.has_value());
@@ -58,16 +60,29 @@ void listAllDatasets(Options options) {
   ASSERT_EQ(found, true);
 }
 
-TEST(ListAllDatasets, UserAccountAuth) {
-  auto options = CreateUserAccountAuthentication();
-  ASSERT_STATUS_OK(options);
-  listAllDatasets(options.value());
-}
-
 TEST(ListAllDatasets, ServiceAccountAuthWithClientId) {
   auto options = CreateServiceAccountAuthWithClientIdAuthentication();
   ASSERT_STATUS_OK(options);
-  listAllDatasets(options.value());
+  auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
+  auto project_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT");
+  auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
+  ASSERT_TRUE(project_id_optional.has_value());
+  ASSERT_TRUE(dataset_id_optional.has_value());
+  std::string project_id = project_id_optional.value();
+  ListDatasetsRequest request;
+  request.set_project_id(project_id);
+
+  auto range = dataset_client.ListDatasets(request);
+
+  auto begin = range.begin();
+  ASSERT_NE(begin, range.end());
+  bool found = false;
+  for (auto const& dataset : range) {
+    ASSERT_STATUS_OK(dataset);
+    found = dataset.value().dataset_reference.dataset_id == dataset_id_optional.value();
+    if (found) break;
+  }
+  ASSERT_EQ(found, true);
 }
 
 TEST(ListDatasets, UsingFilter) {

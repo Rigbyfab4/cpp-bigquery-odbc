@@ -39,8 +39,10 @@ using bigquery_v2_minimal_internal::QueryRequest;
 using bigquery_v2_minimal_internal::GetQueryResultsRequest;
 using bigquery_v2_minimal_internal::QueryParameter;
 
-void query(Options options) {
-  auto job_client = JobClient(MakeBigQueryJobConnection(std::move(options)));
+TEST(Query, UserAccountAuth) {
+  auto options = CreateServiceAccountAuthWithClientIdAuthentication();
+  ASSERT_STATUS_OK(options);
+  auto job_client = JobClient(MakeBigQueryJobConnection(std::move(options.value())));
   auto project_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT");
   auto dataset_id_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET");
   auto table_name_optional = GetEnv("CPP_BIGQUERY_ODBC_TEST_TABLE_NAME");
@@ -80,12 +82,6 @@ void query(Options options) {
   ASSERT_STATUS_OK(query_results_response);
   EXPECT_TRUE(query_results_response.value().job_complete);
   EXPECT_EQ(query_results_response.value().total_rows, query_response.value().total_rows);
-}
-
-TEST(Query, UserAccountAuth) {
-  auto options = CreateServiceAccountAuthWithClientIdAuthentication();
-  ASSERT_STATUS_OK(options);
-  query(options.value());
 }
 
 TEST(Query, ProjectNotExist) {

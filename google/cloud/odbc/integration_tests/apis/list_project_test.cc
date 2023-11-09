@@ -36,8 +36,12 @@ using bigquery_v2_minimal_internal::ProjectClient;
 using bigquery_v2_minimal_internal::MakeProjectConnection;
 using bigquery_v2_minimal_internal::ListProjectsRequest;
 
-void listAllProjects(Options options) {
-  auto project_client = ProjectClient(MakeProjectConnection(std::move(options)));
+// Using only this account here as it has access to only one project.
+// ServiceAccountAuthWithClientId account timing out after 15 minutes because of a big number of available projects.
+TEST(ListAllProjects, UserAccountAuth) {
+  auto options = CreateUserAccountAuthentication();
+  ASSERT_STATUS_OK(options);
+  auto project_client = ProjectClient(MakeProjectConnection(std::move(options.value())));
   ListProjectsRequest request;
 
   auto range = project_client.ListProjects(request);
@@ -47,14 +51,6 @@ void listAllProjects(Options options) {
   for (auto const& project : range) {
     ASSERT_STATUS_OK(project);
   }
-}
-
-// Using only this account here as it has access to only one project.
-// ServiceAccountAuthWithClientId account timing out after 15 minutes because of a big number of available projects.
-TEST(ListAllProjects, UserAccountAuth) {
-  auto options = CreateUserAccountAuthentication();
-  ASSERT_STATUS_OK(options);
-  listAllProjects(options.value());
 }
 
 TEST(ListAllProjects, WrongPathToAuthFile) {
