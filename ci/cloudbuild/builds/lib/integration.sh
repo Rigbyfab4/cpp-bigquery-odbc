@@ -25,20 +25,31 @@ fi # include guard
 CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT=bigquery-devtools-drivers
 CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET=INTEGRATION_TESTS
 CPP_BIGQUERY_ODBC_TEST_TABLE_NAME=Test_Table
+CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_ID=id
+CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_NAME=name
+CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_AGE=age
 
 # Creating some datasets and tables for client library integration tests. It's used only for 'reading' operations.
 # This way tests still run independently and fast as we don't need to create/drop tables for every test.
 
+# Delete previously created Catalog
+bq query --use_legacy_sql=false \
+"DROP SCHEMA IF EXISTS \`${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}\`.${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}
+ CASCADE"
 # Create a dataset
 bq query --use_legacy_sql=false \
-"CREATE SCHEMA IF NOT EXISTS \`${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}\`.${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}"
+"CREATE SCHEMA \`${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}\`.${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}"
 bq query --use_legacy_sql=false \
 "ALTER SCHEMA \`${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}\`.${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}
  SET OPTIONS(labels=[('dataset_label_to_filter', 'dataset_label_value_to_filter')])"
 # Create a table
 bq query --use_legacy_sql=false \
-"CREATE TABLE IF NOT EXISTS \`${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}\`.${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}.${CPP_BIGQUERY_ODBC_TEST_TABLE_NAME}
- (id INT64, name STRING, age INT64)"
+"CREATE TABLE \`${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}\`.${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}.${CPP_BIGQUERY_ODBC_TEST_TABLE_NAME}
+ (${CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_ID} INT64, ${CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_NAME} STRING, ${CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_AGE} INT64)"
+ # Populate the table with data
+ bq query --use_legacy_sql=false \
+"INSERT INTO \`${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}\`.${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}.${CPP_BIGQUERY_ODBC_TEST_TABLE_NAME}
+ VALUES(1, 'Boris', 24), (2, 'Mari', 29), (3, 'Ken', 34)"
 
 # Outputs a list of Bazel arguments that should be used when running
 # integration tests. These do not include the common `bazel::common_args`.
@@ -60,8 +71,9 @@ function integration::bazel_args() {
     "--test_env=CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT=${CPP_BIGQUERY_ODBC_TEST_GOOGLE_CLOUD_PROJECT}"
     "--test_env=CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET=${CPP_BIGQUERY_ODBC_TEST_BIGQUERY_DATASET}"
     "--test_env=CPP_BIGQUERY_ODBC_TEST_TABLE_NAME=${CPP_BIGQUERY_ODBC_TEST_TABLE_NAME}"
-    # It's required for running 'blaze test' in docker and locally for default application auth
-    "--test_env=HOME"
+    "--test_env=CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_ID=${CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_ID}"
+    "--test_env=CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_NAME=${CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_NAME}"
+    "--test_env=CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_AGE=${CPP_BIGQUERY_ODBC_TEST_COLUMN_NAME_AGE}"
   )
 
   # Adds environment variables that need to reference a specific service
