@@ -38,8 +38,6 @@ using bigquery_v2_minimal_internal::PostQueryRequest;
 using bigquery_v2_minimal_internal::QueryRequest;
 using bigquery_v2_minimal_internal::GetQueryResultsRequest;
 using bigquery_v2_minimal_internal::QueryParameter;
-using bigquery_v2_minimal_internal::QueryParameterType;
-using bigquery_v2_minimal_internal::QueryParameterValue;
 
 void query(Options options) {
   auto job_client = JobClient(MakeBigQueryJobConnection(std::move(options)));
@@ -391,14 +389,7 @@ TEST(Query, WithQueryParameters) {
   std::string query_statement = absl::StrCat("SELECT ", column_name.value(), " FROM ", table_name, " WHERE ", column_name.value(), " > @min_age");
   QueryRequest query_request;
   query_request.set_query(query_statement);
-  QueryParameterType query_parameter_type;
-  query_parameter_type.type = "INTEGER";
-  QueryParameterValue query_parameter_value;
-  query_parameter_value.value="30";
-  QueryParameter query_parameter;
-  query_parameter.name="min_age";
-  query_parameter.parameter_type=query_parameter_type;
-  query_parameter.parameter_value=query_parameter_value;
+  QueryParameter query_parameter = {"min_age", {"INTEGER"}, {"30"}};
   query_request.set_query_parameters({query_parameter});
   PostQueryRequest post_query_request;
   post_query_request.set_project_id(project_id_optional.value());
