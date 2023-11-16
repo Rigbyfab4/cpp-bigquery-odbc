@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <gmock/gmock.h>
-#include "absl/strings/str_cat.h"
 
 #include "google/cloud/bigquery/v2/minimal/internal/job_client.h"
 #include "google/cloud/internal/getenv.h"
@@ -21,6 +20,7 @@
 #include "google/cloud/odbc/integration_tests/testing_util/authentication.h"
 #include "google/cloud/odbc/integration_tests/testing_util/status_matchers.h"
 #include "google/cloud/odbc/integration_tests/testing_util/common_functions.h"
+#include "google/cloud/odbc/integration_tests/testing_util/util_constants.h"
 
 namespace google {
 namespace cloud {
@@ -32,6 +32,7 @@ using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthenticat
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
 using google::cloud::odbc_testing_util_internal::InsertJob;
+using google::cloud::odbc_testing_util_internal::kNameForNonExistingProject;
 using ::testing::HasSubstr;
 using bigquery_v2_minimal_internal::JobClient;
 using bigquery_v2_minimal_internal::MakeBigQueryJobConnection;
@@ -188,7 +189,7 @@ TEST(CancelJob, ProjectNotExist) {
   ASSERT_TRUE(project_id_optional.has_value());
 
   CancelJobRequest cancel_job_request;
-  cancel_job_request.set_project_id("not-existing-project");
+  cancel_job_request.set_project_id(std::string(kNameForNonExistingProject));
   cancel_job_request.set_job_id("Not_existing_job");
 
   auto cancel_job_response = job_client.CancelJob(cancel_job_request);

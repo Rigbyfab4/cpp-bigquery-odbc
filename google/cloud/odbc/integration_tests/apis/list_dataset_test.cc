@@ -15,11 +15,11 @@
 #include <gmock/gmock.h>
 
 #include "google/cloud/bigquery/v2/minimal/internal/dataset_client.h"
-#include "google/cloud/options.h"
 #include "google/cloud/internal/getenv.h"
 
 #include "google/cloud/odbc/integration_tests/testing_util/authentication.h"
 #include "google/cloud/odbc/integration_tests/testing_util/status_matchers.h"
+#include "google/cloud/odbc/integration_tests/testing_util/util_constants.h"
 
 namespace google {
 namespace cloud {
@@ -31,6 +31,7 @@ using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateNoAccessAccountAuthentication;
+using google::cloud::odbc_testing_util_internal::kNameForNonExistingProject;
 using ::testing::HasSubstr;
 using bigquery_v2_minimal_internal::DatasetClient;
 using bigquery_v2_minimal_internal::MakeDatasetConnection;
@@ -208,14 +209,14 @@ TEST(ListDatasets, ProjectNotExist) {
   auto dataset_client = DatasetClient(MakeDatasetConnection(std::move(options.value())));
 
   ListDatasetsRequest request;
-  request.set_project_id("Non-existing-project");
+  request.set_project_id(std::string(kNameForNonExistingProject));
 
   auto range = dataset_client.ListDatasets(request);
 
   auto begin = range.begin();
   ASSERT_NE(begin, range.end());
   for (auto const& dataset : range) {
-    EXPECT_THAT(dataset, StatusIs(StatusCode::kInvalidArgument, HasSubstr("Invalid project ID")));
+    EXPECT_THAT(dataset, StatusIs(StatusCode::kNotFound, HasSubstr("Not found: Project")));
   }
 }
 

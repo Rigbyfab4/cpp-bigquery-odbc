@@ -12,9 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_CONSTANTS_H
+#define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_CONSTANTS_H
+
 namespace google {
 namespace cloud {
 namespace odbc_testing_util_internal {
+
+inline constexpr absl::string_view kNameForNonExistingProject = "non-existing-project";
+
 }  // namespace odbc_testing_util_internal
 }  // namespace cloud
 }  // namespace google
+
+#endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_CONSTANTS_H

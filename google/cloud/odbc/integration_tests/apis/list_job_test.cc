@@ -20,6 +20,7 @@
 
 #include "google/cloud/odbc/integration_tests/testing_util/authentication.h"
 #include "google/cloud/odbc/integration_tests/testing_util/status_matchers.h"
+#include "google/cloud/odbc/integration_tests/testing_util/util_constants.h"
 
 namespace google {
 namespace cloud {
@@ -31,6 +32,7 @@ using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateNoAccessAccountAuthentication;
+using google::cloud::odbc_testing_util_internal::kNameForNonExistingProject;
 using ::testing::HasSubstr;
 using bigquery_v2_minimal_internal::JobClient;
 using bigquery_v2_minimal_internal::MakeBigQueryJobConnection;
@@ -139,7 +141,7 @@ TEST(ListJobs, ProjectNotExist) {
   auto job_client = JobClient(MakeBigQueryJobConnection(std::move(options.value())));
 
   ListJobsRequest request;
-  request.set_project_id("non-existing-project");
+  request.set_project_id(std::string(kNameForNonExistingProject));
 
   auto range = job_client.ListJobs(request);
 

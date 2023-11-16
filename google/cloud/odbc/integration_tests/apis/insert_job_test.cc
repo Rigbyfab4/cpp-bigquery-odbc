@@ -16,11 +16,11 @@
 #include "absl/strings/str_cat.h"
 
 #include "google/cloud/bigquery/v2/minimal/internal/job_client.h"
-#include "google/cloud/options.h"
 #include "google/cloud/internal/getenv.h"
 
 #include "google/cloud/odbc/integration_tests/testing_util/authentication.h"
 #include "google/cloud/odbc/integration_tests/testing_util/status_matchers.h"
+#include "google/cloud/odbc/integration_tests/testing_util/util_constants.h"
 
 namespace google {
 namespace cloud {
@@ -32,6 +32,7 @@ using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthenticat
 using google::cloud::odbc_testing_util_internal::CreateServiceAccountAuthWithClientIdAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateUserAccountAuthentication;
 using google::cloud::odbc_testing_util_internal::CreateNoAccessAccountAuthentication;
+using google::cloud::odbc_testing_util_internal::kNameForNonExistingProject;
 using ::testing::HasSubstr;
 using bigquery_v2_minimal_internal::JobClient;
 using bigquery_v2_minimal_internal::MakeBigQueryJobConnection;
@@ -216,7 +217,7 @@ TEST(InsertJob, ProjectNotExist) {
   job_configuration.query = job_configuration_query;
   job.configuration = job_configuration;
   InsertJobRequest request;
-  request.set_project_id("Non-existing-project");
+  request.set_project_id(std::string(kNameForNonExistingProject));
   request.set_job(job);
 
   request.set_json_filter_keys({"statistics", "status", "labels", "destinationTable",
