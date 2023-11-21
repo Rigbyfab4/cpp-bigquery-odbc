@@ -24,7 +24,7 @@ RUN apt-get update && \
     apt-get --no-install-recommends install -y apt-transport-https apt-utils \
         automake build-essential ca-certificates curl git \
         gcc g++ libc-ares-dev libc-ares2 libcurl4-openssl-dev \
-        libssl-dev m4 make ninja-build pkg-config tar wget zlib1g-dev
+        libssl-dev libtool m4 make ninja-build pkg-config tar wget zlib1g-dev
 # ```
 
 # TODO(#43): When https://github.com/googleapis/cpp-bigquery-odbc/issues/43 is fixed, remove
@@ -164,6 +164,15 @@ RUN curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.5.4/sccac
     mkdir -p /usr/local/bin && \
     mv sccache /usr/local/bin/sccache && \
     chmod +x /usr/local/bin/sccache
+
+# iODBC Driver Manager
+RUN echo 'Installing iODBC Driver Manager...'
+WORKDIR /var/tmp/iODBC
+RUN curl -fsSL https://github.com/openlink/iODBC/releases/download/v3.52.16/libiodbc-3.52.16.tar.gz | \
+    tar -zxf - --strip-components=1 && \
+    autoreconf --install && \
+    ./configure && \
+    make install -j $(nproc)
 
 # Update the ld.conf cache in case any libraries were installed in /usr/local/lib*
 RUN ldconfig /usr/local/lib*

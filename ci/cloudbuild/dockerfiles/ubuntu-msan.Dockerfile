@@ -204,3 +204,12 @@ RUN curl -fsSL https://github.com/googleapis/google-cloud-cpp/archive/90ad988fa4
 RUN curl -o /usr/bin/bazelisk -sSL "https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-amd64" && \
     chmod +x /usr/bin/bazelisk && \
     ln -s /usr/bin/bazelisk /usr/bin/bazel
+
+# iODBC Driver Manager
+RUN echo 'Installing iODBC Driver Manager...'
+WORKDIR /var/tmp/iODBC
+RUN curl -fsSL https://github.com/openlink/iODBC/releases/download/v3.52.16/libiodbc-3.52.16.tar.gz | \
+    tar -zxf - --strip-components=1 && \
+    autoreconf --install && \
+    ./configure && \
+    make install -j $(nproc)
