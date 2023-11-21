@@ -52,6 +52,11 @@ set_target_properties(
 add_library(google-cloud-odbc::bq-driver ALIAS
             google_cloud_odbc_bq_driver)
 
-create_bazel_config(google_cloud_odbc_bq_driver YEAR 2023)
-
-
+# To avoid maintaining the list of files for the library, export them to a .bzl
+# file.
+if (COMMAND create_bazel_config)
+  create_bazel_config(google_cloud_odbc_bq_driver YEAR 2023)
+else()
+  include(CreateOdbcBazelConfig)
+  create_bazel_config(google_cloud_odbc_bq_driver YEAR 2023)
+endif()
