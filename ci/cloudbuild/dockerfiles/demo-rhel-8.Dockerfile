@@ -179,6 +179,15 @@ RUN curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.5.4/sccac
     mv sccache /usr/local/bin/sccache && \
     chmod +x /usr/local/bin/sccache
 
+# iODBC Driver Manager
+RUN echo 'Installing iODBC Driver Manager...'
+WORKDIR /var/tmp/iODBC
+RUN curl -fsSL https://github.com/openlink/iODBC/releases/download/v3.52.16/libiodbc-3.52.16.tar.gz | \
+    tar -zxf - --strip-components=1 && \
+    autoreconf --install && \
+    ./configure && \
+    make install -j $(nproc)
+
 # Some of the above libraries may have installed in /usr/local, so make sure
 # those library directories will be found.
 RUN ldconfig /usr/local/lib*

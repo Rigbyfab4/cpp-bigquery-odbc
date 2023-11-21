@@ -239,7 +239,7 @@ RUN dpkg -l libc6
 RUN if [ $(ldd --version | grep GLIBC | awk '{print $5}') -lt 2.17 ] ; \
     then echo 'glibc version is < 2.17: exiting...' ; exit 1 ; fi
 
-# unixODBC Driver Manager
+# iODBC Driver Manager
 RUN echo 'Installing iODBC Driver Manager...'
 WORKDIR /var/tmp/iODBC
 RUN curl -fsSL https://github.com/openlink/iODBC/releases/download/v3.52.16/libiodbc-3.52.16.tar.gz | \
