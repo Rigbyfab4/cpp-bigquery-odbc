@@ -26,12 +26,12 @@
 ////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////
-// Suppressing clang-tidy errors for unused parameters as we don't have function
+// Suppressing clang-tidy errors as we don't have function
 // implementation right now. Remove the NOLINGBEGIN - NOLINTEND block once 
-// functions are implemented
+// functions are implemented.
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// NOLINTBEGIN(misc-unused-parameters)
+// NOLINTBEGIN
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // SQLAllocHandle allocates an environment, connection, statement,
@@ -2181,4 +2181,4 @@ SQLRETURN SQL_API SQLBulkOperations(SQLHSTMT statementHandle, SQLSMALLINT operat
 
     return rc;
 }
-// NOLINTEND(misc-unused-parameters)
+// NOLINTEND
