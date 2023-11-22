@@ -59,7 +59,6 @@ function (odbc_define_tests)
 
   target_link_libraries(
     all_tests
-    google-cloud-odbc::bq-driver
     odbc
     GTest::gtest_main
     GTest::gmock
@@ -97,6 +96,9 @@ add_library(odbc_client_interface dummy.cc)
 target_link_libraries(odbc_client_interface PRIVATE google_cloud_cpp_bigquery_rest)
 
 include(bq_driver.cmake)
+
+add_library(odbc_bq_driver dummy.cc)
+target_link_libraries(odbc_bq_driver PRIVATE google_cloud_odbc_bq_driver)
 
 odbc_define_tests()
 
