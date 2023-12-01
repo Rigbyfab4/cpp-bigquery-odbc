@@ -3,5 +3,4 @@ cmake-out/
 cmake-build-debug/
 build-out/
 vcpkg_installed/
-build-out/
 .vscode/
