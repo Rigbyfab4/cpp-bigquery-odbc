@@ -15,11 +15,12 @@
 
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 
+// NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
 namespace cloud {
 namespace odbc_bq_driver {
 
-std::shared_ptr<Sections> ParseConfig(std::string const& file_path) {
+StatusOr<std::shared_ptr<Sections>> ParseConfig(std::string const& file_path) {
   std::ifstream is(file_path);
   is.exceptions(std::ios::badbit);  // Minimal error handling
   Sections sections;
@@ -39,17 +40,12 @@ std::shared_ptr<Sections> ParseConfig(std::string const& file_path) {
       } else {
         // Property line.
         size_t pos = line.find_first_of('=');
-        std::string property;
+        std::string property = line.substr(0, pos);
+        Trim(property);
         std::string value;
         if (pos != std::string::npos) {
-          property = line.substr(0, pos);
-          Trim(property);
           value = line.substr(pos + 1);
           Trim(value);
-        } else {
-          property = line;
-          Trim(property);
-          value = "";
         }
         if(!current_section_name.empty()) {
           sections[current_section_name][property] = value;
@@ -57,7 +53,7 @@ std::shared_ptr<Sections> ParseConfig(std::string const& file_path) {
       }
     }
   } else {
-    throw std::runtime_error("Cannot access file");
+    return Status(StatusCode::kInvalidArgument, "Can't open file with path: " + file_path);
   }
   return std::make_shared<Sections>(sections);
 }
@@ -65,3 +61,4 @@ std::shared_ptr<Sections> ParseConfig(std::string const& file_path) {
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google
+// NOLINTEND(modernize-concat-nested-namespaces)
