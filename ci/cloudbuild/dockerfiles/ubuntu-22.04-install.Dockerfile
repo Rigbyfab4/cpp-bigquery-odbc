@@ -60,7 +60,12 @@ RUN apt-get update && \
 
 # clang-tidy-cache needs python
 RUN update-alternatives --install /usr/bin/python python $(which python3) 10
-RUN pip3 install setuptools wheel requests
+
+COPY . /var/tmp/ci
+WORKDIR /var/tmp/downloads
+RUN if [ $(ls /var/tmp/ci/requirements.txt | grep -c requirements.txt) -eq 0 ] ; \
+    then echo 'Unable to find requirements.txt for python...' ; exit 1 ; fi
+RUN pip3 install --require-hashes -r /var/tmp/ci/requirements.txt
 
 # Install all the direct (and indirect) dependencies for cpp-bigquery-odbc.
 # Use a different directory for each build, and remove the downloaded
@@ -215,7 +220,6 @@ RUN curl -fsSL https://github.com/googleapis/google-cloud-cpp/archive/90ad988fa4
 
 # Install the Cloud SDK and some of the emulators. We use the emulators to run
 # integration tests for the client libraries.
-COPY . /var/tmp/ci
 WORKDIR /var/tmp/downloads
 RUN /var/tmp/ci/install-cloud-sdk.sh
 ENV CLOUD_SDK_LOCATION=/usr/local/google-cloud-sdk
