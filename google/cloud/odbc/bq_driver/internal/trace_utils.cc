@@ -123,7 +123,7 @@ std::string FormatSqlPointer(SQLPOINTER p)
   return buf;
 }
 
-std::string FormatSqlSmallInt(SQLSMALLINT* p)
+std::string FormatSqlSmallInt(const SQLSMALLINT* p)
 {
   char buf[1024];
    if (!p)
@@ -133,7 +133,7 @@ std::string FormatSqlSmallInt(SQLSMALLINT* p)
   return buf;
 }
 
-std::string FormatSqlUSmallInt(SQLUSMALLINT* p)
+std::string FormatSqlUSmallInt(const SQLUSMALLINT* p)
 {
   char buf[1024];
    if (!p)
@@ -143,7 +143,7 @@ std::string FormatSqlUSmallInt(SQLUSMALLINT* p)
   return buf;
 }
 
-std::string FormatSqlInteger(SQLINTEGER* p)
+std::string FormatSqlInteger(const SQLINTEGER* p)
 {
   char buf[1024];
    if (!p)
@@ -153,7 +153,7 @@ std::string FormatSqlInteger(SQLINTEGER* p)
   return buf;
 }
 
-std::string FormatSqlUInteger(SQLUINTEGER* p)
+std::string FormatSqlUInteger(const SQLUINTEGER* p)
 {
   char buf[1024];
   if (!p)
@@ -163,31 +163,31 @@ std::string FormatSqlUInteger(SQLUINTEGER* p)
   return buf;
 }
 
-std::string FormatSqlChar(SQLCHAR* p)
+std::string FormatSqlChar(const SQLCHAR* p)
 {
   char buf[1024];
 
   if (!p)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLCHAR");
   else
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLCHAR", reinterpret_cast<char*>(p));
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLCHAR", p);
   return buf;
 }
 
-std::string FormatSqlPointer(SQLPOINTER* p)
+std::string FormatSqlPointer(const SQLPOINTER* p)
 {
   char buf[1024];
-   if (!p)
+  if (!p)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLPOINTER");
   else
     sprintf(buf, "\t\t%-s *, %p\n", "SQLPOINTER", p);
   return buf;
 }
 
-std::string FormatSqlHandle(SQLHANDLE* p)
+std::string FormatSqlHandle(const SQLHANDLE* p)
 {
   char buf[1024];
-   if (!p)
+  if (!p)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLHANDLE");
   else
     sprintf(buf, "\t\t%-s *, %p\n", "SQLHANDLE", p);
@@ -195,13 +195,13 @@ std::string FormatSqlHandle(SQLHANDLE* p)
 }
 
 #if (ODBCVER >= 0x0300)
-std::string FormatSqlDate(SQLDATE* d)
+std::string FormatSqlDate(const SQLDATE* d)
 {
   char buf[1024];
   if (!d)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLDATE");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLDATE", reinterpret_cast<char*>(d));
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLDATE", d);
 
   return buf;
 }
@@ -213,7 +213,7 @@ std::string FormatSqlDecimal(SQLDECIMAL d)
   return buf;
 }
 
-std::string FormatSqlDecimal(SQLDECIMAL* d)
+std::string FormatSqlDecimal(const SQLDECIMAL* d)
 {
   char buf[1024];
   if (!d)
@@ -230,7 +230,7 @@ std::string FormatSqlNumeric(SQLNUMERIC n)
   return buf;
 }
 
-std::string FormatSqlNumeric(SQLNUMERIC* n) 
+std::string FormatSqlNumeric(const SQLNUMERIC* n) 
 {
   char buf[1024];
   if (!n)
@@ -247,7 +247,7 @@ std::string FormatSqlDouble(SQLDOUBLE d)
   return buf;
 }
 
-std::string FormatSqlDouble(SQLDOUBLE* d)
+std::string FormatSqlDouble(const SQLDOUBLE* d)
 {
   char buf[1024];
   if (!d)
@@ -264,7 +264,7 @@ std::string FormatSqlFloat(SQLFLOAT f)
   return buf;
 }
 
-std::string FormatSqlFloat(SQLFLOAT* f)
+std::string FormatSqlFloat(const SQLFLOAT* f)
 {
   char buf[1024];
   if (!f)
@@ -281,7 +281,7 @@ std::string FormatSqlReal(SQLREAL r)
   return buf;
 }
 
-std::string FormatSqlReal(SQLREAL* r)
+std::string FormatSqlReal(const SQLREAL* r)
 {
   char buf[1024];
   if (!r)
@@ -291,35 +291,35 @@ std::string FormatSqlReal(SQLREAL* r)
   return buf;
 }
 
-std::string FormatSqlTime(SQLTIME* t)
+std::string FormatSqlTime(const SQLTIME* t)
 {
   char buf[1024];
   if (!t)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLTIME");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIME", reinterpret_cast<char*>(t));
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIME", t);
 
   return buf;
 }
 
-std::string FormatSqlTimestamp(SQLTIMESTAMP* tp)
+std::string FormatSqlTimestamp(const SQLTIMESTAMP* tp)
 {
   char buf[1024];
   if (!tp)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLTIMESTAMP");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIMESTAMP", reinterpret_cast<char*>(tp));
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIMESTAMP", tp);
 
   return buf;
 }
 
-std::string FormatSqlVarchar(SQLVARCHAR* s)
+std::string FormatSqlVarchar(const SQLVARCHAR* s)
 {
   char buf[1024];
   if (!s)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLVARCHAR");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLVARCHAR", reinterpret_cast<char*>(s));
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLVARCHAR", s);
 
   return buf;
 }

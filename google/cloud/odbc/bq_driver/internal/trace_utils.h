@@ -22,10 +22,13 @@
 #include <memory>
 #include <map>
 #include <string>
+// NOLINTBEGIN(modernize-deprecated-headers)
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+// NOLINTEND(modernize-deprecated-headers)
 
+// NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
 namespace cloud {
 namespace odbc_bq_driver {
@@ -51,13 +54,13 @@ std::string FormatSqlHandle(SQLHANDLE handle);
 
 // Pointers.
 std::string FormatSqlPointer(SQLPOINTER p);
-std::string FormatSqlSmallInt(SQLSMALLINT* p);
-std::string FormatSqlUSmallInt(SQLUSMALLINT* p);
-std::string FormatSqlInteger(SQLINTEGER* p);
-std::string FormatSqlUInteger(SQLUINTEGER* p);
-std::string FormatSqlChar(SQLCHAR* p);
-std::string FormatSqlPointer(SQLPOINTER* p);
-std::string FormatSqlHandle(SQLHANDLE* p);
+std::string FormatSqlSmallInt(const SQLSMALLINT* p);
+std::string FormatSqlUSmallInt(const SQLUSMALLINT* p);
+std::string FormatSqlInteger(const SQLINTEGER* p);
+std::string FormatSqlUInteger(const SQLUINTEGER* p);
+std::string FormatSqlChar(const SQLCHAR* p);
+std::string FormatSqlPointer(const SQLPOINTER* p);
+std::string FormatSqlHandle(const SQLHANDLE* p);
 
 // length.
 std::string FormatSqlLen(SQLLEN l);
@@ -69,20 +72,20 @@ std::string FormatSqlReturnCode(RETCODE ret);
 std::string FormatSqlReturn(SQLRETURN ret);
 
 #if (ODBCVER >= 0x0300)
-std::string FormatSqlDate(SQLDATE* d);
+std::string FormatSqlDate(const SQLDATE* d);
 std::string FormatSqlDecimal(SQLDECIMAL d);
-std::string FormatSqlDecimal(SQLDECIMAL* d);
+std::string FormatSqlDecimal(const SQLDECIMAL* d);
 std::string FormatSqlNumeric(SQLNUMERIC n);
-std::string FormatSqlNumeric(SQLNUMERIC* n);
+std::string FormatSqlNumeric(const SQLNUMERIC* n);
 std::string FormatSqlDouble(SQLDOUBLE d);
-std::string FormatSqlDouble(SQLDOUBLE* d);
+std::string FormatSqlDouble(const SQLDOUBLE* d);
 std::string FormatSqlFloat(SQLFLOAT f);
-std::string FormatSqlFloat(SQLFLOAT* f);
+std::string FormatSqlFloat(const SQLFLOAT* f);
 std::string FormatSqlReal(SQLREAL r);
-std::string FormatSqlReal(SQLREAL* r);
-std::string FormatSqlTime(SQLTIME* t);
-std::string FormatSqlTimestamp(SQLTIMESTAMP* tp);
-std::string FormatSqlVarchar(SQLVARCHAR* s);
+std::string FormatSqlReal(const SQLREAL* r);
+std::string FormatSqlTime(const SQLTIME* t);
+std::string FormatSqlTimestamp(const SQLTIMESTAMP* tp);
+std::string FormatSqlVarchar(const SQLVARCHAR* s);
 #endif  /* ODBCVER >= 0x0300 */
 
 // To Be Implemented:
@@ -93,5 +96,6 @@ std::string FormatSqlVarchar(SQLVARCHAR* s);
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google
+// NOLINTEND(modernize-concat-nested-namespaces)
 
 #endif  // GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_TRACE_UTILS_H
