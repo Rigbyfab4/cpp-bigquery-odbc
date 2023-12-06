@@ -126,7 +126,7 @@ std::string FormatSqlPointer(SQLPOINTER p)
 std::string FormatSqlSmallInt(const SQLSMALLINT* p)
 {
   char buf[1024];
-   if (!p)
+  if (!p)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLSMALLINT");
   else
     sprintf(buf, "\t\t%-s *, %hi\n", "SQLSMALLINT", *p);
@@ -136,7 +136,7 @@ std::string FormatSqlSmallInt(const SQLSMALLINT* p)
 std::string FormatSqlUSmallInt(const SQLUSMALLINT* p)
 {
   char buf[1024];
-   if (!p)
+  if (!p)
     sprintf(buf, "\t\t%-s *,  0x0\n", "SQLUSMALLINT");
   else
     sprintf(buf, "\t\t%-s *, %hu\n", "SQLUSMALLINT", *p);
@@ -146,7 +146,7 @@ std::string FormatSqlUSmallInt(const SQLUSMALLINT* p)
 std::string FormatSqlInteger(const SQLINTEGER* p)
 {
   char buf[1024];
-   if (!p)
+  if (!p)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLINTEGER");
   else
     sprintf(buf, "\t\t%-s *, %d\n", "SQLINTEGER", *p);
