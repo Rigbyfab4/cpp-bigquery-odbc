@@ -18,15 +18,12 @@
 #include "odbc_includes.h"
 
 #include <algorithm>
+#include <iostream>
 #include <fstream>
 #include <memory>
 #include <map>
 #include <string>
-// NOLINTBEGIN(modernize-deprecated-headers)
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-// NOLINTEND(modernize-deprecated-headers)
+#include <cstdarg>
 
 // NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
@@ -35,23 +32,33 @@ namespace odbc_bq_driver {
 
 // Emit methods for actually printing the trace lines to stdout or a trace file.
 
-// Prints to stdout.
-int TracePrintInternalStdOut(const std::string& fmt, ...);
-// Prints to a trace file.
-int TracePrintInternalFile(FILE* file, const std::string& fmt, ...);
+// Clients of this utility should use the two methods below to emit
+// a trace of all parameters to an stdout or a trace file.
+std::string CollectAndPrintArgs(int num_args, ...);
+std::string CollectAndPrintArgsFile(std::ofstream& file, int num_args, ...);
 
-// Returns formatted string for different parameter types.
+// Below are Helper methods for the above.
+
+// Prints the trace string to stdout.
+int TracePrintInternalStdOut(std::string& s);
+// Prints the trace string to a trace file. 
+// It is the responsibility of the caller to open and close the time
+int TracePrintInternalFile(std::ofstream& file, std::string& s);
+// Collects all the passed in arguments and returns a 
+// formatted string to be traced for all the args.
+std::string CollectArgs(va_list src_args, int num_args);
+
+// Additional Helper methods for validating and formatting strings
+// based on parameter types.
 
 // Basic types.
 std::string FormatSqlSmallInt(SQLSMALLINT i);
 std::string FormatSqlUSmallInt(SQLUSMALLINT i);
 std::string FormatSqlInteger(SQLINTEGER i);
 std::string FormatSqlUInteger(SQLUINTEGER i);
-
 // Handles.
 std::string FormatSqlHandleType(SQLSMALLINT type);
 std::string FormatSqlHandle(SQLHANDLE handle);
-
 // Pointers.
 std::string FormatSqlPointer(SQLPOINTER p);
 std::string FormatSqlSmallInt(const SQLSMALLINT* p);
@@ -61,16 +68,14 @@ std::string FormatSqlUInteger(const SQLUINTEGER* p);
 std::string FormatSqlChar(const SQLCHAR* p);
 std::string FormatSqlPointer(const SQLPOINTER* p);
 std::string FormatSqlHandle(const SQLHANDLE* p);
-
 // length.
 std::string FormatSqlLen(SQLLEN l);
 std::string FormatSqlULen(SQLULEN l);
 std::string FormatSqlSetPosiRow(SQLSETPOSIROW rp);
-
 // Return codes.
 std::string FormatSqlReturnCode(RETCODE ret);
 std::string FormatSqlReturn(SQLRETURN ret);
-
+// Additional types specific to 3.x
 #if (ODBCVER >= 0x0300)
 std::string FormatSqlDate(const SQLDATE* d);
 std::string FormatSqlDecimal(SQLDECIMAL d);

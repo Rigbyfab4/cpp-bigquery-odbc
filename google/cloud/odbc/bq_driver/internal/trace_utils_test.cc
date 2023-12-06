@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
-
 #include <gtest/gtest.h>
 
+// NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
 namespace cloud {
 namespace odbc_bq_driver {
-
-// For unit test purposes we just log to stderr.
-FILE* err_file = stderr;
 
 TEST(TraceLogging, BasicTypes)
 {
@@ -31,44 +27,32 @@ TEST(TraceLogging, BasicTypes)
   auto fmt3 = FormatSqlInteger(3);
   auto fmt4 = FormatSqlUInteger(4);
 
-  EXPECT_EQ("\t\tSQLSMALLINT, 1\n", fmt1);
-  EXPECT_EQ("\t\tSQLUSMALLINT, 2\n", fmt2);
-  EXPECT_EQ("\t\tSQLINTEGER, 3\n", fmt3);
-  EXPECT_EQ("\t\tSQLUINTEGER, 4\n", fmt4);
-
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt1, fmt2, fmt3, fmt4) > 0);
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt1, fmt2, fmt3, fmt4) > 0);
+  EXPECT_EQ("\t\tSQLSMALLINT, 1\n\t\tSQLUSMALLINT, 2\n\t\tSQLINTEGER, 3\n\t\tSQLUINTEGER, 4\n",
+            CollectAndPrintArgs(4, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str()));
 }
 
 TEST(TraceLogging, Handle)
 {
+  std::string expected;
+  expected.append("\t\tSQL_NULL_HANDLE, 0x0\n\t\t")
+      .append("SQL_HANDLE_DBC, handle type=2\n\t\t")
+      .append("SQL_HANDLE_DESC, handle type=4\n\t\t")
+      .append("SQL_HANDLE_ENV, handle type=1\n\t\t")
+      .append("SQL_HANDLE_STMT, handle type=3\n\t\t")
+      .append("Unknown Handle Type, handle type=1234\n");
+
   SQLHANDLE handle = nullptr;
 
-  auto fmt_handle = FormatSqlHandle(handle);
-  auto fmt_type1 = FormatSqlHandleType(SQL_HANDLE_DBC);
-  auto fmt_type2 = FormatSqlHandleType(SQL_HANDLE_DESC);
-  auto fmt_type3 = FormatSqlHandleType(SQL_HANDLE_ENV);
-  auto fmt_type4 = FormatSqlHandleType(SQL_HANDLE_STMT);
-  auto fmt_type5 = FormatSqlHandleType(1234);
+  auto fmt1 = FormatSqlHandle(handle);
+  auto fmt2 = FormatSqlHandleType(SQL_HANDLE_DBC);
+  auto fmt3 = FormatSqlHandleType(SQL_HANDLE_DESC);
+  auto fmt4 = FormatSqlHandleType(SQL_HANDLE_ENV);
+  auto fmt5 = FormatSqlHandleType(SQL_HANDLE_STMT);
+  auto fmt6 = FormatSqlHandleType(1234);
 
-  EXPECT_EQ("\t\tSQL_NULL_HANDLE, 0x0\n", fmt_handle);
-  EXPECT_EQ("\t\tSQL_HANDLE_DBC, handle type=2\n", fmt_type1);
-  EXPECT_EQ("\t\tSQL_HANDLE_DESC, handle type=4\n", fmt_type2);
-  EXPECT_EQ("\t\tSQL_HANDLE_ENV, handle type=1\n", fmt_type3);
-  EXPECT_EQ("\t\tSQL_HANDLE_STMT, handle type=3\n", fmt_type4);
-  EXPECT_EQ("\t\tUnknown Handle Type, handle type=1234\n", fmt_type5);
-
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt_type1, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt_type2, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt_type3, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt_type4, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt_type5, fmt_handle) > 0);
-
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt_type1, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt_type2, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt_type3, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt_type4, fmt_handle) > 0);
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt_type5, fmt_handle) > 0);
+  EXPECT_EQ(expected, CollectAndPrintArgs(
+                          6, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(),
+                          fmt4.c_str(), fmt5.c_str(), fmt6.c_str()));
 }
 
 TEST(TraceLogging, Pointers)
@@ -91,19 +75,15 @@ TEST(TraceLogging, Pointers)
   auto fmt7 = FormatSqlPointer(pp);
   auto fmt8 = FormatSqlHandle(hp);
 
-  EXPECT_EQ("\t\tSQLPOINTER, 0x0\n", fmt1);
-  EXPECT_EQ("\t\tSQLSMALLINT *, 1\n", fmt2);
-  EXPECT_EQ("\t\tSQLUSMALLINT *, 2\n", fmt3);
-  EXPECT_EQ("\t\tSQLINTEGER *, 3\n", fmt4);
-  EXPECT_EQ("\t\tSQLUINTEGER *, 4\n", fmt5);
-  EXPECT_EQ("\t\tSQLCHAR *, Hello World\n", fmt6);
-  EXPECT_EQ("\t\tSQLPOINTER *, 0x0\n", fmt7);
-  EXPECT_EQ("\t\tSQLHANDLE *, 0x0\n", fmt8);
+  std::string expected;
+  expected.append("\t\tSQLPOINTER, 0x0\n\t\t")
+      .append("SQLSMALLINT *, 1\n\t\tSQLUSMALLINT *, 2\n\t\t")
+      .append("SQLINTEGER *, 3\n\t\tSQLUINTEGER *, 4\n\t\t")
+      .append("SQLCHAR *, Hello World\n\t\tSQLPOINTER *, 0x0\n\t\tSQLHANDLE *, 0x0\n");
 
-  EXPECT_TRUE(
-      TracePrintInternalStdOut(fmt1, fmt2, fmt3, fmt4, fmt5, fmt6, fmt7, fmt8) > 0);
-  EXPECT_TRUE(
-      TracePrintInternalFile(err_file, fmt1, fmt2, fmt3, fmt4, fmt5, fmt6, fmt7, fmt8) > 0);
+  EXPECT_EQ(expected, CollectAndPrintArgs(
+                          8, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str(),
+                          fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str()));
 }
 
 TEST(TraceLogging, Length)
@@ -112,12 +92,8 @@ TEST(TraceLogging, Length)
   auto fmt2 = FormatSqlULen(11);
   auto fmt3 = FormatSqlSetPosiRow(50);
 
-  EXPECT_EQ("\t\tSQLLEN, 10\n", fmt1);
-  EXPECT_EQ("\t\tSQLULEN, 11\n", fmt2);
-  EXPECT_EQ("\t\tSQLSETPOSIROW, 50\n", fmt3);
-
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt1, fmt2, fmt3) > 0);
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt1, fmt2, fmt3) > 0);
+  EXPECT_EQ("\t\tSQLLEN, 10\n\t\tSQLULEN, 11\n\t\tSQLSETPOSIROW, 50\n",
+            CollectAndPrintArgs(3, fmt1.c_str(), fmt2.c_str(), fmt3.c_str()));
 }
 
 TEST(TraceLogging, ReturnCodes)
@@ -125,11 +101,8 @@ TEST(TraceLogging, ReturnCodes)
   auto fmt1 = FormatSqlReturnCode(1);
   auto fmt2 = FormatSqlReturn(2);
 
-  EXPECT_EQ("\t\tRETCODE, 1\n", fmt1);
-  EXPECT_EQ("\t\tSQLRETURN, 2\n", fmt2);
-
-  EXPECT_TRUE(TracePrintInternalStdOut(fmt1, fmt2) > 0);
-  EXPECT_TRUE(TracePrintInternalFile(err_file, fmt1, fmt2) > 0);
+  EXPECT_EQ("\t\tRETCODE, 1\n\t\tSQLRETURN, 2\n",
+            CollectAndPrintArgs(2, fmt1.c_str(), fmt2.c_str()));
 }
 
 TEST(TraceLogging, AdditionalSqlTypes)
@@ -160,31 +133,23 @@ TEST(TraceLogging, AdditionalSqlTypes)
   auto fmt13 = FormatSqlFloat(&fl);
   auto fmt14 = FormatSqlReal(&r);
 
-  EXPECT_EQ("\t\tSQLDATE *, 1901-01-01\n", fmt1);
-  EXPECT_EQ("\t\tSQLDECIMAL, 10\n", fmt2);
-  EXPECT_EQ("\t\tSQLNUMERIC, 11\n", fmt3);
-  EXPECT_EQ("\t\tSQLDOUBLE, 1.1000\n", fmt4);
-  EXPECT_EQ("\t\tSQLFLOAT, 2.2000\n", fmt5);
-  EXPECT_EQ("\t\tSQLREAL, 3.30\n", fmt6);
-  EXPECT_EQ("\t\tSQLTIME *, 10:30:00\n", fmt7);
-  EXPECT_EQ("\t\tSQLTIMESTAMP *, 1901-01-01 10:30:00\n", fmt8);
-  EXPECT_EQ("\t\tSQLVARCHAR *, Hello\n", fmt9);
-  EXPECT_EQ("\t\tSQLDECIMAL *, 10\n", fmt10);
-  EXPECT_EQ("\t\tSQLNUMERIC *, 11\n", fmt11);
-  EXPECT_EQ("\t\tSQLDOUBLE *, 1.1000\n", fmt12);
-  EXPECT_EQ("\t\tSQLFLOAT *, 2.2000\n", fmt13);
-  EXPECT_EQ("\t\tSQLREAL *, 3.30\n", fmt14);
+  std::string expected;
+  expected.append("\t\tSQLDATE *, 1901-01-01\n\t\tSQLDECIMAL, 10\n\t\t")
+      .append("SQLNUMERIC, 11\n\t\tSQLDOUBLE, 1.1000\n\t\tSQLFLOAT, 2.2000\n\t\t")
+      .append("SQLREAL, 3.30\n\t\tSQLTIME *, 10:30:00\n\t\t")
+      .append("SQLTIMESTAMP *, 1901-01-01 10:30:00\n\t\tSQLVARCHAR *, Hello\n\t\t")
+      .append("SQLDECIMAL *, 10\n\t\tSQLNUMERIC *, 11\n\t\tSQLDOUBLE *, 1.1000\n\t\t")
+      .append("SQLFLOAT *, 2.2000\n\t\tSQLREAL *, 3.30\n");
 
-  EXPECT_TRUE(
-      TracePrintInternalStdOut(
-          fmt1, fmt2, fmt3, fmt4, fmt5, fmt6, fmt7, fmt8,
-          fmt9, fmt10, fmt11, fmt12, fmt13, fmt14) > 0);
-  EXPECT_TRUE(
-      TracePrintInternalFile(
-          err_file, fmt1, fmt2, fmt3, fmt4, fmt5, fmt6,
-          fmt7, fmt8, fmt9, fmt10, fmt11, fmt12, fmt13, fmt14) > 0);
+  EXPECT_EQ(expected,
+            CollectAndPrintArgs(14,
+                                fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str(),
+                                fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str(),
+                                fmt9.c_str(), fmt10.c_str(), fmt11.c_str(), fmt12.c_str(),
+                                fmt13.c_str(), fmt14.c_str()));
 }
 
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google
+// NOLINTEND(modernize-concat-nested-namespaces)

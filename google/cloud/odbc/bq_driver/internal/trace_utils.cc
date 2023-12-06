@@ -14,30 +14,76 @@
 
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 
+// NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
 namespace cloud {
 namespace odbc_bq_driver {
 
-int TracePrintInternalStdOut(const std::string& fmt, ...)
+int TracePrintInternalStdOut(std::string& s)
 {
-  va_list args;
-  va_start(args, fmt);
-  int ret = vprintf(fmt.c_str(), args);
-  va_end(args);
-  return ret;
+  if (s.empty()) {
+    return -1;
+  }
+  std::cout << s << std::endl;
+  return 0;
 }
 
-int TracePrintInternalFile(FILE* file, const std::string& fmt, ...)
+int TracePrintInternalFile(std::ofstream& file, std::string& s)
 {
-  int ret = -1;
-  if (!file) {
-    return ret;
+  if (!file.is_open())
+  {
+    return -1;
   }
-  va_list args;
-  va_start(args, fmt);
-  ret = vfprintf(file, fmt.c_str(), args);
-  va_end(args);
-  return ret;
+  if (s.empty())
+  {
+    return -1;
+  }
+  file << s << std::endl;
+  return 0;
+}
+
+std::string CollectArgs(va_list src_args, int num_args)
+{
+  std::string trace_str;
+  va_list dest_args;
+  va_copy(dest_args, src_args);
+  for (int i = 0; i < num_args; i++)
+  {
+    std::string s = va_arg(dest_args, const char *);
+    trace_str.append(s);
+  }
+  va_end(dest_args); // src_args needs to be ended by the caller.
+  return trace_str;
+}
+
+std::string CollectAndPrintArgs(int num_args, ...)
+{
+  va_list args_list;
+  va_start(args_list, num_args);
+  std::string trace_str = CollectArgs(args_list, num_args);
+  va_end(args_list);
+
+  int ret = TracePrintInternalStdOut(trace_str);
+  if (ret < 0)
+  {
+    return "";
+  }
+  return trace_str;
+}
+
+std::string CollectAndPrintArgsFile(std::ofstream& file, int num_args, ...)
+{
+  va_list args_list;
+  va_start(args_list, num_args);
+  std::string trace_str = CollectArgs(args_list, num_args);
+  va_end(args_list);
+
+  int ret = TracePrintInternalFile(file, trace_str);
+  if (ret < 0)
+  {
+    return "";
+  }
+  return trace_str;
 }
 
 std::string FormatSqlSmallInt(SQLSMALLINT i)
@@ -363,3 +409,4 @@ std::string FormatSqlReturn(SQLRETURN ret)
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google
+// NOLINTEND(modernize-concat-nested-namespaces)

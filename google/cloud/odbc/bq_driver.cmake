@@ -35,6 +35,7 @@ target_link_libraries(
   google_cloud_cpp_bigquery_rest # We need this dependency to use 'options' from client libraries
 )
 target_include_directories(google_cloud_odbc_bq_driver_internal PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(google_cloud_odbc_bq_driver_internal PRIVATE $ENV{ODBC_INCLUDE_PATH})
 
 create_bazel_config(google_cloud_odbc_bq_driver_internal YEAR 2023)
 

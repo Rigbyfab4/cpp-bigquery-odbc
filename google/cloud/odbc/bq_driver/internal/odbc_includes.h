@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_INCLUDES_H
-#define GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_INCLUDES_H
+#ifndef GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_INCLUDES_H
+#define GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_INTERNAL_INCLUDES_H
 
 #define ODBCVER 0x0380
 
@@ -29,4 +29,4 @@
 #include <sqlext.h>
 
 
-#endif  // GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_INCLUDES_H
+#endif  // GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_INTERNAL_INCLUDES_H
