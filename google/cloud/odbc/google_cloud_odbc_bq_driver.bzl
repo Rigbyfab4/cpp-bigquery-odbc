@@ -22,7 +22,6 @@ google_cloud_odbc_bq_driver_hdrs = [
     "bq_driver/odbc_diagnostics.h",
     "bq_driver/odbc_driver_metadata.h",
     "bq_driver/odbc_environment.h",
-    "bq_driver/odbc_includes.h",
     "bq_driver/odbc_lock.h",
     "bq_driver/odbc_sql_requests.h",
     "bq_driver/odbc_sql_results.h",

@@ -15,7 +15,7 @@
 #ifndef GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_TRACE_H
 #define GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_TRACE_H
 
-#include "odbc_includes.h"
+#include "internal/odbc_includes.h"
 
 #include <string>
 #include <map>
