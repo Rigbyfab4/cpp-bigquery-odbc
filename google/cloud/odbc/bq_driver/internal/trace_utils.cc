@@ -43,59 +43,59 @@ int TracePrintInternalFile(FILE* file, const std::string& fmt, ...)
 std::string FormatSqlSmallInt(SQLSMALLINT i)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %hi\n", "SQLSMALLINT", (signed short) i);
+  sprintf(buf, "\t\t%-s, %hi\n", "SQLSMALLINT", i);
   return buf;
 }
 
 std::string FormatSqlUSmallInt(SQLUSMALLINT i)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %hu\n", "SQLUSMALLINT", (unsigned short) i);
+  sprintf(buf, "\t\t%-s, %hu\n", "SQLUSMALLINT", i);
   return buf;
 }
 
 std::string FormatSqlInteger(SQLINTEGER i) 
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %d\n", "SQLINTEGER", (signed int) i);
+  sprintf(buf, "\t\t%-s, %d\n", "SQLINTEGER", i);
   return buf;
 }
 
 std::string FormatSqlUInteger(SQLUINTEGER i)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %i\n", "SQLUINTEGER", (unsigned int) i);
+  sprintf(buf, "\t\t%-s, %i\n", "SQLUINTEGER", i);
   return buf;
 }
 
 std::string FormatSqlHandleType(SQLSMALLINT type)
 {
   char buf[1024];
-  switch (type) 
+  switch (type)
   {
     case SQL_HANDLE_ENV:
     {
-      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_ENV", (unsigned int)type);
+      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_ENV", type);
       break;
     }
     case SQL_HANDLE_DBC:
     {
-      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_DBC", (unsigned int)type);
+      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_DBC", type);
       break;
     }
     case SQL_HANDLE_DESC:
     {
-      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_DESC", (unsigned int)type);
+      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_DESC", type);
       break;
     }
     case SQL_HANDLE_STMT:
     {
-      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_STMT", (unsigned int)type);
+      sprintf(buf, "\t\t%-s, handle type=%hi\n", "SQL_HANDLE_STMT", type);
       break;
     }
     default:
     {
-      sprintf(buf, "\t\t%-s, handle type=%hi\n", "Unknown Handle Type", (unsigned int)type);
+      sprintf(buf, "\t\t%-s, handle type=%hi\n", "Unknown Handle Type", type);
     }
   }
   return buf;
@@ -170,7 +170,7 @@ std::string FormatSqlChar(SQLCHAR* p)
   if (!p)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLCHAR");
   else
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLCHAR", (char *)p);
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLCHAR", reinterpret_cast<char*>(p));
   return buf;
 }
 
@@ -201,7 +201,7 @@ std::string FormatSqlDate(SQLDATE* d)
   if (!d)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLDATE");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLDATE", (char*) d);
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLDATE", reinterpret_cast<char*>(d));
 
   return buf;
 }
@@ -209,7 +209,7 @@ std::string FormatSqlDate(SQLDATE* d)
 std::string FormatSqlDecimal(SQLDECIMAL d)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %d\n", "SQLDECIMAL", (unsigned char) d);
+  sprintf(buf, "\t\t%-s, %d\n", "SQLDECIMAL", d);
   return buf;
 }
 
@@ -219,14 +219,14 @@ std::string FormatSqlDecimal(SQLDECIMAL* d)
   if (!d)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLDECIMAL");
   else
-    sprintf(buf, "\t\t%-s *, %d\n", "SQLDECIMAL", (unsigned char)*d);
+    sprintf(buf, "\t\t%-s *, %d\n", "SQLDECIMAL", *d);
   return buf;
 }
 
 std::string FormatSqlNumeric(SQLNUMERIC n) 
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %d\n", "SQLNUMERIC", (unsigned char) n);
+  sprintf(buf, "\t\t%-s, %d\n", "SQLNUMERIC", n);
   return buf;
 }
 
@@ -236,14 +236,14 @@ std::string FormatSqlNumeric(SQLNUMERIC* n)
   if (!n)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLNUMERIC");
   else
-    sprintf(buf, "\t\t%-s *, %d\n", "SQLNUMERIC", (unsigned char)*n);
+    sprintf(buf, "\t\t%-s *, %d\n", "SQLNUMERIC", *n);
   return buf;
 }
 
 std::string FormatSqlDouble(SQLDOUBLE d)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %.4lf\n", "SQLDOUBLE", (double) d);
+  sprintf(buf, "\t\t%-s, %.4lf\n", "SQLDOUBLE", d);
   return buf;
 }
 
@@ -253,14 +253,14 @@ std::string FormatSqlDouble(SQLDOUBLE* d)
   if (!d)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLDOUBLE");
   else
-    sprintf(buf, "\t\t%-s *, %.4lf\n", "SQLDOUBLE", (double)*d);
+    sprintf(buf, "\t\t%-s *, %.4lf\n", "SQLDOUBLE", *d);
   return buf;
 }
 
 std::string FormatSqlFloat(SQLFLOAT f)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %.4lf\n", "SQLFLOAT", (double) f);
+  sprintf(buf, "\t\t%-s, %.4lf\n", "SQLFLOAT", f);
   return buf;
 }
 
@@ -270,14 +270,14 @@ std::string FormatSqlFloat(SQLFLOAT* f)
   if (!f)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLFLOAT");
   else
-    sprintf(buf, "\t\t%-s *, %.4lf\n", "SQLFLOAT", (double)*f);
+    sprintf(buf, "\t\t%-s *, %.4lf\n", "SQLFLOAT", *f);
   return buf;
 }
 
 std::string FormatSqlReal(SQLREAL r)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %.2f\n", "SQLREAL", (float) r);
+  sprintf(buf, "\t\t%-s, %.2f\n", "SQLREAL", r);
   return buf;
 }
 
@@ -287,7 +287,7 @@ std::string FormatSqlReal(SQLREAL* r)
   if (!r)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLREAL");
   else
-    sprintf(buf, "\t\t%-s *, %.2f\n", "SQLREAL", (float)*r);
+    sprintf(buf, "\t\t%-s *, %.2f\n", "SQLREAL", *r);
   return buf;
 }
 
@@ -297,7 +297,7 @@ std::string FormatSqlTime(SQLTIME* t)
   if (!t)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLTIME");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIME", (char*) t);
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIME", reinterpret_cast<char*>(t));
 
   return buf;
 }
@@ -308,7 +308,7 @@ std::string FormatSqlTimestamp(SQLTIMESTAMP* tp)
   if (!tp)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLTIMESTAMP");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIMESTAMP", (char*) tp);
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLTIMESTAMP", reinterpret_cast<char*>(tp));
 
   return buf;
 }
@@ -319,7 +319,7 @@ std::string FormatSqlVarchar(SQLVARCHAR* s)
   if (!s)
     sprintf(buf, "\t\t%-s *, 0x0\n", "SQLVARCHAR");
   else 
-    sprintf(buf, "\t\t%-s *, %s\n", "SQLVARCHAR", (char*) s);
+    sprintf(buf, "\t\t%-s *, %s\n", "SQLVARCHAR", reinterpret_cast<char*>(s));
 
   return buf;
 }
@@ -328,35 +328,35 @@ std::string FormatSqlVarchar(SQLVARCHAR* s)
 std::string FormatSqlLen(SQLLEN l)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %ld\n", "SQLLEN", (long) l);
+  sprintf(buf, "\t\t%-s, %ld\n", "SQLLEN", l);
   return buf;
 }
 
 std::string FormatSqlULen(SQLULEN l)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %lu\n", "SQLULEN", (unsigned long) l);
+  sprintf(buf, "\t\t%-s, %lu\n", "SQLULEN", l);
   return buf;
 }
 
 std::string FormatSqlSetPosiRow(SQLSETPOSIROW rp)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %hu\n", "SQLSETPOSIROW", (unsigned short) rp);
+  sprintf(buf, "\t\t%-s, %hu\n", "SQLSETPOSIROW", rp);
   return buf;
 }
 
 std::string FormatSqlReturnCode(RETCODE ret)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %hi\n", "RETCODE", (signed short) ret);
+  sprintf(buf, "\t\t%-s, %hi\n", "RETCODE", ret);
   return buf;
 }
 
 std::string FormatSqlReturn(SQLRETURN ret)
 {
   char buf[1024];
-  sprintf(buf, "\t\t%-s, %hi\n", "SQLRETURN", (signed short) ret);
+  sprintf(buf, "\t\t%-s, %hi\n", "SQLRETURN", ret);
   return buf;
 }
 
