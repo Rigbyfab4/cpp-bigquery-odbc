@@ -22,7 +22,10 @@ endif()
 
 # BQ Driver Internal Library
 add_library(
-  google_cloud_odbc_bq_driver_internal
+  google_cloud_odbc_bq_driver_internal # cmake-format: sort
+  bq_driver/internal/odbc_includes.h
+  bq_driver/internal/trace_utils.h
+  bq_driver/internal/trace_utils.cc
   bq_driver/internal/utils.h
   bq_driver/internal/utils.cc
 )
@@ -32,6 +35,7 @@ target_link_libraries(
   google_cloud_cpp_bigquery_rest # We need this dependency to use 'options' from client libraries
 )
 target_include_directories(google_cloud_odbc_bq_driver_internal PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(google_cloud_odbc_bq_driver_internal PRIVATE $ENV{ODBC_INCLUDE_PATH})
 
 create_bazel_config(google_cloud_odbc_bq_driver_internal YEAR 2023)
 
@@ -49,7 +53,6 @@ add_library(
     bq_driver/odbc_driver_metadata.h
     bq_driver/odbc_environment.cc
     bq_driver/odbc_environment.h
-    bq_driver/odbc_includes.h
     bq_driver/odbc_lock.cc
     bq_driver/odbc_lock.h
     bq_driver/odbc_sql_requests.cc
@@ -90,6 +93,7 @@ function (bq_driver_define_unit_tests)
 
   add_executable(
     google_cloud_odbc_bq_driver_unit_tests
+    bq_driver/internal/trace_utils_test.cc
     bq_driver/internal/utils_test.cc
   )
 
