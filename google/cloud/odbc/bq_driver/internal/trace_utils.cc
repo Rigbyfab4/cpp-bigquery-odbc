@@ -56,32 +56,45 @@ std::string CollectArgs(va_list src_args, int num_args)
   return trace_str;
 }
 
-std::string CollectAndPrintArgs(int num_args, ...)
+std::string CollectAndPrintArgs(const std::string& func_name, int num_args, ...)
 {
-  va_list args_list;
-  va_start(args_list, num_args);
-  std::string trace_str = CollectArgs(args_list, num_args);
-  va_end(args_list);
+  std::string trace_str;
+  trace_str.append(func_name);
 
-  int ret = TracePrintInternalStdOut(trace_str);
-  if (ret < 0)
+  if (num_args > 0)
   {
-    return "";
+    va_list args_list;
+    va_start(args_list, num_args);
+    trace_str.append(CollectArgs(args_list, num_args));
+    va_end(args_list);
+
+    int ret = TracePrintInternalStdOut(trace_str);
+    if (ret < 0)
+    {
+      return "";
+    }
   }
   return trace_str;
 }
 
-std::string CollectAndPrintArgsFile(std::ofstream& file, int num_args, ...)
+std::string CollectAndPrintArgsFile(
+  const std::string& func_name, std::ofstream& file, int num_args, ...)
 {
-  va_list args_list;
-  va_start(args_list, num_args);
-  std::string trace_str = CollectArgs(args_list, num_args);
-  va_end(args_list);
+  std::string trace_str;
+  trace_str.append(func_name);
 
-  int ret = TracePrintInternalFile(file, trace_str);
-  if (ret < 0)
+  if (num_args > 0)
   {
-    return "";
+    va_list args_list;
+    va_start(args_list, num_args);
+    trace_str.append(CollectArgs(args_list, num_args));
+    va_end(args_list);
+
+    int ret = TracePrintInternalFile(file, trace_str);
+    if (ret < 0)
+    {
+      return "";
+    }
   }
   return trace_str;
 }

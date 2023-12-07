@@ -34,8 +34,9 @@ namespace odbc_bq_driver {
 
 // Clients of this utility should use the two methods below to emit
 // a trace of all parameters to an stdout or a trace file.
-std::string CollectAndPrintArgs(int num_args, ...);
-std::string CollectAndPrintArgsFile(std::ofstream& file, int num_args, ...);
+std::string CollectAndPrintArgs(const std::string& func_name, int num_args, ...);
+std::string CollectAndPrintArgsFile(
+    const std::string& func_name, std::ofstream& file, int num_args, ...);
 
 // Below are Helper methods for the above.
 
@@ -51,6 +52,9 @@ std::string CollectArgs(va_list src_args, int num_args);
 // Additional Helper methods for validating and formatting strings
 // based on parameter types.
 
+/////////////////////////////////////////////
+// ODBC SQL TYPES
+/////////////////////////////////////////////
 // Basic types.
 std::string FormatSqlSmallInt(SQLSMALLINT i);
 std::string FormatSqlUSmallInt(SQLUSMALLINT i);
@@ -94,9 +98,24 @@ std::string FormatSqlVarchar(const SQLVARCHAR* s);
 #endif  /* ODBCVER >= 0x0300 */
 
 // To Be Implemented:
-// 1) Unicode types.
-// 2) Window specific types.
-// 3) Trace Options.
+// 1) Basic C Types.
+// 2) Trace Options.
+// 3) Unicode types.
+// 4) Window specific types.
+
+/////////////////////////////////////////////
+// Basic C Types
+/////////////////////////////////////////////
+
+
+/////////////////////////////////////////////
+// Unicode Types
+/////////////////////////////////////////////
+
+
+/////////////////////////////////////////////
+// Window specific types.
+/////////////////////////////////////////////
 
 }  // namespace odbc_bq_driver
 }  // namespace cloud

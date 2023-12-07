@@ -27,14 +27,15 @@ TEST(TraceLogging, BasicTypes)
   auto fmt3 = FormatSqlInteger(3);
   auto fmt4 = FormatSqlUInteger(4);
 
-  EXPECT_EQ("\t\tSQLSMALLINT, 1\n\t\tSQLUSMALLINT, 2\n\t\tSQLINTEGER, 3\n\t\tSQLUINTEGER, 4\n",
-            CollectAndPrintArgs(4, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str()));
+  EXPECT_EQ("TestBasicTypes\t\tSQLSMALLINT, 1\n\t\tSQLUSMALLINT, 2\n\t\tSQLINTEGER, 3\n\t\tSQLUINTEGER, 4\n",
+            CollectAndPrintArgs("TestBasicTypes",
+                                4, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str()));
 }
 
 TEST(TraceLogging, Handle)
 {
   std::string expected;
-  expected.append("\t\tSQL_NULL_HANDLE, 0x0\n\t\t")
+  expected.append("TestHandle\t\tSQL_NULL_HANDLE, 0x0\n\t\t")
       .append("SQL_HANDLE_DBC, handle type=2\n\t\t")
       .append("SQL_HANDLE_DESC, handle type=4\n\t\t")
       .append("SQL_HANDLE_ENV, handle type=1\n\t\t")
@@ -50,9 +51,9 @@ TEST(TraceLogging, Handle)
   auto fmt5 = FormatSqlHandleType(SQL_HANDLE_STMT);
   auto fmt6 = FormatSqlHandleType(1234);
 
-  EXPECT_EQ(expected, CollectAndPrintArgs(
-                          6, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(),
-                          fmt4.c_str(), fmt5.c_str(), fmt6.c_str()));
+  EXPECT_EQ(expected, CollectAndPrintArgs("TestHandle",
+                                          6, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(),
+                                          fmt4.c_str(), fmt5.c_str(), fmt6.c_str()));
 }
 
 TEST(TraceLogging, Pointers)
@@ -76,14 +77,14 @@ TEST(TraceLogging, Pointers)
   auto fmt8 = FormatSqlHandle(hp);
 
   std::string expected;
-  expected.append("\t\tSQLPOINTER, 0x0\n\t\t")
+  expected.append("TestPointers\t\tSQLPOINTER, 0x0\n\t\t")
       .append("SQLSMALLINT *, 1\n\t\tSQLUSMALLINT *, 2\n\t\t")
       .append("SQLINTEGER *, 3\n\t\tSQLUINTEGER *, 4\n\t\t")
       .append("SQLCHAR *, Hello World\n\t\tSQLPOINTER *, 0x0\n\t\tSQLHANDLE *, 0x0\n");
 
-  EXPECT_EQ(expected, CollectAndPrintArgs(
-                          8, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str(),
-                          fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str()));
+  EXPECT_EQ(expected, CollectAndPrintArgs("TestPointers",
+                                          8, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str(),
+                                          fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str()));
 }
 
 TEST(TraceLogging, Length)
@@ -92,8 +93,8 @@ TEST(TraceLogging, Length)
   auto fmt2 = FormatSqlULen(11);
   auto fmt3 = FormatSqlSetPosiRow(50);
 
-  EXPECT_EQ("\t\tSQLLEN, 10\n\t\tSQLULEN, 11\n\t\tSQLSETPOSIROW, 50\n",
-            CollectAndPrintArgs(3, fmt1.c_str(), fmt2.c_str(), fmt3.c_str()));
+  EXPECT_EQ("TestLength\t\tSQLLEN, 10\n\t\tSQLULEN, 11\n\t\tSQLSETPOSIROW, 50\n",
+            CollectAndPrintArgs("TestLength", 3, fmt1.c_str(), fmt2.c_str(), fmt3.c_str()));
 }
 
 TEST(TraceLogging, ReturnCodes)
@@ -101,8 +102,8 @@ TEST(TraceLogging, ReturnCodes)
   auto fmt1 = FormatSqlReturnCode(1);
   auto fmt2 = FormatSqlReturn(2);
 
-  EXPECT_EQ("\t\tRETCODE, 1\n\t\tSQLRETURN, 2\n",
-            CollectAndPrintArgs(2, fmt1.c_str(), fmt2.c_str()));
+  EXPECT_EQ("TestRetCodes\t\tRETCODE, 1\n\t\tSQLRETURN, 2\n",
+            CollectAndPrintArgs("TestRetCodes", 2, fmt1.c_str(), fmt2.c_str()));
 }
 
 TEST(TraceLogging, AdditionalSqlTypes)
@@ -134,7 +135,7 @@ TEST(TraceLogging, AdditionalSqlTypes)
   auto fmt14 = FormatSqlReal(&r);
 
   std::string expected;
-  expected.append("\t\tSQLDATE *, 1901-01-01\n\t\tSQLDECIMAL, 10\n\t\t")
+  expected.append("TestAdditionalSqlTypes\t\tSQLDATE *, 1901-01-01\n\t\tSQLDECIMAL, 10\n\t\t")
       .append("SQLNUMERIC, 11\n\t\tSQLDOUBLE, 1.1000\n\t\tSQLFLOAT, 2.2000\n\t\t")
       .append("SQLREAL, 3.30\n\t\tSQLTIME *, 10:30:00\n\t\t")
       .append("SQLTIMESTAMP *, 1901-01-01 10:30:00\n\t\tSQLVARCHAR *, Hello\n\t\t")
@@ -142,7 +143,7 @@ TEST(TraceLogging, AdditionalSqlTypes)
       .append("SQLFLOAT *, 2.2000\n\t\tSQLREAL *, 3.30\n");
 
   EXPECT_EQ(expected,
-            CollectAndPrintArgs(14,
+            CollectAndPrintArgs("TestAdditionalSqlTypes", 14,
                                 fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str(),
                                 fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str(),
                                 fmt9.c_str(), fmt10.c_str(), fmt11.c_str(), fmt12.c_str(),
