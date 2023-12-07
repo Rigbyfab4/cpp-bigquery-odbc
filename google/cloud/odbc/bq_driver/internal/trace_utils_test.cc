@@ -192,16 +192,6 @@ TEST(TraceLogging, BasicTypesLong)
                                 FormatLong(l1).c_str(), FormatLongU(l2).c_str()));
 }
 
-TEST(TraceLogging, BasicTypesLongLong)
-{
-  long long l1 = 1LL;
-  unsigned long long l2 = 2LL;
-
-  EXPECT_EQ("TestBasicTypesLongLong\t\t1\n\t\t2\n",
-            CollectAndPrintArgs("TestBasicTypesLongLong", 2,
-                                FormatLongLong(l1).c_str(), FormatLongLongU(l2).c_str()));
-}
-
 TEST(TraceLogging, BasicTypesShort)
 {
   short s1 = 1;

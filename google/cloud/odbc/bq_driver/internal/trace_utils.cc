@@ -474,42 +474,28 @@ std::string FormatIntU(unsigned int d)
   return buf;
 }
 
-std::string FormatLong(long d)
+std::string FormatLong(std::int64_t d)
 {
   char buf[256];
   sprintf(buf, "\t\t%ld\n", d);
   return buf;
 }
 
-std::string FormatLongU(unsigned long d)
+std::string FormatLongU(std::uint64_t d)
 {
   char buf[256];
   sprintf(buf, "\t\t%li\n", d);
   return buf;
 }
 
-std::string FormatLongLong(long long d)
-{
-  char buf[256];
-  sprintf(buf, "\t\t%lld\n", d);
-  return buf;
-}
-
-std::string FormatLongLongU(unsigned long long d)
-{
-  char buf[256];
-  sprintf(buf, "\t\t%llu\n", d);
-  return buf;
-}
-
-std::string FormatShort(short d)
+std::string FormatShort(std::int16_t d)
 {
   char buf[256];
   sprintf(buf, "\t\t%hi\n", d);
   return buf;
 }
 
-std::string FormatShortU(unsigned short d)
+std::string FormatShortU(std::uint16_t d)
 {
   char buf[256];
   sprintf(buf, "\t\t%hu\n", d);

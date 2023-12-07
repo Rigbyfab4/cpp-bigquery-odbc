@@ -24,6 +24,7 @@
 #include <map>
 #include <string>
 #include <cstdarg>
+#include <cstdint>
 
 // NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
@@ -115,12 +116,10 @@ std::string FormatChar(char c);
 std::string FormatCharU(unsigned char c);
 std::string FormatInt(int d);
 std::string FormatIntU(unsigned int d);
-std::string FormatLong(long d);
-std::string FormatLongU(unsigned long d);
-std::string FormatLongLong(long long d);
-std::string FormatLongLongU(unsigned long long d);
-std::string FormatShort(short d);
-std::string FormatShortU(unsigned short d);
+std::string FormatLong(std::int64_t d);
+std::string FormatLongU(std::uint64_t d);
+std::string FormatShort(std::int16_t d);
+std::string FormatShortU(std::uint16_t d);
 std::string FormatDouble(double d);
 std::string FormatFloat(float d);
 std::string FormatPointer(void* p);
