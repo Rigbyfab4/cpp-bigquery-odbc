@@ -419,6 +419,137 @@ std::string FormatSqlReturn(SQLRETURN ret)
   return buf;
 }
 
+/////////////////////////////////////////////
+// Basic C Types
+/////////////////////////////////////////////
+std::string FormatString(const std::string& str)
+{
+  char buf[1024];
+  sprintf(buf, "\t\t%s\n", str.c_str());
+  return buf;
+}
+
+std::string FormatCharString(const char* str)
+{
+  char buf[1024];
+  if (!str)
+    sprintf(buf, "\t\t 0x0 null string\n");
+  else
+    sprintf(buf, "\t\t%s\n", str);
+  return buf;
+}
+
+std::string FormatCharArray(const char str[])
+{
+  char buf[1024];
+  sprintf(buf, "\t\t%s\n", str);
+  return buf;
+}
+
+std::string FormatChar(char c)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%c\n", c);
+  return buf;
+}
+
+std::string FormatCharU(unsigned char c)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%c\n", c);
+  return buf;
+}
+
+std::string FormatInt(int d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%d\n", d);
+  return buf;
+}
+
+std::string FormatIntU(unsigned int d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%i\n", d);
+  return buf;
+}
+
+std::string FormatLong(long d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%ld\n", d);
+  return buf;
+}
+
+std::string FormatLongU(unsigned long d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%li\n", d);
+  return buf;
+}
+
+std::string FormatLongLong(long long d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%lld\n", d);
+  return buf;
+}
+
+std::string FormatLongLongU(unsigned long long d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%llu\n", d);
+  return buf;
+}
+
+std::string FormatShort(short d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%hi\n", d);
+  return buf;
+}
+
+std::string FormatShortU(unsigned short d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%hu\n", d);
+  return buf;
+}
+
+std::string FormatDouble(double d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%.4lf\n", d);
+  return buf;
+}
+
+std::string FormatFloat(float d)
+{
+  char buf[256];
+  sprintf(buf, "\t\t%.2f\n", d);
+  return buf;
+}
+
+std::string FormatPointer(void* p)
+{
+  char buf[256];
+  if (!p)
+    sprintf(buf, "\t\t0x0 null pointer\n");
+  else
+    sprintf(buf, "\t\t%p\n", p);
+  return buf;
+}
+
+std::string FormatBool(bool b)
+{
+  char buf[256];
+  if (b)
+    sprintf(buf, "\t\t%s\n", "TRUE");
+  else
+    sprintf(buf, "\t\t%s\n", "FALSE");
+  return buf;
+}
+
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google
