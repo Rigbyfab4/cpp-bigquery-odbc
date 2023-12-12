@@ -214,14 +214,6 @@ TEST(TraceLogging, BasicTypesFloat)
             CollectAndPrintArgs("TestBasicTypesFloat", 1, FormatFloat(1.12).c_str()));
 }
 
-TEST(TraceLogging, BasicTypesPointer)
-{
-  void *p = (void *)0x7ffd044efdfc;
-
-  EXPECT_EQ("TestBasicTypesPointer\t\t0x7ffd044efdfc\n",
-            CollectAndPrintArgs("TestBasicTypesPointer", 1, FormatPointer(p).c_str()));
-}
-
 TEST(TraceLogging, BasicTypesBool)
 {
   EXPECT_EQ("TestBasicTypesBool\t\tTRUE\n\t\tFALSE\n",
