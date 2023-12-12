@@ -63,7 +63,7 @@ std::string CollectArgs(va_list src_args, int num_args);
 ////////////////////////////////////////////
 const char *ToCStr(const std::string &str);
 void ExitInternal(
-    const std::string &func_name, RETCODE retCode, TraceOptions &opts);
+    const std::string &func_name, RETCODE ret_code, TraceOptions &opts);
 
 ////////////////////////////////////////////////////////////////////
 // Additional Helper methods for validating and formatting strings

@@ -562,7 +562,7 @@ const char *ToCStr(const std::string &str)
 }
 
 void ExitInternal(
-    const std::string &func_name, RETCODE retCode, TraceOptions &opts)
+    const std::string &func_name, RETCODE ret_code, TraceOptions &opts)
 {
   if (opts.logging_enabled)
   {
@@ -570,13 +570,13 @@ void ExitInternal(
     {
       CollectAndPrintArgsFile(
           func_name, opts.trace_file, 1,
-          ToCStr(FormatSqlReturnCode(retCode)));
+          ToCStr(FormatSqlReturnCode(ret_code)));
     }
     else
     {
       CollectAndPrintArgs(
           func_name, 1,
-          ToCStr(FormatSqlReturnCode(retCode)));
+          ToCStr(FormatSqlReturnCode(ret_code)));
     }
   }
 }
