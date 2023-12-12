@@ -364,7 +364,7 @@ void TraceFunctionExit_SQLFetch(
     SQLRETURN retCode, TraceOptions opts = {});
 
 void TraceFunctionEntry_SQLExtendedFetch(
-    SQLHSTMT statementHandletmt, SQLUSMALLINT fetchOrientation,
+    SQLHSTMT statementHandle, SQLUSMALLINT fetchOrientation,
     SQLLEN fetchOffset,
     SQLULEN *rowCount, SQLUSMALLINT *rowStatusArray,
     TraceOptions opts = {});
@@ -409,7 +409,7 @@ void TraceFunctionExit_SQLColAttributesW(
 
 void TraceFunctionEntry_SQLDescribeCol(
     SQLHSTMT statementHandle, SQLUSMALLINT columnNumber, SQLCHAR *columnName,
-    SQLSMALLINT columnNameBufferLen, SQLSMALLINT *columnNameLen,
+    SQLSMALLINT columnNameBufferLen, SQLSMALLINT *columnNameLe,
     SQLSMALLINT *columnSQLdataType, SQLULEN *columnSize,
     SQLSMALLINT *decimalDigits, SQLSMALLINT *columnNullable,
     TraceOptions opts = {});

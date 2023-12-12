@@ -422,9 +422,26 @@ std::string FormatSqlReturn(SQLRETURN ret)
   return buf;
 }
 
-/////////////////////////////////////////////
-// Basic C Types
-/////////////////////////////////////////////
+std::string FormatSqlLen(SQLLEN *l)
+{
+  char buf[kCharBufSize1];
+  if (!l)
+    sprintf(buf, "\t\t%-s *, 0x0\n", "SQLLEN");
+  else
+    sprintf(buf, "\t\t%-s *, %ld\n", "SQLLEN", *l);
+  return buf;
+}
+
+std::string FormatSqlULen(SQLULEN *l)
+{
+  char buf[kCharBufSize1];
+  if (!l)
+    sprintf(buf, "\t\t%-s *, 0x0\n", "SQLULEN");
+  else
+    sprintf(buf, "\t\t%-s *, %lu\n", "SQLULEN", *l);
+  return buf;
+}
+
 std::string FormatString(const std::string& str)
 {
   char buf[kCharBufSize1];
@@ -537,6 +554,31 @@ std::string FormatBool(bool b)
   else
     sprintf(buf, "\t\t%s\n", "FALSE");
   return buf;
+}
+
+const char *ToCStr(const std::string &str)
+{
+  return str.c_str();
+}
+
+void ExitInternal(
+    const std::string &func_name, RETCODE retCode, TraceOptions &opts)
+{
+  if (opts.logging_enabled)
+  {
+    if (opts.trace_file.is_open())
+    {
+      CollectAndPrintArgsFile(
+          func_name, opts.trace_file, 1,
+          ToCStr(FormatSqlReturnCode(retCode)));
+    }
+    else
+    {
+      CollectAndPrintArgs(
+          func_name, 1,
+          ToCStr(FormatSqlReturnCode(retCode)));
+    }
+  }
 }
 
 }  // namespace odbc_bq_driver
