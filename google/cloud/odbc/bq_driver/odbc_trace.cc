@@ -180,25 +180,57 @@ void TraceFunctionEntry_SQLConnect(
         // Not printing auth string.
         if (opts.trace_file.is_open())
         {
-            CollectAndPrintArgsFile(
-                "SQLConnect_Entry", opts.trace_file, 6,
-                ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
-                ToCStr(FormatSqlHandle(connectionHandle)),
-                ToCStr(FormatSqlChar(serverName)),
-                ToCStr(FormatSqlSmallInt(serverNameLen)),
-                ToCStr(FormatSqlChar(userName)),
-                ToCStr(FormatSqlSmallInt(userNameLen)));
+            if (authString && authStringLen > 0)
+            {
+                CollectAndPrintArgsFile(
+                    "SQLConnect_Entry", opts.trace_file, 6,
+                    ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
+                    ToCStr(FormatSqlHandle(connectionHandle)),
+                    ToCStr(FormatSqlChar(serverName)),
+                    ToCStr(FormatSqlSmallInt(serverNameLen)),
+                    ToCStr(FormatSqlChar(userName)),
+                    ToCStr(FormatSqlSmallInt(userNameLen)),
+                    ToCStr(FormatString("****")),
+                    ToCStr(FormatSqlSmallInt(authStringLen)));
+            }
+            else
+            {
+                CollectAndPrintArgsFile(
+                    "SQLConnect_Entry", opts.trace_file, 6,
+                    ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
+                    ToCStr(FormatSqlHandle(connectionHandle)),
+                    ToCStr(FormatSqlChar(serverName)),
+                    ToCStr(FormatSqlSmallInt(serverNameLen)),
+                    ToCStr(FormatSqlChar(userName)),
+                    ToCStr(FormatSqlSmallInt(userNameLen)));
+            }
         }
         else
         {
-            CollectAndPrintArgs(
-                "SQLConnect_Entry", 6,
-                ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
-                ToCStr(FormatSqlHandle(connectionHandle)),
-                ToCStr(FormatSqlChar(serverName)),
-                ToCStr(FormatSqlSmallInt(serverNameLen)),
-                ToCStr(FormatSqlChar(userName)),
-                ToCStr(FormatSqlSmallInt(userNameLen)));
+            if (authString && authStringLen > 0)
+            {
+                CollectAndPrintArgs(
+                    "SQLConnect_Entry", 6,
+                    ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
+                    ToCStr(FormatSqlHandle(connectionHandle)),
+                    ToCStr(FormatSqlChar(serverName)),
+                    ToCStr(FormatSqlSmallInt(serverNameLen)),
+                    ToCStr(FormatSqlChar(userName)),
+                    ToCStr(FormatSqlSmallInt(userNameLen)),
+                    ToCStr(FormatString("****")),
+                    ToCStr(FormatSqlSmallInt(authStringLen)));
+            }
+            else
+            {
+                CollectAndPrintArgs(
+                    "SQLConnect_Entry", 6,
+                    ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
+                    ToCStr(FormatSqlHandle(connectionHandle)),
+                    ToCStr(FormatSqlChar(serverName)),
+                    ToCStr(FormatSqlSmallInt(serverNameLen)),
+                    ToCStr(FormatSqlChar(userName)),
+                    ToCStr(FormatSqlSmallInt(userNameLen)));
+            }
         }
     }
 }
