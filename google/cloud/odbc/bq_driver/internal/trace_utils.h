@@ -94,8 +94,8 @@ std::string FormatSqlHandle(const SQLHANDLE* p);
 std::string FormatSqlLen(SQLLEN l);
 std::string FormatSqlULen(SQLULEN l);
 std::string FormatSqlSetPosiRow(SQLSETPOSIROW rp);
-std::string FormatSqlLen(SQLLEN *l);
-std::string FormatSqlULen(SQLULEN *l);
+std::string FormatSqlLen(const SQLLEN *l);
+std::string FormatSqlULen(const SQLULEN *l);
 // Return codes.
 std::string FormatSqlReturnCode(RETCODE ret);
 std::string FormatSqlReturn(SQLRETURN ret);

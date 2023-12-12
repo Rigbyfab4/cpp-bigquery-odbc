@@ -422,7 +422,7 @@ std::string FormatSqlReturn(SQLRETURN ret)
   return buf;
 }
 
-std::string FormatSqlLen(SQLLEN *l)
+std::string FormatSqlLen(const SQLLEN *l)
 {
   char buf[kCharBufSize1];
   if (!l)
@@ -432,7 +432,7 @@ std::string FormatSqlLen(SQLLEN *l)
   return buf;
 }
 
-std::string FormatSqlULen(SQLULEN *l)
+std::string FormatSqlULen(const SQLULEN *l)
 {
   char buf[kCharBufSize1];
   if (!l)
