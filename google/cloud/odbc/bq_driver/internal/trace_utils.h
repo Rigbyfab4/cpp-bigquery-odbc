@@ -24,12 +24,21 @@
 #include <map>
 #include <string>
 #include <cstdarg>
+#include <cstdint>
 
 // NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
 namespace cloud {
 namespace odbc_bq_driver {
 
+///////////////////////////
+// Trace Options
+///////////////////////////
+struct TraceOptions {
+    bool logging_enabled = false;
+    int  log_level = 0;
+    std::ofstream trace_file;
+};
 // Emit methods for actually printing the trace lines to stdout or a trace file.
 
 // Clients of this utility should use the two methods below to emit
@@ -97,16 +106,31 @@ std::string FormatSqlTimestamp(const SQLTIMESTAMP* tp);
 std::string FormatSqlVarchar(const SQLVARCHAR* s);
 #endif  /* ODBCVER >= 0x0300 */
 
-// To Be Implemented:
-// 1) Basic C Types.
-// 2) Trace Options.
-// 3) Unicode types.
-// 4) Window specific types.
-
 /////////////////////////////////////////////
 // Basic C Types
 /////////////////////////////////////////////
+std::string FormatString(const std::string& str);
+std::string FormatCharString(const char* str);
+std::string FormatCharArray(const char str[]);
+std::string FormatChar(char c);
+std::string FormatCharU(unsigned char c);
+std::string FormatInt(int d);
+std::string FormatIntU(unsigned int d);
+std::string FormatLong(std::int64_t d);
+std::string FormatLongU(std::uint64_t d);
+std::string FormatShort(std::int16_t d);
+std::string FormatShortU(std::uint16_t d);
+std::string FormatDouble(double d);
+std::string FormatFloat(float d);
+std::string FormatPointer(void* p);
+std::string FormatBool(bool b);
+// Additional basic types (e.g. array or pointer versions of the above)
+// may be added as needed.
 
+///////////////////////////////////////////////
+// To Be Implemented:
+// 1) Unicode types.
+// 2) Window specific types.
 
 /////////////////////////////////////////////
 // Unicode Types

@@ -20,15 +20,15 @@ namespace google {
 namespace cloud {
 namespace odbc_bq_driver {
 
-TEST(TraceLogging, BasicTypes)
+TEST(TraceLogging, BasicODBCTypes)
 {
   auto fmt1 = FormatSqlSmallInt(1);
   auto fmt2 = FormatSqlUSmallInt(2);
   auto fmt3 = FormatSqlInteger(3);
   auto fmt4 = FormatSqlUInteger(4);
 
-  EXPECT_EQ("TestBasicTypes\t\tSQLSMALLINT, 1\n\t\tSQLUSMALLINT, 2\n\t\tSQLINTEGER, 3\n\t\tSQLUINTEGER, 4\n",
-            CollectAndPrintArgs("TestBasicTypes",
+  EXPECT_EQ("TestBasicODBCTypes\t\tSQLSMALLINT, 1\n\t\tSQLUSMALLINT, 2\n\t\tSQLINTEGER, 3\n\t\tSQLUINTEGER, 4\n",
+            CollectAndPrintArgs("TestBasicODBCTypes",
                                 4, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str()));
 }
 
@@ -148,6 +148,77 @@ TEST(TraceLogging, AdditionalSqlTypes)
                                 fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str(),
                                 fmt9.c_str(), fmt10.c_str(), fmt11.c_str(), fmt12.c_str(),
                                 fmt13.c_str(), fmt14.c_str()));
+}
+
+TEST(TraceLogging, BasicTypesString)
+{
+  std::string str1 = "Hello1";
+  const char *str2 = "Hello2";
+  const char str3[] = "Hello3";
+
+  EXPECT_EQ("TestBasicTypesString\t\tHello1\n\t\tHello2\n\t\tHello3\n",
+            CollectAndPrintArgs("TestBasicTypesString", 3,
+                                FormatString(str1).c_str(), FormatCharString(str2).c_str(),
+                                FormatCharArray(str3).c_str()));
+}
+
+TEST(TraceLogging, BasicTypesChar)
+{
+  char c1 = 'A';
+  unsigned char c2 = 'B';
+
+  EXPECT_EQ("TestBasicTypesChar\t\tA\n\t\tB\n",
+            CollectAndPrintArgs("TestBasicTypesChar", 2,
+                                FormatChar(c1).c_str(), FormatCharU(c2).c_str()));
+}
+
+TEST(TraceLogging, BasicTypesInt)
+{
+  int i1 = 1;
+  unsigned int i2 = 2;
+
+  EXPECT_EQ("TestBasicTypesInt\t\t1\n\t\t2\n",
+            CollectAndPrintArgs("TestBasicTypesInt", 2,
+                                FormatInt(i1).c_str(), FormatIntU(i2).c_str()));
+}
+
+TEST(TraceLogging, BasicTypesLong)
+{
+  long l1 = 1L;
+  unsigned long l2 = 2L;
+
+  EXPECT_EQ("TestBasicTypesLong\t\t1\n\t\t2\n",
+            CollectAndPrintArgs("TestBasicTypesLong", 2,
+                                FormatLong(l1).c_str(), FormatLongU(l2).c_str()));
+}
+
+TEST(TraceLogging, BasicTypesShort)
+{
+  short s1 = 1;
+  unsigned short s2 = 2;
+
+  EXPECT_EQ("TestBasicTypesShort\t\t1\n\t\t2\n",
+            CollectAndPrintArgs("TestBasicTypesShort", 2,
+                                FormatShort(s1).c_str(), FormatShortU(s2).c_str()));
+}
+
+TEST(TraceLogging, BasicTypesDouble)
+{
+  EXPECT_EQ("TestBasicTypesDouble\t\t1.1234\n",
+            CollectAndPrintArgs("TestBasicTypesDouble", 1, FormatDouble(1.1234).c_str()));
+}
+
+TEST(TraceLogging, BasicTypesFloat)
+{
+  EXPECT_EQ("TestBasicTypesFloat\t\t1.12\n",
+            CollectAndPrintArgs("TestBasicTypesFloat", 1, FormatFloat(1.12).c_str()));
+}
+
+TEST(TraceLogging, BasicTypesBool)
+{
+  EXPECT_EQ("TestBasicTypesBool\t\tTRUE\n\t\tFALSE\n",
+            CollectAndPrintArgs(
+              "TestBasicTypesBool", 2, FormatBool(true).c_str(), FormatBool(false).c_str()));
 }
 
 }  // namespace odbc_bq_driver
