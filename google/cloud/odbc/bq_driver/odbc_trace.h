@@ -76,17 +76,17 @@ SQLRETURN retCode, TraceOptions opts = {});
 void TraceFunctionEntry_SQLConnect(
     SQLHDBC connectionHandle, SQLCHAR *serverName,
     SQLSMALLINT serverNameLen,
-    SQLCHAR *userName, SQLSMALLINT userNameLen, SQLCHAR *authString,
+    SQLCHAR *userName, SQLSMALLINT userNameLen, const SQLCHAR *authString,
     SQLSMALLINT authStringLen, TraceOptions opts = {});
 void TraceFunctionExit_SQLConnect(
-SQLRETURN retCode, TraceOptions opts = {});
+    SQLRETURN retCode, TraceOptions opts = {});
 
 void TraceFunctionEntry_SQLConnectW(
     SQLHDBC connectionHandle, SQLWCHAR *serverName,
-    SQLSMALLINT serverNameLen, SQLWCHAR *userName, SQLSMALLINT userNameLen, 
-    SQLWCHAR *authString, SQLSMALLINT authStringLen, TraceOptions opts = {});
+    SQLSMALLINT serverNameLen, SQLWCHAR *userName, SQLSMALLINT userNameLen,
+    const SQLWCHAR *authString, SQLSMALLINT authStringLen, TraceOptions opts = {});
 void TraceFunctionExit_SQLConnectW(
-SQLRETURN retCode, TraceOptions opts = {});
+    SQLRETURN retCode, TraceOptions opts = {});
 
 void TraceFunctionEntry_SQLGetInfo(
     SQLHDBC connectionHandle, SQLUSMALLINT infoType, SQLPOINTER infoValue,

@@ -173,7 +173,7 @@ void TraceFunctionExit_SQLBrowseConnectW(
 void TraceFunctionEntry_SQLConnect(
     SQLHDBC connectionHandle, SQLCHAR *serverName, SQLSMALLINT serverNameLen,
     SQLCHAR *userName, SQLSMALLINT userNameLen,
-    SQLCHAR *authString, SQLSMALLINT authStringLen, TraceOptions opts)
+    const SQLCHAR *authString, SQLSMALLINT authStringLen, TraceOptions opts)
 {
     if (opts.logging_enabled)
     {
@@ -242,8 +242,8 @@ void TraceFunctionExit_SQLConnect(SQLRETURN retCode, TraceOptions opts)
 
 void TraceFunctionEntry_SQLConnectW(
     SQLHDBC connectionHandle, SQLWCHAR *serverName,
-    SQLSMALLINT serverNameLen, SQLWCHAR *userName, SQLSMALLINT userNameLen, 
-    SQLWCHAR *authString, SQLSMALLINT authStringLen, TraceOptions opts) {}
+    SQLSMALLINT serverNameLen, SQLWCHAR *userName, SQLSMALLINT userNameLen,
+    const SQLWCHAR *authString, SQLSMALLINT authStringLen, TraceOptions opts) {}
 
 void TraceFunctionExit_SQLConnectW(SQLRETURN retCode, TraceOptions opts)
 {
