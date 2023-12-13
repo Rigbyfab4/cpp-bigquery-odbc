@@ -140,7 +140,8 @@ std::string FormatBool(bool b);
 
 ///////////////////////////////////////////////
 // To Be Implemented:
-// Unicode types.
+// 1) Unicode types.
+///////////////////////////////////////////////
 
 /////////////////////////////////////////////
 // Unicode Types
@@ -150,6 +151,10 @@ std::string FormatBool(bool b);
 /////////////////////////////////////////////
 // Window specific types.
 /////////////////////////////////////////////
+#ifdef WIN32
+std::string FormatWindowHandle(HWND handle);
+std::string FormatWindowHandle(SQLHWND handle);
+#endif  /* WIN32 */
 
 /////////////////////////////////////////////
 // Struct types.
@@ -164,7 +169,7 @@ std::string GetIntervalType(SQLINTERVAL type);
 std::string FormatIntervalYearMonthStruct(SQL_YEAR_MONTH_STRUCT ym);
 std::string FormatIntervalDaySecondStruct(SQL_DAY_SECOND_STRUCT ds);
 std::string FormatIntervalStruct(SQL_INTERVAL_STRUCT i);
-#endif
+#endif  /* ODBCVER >= 0x0300 */
 
 
 }  // namespace odbc_bq_driver

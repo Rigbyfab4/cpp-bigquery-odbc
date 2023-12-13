@@ -685,9 +685,30 @@ std::string FormatIntervalStruct(SQL_INTERVAL_STRUCT i)
             ToCStr(FormatIntervalYearMonthStruct(i.intval.year_month)),
             ToCStr(FormatIntervalDaySecondStruct(i.intval.day_second)));
   }
+}
+#endif  /* ODBCVER >= 0x0300 */
+
+#ifdef WIN32
+std::string FormatWindowHandle(HWND handle)
+{
+  char buf[kCharBufSize1];
+  if (!handle)
+    sprintf(buf, "\t\t%-s, 0x0\n", "HWND");
+  else
+    sprintf(buf, "\t\t%-s, %p\n", "HWND", handle);
   return buf;
 }
-#endif
+
+std::string FormatWindowHandle(SQLHWND handle)
+{
+  char buf[kCharBufSize1];
+  if (!handle)
+    sprintf(buf, "\t\t%-s, 0x0\n", "SQLHWND");
+  else
+    sprintf(buf, "\t\t%-s, %p\n", "SQLHWND", handle);
+  return buf;
+}
+#endif  /* WIN32 */
 
 }  // namespace odbc_bq_driver
 }  // namespace cloud
