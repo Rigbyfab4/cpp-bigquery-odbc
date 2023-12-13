@@ -1825,8 +1825,8 @@ void TraceFunctionEntry_SQLGetDiagRec(
     SQLSMALLINT handle_type, SQLHANDLE handle,
     SQLSMALLINT rec_no,
     SQLCHAR *sql_state, SQLINTEGER *native_err,
-    SQLCHAR *mesg_txt, SQLSMALLINT mesg_txt_buf_len,
-    SQLSMALLINT *mesg_txt_len, TraceOptions opts)
+    SQLCHAR *msg_txt, SQLSMALLINT msg_txt_buf_len,
+    SQLSMALLINT *msg_txt_len, TraceOptions opts)
 {
     if (opts.logging_enabled)
     {
@@ -1839,9 +1839,9 @@ void TraceFunctionEntry_SQLGetDiagRec(
                 ToCStr(FormatSqlSmallInt(rec_no)),
                 ToCStr(FormatSqlChar(sql_state)),
                 ToCStr(FormatSqlInteger(native_err)),
-                ToCStr(FormatSqlChar(mesg_txt)),
-                ToCStr(FormatSqlSmallInt(mesg_txt_buf_len)),
-                ToCStr(FormatSqlSmallInt(mesg_txt_len)));
+                ToCStr(FormatSqlChar(msg_txt)),
+                ToCStr(FormatSqlSmallInt(msg_txt_buf_len)),
+                ToCStr(FormatSqlSmallInt(msg_txt_len)));
         }
         else
         {
@@ -1852,9 +1852,9 @@ void TraceFunctionEntry_SQLGetDiagRec(
                 ToCStr(FormatSqlSmallInt(rec_no)),
                 ToCStr(FormatSqlChar(sql_state)),
                 ToCStr(FormatSqlInteger(native_err)),
-                ToCStr(FormatSqlChar(mesg_txt)),
-                ToCStr(FormatSqlSmallInt(mesg_txt_buf_len)),
-                ToCStr(FormatSqlSmallInt(mesg_txt_len)));
+                ToCStr(FormatSqlChar(msg_txt)),
+                ToCStr(FormatSqlSmallInt(msg_txt_buf_len)),
+                ToCStr(FormatSqlSmallInt(msg_txt_len)));
         }
     }
 }
@@ -1869,8 +1869,8 @@ void TraceFunctionEntry_SQLGetDiagRecW(
     SQLSMALLINT handle_type, SQLHANDLE handle,
     SQLSMALLINT rec_no,
     SQLWCHAR *sql_state, SQLINTEGER *native_err,
-    SQLWCHAR *mesg_txt, SQLSMALLINT mesg_txt_buf_len,
-    SQLSMALLINT *mesg_txt_len, TraceOptions opts) {}
+    SQLWCHAR *msg_txt, SQLSMALLINT msg_txt_buf_len,
+    SQLSMALLINT *msg_txt_len, TraceOptions opts) {}
 
 void TraceFunctionExit_SQLGetDiagRecW(
     SQLRETURN ret_code, TraceOptions opts)

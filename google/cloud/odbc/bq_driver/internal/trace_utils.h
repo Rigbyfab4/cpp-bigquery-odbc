@@ -62,8 +62,8 @@ std::string CollectArgs(va_list src_args, int num_args);
 // Convenience Helper Methods.
 ////////////////////////////////////////////
 const char *ToCStr(const std::string &str);
-void ExitInternal(
-    const std::string &func_name, RETCODE ret_code, TraceOptions &opts);
+std::string ExitInternal(
+    const std::string &func_name, SQLRETURN ret_code, TraceOptions &opts);
 
 ////////////////////////////////////////////////////////////////////
 // Additional Helper methods for validating and formatting strings

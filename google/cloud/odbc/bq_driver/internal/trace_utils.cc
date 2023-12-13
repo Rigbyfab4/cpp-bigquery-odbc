@@ -561,24 +561,25 @@ const char *ToCStr(const std::string &str)
   return str.c_str();
 }
 
-void ExitInternal(
-    const std::string &func_name, RETCODE ret_code, TraceOptions &opts)
+std::string ExitInternal(
+    const std::string &func_name, SQLRETURN ret_code, TraceOptions &opts)
 {
   if (opts.logging_enabled)
   {
     if (opts.trace_file.is_open())
     {
-      CollectAndPrintArgsFile(
+      return CollectAndPrintArgsFile(
           func_name, opts.trace_file, 1,
-          ToCStr(FormatSqlReturnCode(ret_code)));
+          ToCStr(FormatSqlReturn(ret_code)));
     }
     else
     {
-      CollectAndPrintArgs(
+      return CollectAndPrintArgs(
           func_name, 1,
-          ToCStr(FormatSqlReturnCode(ret_code)));
+          ToCStr(FormatSqlReturn(ret_code)));
     }
   }
+  return "";
 }
 
 }  // namespace odbc_bq_driver

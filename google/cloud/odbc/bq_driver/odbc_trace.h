@@ -475,16 +475,16 @@ void TraceFunctionExit_SQLGetDiagFieldW(
 
 void TraceFunctionEntry_SQLGetDiagRec(
     SQLSMALLINT handle_type, SQLHANDLE handle, SQLSMALLINT rec_no,
-    SQLCHAR *sql_state, SQLINTEGER *native_err, SQLCHAR *mesg_txt,
-    SQLSMALLINT mesg_txt_buf_len, SQLSMALLINT *mesg_txt_len,
+    SQLCHAR *sql_state, SQLINTEGER *native_err, SQLCHAR *msg_txt,
+    SQLSMALLINT msg_txt_buf_len, SQLSMALLINT *msg_txt_len,
     TraceOptions opts = {});
 void TraceFunctionExit_SQLGetDiagRec(
     SQLRETURN ret_code, TraceOptions opts = {});
 
 void TraceFunctionEntry_SQLGetDiagRecW(
     SQLSMALLINT handle_type, SQLHANDLE handle, SQLSMALLINT rec_no,
-    SQLWCHAR *sql_state, SQLINTEGER *native_err, SQLWCHAR *mesg_txt,
-    SQLSMALLINT mesg_txt_buf_len, SQLSMALLINT *mesg_txt_len,
+    SQLWCHAR *sql_state, SQLINTEGER *native_err, SQLWCHAR *msg_txt,
+    SQLSMALLINT msg_txt_buf_len, SQLSMALLINT *msg_txt_len,
     TraceOptions opts = {});
 void TraceFunctionExit_SQLGetDiagRecW(
     SQLRETURN ret_code, TraceOptions opts = {});
