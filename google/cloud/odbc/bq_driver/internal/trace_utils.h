@@ -58,8 +58,17 @@ int TracePrintInternalFile(std::ofstream& file, std::string& s);
 // formatted string to be traced for all the args.
 std::string CollectArgs(va_list src_args, int num_args);
 
+///////////////////////////////////////////
+// Convenience Helper Methods.
+////////////////////////////////////////////
+const char *ToCStr(const std::string &str);
+std::string ExitInternal(
+    const std::string &func_name, SQLRETURN ret_code, TraceOptions &opts);
+
+////////////////////////////////////////////////////////////////////
 // Additional Helper methods for validating and formatting strings
 // based on parameter types.
+////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////
 // ODBC SQL TYPES
@@ -85,6 +94,8 @@ std::string FormatSqlHandle(const SQLHANDLE* p);
 std::string FormatSqlLen(SQLLEN l);
 std::string FormatSqlULen(SQLULEN l);
 std::string FormatSqlSetPosiRow(SQLSETPOSIROW rp);
+std::string FormatSqlLen(const SQLLEN *l);
+std::string FormatSqlULen(const SQLULEN *l);
 // Return codes.
 std::string FormatSqlReturnCode(RETCODE ret);
 std::string FormatSqlReturn(SQLRETURN ret);

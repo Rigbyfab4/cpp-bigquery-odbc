@@ -221,6 +221,24 @@ TEST(TraceLogging, BasicTypesBool)
               "TestBasicTypesBool", 2, FormatBool(true).c_str(), FormatBool(false).c_str()));
 }
 
+TEST(TraceLogging, ExitInternalTraceEnabled)
+{
+  SQLRETURN ret_code = 1001;
+  TraceOptions opts;
+  opts.logging_enabled = true;
+
+  EXPECT_EQ("TestExit\t\tSQLRETURN, 1001\n", ExitInternal("TestExit", ret_code, opts));
+}
+
+TEST(TraceLogging, ExitInternalTraceDisabled)
+{
+  SQLRETURN ret_code = 1001;
+  TraceOptions opts;
+  opts.logging_enabled = false;
+
+  EXPECT_EQ("", ExitInternal("TestExit", ret_code, opts));
+}
+
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google
