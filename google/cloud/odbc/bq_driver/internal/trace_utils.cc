@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
+#include <mutex>
 
 // NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
@@ -24,10 +25,20 @@ constexpr int kCharBufSize2 = 256;
 
 int TracePrintInternalStdOut(std::string& s)
 {
-  if (s.empty()) {
+  if (s.empty())
+  {
     return -1;
   }
-  std::cout << s << std::endl;
+  std::mutex m;
+  if (m.try_lock())
+  {
+    std::cout << s << std::endl;
+    m.unlock();
+  }
+  else
+  {
+    return -1;
+  }
   return 0;
 }
 
@@ -41,7 +52,14 @@ int TracePrintInternalFile(std::ofstream& file, std::string& s)
   {
     return -1;
   }
-  file << s << std::endl;
+  std::mutex m;
+  if (m.try_lock())
+  {
+    file << s << std::endl;
+    m.unlock();
+  } else {
+    return -1;
+  }
   return 0;
 }
 
