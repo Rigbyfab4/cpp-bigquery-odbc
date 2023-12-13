@@ -239,6 +239,111 @@ TEST(TraceLogging, ExitInternalTraceDisabled)
   EXPECT_EQ("", ExitInternal("TestExit", ret_code, opts));
 }
 
+#if (ODBCVER >= 0x0300)
+
+TEST(TraceLogging, FormatNumericStructPositive)
+{
+  SQL_NUMERIC_STRUCT n;
+  n.precision = 2;
+  n.scale = 3;
+  n.sign = 1;
+  n.val[0] = '1';
+  n.val[1] = '2';
+  n.val[2] = '3';
+  n.val[3] = '4';
+  n.val[4] = '5';
+  n.val[5] = '6';
+  n.val[6] = '7';
+  n.val[7] = '\0';
+
+  EXPECT_EQ("\t\tSQL_NUMERIC_STRUCT, precision=2, scale=3, val=1234567 \n",
+            FormatNumericStruct(n));
+}
+
+TEST(TraceLogging, FormatNumericStructNegative)
+{
+  SQL_NUMERIC_STRUCT n;
+  n.precision = 2;
+  n.scale = 3;
+  n.sign = 0;
+  n.val[0] = '1';
+  n.val[1] = '2';
+  n.val[2] = '3';
+  n.val[3] = '4';
+  n.val[4] = '5';
+  n.val[5] = '6';
+  n.val[6] = '7';
+  n.val[7] = '\0';
+
+  EXPECT_EQ("\t\tSQL_NUMERIC_STRUCT, precision=2, scale=3, val=(-)1234567 \n", FormatNumericStruct(n));
+}
+
+TEST(TraceLogging, FormatDateStruct)
+{
+  SQL_DATE_STRUCT d;
+  d.day = 12;
+  d.month = 12;
+  d.year = 2023;
+
+  EXPECT_EQ("\t\tSQL_DATE_STRUCT, date(YYYY/MM/DD)=2023/12/12\n", FormatDateStruct(d));
+}
+
+TEST(TraceLogging, FormatTimeStruct)
+{
+  SQL_TIME_STRUCT t;
+  t.hour = 10;
+  t.minute = 11;
+  t.second = 12;
+
+  EXPECT_EQ("\t\tSQL_TIME_STRUCT, time(hh:mm:ss)=10:11:12\n", FormatTimeStruct(t));
+}
+
+TEST(TraceLogging, FormatTimestampStruct)
+{
+  SQL_TIMESTAMP_STRUCT t;
+  t.day = 12;
+  t.month = 12;
+  t.year = 2023;
+  t.hour = 10;
+  t.minute = 11;
+  t.second = 12;
+  t.fraction = 123;
+
+  EXPECT_EQ("\t\tSQL_TIMESTAMP_STRUCT, datetime(YYYY/MM/DD hh:mm:ss.sss)=2023/12/12 10:11:12.123\n",
+            FormatTimestampStruct(t));
+}
+
+TEST(TraceLogging, FormatIntervalStructPositve)
+{
+  SQL_INTERVAL_STRUCT t;
+  t.interval_sign = 1;
+  t.interval_type = SQL_IS_DAY_TO_SECOND;
+  t.intval.day_second = {12, 10, 11, 12, 123};
+
+  std::string exp;
+  exp.append("\t\tSQL_INTERVAL_STRUCT, interval_type=SQL_IS_DAY_TO_SECOND")
+      .append(", interval_sign=(+), \t\tSQL_YEAR_MONTH_STRUCT, year_month(YYYY/MM)=12/10\n")
+      .append(", \t\tSQL_DAY_SECOND_STRUCT, day_second(DD hh:mm:ss.ssss)=12 10:11:12.123\n\n");
+
+  EXPECT_EQ(exp, FormatIntervalStruct(t));
+}
+
+TEST(TraceLogging, FormatIntervalStructNegative)
+{
+  SQL_INTERVAL_STRUCT t;
+  t.interval_sign = 0;
+  t.interval_type = SQL_IS_DAY_TO_SECOND;
+  t.intval.day_second = {12, 10, 11, 12, 123};
+
+  std::string exp;
+  exp.append("\t\tSQL_INTERVAL_STRUCT, interval_type=SQL_IS_DAY_TO_SECOND")
+      .append(", interval_sign=(-), \t\tSQL_YEAR_MONTH_STRUCT, year_month(YYYY/MM)=12/10\n")
+      .append(", \t\tSQL_DAY_SECOND_STRUCT, day_second(DD hh:mm:ss.ssss)=12 10:11:12.123\n\n");
+
+  EXPECT_EQ(exp, FormatIntervalStruct(t));
+}
+#endif
+
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google

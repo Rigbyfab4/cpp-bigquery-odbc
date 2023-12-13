@@ -140,8 +140,7 @@ std::string FormatBool(bool b);
 
 ///////////////////////////////////////////////
 // To Be Implemented:
-// 1) Unicode types.
-// 2) Window specific types.
+// Unicode types.
 
 /////////////////////////////////////////////
 // Unicode Types
@@ -151,6 +150,22 @@ std::string FormatBool(bool b);
 /////////////////////////////////////////////
 // Window specific types.
 /////////////////////////////////////////////
+
+/////////////////////////////////////////////
+// Struct types.
+/////////////////////////////////////////////
+#if (ODBCVER >= 0x0300)
+std::string FormatNumericStruct(SQL_NUMERIC_STRUCT n);
+std::string FormatDateStruct(SQL_DATE_STRUCT d);
+std::string FormatTimeStruct(SQL_TIME_STRUCT t);
+std::string FormatTimestampStruct(SQL_TIMESTAMP_STRUCT ts);
+// Interval related functions.
+std::string GetIntervalType(SQLINTERVAL type);
+std::string FormatIntervalYearMonthStruct(SQL_YEAR_MONTH_STRUCT ym);
+std::string FormatIntervalDaySecondStruct(SQL_DAY_SECOND_STRUCT ds);
+std::string FormatIntervalStruct(SQL_INTERVAL_STRUCT i);
+#endif
+
 
 }  // namespace odbc_bq_driver
 }  // namespace cloud
