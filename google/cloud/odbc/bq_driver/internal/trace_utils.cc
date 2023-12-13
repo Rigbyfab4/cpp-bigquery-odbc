@@ -572,12 +572,9 @@ std::string ExitInternal(
           func_name, opts.trace_file, 1,
           ToCStr(FormatSqlReturn(ret_code)));
     }
-    else
-    {
-      return CollectAndPrintArgs(
-          func_name, 1,
-          ToCStr(FormatSqlReturn(ret_code)));
-    }
+    return CollectAndPrintArgs(
+        func_name, 1,
+        ToCStr(FormatSqlReturn(ret_code)));
   }
   return "";
 }
