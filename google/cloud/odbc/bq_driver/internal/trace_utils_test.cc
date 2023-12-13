@@ -348,8 +348,8 @@ TEST(TraceLogging, WindowHandles)
   HWND w1 = nullptr;
   SQLHWND w2 = nullptr;
 
-  auto fmt1 = FormatWindowHandle(w1);
-  auto fmt2 = FormatWindowHandle(w2);
+  auto fmt1 = FormatHWND(w1);
+  auto fmt2 = FormatSqlHWND(w2);
 
   EXPECT_EQ("TestWindowHandles\t\tHWND, 0x0\n\t\tSQLHWND 0x0\n",
             CollectAndPrintArgs("TestWindowHandles", 2, fmt1.c_str(), fmt2.c_str()));

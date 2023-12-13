@@ -689,7 +689,7 @@ std::string FormatIntervalStruct(SQL_INTERVAL_STRUCT i)
 #endif  /* ODBCVER >= 0x0300 */
 
 #ifdef WIN32
-std::string FormatWindowHandle(HWND handle)
+std::string FormatHWND(HWND handle)
 {
   char buf[kCharBufSize1];
   if (!handle)
@@ -699,7 +699,7 @@ std::string FormatWindowHandle(HWND handle)
   return buf;
 }
 
-std::string FormatWindowHandle(SQLHWND handle)
+std::string FormatSqlHWND(SQLHWND handle)
 {
   char buf[kCharBufSize1];
   if (!handle)
