@@ -320,10 +320,9 @@ TEST(TraceLogging, FormatIntervalStructPositve)
   t.interval_type = SQL_IS_DAY_TO_SECOND;
   t.intval.day_second = {12, 10, 11, 12, 123};
 
-  std::string exp;
-  exp.append("\t\tSQL_INTERVAL_STRUCT, interval_type=SQL_IS_DAY_TO_SECOND")
-      .append(", interval_sign=(+), \t\tSQL_YEAR_MONTH_STRUCT, year_month(YYYY/MM)=12/10\n")
-      .append(", \t\tSQL_DAY_SECOND_STRUCT, day_second(DD hh:mm:ss.ssss)=12 10:11:12.123\n\n");
+  std::string exp = "\t\tSQL_INTERVAL_STRUCT, interval_type=SQL_IS_DAY_TO_SECOND"
+                    ", interval_sign=(+), \t\tSQL_YEAR_MONTH_STRUCT, year_month(YYYY/MM)=12/10\n"
+                    ", \t\tSQL_DAY_SECOND_STRUCT, day_second(DD hh:mm:ss.ssss)=12 10:11:12.123\n\n";
 
   EXPECT_EQ(exp, FormatIntervalStruct(t));
 }
@@ -335,10 +334,9 @@ TEST(TraceLogging, FormatIntervalStructNegative)
   t.interval_type = SQL_IS_DAY_TO_SECOND;
   t.intval.day_second = {12, 10, 11, 12, 123};
 
-  std::string exp;
-  exp.append("\t\tSQL_INTERVAL_STRUCT, interval_type=SQL_IS_DAY_TO_SECOND")
-      .append(", interval_sign=(-), \t\tSQL_YEAR_MONTH_STRUCT, year_month(YYYY/MM)=12/10\n")
-      .append(", \t\tSQL_DAY_SECOND_STRUCT, day_second(DD hh:mm:ss.ssss)=12 10:11:12.123\n\n");
+  std::string exp = "\t\tSQL_INTERVAL_STRUCT, interval_type=SQL_IS_DAY_TO_SECOND"
+                    ", interval_sign=(-), \t\tSQL_YEAR_MONTH_STRUCT, year_month(YYYY/MM)=12/10\n"
+                    ", \t\tSQL_DAY_SECOND_STRUCT, day_second(DD hh:mm:ss.ssss)=12 10:11:12.123\n\n";
 
   EXPECT_EQ(exp, FormatIntervalStruct(t));
 }
