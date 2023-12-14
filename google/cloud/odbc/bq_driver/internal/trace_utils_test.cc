@@ -22,10 +22,10 @@ namespace odbc_bq_driver {
 
 TEST(TraceLogging, BasicODBCTypes)
 {
-  auto fmt1 = FormatSqlSmallInt(1);
-  auto fmt2 = FormatSqlUSmallInt(2);
-  auto fmt3 = FormatSqlInteger(3);
-  auto fmt4 = FormatSqlUInteger(4);
+  std::string fmt1 = FormatSqlSmallInt(1);
+  std::string fmt2 = FormatSqlUSmallInt(2);
+  std::string fmt3 = FormatSqlInteger(3);
+  std::string fmt4 = FormatSqlUInteger(4);
 
   EXPECT_EQ("TestBasicODBCTypes\t\tSQLSMALLINT, 1\n\t\tSQLUSMALLINT, 2\n\t\tSQLINTEGER, 3\n\t\tSQLUINTEGER, 4\n",
             CollectAndPrintArgs("TestBasicODBCTypes",
@@ -44,12 +44,12 @@ TEST(TraceLogging, Handle)
 
   SQLHANDLE handle = nullptr;
 
-  auto fmt1 = FormatSqlHandle(handle);
-  auto fmt2 = FormatSqlHandleType(SQL_HANDLE_DBC);
-  auto fmt3 = FormatSqlHandleType(SQL_HANDLE_DESC);
-  auto fmt4 = FormatSqlHandleType(SQL_HANDLE_ENV);
-  auto fmt5 = FormatSqlHandleType(SQL_HANDLE_STMT);
-  auto fmt6 = FormatSqlHandleType(1234);
+  std::string fmt1 = FormatSqlHandle(handle);
+  std::string fmt2 = FormatSqlHandleType(SQL_HANDLE_DBC);
+  std::string fmt3 = FormatSqlHandleType(SQL_HANDLE_DESC);
+  std::string fmt4 = FormatSqlHandleType(SQL_HANDLE_ENV);
+  std::string fmt5 = FormatSqlHandleType(SQL_HANDLE_STMT);
+  std::string fmt6 = FormatSqlHandleType(1234);
 
   EXPECT_EQ(expected, CollectAndPrintArgs("TestHandle",
                                           6, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(),
@@ -67,14 +67,14 @@ TEST(TraceLogging, Pointers)
   SQLUINTEGER i4 = 4;
   SQLCHAR *str = (SQLCHAR *)"Hello World";
 
-  auto fmt1 = FormatSqlPointer(p);
-  auto fmt2 = FormatSqlSmallInt(&i1);
-  auto fmt3 = FormatSqlUSmallInt(&i2);
-  auto fmt4 = FormatSqlInteger(&i3);
-  auto fmt5 = FormatSqlUInteger(&i4);
-  auto fmt6 = FormatSqlChar(str);
-  auto fmt7 = FormatSqlPointer(pp);
-  auto fmt8 = FormatSqlHandle(hp);
+  std::string fmt1 = FormatSqlPointer(p);
+  std::string fmt2 = FormatSqlSmallInt(&i1);
+  std::string fmt3 = FormatSqlUSmallInt(&i2);
+  std::string fmt4 = FormatSqlInteger(&i3);
+  std::string fmt5 = FormatSqlUInteger(&i4);
+  std::string fmt6 = FormatSqlChar(str);
+  std::string fmt7 = FormatSqlPointer(pp);
+  std::string fmt8 = FormatSqlHandle(hp);
 
   std::string expected;
   expected.append("TestPointers\t\tSQLPOINTER, 0x0\n\t\t")
@@ -89,9 +89,9 @@ TEST(TraceLogging, Pointers)
 
 TEST(TraceLogging, Length)
 {
-  auto fmt1 = FormatSqlLen(10);
-  auto fmt2 = FormatSqlULen(11);
-  auto fmt3 = FormatSqlSetPosiRow(50);
+  std::string fmt1 = FormatSqlLen(10);
+  std::string fmt2 = FormatSqlULen(11);
+  std::string fmt3 = FormatSqlSetPosiRow(50);
 
   EXPECT_EQ("TestLength\t\tSQLLEN, 10\n\t\tSQLULEN, 11\n\t\tSQLSETPOSIROW, 50\n",
             CollectAndPrintArgs("TestLength", 3, fmt1.c_str(), fmt2.c_str(), fmt3.c_str()));
@@ -99,8 +99,8 @@ TEST(TraceLogging, Length)
 
 TEST(TraceLogging, ReturnCodes)
 {
-  auto fmt1 = FormatSqlReturnCode(1);
-  auto fmt2 = FormatSqlReturn(2);
+  std::string fmt1 = FormatSqlReturnCode(1);
+  std::string fmt2 = FormatSqlReturn(2);
 
   EXPECT_EQ("TestRetCodes\t\tRETCODE, 1\n\t\tSQLRETURN, 2\n",
             CollectAndPrintArgs("TestRetCodes", 2, fmt1.c_str(), fmt2.c_str()));
@@ -119,20 +119,20 @@ TEST(TraceLogging, AdditionalSqlTypes)
   SQLFLOAT fl = 2.2;
   SQLREAL r = 3.3f;
 
-  auto fmt1 = FormatSqlDate(d);
-  auto fmt2 = FormatSqlDecimal(dec);
-  auto fmt3 = FormatSqlNumeric(n);
-  auto fmt4 = FormatSqlDouble(dbl);
-  auto fmt5 = FormatSqlFloat(fl);
-  auto fmt6 = FormatSqlReal(r);
-  auto fmt7 = FormatSqlTime(t);
-  auto fmt8 = FormatSqlTimestamp(tp);
-  auto fmt9 = FormatSqlVarchar(str);
-  auto fmt10 = FormatSqlDecimal(&dec);
-  auto fmt11 = FormatSqlNumeric(&n);
-  auto fmt12 = FormatSqlDouble(&dbl);
-  auto fmt13 = FormatSqlFloat(&fl);
-  auto fmt14 = FormatSqlReal(&r);
+  std::string fmt1 = FormatSqlDate(d);
+  std::string fmt2 = FormatSqlDecimal(dec);
+  std::string fmt3 = FormatSqlNumeric(n);
+  std::string fmt4 = FormatSqlDouble(dbl);
+  std::string fmt5 = FormatSqlFloat(fl);
+  std::string fmt6 = FormatSqlReal(r);
+  std::string fmt7 = FormatSqlTime(t);
+  std::string fmt8 = FormatSqlTimestamp(tp);
+  std::string fmt9 = FormatSqlVarchar(str);
+  std::string fmt10 = FormatSqlDecimal(&dec);
+  std::string fmt11 = FormatSqlNumeric(&n);
+  std::string fmt12 = FormatSqlDouble(&dbl);
+  std::string fmt13 = FormatSqlFloat(&fl);
+  std::string fmt14 = FormatSqlReal(&r);
 
   std::string expected;
   expected.append("TestAdditionalSqlTypes\t\tSQLDATE *, 1901-01-01\n\t\tSQLDECIMAL, 10\n\t\t")
@@ -341,6 +341,20 @@ TEST(TraceLogging, FormatIntervalStructNegative)
   EXPECT_EQ(exp, FormatIntervalStruct(t));
 }
 #endif
+
+#ifdef WIN32
+TEST(TraceLogging, WindowHandles)
+{
+  HWND w1 = nullptr;
+  SQLHWND w2 = nullptr;
+
+  std::string fmt1 = FormatHWND(w1);
+  std::string fmt2 = FormatSqlHWND(w2);
+
+  EXPECT_EQ("TestWindowHandles\t\tHWND, 0x0\n\t\tSQLHWND 0x0\n",
+            CollectAndPrintArgs("TestWindowHandles", 2, fmt1.c_str(), fmt2.c_str()));
+}
+#endif  /* WIN32 */
 
 }  // namespace odbc_bq_driver
 }  // namespace cloud
