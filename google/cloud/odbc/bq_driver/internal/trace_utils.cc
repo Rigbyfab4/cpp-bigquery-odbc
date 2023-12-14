@@ -579,6 +579,116 @@ std::string ExitInternal(
   return "";
 }
 
+#if (ODBCVER >= 0x0300)
+std::string FormatNumericStruct(SQL_NUMERIC_STRUCT n)
+{
+  char buf[kCharBufSize1];
+  if (!n.sign)
+    sprintf(buf, "\t\t%-s, precision=%d, scale=%d, val=(-)%s \n",
+            "SQL_NUMERIC_STRUCT", n.precision, n.scale, n.val);
+  else
+    sprintf(buf, "\t\t%-s, precision=%d, scale=%d, val=%s \n",
+            "SQL_NUMERIC_STRUCT", n.precision, n.scale, n.val);
+  return buf;
+}
+
+std::string FormatDateStruct(SQL_DATE_STRUCT d)
+{
+  char buf[kCharBufSize1];
+  sprintf(buf, "\t\t%s, date(YYYY/MM/DD)=%hi/%hu/%hu\n",
+          "SQL_DATE_STRUCT", d.year, d.month, d.day);
+  return buf;
+}
+
+std::string FormatTimeStruct(SQL_TIME_STRUCT t)
+{
+  char buf[kCharBufSize1];
+  sprintf(buf, "\t\t%s, time(hh:mm:ss)=%hu:%hu:%hu\n",
+          "SQL_TIME_STRUCT", t.hour, t.minute, t.second);
+  return buf;
+}
+
+std::string FormatTimestampStruct(SQL_TIMESTAMP_STRUCT ts)
+{
+  char buf[kCharBufSize1];
+  sprintf(buf, "\t\t%s, datetime(YYYY/MM/DD hh:mm:ss.sss)=%hu/%hu/%hu %hu:%hu:%hu.%hu\n",
+          "SQL_TIMESTAMP_STRUCT", ts.year, ts.month, ts.day,
+          ts.hour, ts.minute, ts.second, ts.fraction);
+  return buf;
+}
+
+std::string GetIntervalType(SQLINTERVAL type)
+{
+  switch (type)
+  {
+  case SQL_IS_YEAR:
+    return "SQL_IS_YEAR";
+  case SQL_IS_MONTH:
+    return "SQL_IS_MONTH";
+  case SQL_IS_DAY:
+    return "SQL_IS_DAY";
+  case SQL_IS_HOUR:
+    return "SQL_IS_HOUR";
+  case SQL_IS_MINUTE:
+    return "SQL_IS_MINUTE";
+  case SQL_IS_SECOND:
+    return "SQL_IS_SECOND";
+  case SQL_IS_YEAR_TO_MONTH:
+    return "SQL_IS_YEAR_TO_MONTH";
+  case SQL_IS_DAY_TO_HOUR:
+    return "SQL_IS_DAY_TO_HOUR";
+  case SQL_IS_DAY_TO_MINUTE:
+    return "SQL_IS_DAY_TO_MINUTE";
+  case SQL_IS_DAY_TO_SECOND:
+    return "SQL_IS_DAY_TO_SECOND";
+  case SQL_IS_HOUR_TO_MINUTE:
+    return "SQL_IS_HOUR_TO_MINUTE";
+  case SQL_IS_HOUR_TO_SECOND:
+    return "SQL_IS_HOUR_TO_SECOND";
+  case SQL_IS_MINUTE_TO_SECOND:
+    return "SQL_IS_MINUTE_TO_SECOND";
+  }
+
+  return "";
+}
+
+std::string FormatIntervalYearMonthStruct(SQL_YEAR_MONTH_STRUCT ym)
+{
+  char buf[kCharBufSize1];
+  sprintf(buf, "\t\t%-s, year_month(YYYY/MM)=%i/%i\n",
+          "SQL_YEAR_MONTH_STRUCT", ym.year, ym.month);
+  return buf;
+}
+
+std::string FormatIntervalDaySecondStruct(SQL_DAY_SECOND_STRUCT ds)
+{
+  char buf[kCharBufSize1];
+  sprintf(buf, "\t\t%-s, day_second(DD hh:mm:ss.ssss)=%i %i:%i:%i.%i\n",
+          "SQL_DAY_SECOND_STRUCT", ds.day, ds.hour, ds.minute, ds.second, ds.fraction);
+  return buf;
+}
+
+std::string FormatIntervalStruct(SQL_INTERVAL_STRUCT i)
+{
+  char buf[kCharBufSize1];
+  if (i.interval_sign)
+  {
+    sprintf(buf, "\t\t%s, interval_type=%s, interval_sign=(+), %s, %s\n",
+            "SQL_INTERVAL_STRUCT", ToCStr(GetIntervalType(i.interval_type)),
+            ToCStr(FormatIntervalYearMonthStruct(i.intval.year_month)),
+            ToCStr(FormatIntervalDaySecondStruct(i.intval.day_second)));
+  }
+  else
+  {
+    sprintf(buf, "\t\t%s, interval_type=%s, interval_sign=(-), %s, %s\n",
+            "SQL_INTERVAL_STRUCT", ToCStr(GetIntervalType(i.interval_type)),
+            ToCStr(FormatIntervalYearMonthStruct(i.intval.year_month)),
+            ToCStr(FormatIntervalDaySecondStruct(i.intval.day_second)));
+  }
+  return buf;
+}
+#endif
+
 }  // namespace odbc_bq_driver
 }  // namespace cloud
 }  // namespace google
