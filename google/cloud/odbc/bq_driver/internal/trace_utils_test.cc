@@ -20,6 +20,8 @@ namespace google {
 namespace cloud {
 namespace odbc_bq_driver {
 
+TraceOptions test_opts = {true};
+
 TEST(TraceLogging, BasicODBCTypes)
 {
   std::string fmt1 = FormatSqlSmallInt(1);
@@ -28,7 +30,7 @@ TEST(TraceLogging, BasicODBCTypes)
   std::string fmt4 = FormatSqlUInteger(4);
 
   EXPECT_EQ("TestBasicODBCTypes\t\tSQLSMALLINT, 1\n\t\tSQLUSMALLINT, 2\n\t\tSQLINTEGER, 3\n\t\tSQLUINTEGER, 4\n",
-            CollectAndPrintArgs("TestBasicODBCTypes",
+            CollectAndPrintArgs("TestBasicODBCTypes", test_opts,
                                 4, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str()));
 }
 
@@ -51,7 +53,7 @@ TEST(TraceLogging, Handle)
   std::string fmt5 = FormatSqlHandleType(SQL_HANDLE_STMT);
   std::string fmt6 = FormatSqlHandleType(1234);
 
-  EXPECT_EQ(expected, CollectAndPrintArgs("TestHandle",
+  EXPECT_EQ(expected, CollectAndPrintArgs("TestHandle", test_opts,
                                           6, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(),
                                           fmt4.c_str(), fmt5.c_str(), fmt6.c_str()));
 }
@@ -82,7 +84,7 @@ TEST(TraceLogging, Pointers)
       .append("SQLINTEGER *, 3\n\t\tSQLUINTEGER *, 4\n\t\t")
       .append("SQLCHAR *, Hello World\n\t\tSQLPOINTER *, 0x0\n\t\tSQLHANDLE *, 0x0\n");
 
-  EXPECT_EQ(expected, CollectAndPrintArgs("TestPointers",
+  EXPECT_EQ(expected, CollectAndPrintArgs("TestPointers", test_opts,
                                           8, fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str(),
                                           fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str()));
 }
@@ -94,7 +96,7 @@ TEST(TraceLogging, Length)
   std::string fmt3 = FormatSqlSetPosiRow(50);
 
   EXPECT_EQ("TestLength\t\tSQLLEN, 10\n\t\tSQLULEN, 11\n\t\tSQLSETPOSIROW, 50\n",
-            CollectAndPrintArgs("TestLength", 3, fmt1.c_str(), fmt2.c_str(), fmt3.c_str()));
+            CollectAndPrintArgs("TestLength", test_opts, 3, fmt1.c_str(), fmt2.c_str(), fmt3.c_str()));
 }
 
 TEST(TraceLogging, ReturnCodes)
@@ -103,7 +105,7 @@ TEST(TraceLogging, ReturnCodes)
   std::string fmt2 = FormatSqlReturn(2);
 
   EXPECT_EQ("TestRetCodes\t\tRETCODE, 1\n\t\tSQLRETURN, 2\n",
-            CollectAndPrintArgs("TestRetCodes", 2, fmt1.c_str(), fmt2.c_str()));
+            CollectAndPrintArgs("TestRetCodes", test_opts, 2, fmt1.c_str(), fmt2.c_str()));
 }
 
 TEST(TraceLogging, AdditionalSqlTypes)
@@ -143,7 +145,7 @@ TEST(TraceLogging, AdditionalSqlTypes)
       .append("SQLFLOAT *, 2.2000\n\t\tSQLREAL *, 3.30\n");
 
   EXPECT_EQ(expected,
-            CollectAndPrintArgs("TestAdditionalSqlTypes", 14,
+            CollectAndPrintArgs("TestAdditionalSqlTypes", test_opts, 14,
                                 fmt1.c_str(), fmt2.c_str(), fmt3.c_str(), fmt4.c_str(),
                                 fmt5.c_str(), fmt6.c_str(), fmt7.c_str(), fmt8.c_str(),
                                 fmt9.c_str(), fmt10.c_str(), fmt11.c_str(), fmt12.c_str(),
@@ -157,7 +159,7 @@ TEST(TraceLogging, BasicTypesString)
   const char str3[] = "Hello3";
 
   EXPECT_EQ("TestBasicTypesString\t\tHello1\n\t\tHello2\n\t\tHello3\n",
-            CollectAndPrintArgs("TestBasicTypesString", 3,
+            CollectAndPrintArgs("TestBasicTypesString", test_opts, 3,
                                 FormatString(str1).c_str(), FormatCharString(str2).c_str(),
                                 FormatCharArray(str3).c_str()));
 }
@@ -168,7 +170,7 @@ TEST(TraceLogging, BasicTypesChar)
   unsigned char c2 = 'B';
 
   EXPECT_EQ("TestBasicTypesChar\t\tA\n\t\tB\n",
-            CollectAndPrintArgs("TestBasicTypesChar", 2,
+            CollectAndPrintArgs("TestBasicTypesChar", test_opts, 2,
                                 FormatChar(c1).c_str(), FormatCharU(c2).c_str()));
 }
 
@@ -178,7 +180,7 @@ TEST(TraceLogging, BasicTypesInt)
   unsigned int i2 = 2;
 
   EXPECT_EQ("TestBasicTypesInt\t\t1\n\t\t2\n",
-            CollectAndPrintArgs("TestBasicTypesInt", 2,
+            CollectAndPrintArgs("TestBasicTypesInt", test_opts, 2,
                                 FormatInt(i1).c_str(), FormatIntU(i2).c_str()));
 }
 
@@ -188,7 +190,7 @@ TEST(TraceLogging, BasicTypesLong)
   unsigned long l2 = 2L;
 
   EXPECT_EQ("TestBasicTypesLong\t\t1\n\t\t2\n",
-            CollectAndPrintArgs("TestBasicTypesLong", 2,
+            CollectAndPrintArgs("TestBasicTypesLong", test_opts, 2,
                                 FormatLong(l1).c_str(), FormatLongU(l2).c_str()));
 }
 
@@ -198,27 +200,27 @@ TEST(TraceLogging, BasicTypesShort)
   unsigned short s2 = 2;
 
   EXPECT_EQ("TestBasicTypesShort\t\t1\n\t\t2\n",
-            CollectAndPrintArgs("TestBasicTypesShort", 2,
+            CollectAndPrintArgs("TestBasicTypesShort", test_opts, 2,
                                 FormatShort(s1).c_str(), FormatShortU(s2).c_str()));
 }
 
 TEST(TraceLogging, BasicTypesDouble)
 {
   EXPECT_EQ("TestBasicTypesDouble\t\t1.1234\n",
-            CollectAndPrintArgs("TestBasicTypesDouble", 1, FormatDouble(1.1234).c_str()));
+            CollectAndPrintArgs("TestBasicTypesDouble", test_opts, 1, FormatDouble(1.1234).c_str()));
 }
 
 TEST(TraceLogging, BasicTypesFloat)
 {
   EXPECT_EQ("TestBasicTypesFloat\t\t1.12\n",
-            CollectAndPrintArgs("TestBasicTypesFloat", 1, FormatFloat(1.12).c_str()));
+            CollectAndPrintArgs("TestBasicTypesFloat", test_opts, 1, FormatFloat(1.12).c_str()));
 }
 
 TEST(TraceLogging, BasicTypesBool)
 {
   EXPECT_EQ("TestBasicTypesBool\t\tTRUE\n\t\tFALSE\n",
             CollectAndPrintArgs(
-              "TestBasicTypesBool", 2, FormatBool(true).c_str(), FormatBool(false).c_str()));
+              "TestBasicTypesBool", test_opts, 2, FormatBool(true).c_str(), FormatBool(false).c_str()));
 }
 
 TEST(TraceLogging, ExitInternalTraceEnabled)
