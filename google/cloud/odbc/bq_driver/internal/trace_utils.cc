@@ -685,6 +685,7 @@ std::string FormatIntervalStruct(SQL_INTERVAL_STRUCT i)
             ToCStr(FormatIntervalYearMonthStruct(i.intval.year_month)),
             ToCStr(FormatIntervalDaySecondStruct(i.intval.day_second)));
   }
+  return buf;
 }
 #endif  /* ODBCVER >= 0x0300 */
 
