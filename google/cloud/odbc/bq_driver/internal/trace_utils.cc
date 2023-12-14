@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
-#include <mutex>
 
 // NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
@@ -23,43 +22,27 @@ namespace odbc_bq_driver {
 constexpr int kCharBufSize1 = 1024;
 constexpr int kCharBufSize2 = 256;
 
-int TracePrintInternalStdOut(std::string& s)
+int TracePrintInternalStdOut(TraceOptions& opts, std::string& s)
 {
-  if (s.empty())
+  if (!opts.logging_enabled || s.empty())
   {
     return -1;
   }
-  std::mutex m;
-  if (m.try_lock())
-  {
-    std::cout << s << std::endl;
-    m.unlock();
-  }
-  else
-  {
-    return -1;
-  }
+  std::unique_lock<std::mutex> lk(opts.m);
+  std::cout << s << std::endl;
+  lk.unlock();
   return 0;
 }
 
-int TracePrintInternalFile(std::ofstream& file, std::string& s)
+int TracePrintInternalFile(TraceOptions& opts, std::string& s)
 {
-  if (!file.is_open())
+  if (!opts.logging_enabled || !opts.trace_file.is_open() || s.empty())
   {
     return -1;
   }
-  if (s.empty())
-  {
-    return -1;
-  }
-  std::mutex m;
-  if (m.try_lock())
-  {
-    file << s << std::endl;
-    m.unlock();
-  } else {
-    return -1;
-  }
+  std::unique_lock<std::mutex> lk(opts.m);
+  opts.trace_file << s << std::endl;
+  lk.unlock();
   return 0;
 }
 
@@ -77,7 +60,7 @@ std::string CollectArgs(va_list src_args, int num_args)
   return trace_str;
 }
 
-std::string CollectAndPrintArgs(const std::string& func_name, int num_args, ...)
+std::string CollectAndPrintArgs(const std::string& func_name, TraceOptions& opts, int num_args, ...)
 {
   std::string trace_str;
   trace_str.append(func_name);
@@ -89,7 +72,7 @@ std::string CollectAndPrintArgs(const std::string& func_name, int num_args, ...)
     trace_str.append(CollectArgs(args_list, num_args));
     va_end(args_list);
 
-    int ret = TracePrintInternalStdOut(trace_str);
+    int ret = TracePrintInternalStdOut(opts, trace_str);
     if (ret < 0)
     {
       return "";
@@ -99,7 +82,7 @@ std::string CollectAndPrintArgs(const std::string& func_name, int num_args, ...)
 }
 
 std::string CollectAndPrintArgsFile(
-  const std::string& func_name, std::ofstream& file, int num_args, ...)
+  const std::string& func_name, TraceOptions& opts, int num_args, ...)
 {
   std::string trace_str;
   trace_str.append(func_name);
@@ -111,7 +94,7 @@ std::string CollectAndPrintArgsFile(
     trace_str.append(CollectArgs(args_list, num_args));
     va_end(args_list);
 
-    int ret = TracePrintInternalFile(file, trace_str);
+    int ret = TracePrintInternalFile(opts, trace_str);
     if (ret < 0)
     {
       return "";
@@ -586,13 +569,11 @@ std::string ExitInternal(
   {
     if (opts.trace_file.is_open())
     {
-      return CollectAndPrintArgsFile(
-          func_name, opts.trace_file, 1,
-          ToCStr(FormatSqlReturn(ret_code)));
+      return CollectAndPrintArgsFile(func_name, opts, 1,
+                                     ToCStr(FormatSqlReturn(ret_code)));
     }
-    return CollectAndPrintArgs(
-        func_name, 1,
-        ToCStr(FormatSqlReturn(ret_code)));
+    return CollectAndPrintArgs(func_name, opts, 1,
+                               ToCStr(FormatSqlReturn(ret_code)));
   }
   return "";
 }

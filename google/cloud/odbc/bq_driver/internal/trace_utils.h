@@ -25,6 +25,7 @@
 #include <string>
 #include <cstdarg>
 #include <cstdint>
+#include <mutex>
 
 // NOLINTBEGIN(modernize-concat-nested-namespaces)
 namespace google {
@@ -38,22 +39,24 @@ struct TraceOptions {
     bool logging_enabled = false;
     int  log_level = 0;
     std::ofstream trace_file;
+    std::mutex m;
 };
 // Emit methods for actually printing the trace lines to stdout or a trace file.
 
 // Clients of this utility should use the two methods below to emit
 // a trace of all parameters to an stdout or a trace file.
-std::string CollectAndPrintArgs(const std::string& func_name, int num_args, ...);
+std::string CollectAndPrintArgs(
+    const std::string& func_name, TraceOptions& opts, int num_args, ...);
 std::string CollectAndPrintArgsFile(
-    const std::string& func_name, std::ofstream& file, int num_args, ...);
+    const std::string& func_name, TraceOptions& opts, int num_args, ...);
 
 // Below are Helper methods for the above.
 
 // Prints the trace string to stdout.
-int TracePrintInternalStdOut(std::string& s);
+int TracePrintInternalStdOut(TraceOptions& opts, std::string& s);
 // Prints the trace string to a trace file. 
 // It is the responsibility of the caller to open and close the time
-int TracePrintInternalFile(std::ofstream& file, std::string& s);
+int TracePrintInternalFile(TraceOptions& opts,std::string& s);
 // Collects all the passed in arguments and returns a 
 // formatted string to be traced for all the args.
 std::string CollectArgs(va_list src_args, int num_args);

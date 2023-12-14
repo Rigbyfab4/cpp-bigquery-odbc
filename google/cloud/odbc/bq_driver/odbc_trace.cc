@@ -37,7 +37,7 @@ void TraceFunctionEntry_SQLAllocHandle(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLAllocHandle_Entry", opts.trace_file, 3,
+                "SQLAllocHandle_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(input_handle)),
                 ToCStr(FormatSqlHandle(output_handle)));
@@ -45,7 +45,7 @@ void TraceFunctionEntry_SQLAllocHandle(
         else
         {
             CollectAndPrintArgs(
-                "SQLAllocHandle_Entry", 3,
+                "SQLAllocHandle_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(input_handle)),
                 ToCStr(FormatSqlHandle(output_handle)));
@@ -72,7 +72,7 @@ void TraceFunctionEntry_SQLDriverConnect(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLDriverConnect_Entry", opts.trace_file, 9,
+                "SQLDriverConnect_Entry", opts, 9,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlHandle(window_handle)),
@@ -86,7 +86,7 @@ void TraceFunctionEntry_SQLDriverConnect(
         else
         {
             CollectAndPrintArgs(
-                "SQLDriverConnect_Entry", 9,
+                "SQLDriverConnect_Entry", opts, 9,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlHandle(window_handle)),
@@ -130,7 +130,7 @@ void TraceFunctionEntry_SQLBrowseConnect(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLBrowseConnect_Entry", opts.trace_file, 7,
+                "SQLBrowseConnect_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlChar(in_conn_str)),
@@ -142,7 +142,7 @@ void TraceFunctionEntry_SQLBrowseConnect(
         else
         {
             CollectAndPrintArgs(
-                "SQLBrowseConnect_Entry", 7,
+                "SQLBrowseConnect_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlChar(in_conn_str)),
@@ -186,7 +186,7 @@ void TraceFunctionEntry_SQLConnect(
             if (auth_str && auth_str_len > 0)
             {
                 CollectAndPrintArgsFile(
-                    "SQLConnect_Entry", opts.trace_file, 6,
+                    "SQLConnect_Entry", opts, 6,
                     ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                     ToCStr(FormatSqlHandle(connection_handle)),
                     ToCStr(FormatSqlChar(server_name)),
@@ -199,7 +199,7 @@ void TraceFunctionEntry_SQLConnect(
             else
             {
                 CollectAndPrintArgsFile(
-                    "SQLConnect_Entry", opts.trace_file, 6,
+                    "SQLConnect_Entry", opts, 6,
                     ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                     ToCStr(FormatSqlHandle(connection_handle)),
                     ToCStr(FormatSqlChar(server_name)),
@@ -213,7 +213,7 @@ void TraceFunctionEntry_SQLConnect(
             if (auth_str && auth_str_len > 0)
             {
                 CollectAndPrintArgs(
-                    "SQLConnect_Entry", 6,
+                    "SQLConnect_Entry", opts, 6,
                     ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                     ToCStr(FormatSqlHandle(connection_handle)),
                     ToCStr(FormatSqlChar(server_name)),
@@ -226,7 +226,7 @@ void TraceFunctionEntry_SQLConnect(
             else
             {
                 CollectAndPrintArgs(
-                    "SQLConnect_Entry", 6,
+                    "SQLConnect_Entry", opts, 6,
                     ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                     ToCStr(FormatSqlHandle(connection_handle)),
                     ToCStr(FormatSqlChar(server_name)),
@@ -266,7 +266,7 @@ void TraceFunctionEntry_SQLGetInfo(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetInfo_Entry", opts.trace_file, 6,
+                "SQLGetInfo_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlUSmallInt(info_type)),
@@ -277,7 +277,7 @@ void TraceFunctionEntry_SQLGetInfo(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetInfo_Entry", 6,
+                "SQLGetInfo_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlUSmallInt(info_type)),
@@ -314,7 +314,7 @@ void TraceFunctionEntry_SQLGetFunctions(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetFunctions_Entry", opts.trace_file, 4,
+                "SQLGetFunctions_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlUSmallInt(fn_id)),
@@ -323,7 +323,7 @@ void TraceFunctionEntry_SQLGetFunctions(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetFunctions_Entry", 4,
+                "SQLGetFunctions_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlUSmallInt(fn_id)),
@@ -347,7 +347,7 @@ void TraceFunctionEntry_SQLGetTypeInfo(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetTypeInfo_Entry", opts.trace_file, 3,
+                "SQLGetTypeInfo_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(data_type)));
@@ -355,7 +355,7 @@ void TraceFunctionEntry_SQLGetTypeInfo(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetTypeInfo_Entry", 3,
+                "SQLGetTypeInfo_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(data_type)));
@@ -378,7 +378,7 @@ void TraceFunctionEntry_SQLSetConnectAttr(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSetConnectAttr_Entry", opts.trace_file, 5,
+                "SQLSetConnectAttr_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -388,7 +388,7 @@ void TraceFunctionEntry_SQLSetConnectAttr(
         else
         {
             CollectAndPrintArgs(
-                "SQLSetConnectAttr_Entry", 5,
+                "SQLSetConnectAttr_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -424,7 +424,7 @@ void TraceFunctionEntry_SQLGetConnectAttr(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetConnectAttr_Entry", opts.trace_file, 6,
+                "SQLGetConnectAttr_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -435,7 +435,7 @@ void TraceFunctionEntry_SQLGetConnectAttr(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetConnectAttr_Entry", 6,
+                "SQLGetConnectAttr_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -472,7 +472,7 @@ void TraceFunctionEntry_SQLSetStmtAttr(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSetStmtAttr_Entry", opts.trace_file, 5,
+                "SQLSetStmtAttr_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -482,7 +482,7 @@ void TraceFunctionEntry_SQLSetStmtAttr(
         else
         {
             CollectAndPrintArgs(
-                "SQLSetStmtAttr_Entry", 5,
+                "SQLSetStmtAttr_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -518,7 +518,7 @@ void TraceFunctionEntry_SQLGetStmtAttr(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetStmtAttr_Entry", opts.trace_file, 6,
+                "SQLGetStmtAttr_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -529,7 +529,7 @@ void TraceFunctionEntry_SQLGetStmtAttr(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetStmtAttr_Entry", 6,
+                "SQLGetStmtAttr_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -566,7 +566,7 @@ void TraceFunctionEntry_SQLSetEnvAttr(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSetEnvAttr_Entry", opts.trace_file, 5,
+                "SQLSetEnvAttr_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_ENV)),
                 ToCStr(FormatSqlHandle(env_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -576,7 +576,7 @@ void TraceFunctionEntry_SQLSetEnvAttr(
         else
         {
             CollectAndPrintArgs(
-                "SQLSetEnvAttr_Entry", 5,
+                "SQLSetEnvAttr_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_ENV)),
                 ToCStr(FormatSqlHandle(env_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -602,7 +602,7 @@ void TraceFunctionEntry_SQLGetEnvAttr(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetEnvAttr_Entry", opts.trace_file, 6,
+                "SQLGetEnvAttr_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_ENV)),
                 ToCStr(FormatSqlHandle(env_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -613,7 +613,7 @@ void TraceFunctionEntry_SQLGetEnvAttr(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetEnvAttr_Entry", 6,
+                "SQLGetEnvAttr_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_ENV)),
                 ToCStr(FormatSqlHandle(env_handle)),
                 ToCStr(FormatSqlInteger(attr)),
@@ -640,7 +640,7 @@ void TraceFunctionEntry_SQLGetDescField(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetDescField_Entry", opts.trace_file, 7,
+                "SQLGetDescField_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -652,7 +652,7 @@ void TraceFunctionEntry_SQLGetDescField(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetDescField_Entry", 7,
+                "SQLGetDescField_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -693,7 +693,7 @@ void TraceFunctionEntry_SQLGetDescRec(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetDescRec_Entry", opts.trace_file, 12,
+                "SQLGetDescRec_Entry", opts, 12,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -710,7 +710,7 @@ void TraceFunctionEntry_SQLGetDescRec(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetDescRec_Entry", 12,
+                "SQLGetDescRec_Entry", opts, 12,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -757,7 +757,7 @@ void TraceFunctionEntry_SQLSetDescField(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSetDescField_Entry", opts.trace_file, 6,
+                "SQLSetDescField_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -768,7 +768,7 @@ void TraceFunctionEntry_SQLSetDescField(
         else
         {
             CollectAndPrintArgs(
-                "SQLSetDescField_Entry", 6,
+                "SQLSetDescField_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -808,7 +808,7 @@ void TraceFunctionEntry_SQLSetDescRec(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSetDescRec_Entry", opts.trace_file, 11,
+                "SQLSetDescRec_Entry", opts, 11,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -824,7 +824,7 @@ void TraceFunctionEntry_SQLSetDescRec(
         else
         {
             CollectAndPrintArgs(
-                "SQLSetDescRec_Entry", 11,
+                "SQLSetDescRec_Entry", opts, 11,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(desc_handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -855,7 +855,7 @@ void TraceFunctionEntry_SQLCopyDesc(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLCopyDesc_Entry", opts.trace_file, 3,
+                "SQLCopyDesc_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(src_desc_handle)),
                 ToCStr(FormatSqlHandle(target_desc_handle)));
@@ -863,7 +863,7 @@ void TraceFunctionEntry_SQLCopyDesc(
         else
         {
             CollectAndPrintArgs(
-                "SQLCopyDesc_Entry", 3,
+                "SQLCopyDesc_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
                 ToCStr(FormatSqlHandle(src_desc_handle)),
                 ToCStr(FormatSqlHandle(target_desc_handle)));
@@ -886,7 +886,7 @@ void TraceFunctionEntry_SQLPrepare(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLPrepare_Entry", opts.trace_file, 4,
+                "SQLPrepare_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(stmt_txt)),
@@ -895,7 +895,7 @@ void TraceFunctionEntry_SQLPrepare(
         else
         {
             CollectAndPrintArgs(
-                "SQLPrepare_Entry", 4,
+                "SQLPrepare_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(stmt_txt)),
@@ -933,7 +933,7 @@ void TraceFunctionEntry_SQLBindParameter(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLBindParameter_Entry", opts.trace_file, 11,
+                "SQLBindParameter_Entry", opts, 11,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(param_num)),
@@ -949,7 +949,7 @@ void TraceFunctionEntry_SQLBindParameter(
         else
         {
             CollectAndPrintArgs(
-                "SQLBindParameter_Entry", 11,
+                "SQLBindParameter_Entry", opts, 11,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(param_num)),
@@ -981,7 +981,7 @@ void TraceFunctionEntry_SQLGetCursorName(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetCursorName_Entry", opts.trace_file, 5,
+                "SQLGetCursorName_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(cur_name)),
@@ -991,7 +991,7 @@ void TraceFunctionEntry_SQLGetCursorName(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetCursorName_Entry", 5,
+                "SQLGetCursorName_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(cur_name)),
@@ -1027,7 +1027,7 @@ void TraceFunctionEntry_SQLSetCursorName(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSetCursorName_Entry", opts.trace_file, 4,
+                "SQLSetCursorName_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(cur_name)),
@@ -1036,7 +1036,7 @@ void TraceFunctionEntry_SQLSetCursorName(
         else
         {
             CollectAndPrintArgs(
-                "SQLSetCursorName_Entry", 4,
+                "SQLSetCursorName_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(cur_name)),
@@ -1069,14 +1069,14 @@ void TraceFunctionEntry_SQLExecute(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLExecute_Entry", opts.trace_file, 2,
+                "SQLExecute_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLExecute_Entry", 2,
+                "SQLExecute_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
@@ -1098,7 +1098,7 @@ void TraceFunctionEntry_SQLExecDirect(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLExecDirect_Entry", opts.trace_file, 4,
+                "SQLExecDirect_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(stmt_txt)),
@@ -1107,7 +1107,7 @@ void TraceFunctionEntry_SQLExecDirect(
         else
         {
             CollectAndPrintArgs(
-                "SQLExecDirect_Entry", 4,
+                "SQLExecDirect_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(stmt_txt)),
@@ -1143,7 +1143,7 @@ void TraceFunctionEntry_SQLNativeSql(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLNativeSql_Entry", opts.trace_file, 7,
+                "SQLNativeSql_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlChar(in_stmt_txt)),
@@ -1155,7 +1155,7 @@ void TraceFunctionEntry_SQLNativeSql(
         else
         {
             CollectAndPrintArgs(
-                "SQLNativeSql_Entry", 7,
+                "SQLNativeSql_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)),
                 ToCStr(FormatSqlChar(in_stmt_txt)),
@@ -1194,7 +1194,7 @@ void TraceFunctionEntry_SQLNumParams(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLNumParams_Entry", opts.trace_file, 3,
+                "SQLNumParams_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(param_count)));
@@ -1202,7 +1202,7 @@ void TraceFunctionEntry_SQLNumParams(
         else
         {
             CollectAndPrintArgs(
-                "SQLNumParams_Entry", 3,
+                "SQLNumParams_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(param_count)));
@@ -1225,7 +1225,7 @@ void TraceFunctionEntry_SQLParamData(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLParamData_Entry", opts.trace_file, 3,
+                "SQLParamData_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlPointer(param_or_tgt_val)));
@@ -1233,7 +1233,7 @@ void TraceFunctionEntry_SQLParamData(
         else
         {
             CollectAndPrintArgs(
-                "SQLParamData_Entry", 3,
+                "SQLParamData_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlPointer(param_or_tgt_val)));
@@ -1256,7 +1256,7 @@ void TraceFunctionEntry_SQLPutData(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLPutData_Entry", opts.trace_file, 4,
+                "SQLPutData_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlPointer(param_data)),
@@ -1265,7 +1265,7 @@ void TraceFunctionEntry_SQLPutData(
         else
         {
             CollectAndPrintArgs(
-                "SQLPutData_Entry", 4,
+                "SQLPutData_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlPointer(param_data)),
@@ -1291,7 +1291,7 @@ void TraceFunctionEntry_SQLDescribeParam(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLDescribeParam_Entry", opts.trace_file, 7,
+                "SQLDescribeParam_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(param_num)),
@@ -1303,7 +1303,7 @@ void TraceFunctionEntry_SQLDescribeParam(
         else
         {
             CollectAndPrintArgs(
-                "SQLDescribeParam_Entry", 7,
+                "SQLDescribeParam_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(param_num)),
@@ -1332,7 +1332,7 @@ void TraceFunctionEntry_SQLGetData(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetData_Entry", opts.trace_file, 7,
+                "SQLGetData_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1344,7 +1344,7 @@ void TraceFunctionEntry_SQLGetData(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetData_Entry", 7,
+                "SQLGetData_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1371,7 +1371,7 @@ void TraceFunctionEntry_SQLNumResultCols(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLNumResultCols_Entry", opts.trace_file, 3,
+                "SQLNumResultCols_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(col_count)));
@@ -1379,7 +1379,7 @@ void TraceFunctionEntry_SQLNumResultCols(
         else
         {
             CollectAndPrintArgs(
-                "SQLNumResultCols_Entry", 3,
+                "SQLNumResultCols_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(col_count)));
@@ -1401,14 +1401,14 @@ void TraceFunctionEntry_SQLFetch(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLFetch_Entry", opts.trace_file, 2,
+                "SQLFetch_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLFetch_Entry", 2,
+                "SQLFetch_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
@@ -1432,7 +1432,7 @@ void TraceFunctionEntry_SQLExtendedFetch(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLExtendedFetch_Entry", opts.trace_file, 6,
+                "SQLExtendedFetch_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(fetch_orientation)),
@@ -1443,7 +1443,7 @@ void TraceFunctionEntry_SQLExtendedFetch(
         else
         {
             CollectAndPrintArgs(
-                "SQLExtendedFetch_Entry", 6,
+                "SQLExtendedFetch_Entry", opts, 6,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(fetch_orientation)),
@@ -1472,7 +1472,7 @@ void TraceFunctionEntry_SQLColAttribute(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLColAttribute_Entry", opts.trace_file, 8,
+                "SQLColAttribute_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1485,7 +1485,7 @@ void TraceFunctionEntry_SQLColAttribute(
         else
         {
             CollectAndPrintArgs(
-                "SQLColAttribute_Entry", 8,
+                "SQLColAttribute_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1529,7 +1529,7 @@ void TraceFunctionEntry_SQLColAttributes(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLColAttributes_Entry", opts.trace_file, 8,
+                "SQLColAttributes_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1542,7 +1542,7 @@ void TraceFunctionEntry_SQLColAttributes(
         else
         {
             CollectAndPrintArgs(
-                "SQLColAttributes_Entry", 8,
+                "SQLColAttributes_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1586,7 +1586,7 @@ void TraceFunctionEntry_SQLDescribeCol(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLDescribeCol_Entry", opts.trace_file, 10,
+                "SQLDescribeCol_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1601,7 +1601,7 @@ void TraceFunctionEntry_SQLDescribeCol(
         else
         {
             CollectAndPrintArgs(
-                "SQLDescribeCol_Entry", 10,
+                "SQLDescribeCol_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1647,7 +1647,7 @@ void TraceFunctionEntry_SQLBindCol(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLBindCol_Entry", opts.trace_file, 7,
+                "SQLBindCol_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1659,7 +1659,7 @@ void TraceFunctionEntry_SQLBindCol(
         else
         {
             CollectAndPrintArgs(
-                "SQLBindCol_Entry", 7,
+                "SQLBindCol_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(col_num)),
@@ -1685,7 +1685,7 @@ void TraceFunctionEntry_SQLRowCount(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLRowCount_Entry", opts.trace_file, 3,
+                "SQLRowCount_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlLen(row_count)));
@@ -1693,7 +1693,7 @@ void TraceFunctionEntry_SQLRowCount(
         else
         {
             CollectAndPrintArgs(
-                "SQLRowCount_Entry", 3,
+                "SQLRowCount_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlLen(row_count)));
@@ -1716,7 +1716,7 @@ void TraceFunctionEntry_SQLFetchScroll(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLFetchScroll_Entry", opts.trace_file, 4,
+                "SQLFetchScroll_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(fetch_orientation)),
@@ -1725,7 +1725,7 @@ void TraceFunctionEntry_SQLFetchScroll(
         else
         {
             CollectAndPrintArgs(
-                "SQLFetchScroll_Entry", 4,
+                "SQLFetchScroll_Entry", opts, 4,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSmallInt(fetch_orientation)),
@@ -1748,14 +1748,14 @@ void TraceFunctionEntry_SQLMoreResults(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLMoreResults_Entry", opts.trace_file, 2,
+                "SQLMoreResults_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLMoreResults_Entry", 2,
+                "SQLMoreResults_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
@@ -1779,7 +1779,7 @@ void TraceFunctionEntry_SQLGetDiagField(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetDiagField_Entry", opts.trace_file, 7,
+                "SQLGetDiagField_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -1791,7 +1791,7 @@ void TraceFunctionEntry_SQLGetDiagField(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetDiagField_Entry", 7,
+                "SQLGetDiagField_Entry", opts, 7,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -1833,7 +1833,7 @@ void TraceFunctionEntry_SQLGetDiagRec(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLGetDiagRec_Entry", opts.trace_file, 8,
+                "SQLGetDiagRec_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -1846,7 +1846,7 @@ void TraceFunctionEntry_SQLGetDiagRec(
         else
         {
             CollectAndPrintArgs(
-                "SQLGetDiagRec_Entry", 8,
+                "SQLGetDiagRec_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)),
                 ToCStr(FormatSqlSmallInt(rec_no)),
@@ -1891,7 +1891,7 @@ void TraceFunctionEntry_SQLColumns(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLColumns_Entry", opts.trace_file, 10,
+                "SQLColumns_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -1906,7 +1906,7 @@ void TraceFunctionEntry_SQLColumns(
         else
         {
             CollectAndPrintArgs(
-                "SQLColumns_Entry", 10,
+                "SQLColumns_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -1954,7 +1954,7 @@ void TraceFunctionEntry_SQLTables(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLTables_Entry", opts.trace_file, 10,
+                "SQLTables_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -1969,7 +1969,7 @@ void TraceFunctionEntry_SQLTables(
         else
         {
             CollectAndPrintArgs(
-                "SQLTables_Entry", 10,
+                "SQLTables_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2015,7 +2015,7 @@ void TraceFunctionEntry_SQLPrimaryKeys(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLPrimaryKeys_Entry", opts.trace_file, 8,
+                "SQLPrimaryKeys_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2028,7 +2028,7 @@ void TraceFunctionEntry_SQLPrimaryKeys(
         else
         {
             CollectAndPrintArgs(
-                "SQLPrimaryKeys_Entry", 8,
+                "SQLPrimaryKeys_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2072,7 +2072,7 @@ void TraceFunctionEntry_SQLProcedureColumns(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLProcedureColumns_Entry", opts.trace_file, 10,
+                "SQLProcedureColumns_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2087,7 +2087,7 @@ void TraceFunctionEntry_SQLProcedureColumns(
         else
         {
             CollectAndPrintArgs(
-                "SQLProcedureColumns_Entry", 10,
+                "SQLProcedureColumns_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2134,7 +2134,7 @@ void TraceFunctionEntry_SQLProcedures(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLProcedures_Entry", opts.trace_file, 8,
+                "SQLProcedures_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2147,7 +2147,7 @@ void TraceFunctionEntry_SQLProcedures(
         else
         {
             CollectAndPrintArgs(
-                "SQLProcedures_Entry", 8,
+                "SQLProcedures_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2193,7 +2193,7 @@ void TraceFunctionEntry_SQLSpecialColumns(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSpecialColumns_Entry", opts.trace_file, 11,
+                "SQLSpecialColumns_Entry", opts, 11,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(id_type)),
@@ -2209,7 +2209,7 @@ void TraceFunctionEntry_SQLSpecialColumns(
         else
         {
             CollectAndPrintArgs(
-                "SQLSpecialColumns_Entry", 11,
+                "SQLSpecialColumns_Entry", opts, 11,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(id_type)),
@@ -2259,7 +2259,7 @@ void TraceFunctionEntry_SQLStatistics(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLStatistics_Entry", opts.trace_file, 10,
+                "SQLStatistics_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2274,7 +2274,7 @@ void TraceFunctionEntry_SQLStatistics(
         else
         {
             CollectAndPrintArgs(
-                "SQLStatistics_Entry", 10,
+                "SQLStatistics_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2321,7 +2321,7 @@ void TraceFunctionEntry_SQLTablePrivileges(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLTablePrivileges_Entry", opts.trace_file, 8,
+                "SQLTablePrivileges_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2334,7 +2334,7 @@ void TraceFunctionEntry_SQLTablePrivileges(
         else
         {
             CollectAndPrintArgs(
-                "SQLTablePrivileges_Entry", 8,
+                "SQLTablePrivileges_Entry", opts, 8,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2382,7 +2382,7 @@ void TraceFunctionEntry_SQLForeignKeys(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLForeignKeys_Entry", opts.trace_file, 14,
+                "SQLForeignKeys_Entry", opts, 14,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(pk_catalog_name)),
@@ -2401,7 +2401,7 @@ void TraceFunctionEntry_SQLForeignKeys(
         else
         {
             CollectAndPrintArgs(
-                "SQLForeignKeys_Entry", 14,
+                "SQLForeignKeys_Entry", opts, 14,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(pk_catalog_name)),
@@ -2456,7 +2456,7 @@ void TraceFunctionEntry_SQLColumnPrivileges(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLColumnPrivileges_Entry", opts.trace_file, 10,
+                "SQLColumnPrivileges_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2471,7 +2471,7 @@ void TraceFunctionEntry_SQLColumnPrivileges(
         else
         {
             CollectAndPrintArgs(
-                "SQLColumnPrivileges_Entry", 10,
+                "SQLColumnPrivileges_Entry", opts, 10,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlChar(catalog_name)),
@@ -2514,7 +2514,7 @@ void TraceFunctionEntry_SQLFreeStmt(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLFreeStmt_Entry", opts.trace_file, 3,
+                "SQLFreeStmt_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(option)));
@@ -2522,7 +2522,7 @@ void TraceFunctionEntry_SQLFreeStmt(
         else
         {
             CollectAndPrintArgs(
-                "SQLFreeStmt_Entry", 3,
+                "SQLFreeStmt_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(option)));
@@ -2545,7 +2545,7 @@ void TraceFunctionEntry_SQLEndTran(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLEndTran_Entry", opts.trace_file, 3,
+                "SQLEndTran_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)),
                 ToCStr(FormatSqlSmallInt(completion_type)));
@@ -2553,7 +2553,7 @@ void TraceFunctionEntry_SQLEndTran(
         else
         {
             CollectAndPrintArgs(
-                "SQLEndTran_Entry", 3,
+                "SQLEndTran_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)),
                 ToCStr(FormatSqlSmallInt(completion_type)));
@@ -2575,14 +2575,14 @@ void TraceFunctionEntry_SQLCancel(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLCancel_Entry", opts.trace_file, 2,
+                "SQLCancel_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLCancel_Entry", 2,
+                "SQLCancel_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
@@ -2603,14 +2603,14 @@ void TraceFunctionEntry_SQLCloseCursor(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLCloseCursor_Entry", opts.trace_file, 2,
+                "SQLCloseCursor_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLCloseCursor_Entry", 2,
+                "SQLCloseCursor_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)));
         }
@@ -2631,14 +2631,14 @@ void TraceFunctionEntry_SQLDisconnect(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLDisconnect_Entry", opts.trace_file, 2,
+                "SQLDisconnect_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLDisconnect_Entry", 2,
+                "SQLDisconnect_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
                 ToCStr(FormatSqlHandle(connection_handle)));
         }
@@ -2659,14 +2659,14 @@ void TraceFunctionEntry_SQLFreeHandle(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLFreeHandle_Entry", opts.trace_file, 2,
+                "SQLFreeHandle_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLFreeHandle_Entry", 2,
+                "SQLFreeHandle_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)));
         }
@@ -2687,14 +2687,14 @@ void TraceFunctionEntry_SQLCancelHandle(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLCancelHandle_Entry", opts.trace_file, 2,
+                "SQLCancelHandle_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)));
         }
         else
         {
             CollectAndPrintArgs(
-                "SQLCancelHandle_Entry", 2,
+                "SQLCancelHandle_Entry", opts, 2,
                 ToCStr(FormatSqlHandleType(handle_type)),
                 ToCStr(FormatSqlHandle(handle)));
         }
@@ -2716,7 +2716,7 @@ void TraceFunctionEntry_SQLSetPos(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLSetPos_Entry", opts.trace_file, 5,
+                "SQLSetPos_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSetPosiRow(row_number)),
@@ -2726,7 +2726,7 @@ void TraceFunctionEntry_SQLSetPos(
         else
         {
             CollectAndPrintArgs(
-                "SQLSetPos_Entry", 5,
+                "SQLSetPos_Entry", opts, 5,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlSetPosiRow(row_number)),
@@ -2750,7 +2750,7 @@ void TraceFunctionEntry_SQLBulkOperations(
         if (opts.trace_file.is_open())
         {
             CollectAndPrintArgsFile(
-                "SQLBulkOperations_Entry", opts.trace_file, 3,
+                "SQLBulkOperations_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(op)));
@@ -2758,7 +2758,7 @@ void TraceFunctionEntry_SQLBulkOperations(
         else
         {
             CollectAndPrintArgs(
-                "SQLBulkOperations_Entry", 3,
+                "SQLBulkOperations_Entry", opts, 3,
                 ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
                 ToCStr(FormatSqlHandle(statement_handle)),
                 ToCStr(FormatSqlUSmallInt(op)));
