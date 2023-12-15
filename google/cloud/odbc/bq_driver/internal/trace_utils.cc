@@ -28,21 +28,22 @@ int TracePrintInternalStdOut(TraceOptions& opts, std::string& s)
   {
     return -1;
   }
-  std::unique_lock<std::mutex> lk(opts.m);
+  std::lock_guard<std::mutex> lk(opts.m); // Releases the mutex when going out of scope.
   std::cout << s << std::endl;
-  lk.unlock();
   return 0;
 }
 
 int TracePrintInternalFile(TraceOptions& opts, std::string& s)
 {
-  if (!opts.logging_enabled || !opts.trace_file.is_open() || s.empty())
+  if (!opts.logging_enabled || s.empty())
   {
     return -1;
   }
-  std::unique_lock<std::mutex> lk(opts.m);
-  opts.trace_file << s << std::endl;
-  lk.unlock();
+  std::lock_guard<std::mutex> lk(opts.m); // Releases the mutex when going out of scope.
+  if (!opts.trace_file.is_open()) {
+    return -1;
+  }
+  opts.trace_file << s << std::endl;;
   return 0;
 }
 
