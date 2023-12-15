@@ -354,7 +354,7 @@ TEST(TraceLogging, WindowHandles)
   std::string fmt2 = FormatSqlHWND(w2);
 
   EXPECT_EQ("TestWindowHandles\t\tHWND, 0x0\n\t\tSQLHWND 0x0\n",
-            CollectAndPrintArgs("TestWindowHandles", 2, fmt1.c_str(), fmt2.c_str()));
+            CollectAndPrintArgs("TestWindowHandles", test_opts, 2, fmt1.c_str(), fmt2.c_str()));
 }
 #endif  /* WIN32 */
 
