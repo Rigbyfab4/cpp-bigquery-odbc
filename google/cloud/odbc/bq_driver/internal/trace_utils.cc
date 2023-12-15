@@ -35,7 +35,7 @@ int TracePrintInternalStdOut(TraceOptions& opts, std::string& s)
 
 int TracePrintInternalFile(TraceOptions& opts, std::string& s)
 {
-  if (!opts.logging_enabled|| s.empty())
+  if (!opts.logging_enabled || s.empty())
   {
     return -1;
   }
