@@ -30,7 +30,7 @@ namespace odbc_bq_driver {
 void TraceFunctionEntry_SQLAllocHandle(
     SQLSMALLINT handle_type, SQLHANDLE input_handle,
     SQLHANDLE *output_handle,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -53,7 +53,7 @@ void TraceFunctionEntry_SQLAllocHandle(
     }
 }
 
-void TraceFunctionExit_SQLAllocHandle(SQLRETURN ret_code, TraceOptions opts)
+void TraceFunctionExit_SQLAllocHandle(SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLAllocHandle_Exit", ret_code, opts);
 }
@@ -65,7 +65,7 @@ void TraceFunctionEntry_SQLDriverConnect(
     SQLSMALLINT out_conn_str_buf_len,
     SQLSMALLINT *out_conn_str_len,
     SQLUSMALLINT driver_completion,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -100,7 +100,7 @@ void TraceFunctionEntry_SQLDriverConnect(
     }
 }
 
-void TraceFunctionSQLDriverConnect_Exit(SQLRETURN ret_code, TraceOptions opts) 
+void TraceFunctionSQLDriverConnect_Exit(SQLRETURN ret_code, TraceOptions& opts) 
 {
     ExitInternal("SQLDriverConnect_Exit", ret_code, opts);
 }
@@ -111,10 +111,10 @@ void TraceFunctionEntry_SQLDriverConnectW(
     SQLSMALLINT in_connection_str_len, SQLWCHAR *out_conn_str,
     SQLSMALLINT out_conn_str_buf_len,
     SQLSMALLINT *out_conn_str_len,
-    SQLUSMALLINT driver_completion, TraceOptions opts) {}
+    SQLUSMALLINT driver_completion, TraceOptions& opts) {}
 
 void TraceFunctionSQLDriverConnect_ExitW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLDriverConnectW_Exit", ret_code, opts);
 }
@@ -123,7 +123,7 @@ void TraceFunctionEntry_SQLBrowseConnect(
     SQLHDBC connection_handle, SQLCHAR *in_conn_str,
     SQLSMALLINT in_conn_str_len, SQLCHAR *out_conn_str,
     SQLSMALLINT out_conn_str_buf_len,
-    SQLSMALLINT *out_conn_str_len, TraceOptions opts)
+    SQLSMALLINT *out_conn_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -155,7 +155,7 @@ void TraceFunctionEntry_SQLBrowseConnect(
 }
 
 void TraceFunctionExit_SQLBrowseConnect(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLBrowseConnect_Exit", ret_code, opts);
 }
@@ -164,10 +164,10 @@ void TraceFunctionEntry_SQLBrowseConnectW(
     SQLHDBC connection_handle, SQLWCHAR *in_conn_str,
     SQLSMALLINT in_conn_str_len, SQLWCHAR *out_conn_str,
     SQLSMALLINT out_conn_str_buf_len,
-    SQLSMALLINT *out_conn_str_len, TraceOptions opts) {}
+    SQLSMALLINT *out_conn_str_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLBrowseConnectW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLBrowseConnectW_Exit", ret_code, opts);
 }
@@ -176,7 +176,7 @@ void TraceFunctionEntry_SQLConnect(
     SQLHDBC connection_handle, SQLCHAR *server_name,
     SQLSMALLINT server_name_len,
     SQLCHAR *user_name, SQLSMALLINT user_name_len, const SQLCHAR *auth_str,
-    SQLSMALLINT auth_str_len, TraceOptions opts)
+    SQLSMALLINT auth_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -238,7 +238,7 @@ void TraceFunctionEntry_SQLConnect(
     }
 }
 
-void TraceFunctionExit_SQLConnect(SQLRETURN ret_code, TraceOptions opts)
+void TraceFunctionExit_SQLConnect(SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLConnect_Exit", ret_code, opts);
 }
@@ -248,9 +248,9 @@ void TraceFunctionEntry_SQLConnectW(
     SQLSMALLINT server_name_len,
     SQLWCHAR *user_name, SQLSMALLINT user_name_len,
     const SQLWCHAR *auth_str, SQLSMALLINT auth_str_len,
-    TraceOptions opts) {}
+    TraceOptions& opts) {}
 
-void TraceFunctionExit_SQLConnectW(SQLRETURN ret_code, TraceOptions opts)
+void TraceFunctionExit_SQLConnectW(SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLConnectW_Exit", ret_code, opts);
 }
@@ -259,7 +259,7 @@ void TraceFunctionEntry_SQLGetInfo(
     SQLHDBC connection_handle, SQLUSMALLINT info_type,
     SQLPOINTER info_value,
     SQLSMALLINT info_value_buf_len, SQLSMALLINT *info_value_str_len,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -289,7 +289,7 @@ void TraceFunctionEntry_SQLGetInfo(
 }
 
 void TraceFunctionExit_SQLGetInfo(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetInfo_Exit", ret_code, opts);
 }
@@ -298,16 +298,16 @@ void TraceFunctionEntry_SQLGetInfoW(
     SQLHDBC connection_handle, SQLUSMALLINT info_type,
     SQLPOINTER info_value,
     SQLSMALLINT info_value_buf_len, SQLSMALLINT *info_value_str_len,
-    TraceOptions opts) {}
+    TraceOptions& opts) {}
 
-void TraceFunctionExit_SQLGetInfoW(SQLRETURN ret_code, TraceOptions opts)
+void TraceFunctionExit_SQLGetInfoW(SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetInfoW_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLGetFunctions(
     SQLHDBC connection_handle, SQLUSMALLINT fn_id,
-    SQLUSMALLINT *supported_fn, TraceOptions opts)
+    SQLUSMALLINT *supported_fn, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -333,14 +333,14 @@ void TraceFunctionEntry_SQLGetFunctions(
 }
 
 void TraceFunctionExit_SQLGetFunctions(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetFunctions_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLGetTypeInfo(
     SQLHSTMT statement_handle,
-    SQLSMALLINT data_type, TraceOptions opts)
+    SQLSMALLINT data_type, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -364,14 +364,14 @@ void TraceFunctionEntry_SQLGetTypeInfo(
 }
 
 void TraceFunctionExit_SQLGetTypeInfo(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetTypeInfo_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetConnectAttr(
     SQLHDBC connection_handle, SQLINTEGER attr, SQLPOINTER value, 
-    SQLINTEGER value_str_len, TraceOptions opts)
+    SQLINTEGER value_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -399,17 +399,17 @@ void TraceFunctionEntry_SQLSetConnectAttr(
 }
 
 void TraceFunctionExit_SQLSetConnectAttr(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetConnectAttr_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetConnectAttrW(
     SQLHDBC connection_handle, SQLINTEGER attr, SQLPOINTER value, 
-    SQLINTEGER value_str_len, TraceOptions opts) {}
+    SQLINTEGER value_str_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLSetConnectAttrW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetConnectAttrW_Exit", ret_code, opts);
 }
@@ -417,7 +417,7 @@ void TraceFunctionExit_SQLSetConnectAttrW(
 void TraceFunctionEntry_SQLGetConnectAttr(
     SQLHDBC connection_handle, SQLINTEGER attr, SQLPOINTER value,
     SQLINTEGER value_buf_len,
-    SQLINTEGER *value_str_len, TraceOptions opts)
+    SQLINTEGER *value_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -447,7 +447,7 @@ void TraceFunctionEntry_SQLGetConnectAttr(
 }
 
 void TraceFunctionExit_SQLGetConnectAttr(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetConnectAttr_Exit", ret_code, opts);
 }
@@ -455,17 +455,17 @@ void TraceFunctionExit_SQLGetConnectAttr(
 void TraceFunctionEntry_SQLGetConnectAttrW(
     SQLHDBC connection_handle, SQLINTEGER attr, SQLPOINTER value,
     SQLINTEGER value_buf_len, SQLINTEGER *value_str_len,
-    TraceOptions opts)  {}
+    TraceOptions& opts)  {}
 
 void TraceFunctionExit_SQLGetConnectAttrW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetConnectAttrW_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetStmtAttr(
     SQLHSTMT statement_handle, SQLINTEGER attr, SQLPOINTER value,
-    SQLINTEGER value_str_len, TraceOptions opts)
+    SQLINTEGER value_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -493,17 +493,17 @@ void TraceFunctionEntry_SQLSetStmtAttr(
 }
 
 void TraceFunctionExit_SQLSetStmtAttr(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetStmtAttr_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetStmtAttrW(
     SQLHSTMT statement_handle, SQLINTEGER attr, SQLPOINTER value, 
-    SQLINTEGER value_str_len, TraceOptions opts) {}
+    SQLINTEGER value_str_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLSetStmtAttrW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetStmtAttrW_Exit", ret_code, opts);
 }
@@ -511,7 +511,7 @@ void TraceFunctionExit_SQLSetStmtAttrW(
 void TraceFunctionEntry_SQLGetStmtAttr(
     SQLHSTMT statement_handle, SQLINTEGER attr, SQLPOINTER value,
     SQLINTEGER value_buf_len,
-    SQLINTEGER *value_str_len, TraceOptions opts)
+    SQLINTEGER *value_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -541,7 +541,7 @@ void TraceFunctionEntry_SQLGetStmtAttr(
 }
 
 void TraceFunctionExit_SQLGetStmtAttr(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetStmtAttr_Exit", ret_code, opts);
 }
@@ -549,17 +549,17 @@ void TraceFunctionExit_SQLGetStmtAttr(
 void TraceFunctionEntry_SQLGetStmtAttrW(
     SQLHSTMT statement_handle, SQLINTEGER attr, SQLPOINTER value,
     SQLINTEGER value_buf_len,
-    SQLINTEGER *value_str_len, TraceOptions opts) {}
+    SQLINTEGER *value_str_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLGetStmtAttrW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetStmtAttrW_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetEnvAttr(
     SQLHENV env_handle, SQLINTEGER attr, SQLPOINTER value,
-    SQLINTEGER value_str_len, TraceOptions opts)
+    SQLINTEGER value_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -587,7 +587,7 @@ void TraceFunctionEntry_SQLSetEnvAttr(
 }
 
 void TraceFunctionExit_SQLSetEnvAttr(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetEnvAttr_Exit", ret_code, opts);
 }
@@ -595,7 +595,7 @@ void TraceFunctionExit_SQLSetEnvAttr(
 void TraceFunctionEntry_SQLGetEnvAttr(
     SQLHENV env_handle, SQLINTEGER attr, SQLPOINTER value,
     SQLINTEGER value_buf_len, SQLINTEGER *value_str_len,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -625,7 +625,7 @@ void TraceFunctionEntry_SQLGetEnvAttr(
 }
 
 void TraceFunctionExit_SQLGetEnvAttr(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetEnvAttr_Exit", ret_code, opts);
 }
@@ -633,7 +633,7 @@ void TraceFunctionExit_SQLGetEnvAttr(
 void TraceFunctionEntry_SQLGetDescField(
     SQLHDESC desc_handle, SQLSMALLINT rec_no, SQLSMALLINT field_id,
     SQLPOINTER out_desc_val, SQLINTEGER out_desc_val_buf_len,
-    SQLINTEGER *out_desc_val_str_len, TraceOptions opts)
+    SQLINTEGER *out_desc_val_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -665,7 +665,7 @@ void TraceFunctionEntry_SQLGetDescField(
 }
 
 void TraceFunctionExit_SQLGetDescField(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDescField_Exit", ret_code, opts);
 }
@@ -673,10 +673,10 @@ void TraceFunctionExit_SQLGetDescField(
 void TraceFunctionEntry_SQLGetDescFieldW(
     SQLHDESC desc_handle, SQLSMALLINT rec_no, SQLSMALLINT field_id,
     SQLPOINTER out_desc_val, SQLINTEGER out_desc_val_buf_len,
-    SQLINTEGER *out_desc_val_str_len, TraceOptions opts) {}
+    SQLINTEGER *out_desc_val_str_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLGetDescFieldW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDescFieldW_Exit", ret_code, opts);
 }
@@ -686,7 +686,7 @@ void TraceFunctionEntry_SQLGetDescRec(
     SQLCHAR *name, SQLSMALLINT name_buf_len, SQLSMALLINT *name_str_len,
     SQLSMALLINT *desc_type, SQLSMALLINT *desc_sub_type, SQLLEN *desc_oct_len,
     SQLSMALLINT *desc_prec, SQLSMALLINT *desc_sc,
-    SQLSMALLINT *nullable, TraceOptions opts)
+    SQLSMALLINT *nullable, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -728,7 +728,7 @@ void TraceFunctionEntry_SQLGetDescRec(
 }
 
 void TraceFunctionExit_SQLGetDescRec(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDescRec_Exit", ret_code, opts);
 }
@@ -738,10 +738,10 @@ void TraceFunctionEntry_SQLGetDescRecW(
     SQLWCHAR *name, SQLSMALLINT name_buf_len, SQLSMALLINT *name_str_len,
     SQLSMALLINT *desc_type, SQLSMALLINT *desc_sub_type, SQLLEN *desc_oct_len,
     SQLSMALLINT *desc_prec, SQLSMALLINT *desc_sc,
-    SQLSMALLINT *nullable, TraceOptions opts) {}
+    SQLSMALLINT *nullable, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLGetDescRecW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDescRecW_Exit", ret_code, opts);
 }
@@ -750,7 +750,7 @@ void TraceFunctionEntry_SQLSetDescField(
     SQLHDESC desc_handle, SQLSMALLINT rec_no,
     SQLSMALLINT field_identifier,
     SQLPOINTER desc_val, SQLINTEGER desc_val_buf_len,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -780,7 +780,7 @@ void TraceFunctionEntry_SQLSetDescField(
 }
 
 void TraceFunctionExit_SQLSetDescField(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetDescField_Exit", ret_code, opts);
 }
@@ -788,10 +788,10 @@ void TraceFunctionExit_SQLSetDescField(
 void TraceFunctionEntry_SQLSetDescFieldW(
     SQLHDESC desc_handle, SQLSMALLINT rec_no,
     SQLSMALLINT field_identifier, SQLPOINTER desc_val,
-    SQLINTEGER desc_val_buf_len, TraceOptions opts) {}
+    SQLINTEGER desc_val_buf_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLSetDescFieldW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetDescFieldW_Exit", ret_code, opts);
 }
@@ -801,7 +801,7 @@ void TraceFunctionEntry_SQLSetDescRec(
     SQLSMALLINT desc_type, SQLSMALLINT desc_sub_type,
     SQLLEN desc_oct_len, SQLSMALLINT desc_prec, SQLSMALLINT desc_sc,
     SQLPOINTER desc_data, SQLLEN *desc_oct_len_ptr,
-    SQLLEN *desc_ind, TraceOptions opts)
+    SQLLEN *desc_ind, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -841,14 +841,14 @@ void TraceFunctionEntry_SQLSetDescRec(
 }
 
 void TraceFunctionExit_SQLSetDescRec(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetDescRec_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLCopyDesc(
     SQLHDESC src_desc_handle, SQLHDESC target_desc_handle,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -872,14 +872,14 @@ void TraceFunctionEntry_SQLCopyDesc(
 }
 
 void TraceFunctionExit_SQLCopyDesc(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLCopyDesc_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLPrepare(
     SQLHSTMT statement_handle, SQLCHAR *stmt_txt,
-    SQLINTEGER stmt_txt_len, TraceOptions opts)
+    SQLINTEGER stmt_txt_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -905,17 +905,17 @@ void TraceFunctionEntry_SQLPrepare(
 }
 
 void TraceFunctionExit_SQLPrepare(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLPrepare_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLPrepareW(
     SQLHSTMT statement_handle, SQLWCHAR *stmt_txt,
-    SQLINTEGER stmt_txt_len, TraceOptions opts) {}
+    SQLINTEGER stmt_txt_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLPrepareW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLPrepareW_Exit", ret_code, opts);
 }
@@ -926,7 +926,7 @@ void TraceFunctionEntry_SQLBindParameter(
     SQLSMALLINT param_sql_type,
     SQLULEN param_col_sz, SQLSMALLINT param_scale,
     SQLPOINTER param_data_val, SQLLEN param_data_val_buf_len,
-    SQLLEN *param_data_val_str_len, TraceOptions opts)
+    SQLLEN *param_data_val_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -966,7 +966,7 @@ void TraceFunctionEntry_SQLBindParameter(
 }
 
 void TraceFunctionExit_SQLBindParameter(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLBindParameter_Exit", ret_code, opts);
 }
@@ -974,7 +974,7 @@ void TraceFunctionExit_SQLBindParameter(
 void TraceFunctionEntry_SQLGetCursorName(
     SQLHSTMT statement_handle,
     SQLCHAR *cur_name, SQLSMALLINT cur_name_buf_len,
-    SQLSMALLINT *cur_name_str_len, TraceOptions opts)
+    SQLSMALLINT *cur_name_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1002,7 +1002,7 @@ void TraceFunctionEntry_SQLGetCursorName(
 }
 
 void TraceFunctionExit_SQLGetCursorName(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetCursorName_Exit", ret_code, opts);
 }
@@ -1010,17 +1010,17 @@ void TraceFunctionExit_SQLGetCursorName(
 void TraceFunctionEntry_SQLGetCursorNameW(
     SQLHSTMT statement_handle,
     SQLWCHAR *cur_name, SQLSMALLINT cur_name_buf_len,
-    SQLSMALLINT *cur_name_str_len, TraceOptions opts) {}
+    SQLSMALLINT *cur_name_str_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLGetCursorNameW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetCursorNameW_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetCursorName(
     SQLHSTMT statement_handle, SQLCHAR *cur_name,
-    SQLSMALLINT cur_name_len, TraceOptions opts)
+    SQLSMALLINT cur_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1046,23 +1046,23 @@ void TraceFunctionEntry_SQLSetCursorName(
 }
 
 void TraceFunctionExit_SQLSetCursorName(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetCursorName_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetCursorNameW(
     SQLHSTMT statement_handle, SQLWCHAR *cur_name,
-    SQLSMALLINT cur_name_len, TraceOptions opts) {}
+    SQLSMALLINT cur_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLSetCursorNameW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetCursorNameW_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLExecute(
-    SQLHSTMT statement_handle, TraceOptions opts)
+    SQLHSTMT statement_handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1084,14 +1084,14 @@ void TraceFunctionEntry_SQLExecute(
 }
 
 void TraceFunctionExit_SQLExecute(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLExecute_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLExecDirect(
     SQLHSTMT statement_handle, SQLCHAR *stmt_txt,
-    SQLINTEGER stmt_txt_len, TraceOptions opts)
+    SQLINTEGER stmt_txt_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1117,17 +1117,17 @@ void TraceFunctionEntry_SQLExecDirect(
 }
 
 void TraceFunctionExit_SQLExecDirect(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLExecDirect_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLExecDirectW(
     SQLHSTMT statement_handle, SQLWCHAR *stmt_txt,
-    SQLINTEGER stmt_txt_len, TraceOptions opts) {}
+    SQLINTEGER stmt_txt_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLExecDirectW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLExecDirectW_Exit", ret_code, opts);
 }
@@ -1136,7 +1136,7 @@ void TraceFunctionEntry_SQLNativeSql(
     SQLHDBC connection_handle, SQLCHAR *in_stmt_txt,
     SQLINTEGER in_stmt_txt_len,
     SQLCHAR *out_stmt_txt, SQLINTEGER out_stmt_txt_buf_len,
-    SQLINTEGER *out_stmt_txt_len, TraceOptions opts)
+    SQLINTEGER *out_stmt_txt_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1168,7 +1168,7 @@ void TraceFunctionEntry_SQLNativeSql(
 }
 
 void TraceFunctionExit_SQLNativeSql(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLNativeSql_Exit", ret_code, opts);
 }
@@ -1177,17 +1177,17 @@ void TraceFunctionEntry_SQLNativeSqlW(
     SQLHDBC connection_handle, SQLWCHAR *in_stmt_txt,
     SQLINTEGER in_stmt_txt_len,
     SQLWCHAR *out_stmt_txt, SQLINTEGER out_stmt_txt_buf_len,
-    SQLINTEGER *out_stmt_txt_len, TraceOptions opts) {}
+    SQLINTEGER *out_stmt_txt_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLNativeSqlW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLNativeSqlW_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLNumParams(
     SQLHSTMT statement_handle, SQLSMALLINT *param_count,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1211,14 +1211,14 @@ void TraceFunctionEntry_SQLNumParams(
 }
 
 void TraceFunctionExit_SQLNumParams(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLNumParams_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLParamData(
     SQLHSTMT statement_handle, SQLPOINTER *param_or_tgt_val,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1242,14 +1242,14 @@ void TraceFunctionEntry_SQLParamData(
 }
 
 void TraceFunctionExit_SQLParamData(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLParamData_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLPutData(
     SQLHSTMT statement_handle, SQLPOINTER param_data,
-    SQLLEN param_data_len, TraceOptions opts)
+    SQLLEN param_data_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1275,7 +1275,7 @@ void TraceFunctionEntry_SQLPutData(
 }
 
 void TraceFunctionExit_SQLPutData(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLPutData_Exit", ret_code, opts);
 }
@@ -1284,7 +1284,7 @@ void TraceFunctionEntry_SQLDescribeParam(
     SQLHSTMT statement_handle, SQLUSMALLINT param_num,
     SQLSMALLINT *param_sql_type,
     SQLULEN *param_sz, SQLSMALLINT *param_scale,
-    SQLSMALLINT *param_nullable, TraceOptions opts)
+    SQLSMALLINT *param_nullable, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1316,7 +1316,7 @@ void TraceFunctionEntry_SQLDescribeParam(
 }
 
 void TraceFunctionExit_SQLDescribeParam(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLDescribeParam_Exit", ret_code, opts);
 }
@@ -1325,7 +1325,7 @@ void TraceFunctionEntry_SQLGetData(
     SQLHSTMT statement_handle, SQLUSMALLINT col_num,
     SQLSMALLINT target_c_type, SQLPOINTER target_val,
     SQLLEN target_val_buf_len,
-    SQLLEN *target_val_str_len, TraceOptions opts)
+    SQLLEN *target_val_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1357,14 +1357,14 @@ void TraceFunctionEntry_SQLGetData(
 }
 
 void TraceFunctionExit_SQLGetData(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetData_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLNumResultCols(
     SQLHSTMT statement_handle, SQLSMALLINT *col_count,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1388,13 +1388,13 @@ void TraceFunctionEntry_SQLNumResultCols(
 }
 
 void TraceFunctionExit_SQLNumResultCols(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLNumResultCols_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLFetch(
-    SQLHSTMT statement_handle, TraceOptions opts)
+    SQLHSTMT statement_handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1416,7 +1416,7 @@ void TraceFunctionEntry_SQLFetch(
 }
 
 void TraceFunctionExit_SQLFetch(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLFetch_Exit", ret_code, opts);
 }
@@ -1425,7 +1425,7 @@ void TraceFunctionEntry_SQLExtendedFetch(
     SQLHSTMT statement_handle,
     SQLUSMALLINT fetch_orientation, SQLLEN fetch_offset,
     SQLULEN *row_count, SQLUSMALLINT *row_status_arr,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1455,7 +1455,7 @@ void TraceFunctionEntry_SQLExtendedFetch(
 }
 
 void TraceFunctionExit_SQLExtendedFetch(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLExtendedFetch_Exit", ret_code, opts);
 }
@@ -1465,7 +1465,7 @@ void TraceFunctionEntry_SQLColAttribute(
     SQLUSMALLINT field_identifier,
     SQLPOINTER char_attr, SQLSMALLINT char_attr_buf_len,
     SQLSMALLINT *char_attr_str_len,
-    SQLLEN *numeric_attr, TraceOptions opts)
+    SQLLEN *numeric_attr, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1499,7 +1499,7 @@ void TraceFunctionEntry_SQLColAttribute(
 }
 
 void TraceFunctionExit_SQLColAttribute(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColAttribute_Exit", ret_code, opts);
 }
@@ -1509,10 +1509,10 @@ void TraceFunctionEntry_SQLColAttributeW(
     SQLUSMALLINT col_num, SQLUSMALLINT field_identifier,
     SQLPOINTER char_attr, SQLSMALLINT char_attr_buf_len,
     SQLSMALLINT *char_attr_str_len,
-    SQLLEN *numeric_attr, TraceOptions opts) {}
+    SQLLEN *numeric_attr, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLColAttributeW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColAttributeW_Exit", ret_code, opts);
 }
@@ -1522,7 +1522,7 @@ void TraceFunctionEntry_SQLColAttributes(
     SQLUSMALLINT field_identifier,
     SQLPOINTER char_attr, SQLSMALLINT char_attr_buf_len,
     SQLSMALLINT *char_attr_str_len,
-    SQLLEN *numeric_attr, TraceOptions opts)
+    SQLLEN *numeric_attr, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1556,7 +1556,7 @@ void TraceFunctionEntry_SQLColAttributes(
 }
 
 void TraceFunctionExit_SQLColAttributes(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColAttributes_Exit", ret_code, opts);
 }
@@ -1566,10 +1566,10 @@ void TraceFunctionEntry_SQLColAttributesW(
     SQLUSMALLINT field_identifier,
     SQLPOINTER char_attr, SQLSMALLINT char_attr_buf_len,
     SQLSMALLINT *char_attr_str_len, 
-    SQLLEN *numeric_attr, TraceOptions opts) {}
+    SQLLEN *numeric_attr, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLColAttributesW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColAttributesW_Exit", ret_code, opts);
 }
@@ -1579,7 +1579,7 @@ void TraceFunctionEntry_SQLDescribeCol(
     SQLSMALLINT col_name_buf_len, SQLSMALLINT *col_name_len,
     SQLSMALLINT *col_sql_data_type, SQLULEN *col_sz,
     SQLSMALLINT *dec_digits,
-    SQLSMALLINT *col_nullable, TraceOptions opts)
+    SQLSMALLINT *col_nullable, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1617,7 +1617,7 @@ void TraceFunctionEntry_SQLDescribeCol(
 }
 
 void TraceFunctionExit_SQLDescribeCol(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLDescribeCol_Exit", ret_code, opts);
 }
@@ -1628,10 +1628,10 @@ void TraceFunctionEntry_SQLDescribeColW(
     SQLSMALLINT col_name_buf_len, SQLSMALLINT *col_name_len,
     SQLSMALLINT *col_sql_data_type, SQLULEN *col_sz,
     SQLSMALLINT *dec_digits, SQLSMALLINT *col_nullable,
-    TraceOptions opts) {}
+    TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLDescribeColW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLDescribeColW_Exit", ret_code, opts);
 }
@@ -1640,7 +1640,7 @@ void TraceFunctionEntry_SQLBindCol(
     SQLHSTMT statement_handle, SQLUSMALLINT col_num,
     SQLSMALLINT target_c_type,
     SQLPOINTER target_val, SQLLEN target_val_buf_len,
-    SQLLEN *target_val_str_len, TraceOptions opts)
+    SQLLEN *target_val_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1672,13 +1672,13 @@ void TraceFunctionEntry_SQLBindCol(
 }
 
 void TraceFunctionExit_SQLBindCol(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLBindCol_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLRowCount(
-    SQLHSTMT statement_handle, SQLLEN *row_count, TraceOptions opts)
+    SQLHSTMT statement_handle, SQLLEN *row_count, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1702,14 +1702,14 @@ void TraceFunctionEntry_SQLRowCount(
 }
 
 void TraceFunctionExit_SQLRowCount(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLRowCount_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLFetchScroll(
     SQLHSTMT statement_handle, SQLSMALLINT fetch_orientation,
-    SQLLEN fetch_offset, TraceOptions opts)
+    SQLLEN fetch_offset, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1735,13 +1735,13 @@ void TraceFunctionEntry_SQLFetchScroll(
 }
 
 void TraceFunctionExit_SQLFetchScroll(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLFetchScroll_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLMoreResults(
-    SQLHSTMT statement_handle, TraceOptions opts)
+    SQLHSTMT statement_handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1763,7 +1763,7 @@ void TraceFunctionEntry_SQLMoreResults(
 }
 
 void TraceFunctionExit_SQLMoreResults(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLMoreResults_Exit", ret_code, opts);
 }
@@ -1772,7 +1772,7 @@ void TraceFunctionEntry_SQLGetDiagField(
     SQLSMALLINT handle_type, SQLHANDLE handle,
     SQLSMALLINT rec_no, SQLSMALLINT diag_id,
     SQLPOINTER diag_info, SQLSMALLINT diag_info_buf_len,
-    SQLSMALLINT *diag_info_str_len, TraceOptions opts)
+    SQLSMALLINT *diag_info_str_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1804,7 +1804,7 @@ void TraceFunctionEntry_SQLGetDiagField(
 }
 
 void TraceFunctionExit_SQLGetDiagField(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDiagField_Exit", ret_code, opts);
 }
@@ -1813,10 +1813,10 @@ void TraceFunctionEntry_SQLGetDiagFieldW(
     SQLSMALLINT handle_type, SQLHANDLE handle,
     SQLSMALLINT rec_no, SQLSMALLINT diag_id,
     SQLPOINTER diag_info, SQLSMALLINT diag_info_buf_len,
-    SQLSMALLINT *diag_info_str_len, TraceOptions opts) {}
+    SQLSMALLINT *diag_info_str_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLGetDiagFieldW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDiagFieldW_Exit", ret_code, opts);
 }
@@ -1826,7 +1826,7 @@ void TraceFunctionEntry_SQLGetDiagRec(
     SQLSMALLINT rec_no,
     SQLCHAR *sql_state, SQLINTEGER *native_err,
     SQLCHAR *msg_txt, SQLSMALLINT msg_txt_buf_len,
-    SQLSMALLINT *msg_txt_len, TraceOptions opts)
+    SQLSMALLINT *msg_txt_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1860,7 +1860,7 @@ void TraceFunctionEntry_SQLGetDiagRec(
 }
 
 void TraceFunctionExit_SQLGetDiagRec(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDiagRec_Exit", ret_code, opts);
 }
@@ -1870,10 +1870,10 @@ void TraceFunctionEntry_SQLGetDiagRecW(
     SQLSMALLINT rec_no,
     SQLWCHAR *sql_state, SQLINTEGER *native_err,
     SQLWCHAR *msg_txt, SQLSMALLINT msg_txt_buf_len,
-    SQLSMALLINT *msg_txt_len, TraceOptions opts) {}
+    SQLSMALLINT *msg_txt_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLGetDiagRecW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLGetDiagRecW_Exit", ret_code, opts);
 }
@@ -1884,7 +1884,7 @@ void TraceFunctionEntry_SQLColumns(
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *table_name,
     SQLSMALLINT table_name_len, SQLCHAR *col_name,
-    SQLSMALLINT col_name_len, TraceOptions opts)
+    SQLSMALLINT col_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1922,7 +1922,7 @@ void TraceFunctionEntry_SQLColumns(
 }
 
 void TraceFunctionExit_SQLColumns(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColumns_Exit", ret_code, opts);
 }
@@ -1933,10 +1933,10 @@ void TraceFunctionEntry_SQLColumnsW(
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLWCHAR *table_name,
     SQLSMALLINT table_name_len, SQLWCHAR *col_name,
-    SQLSMALLINT col_name_len, TraceOptions opts) {}
+    SQLSMALLINT col_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLColumnsW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColumnsW_Exit", ret_code, opts);
 }
@@ -1947,7 +1947,7 @@ void TraceFunctionEntry_SQLTables(
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *table_name,
     SQLSMALLINT table_name_len, SQLCHAR *table_type,
-    SQLSMALLINT table_type_len, TraceOptions opts)
+    SQLSMALLINT table_type_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -1985,7 +1985,7 @@ void TraceFunctionEntry_SQLTables(
 }
 
 void TraceFunctionExit_SQLTables(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLTables_Exit", ret_code, opts);
 }
@@ -1995,10 +1995,10 @@ void TraceFunctionEntry_SQLTablesW(
     SQLSMALLINT catalog_name_len,
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len, SQLWCHAR *table_name,
     SQLSMALLINT table_name_len, SQLWCHAR *table_type,
-    SQLSMALLINT table_type_len, TraceOptions opts) {}
+    SQLSMALLINT table_type_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLTablesW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLTablesW_Exit", ret_code, opts);
 }
@@ -2008,7 +2008,7 @@ void TraceFunctionEntry_SQLPrimaryKeys(
     SQLSMALLINT catalog_name_len,
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *table_name,
-    SQLSMALLINT table_name_len, TraceOptions opts)
+    SQLSMALLINT table_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2042,7 +2042,7 @@ void TraceFunctionEntry_SQLPrimaryKeys(
 }
 
 void TraceFunctionExit_SQLPrimaryKeys(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLPrimaryKeys_Exit", ret_code, opts);
 }
@@ -2051,10 +2051,10 @@ void TraceFunctionEntry_SQLPrimaryKeysW(
     SQLHSTMT statement_handle, SQLWCHAR *catalog_name,
     SQLSMALLINT catalog_name_len,
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len, SQLWCHAR *table_name,
-    SQLSMALLINT table_name_len, TraceOptions opts) {}
+    SQLSMALLINT table_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLPrimaryKeysW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLPrimaryKeysW_Exit", ret_code, opts);
 }
@@ -2065,7 +2065,7 @@ void TraceFunctionEntry_SQLProcedureColumns(
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *proc_name,
     SQLSMALLINT proc_name_len, SQLCHAR *col_name,
-    SQLSMALLINT col_name_len, TraceOptions opts)
+    SQLSMALLINT col_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2103,7 +2103,7 @@ void TraceFunctionEntry_SQLProcedureColumns(
 }
 
 void TraceFunctionExit_SQLProcedureColumns(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLProcedureColumns_Exit", ret_code, opts);
 }
@@ -2114,10 +2114,10 @@ void TraceFunctionEntry_SQLProcedureColumnsW(
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLWCHAR *proc_name,
     SQLSMALLINT proc_name_len, SQLWCHAR *col_name,
-    SQLSMALLINT col_name_len, TraceOptions opts) {}
+    SQLSMALLINT col_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLProcedureColumnsW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLProcedureColumnsW_Exit", ret_code, opts);
 }
@@ -2127,7 +2127,7 @@ void TraceFunctionEntry_SQLProcedures(
     SQLSMALLINT catalog_name_len,
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *proc_name,
-    SQLSMALLINT proc_name_len, TraceOptions opts)
+    SQLSMALLINT proc_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2161,7 +2161,7 @@ void TraceFunctionEntry_SQLProcedures(
 }
 
 void TraceFunctionExit_SQLProcedures(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLProcedures_Exit", ret_code, opts);
 }
@@ -2171,10 +2171,10 @@ void TraceFunctionEntry_SQLProceduresW(
     SQLSMALLINT catalog_name_len,
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLWCHAR *proc_name,
-    SQLSMALLINT proc_name_len, TraceOptions opts) {}
+    SQLSMALLINT proc_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLProceduresW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLProceduresW_Exit", ret_code, opts);
 }
@@ -2186,7 +2186,7 @@ void TraceFunctionEntry_SQLSpecialColumns(
     SQLSMALLINT schema_name_len, SQLCHAR *table_name,
     SQLSMALLINT table_name_len,
     SQLUSMALLINT min_rowid_scope, SQLUSMALLINT col_nullable,
-    TraceOptions opts)
+    TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2226,7 +2226,7 @@ void TraceFunctionEntry_SQLSpecialColumns(
 }
 
 void TraceFunctionExit_SQLSpecialColumns(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSpecialColumns_Exit", ret_code, opts);
 }
@@ -2238,10 +2238,10 @@ void TraceFunctionEntry_SQLSpecialColumnsW(
     SQLSMALLINT schema_name_len, SQLWCHAR *table_name,
     SQLSMALLINT table_name_len,
     SQLUSMALLINT min_rowid_scope, SQLUSMALLINT col_nullable,
-    TraceOptions opts) {}
+    TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLSpecialColumnsW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSpecialColumnsW_Exit", ret_code, opts);
 }
@@ -2252,7 +2252,7 @@ void TraceFunctionEntry_SQLStatistics(
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *table_name,
     SQLSMALLINT table_name_len, SQLUSMALLINT index_type,
-    SQLUSMALLINT reserved, TraceOptions opts)
+    SQLUSMALLINT reserved, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2290,7 +2290,7 @@ void TraceFunctionEntry_SQLStatistics(
 }
 
 void TraceFunctionExit_SQLStatistics(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLStatistics_Exit", ret_code, opts);
 }
@@ -2301,10 +2301,10 @@ void TraceFunctionEntry_SQLStatisticsW(
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLWCHAR *table_name,
     SQLSMALLINT table_name_len, SQLUSMALLINT index_type,
-    SQLUSMALLINT reserved, TraceOptions opts) {}
+    SQLUSMALLINT reserved, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLStatisticsW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLStatisticsW_Exit", ret_code, opts);
 }
@@ -2314,7 +2314,7 @@ void TraceFunctionEntry_SQLTablePrivileges(
     SQLSMALLINT catalog_name_len,
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *table_name,
-    SQLSMALLINT table_name_len, TraceOptions opts)
+    SQLSMALLINT table_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2348,7 +2348,7 @@ void TraceFunctionEntry_SQLTablePrivileges(
 }
 
 void TraceFunctionExit_SQLTablePrivileges(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLTablePrivileges_Exit", ret_code, opts);
 }
@@ -2358,10 +2358,10 @@ void TraceFunctionEntry_SQLTablePrivilegesW(
     SQLSMALLINT catalog_name_len,
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLWCHAR *table_name,
-    SQLSMALLINT table_name_len, TraceOptions opts) {}
+    SQLSMALLINT table_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLTablePrivilegesW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLTablePrivilegesW_Exit", ret_code, opts);
 }
@@ -2375,7 +2375,7 @@ void TraceFunctionEntry_SQLForeignKeys(
     SQLSMALLINT fk_catalog_name_len,
     SQLCHAR *fk_schema_name, SQLSMALLINT fk_schema_name_len,
     SQLCHAR *fk_table_name,
-    SQLSMALLINT fk_table_name_len, TraceOptions opts)
+    SQLSMALLINT fk_table_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2421,7 +2421,7 @@ void TraceFunctionEntry_SQLForeignKeys(
 }
 
 void TraceFunctionExit_SQLForeignKeys(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLForeignKeys_Exit", ret_code, opts);
 }
@@ -2435,10 +2435,10 @@ void TraceFunctionEntry_SQLForeignKeysW(
     SQLSMALLINT fk_catalog_name_len,
     SQLWCHAR *fk_schema_name, SQLSMALLINT fk_schema_name_len,
     SQLWCHAR *fk_table_name,
-    SQLSMALLINT fk_table_name_len, TraceOptions opts) {}
+    SQLSMALLINT fk_table_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLForeignKeysW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLForeignKeysW_Exit", ret_code, opts);
 }
@@ -2449,7 +2449,7 @@ void TraceFunctionEntry_SQLColumnPrivileges(
     SQLCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLCHAR *table_name,
     SQLSMALLINT table_name_len, SQLCHAR *col_name,
-    SQLSMALLINT col_name_len, TraceOptions opts)
+    SQLSMALLINT col_name_len, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2487,7 +2487,7 @@ void TraceFunctionEntry_SQLColumnPrivileges(
 }
 
 void TraceFunctionExit_SQLColumnPrivileges(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColumnPrivileges_Exit", ret_code, opts);
 }
@@ -2498,16 +2498,16 @@ void TraceFunctionEntry_SQLColumnPrivilegesW(
     SQLWCHAR *schema_name, SQLSMALLINT schema_name_len,
     SQLWCHAR *table_name,
     SQLSMALLINT table_name_len, SQLWCHAR *col_name,
-    SQLSMALLINT col_name_len, TraceOptions opts) {}
+    SQLSMALLINT col_name_len, TraceOptions& opts) {}
 
 void TraceFunctionExit_SQLColumnPrivilegesW(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLColumnPrivilegesW_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLFreeStmt(
-    SQLHSTMT statement_handle, SQLUSMALLINT option, TraceOptions opts)
+    SQLHSTMT statement_handle, SQLUSMALLINT option, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2531,14 +2531,14 @@ void TraceFunctionEntry_SQLFreeStmt(
 }
 
 void TraceFunctionExit_SQLFreeStmt(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLFreeStmt_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLEndTran(
     SQLSMALLINT handle_type, SQLHANDLE handle,
-    SQLSMALLINT completion_type, TraceOptions opts)
+    SQLSMALLINT completion_type, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2562,13 +2562,13 @@ void TraceFunctionEntry_SQLEndTran(
 }
 
 void TraceFunctionExit_SQLEndTran(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLEndTran_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLCancel(
-    SQLHSTMT statement_handle, TraceOptions opts)
+    SQLHSTMT statement_handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2590,13 +2590,13 @@ void TraceFunctionEntry_SQLCancel(
 }
 
 void TraceFunctionExit_SQLCancel(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLCancel_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLCloseCursor(
-    SQLHSTMT statement_handle, TraceOptions opts)
+    SQLHSTMT statement_handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2618,13 +2618,13 @@ void TraceFunctionEntry_SQLCloseCursor(
 }
 
 void TraceFunctionExit_SQLCloseCursor(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLCloseCursor_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLDisconnect(
-    SQLHDBC connection_handle, TraceOptions opts)
+    SQLHDBC connection_handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2646,13 +2646,13 @@ void TraceFunctionEntry_SQLDisconnect(
 }
 
 void TraceFunctionExit_SQLDisconnect(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLDisconnect_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLFreeHandle(
-    SQLSMALLINT handle_type, SQLHANDLE handle, TraceOptions opts)
+    SQLSMALLINT handle_type, SQLHANDLE handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2674,13 +2674,13 @@ void TraceFunctionEntry_SQLFreeHandle(
 }
 
 void TraceFunctionExit_SQLFreeHandle(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLFreeHandle_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLCancelHandle(
-    SQLSMALLINT handle_type, SQLHANDLE handle, TraceOptions opts)
+    SQLSMALLINT handle_type, SQLHANDLE handle, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2702,14 +2702,14 @@ void TraceFunctionEntry_SQLCancelHandle(
 }
 
 void TraceFunctionExit_SQLCancelHandle(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLCancelHandle_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLSetPos(
     SQLHSTMT statement_handle, SQLSETPOSIROW row_number,
-    SQLUSMALLINT op, SQLUSMALLINT lock_type, TraceOptions opts)
+    SQLUSMALLINT op, SQLUSMALLINT lock_type, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2737,13 +2737,13 @@ void TraceFunctionEntry_SQLSetPos(
 }
 
 void TraceFunctionExit_SQLSetPos(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLSetPos_Exit", ret_code, opts);
 }
 
 void TraceFunctionEntry_SQLBulkOperations(
-    SQLHSTMT statement_handle, SQLSMALLINT op, TraceOptions opts)
+    SQLHSTMT statement_handle, SQLSMALLINT op, TraceOptions& opts)
 {
     if (opts.logging_enabled)
     {
@@ -2767,7 +2767,7 @@ void TraceFunctionEntry_SQLBulkOperations(
 }
 
 void TraceFunctionExit_SQLBulkOperations(
-    SQLRETURN ret_code, TraceOptions opts)
+    SQLRETURN ret_code, TraceOptions& opts)
 {
     ExitInternal("SQLBulkOperations_Exit", ret_code, opts);
 }
