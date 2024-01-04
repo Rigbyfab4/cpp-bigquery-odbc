@@ -16,6 +16,8 @@
 
 add_library(
     odbc_bq_client_interface
+    projects.h
+    projects.cc
     odbc_authentication.h
     odbc_authentication.cc
     odbc_bq_client.h
@@ -39,10 +41,15 @@ function (client_interface_define_unit_tests)
 
   enable_testing()
 
+  file(
+      GLOB bq_client_interface_unit_tests_cc
+      RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+      "*_test.cc"
+  )
+
   add_executable(
       odbc_bq_client_interface_unit_tests
-      odbc_authentication_test.cc
-      odbc_bq_client_test.cc
+      ${bq_client_interface_unit_tests_cc}
   )
 
   add_subdirectory(${CMAKE_SOURCE_DIR}/google/cloud/odbc/testing_util testing_util)
