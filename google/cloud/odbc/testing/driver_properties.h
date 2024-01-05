@@ -22,27 +22,26 @@ namespace google::cloud::odbc_tests {
 
 using std::map;
 
-const map<std::string, SQLSMALLINT> kBqToSqlDataTypes = {
-    { "INT64", SQL_BIGINT },
-    { "BOOL", SQL_BIT },
-    { "DATE", SQL_TYPE_DATE },
-    { "FLOAT64", SQL_DOUBLE },
-    { "TIME", SQL_TYPE_TIME },
-    { "TIMESTAMP", SQL_TYPE_TIMESTAMP },
-    { "DATETIME", SQL_TYPE_TIMESTAMP },
-    { "BYTES", SQL_VARBINARY },
-    { "STRING", SQL_VARCHAR },
-    { "ARRAY", SQL_VARCHAR },
-    { "STRUCT", SQL_VARCHAR },
-    { "INTERVAL", SQL_VARCHAR },
-    { "JSON", SQL_VARCHAR },
-    { "GEOGRAPHY", SQL_VARCHAR },
-    { "NUMERIC", SQL_NUMERIC },
-    { "BIGNUMERIC", SQL_NUMERIC }
-};
+map<std::string, SQLSMALLINT> const kBqToSqlDataTypes = {
+    {"INT64", SQL_BIGINT},
+    {"BOOL", SQL_BIT},
+    {"DATE", SQL_TYPE_DATE},
+    {"FLOAT64", SQL_DOUBLE},
+    {"TIME", SQL_TYPE_TIME},
+    {"TIMESTAMP", SQL_TYPE_TIMESTAMP},
+    {"DATETIME", SQL_TYPE_TIMESTAMP},
+    {"BYTES", SQL_VARBINARY},
+    {"STRING", SQL_VARCHAR},
+    {"ARRAY", SQL_VARCHAR},
+    {"STRUCT", SQL_VARCHAR},
+    {"INTERVAL", SQL_VARCHAR},
+    {"JSON", SQL_VARCHAR},
+    {"GEOGRAPHY", SQL_VARCHAR},
+    {"NUMERIC", SQL_NUMERIC},
+    {"BIGNUMERIC", SQL_NUMERIC}};
 
 SQLRETURN GetAllFunctions(std::shared_ptr<ConnectionHandle> conn);
 
-} // namespace google::cloud::odbc_tests
+}  // namespace google::cloud::odbc_tests
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_DRIVER_PROPERTIES_H

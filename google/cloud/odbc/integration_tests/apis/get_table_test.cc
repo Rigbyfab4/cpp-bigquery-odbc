@@ -12,31 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gmock/gmock.h>
-
 #include "google/cloud/bigquery/v2/minimal/internal/table_client.h"
-#include "google/cloud/internal/getenv.h"
-
 #include "google/cloud/odbc/integration_tests/testing_util/authentication.h"
 #include "google/cloud/odbc/integration_tests/testing_util/util_constants.h"
 #include "google/cloud/odbc/testing_util/status_matchers.h"
+#include "google/cloud/internal/getenv.h"
+#include <gmock/gmock.h>
 
 namespace google::cloud::odbc_integration_tests_apis {
 
-using google::cloud::internal::GetEnv;
-using google::cloud::odbc_testing_util::StatusIs;
-using google::cloud::odbc_integration_tests_testing_util::CreateUserAccountAuthentication;
-using google::cloud::odbc_integration_tests_testing_util::CreateServiceAccountAuthentication;
-using google::cloud::odbc_integration_tests_testing_util::CreateServiceAccountAuthWithClientIdAuthentication;
-using google::cloud::odbc_integration_tests_testing_util::CreateNoAccessAccountAuthentication;
-using google::cloud::odbc_integration_tests_testing_util::kNameForNonExistingProject;
-using ::testing::HasSubstr;
-using bigquery_v2_minimal_internal::TableClient;
-using bigquery_v2_minimal_internal::MakeTableConnection;
 using bigquery_v2_minimal_internal::GetTableRequest;
+using bigquery_v2_minimal_internal::MakeTableConnection;
+using bigquery_v2_minimal_internal::TableClient;
 using bigquery_v2_minimal_internal::TableMetadataView;
+using google::cloud::internal::GetEnv;
+using google::cloud::odbc_integration_tests_testing_util::
+    CreateNoAccessAccountAuthentication;
+using google::cloud::odbc_integration_tests_testing_util::
+    CreateServiceAccountAuthentication;
+using google::cloud::odbc_integration_tests_testing_util::
+    CreateServiceAccountAuthWithClientIdAuthentication;
+using google::cloud::odbc_integration_tests_testing_util::
+    CreateUserAccountAuthentication;
+using google::cloud::odbc_integration_tests_testing_util::
+    kNameForNonExistingProject;
+using google::cloud::odbc_testing_util::StatusIs;
+using ::testing::HasSubstr;
 
-#ifdef USER_ACCOUNT_AUTH // TODO: b/309605217 - Enable once the bug is fixed
+#ifdef USER_ACCOUNT_AUTH  // TODO: b/309605217 - Enable once the bug is fixed
 TEST(GetTable, UserAccountAuth) {
   auto options = CreateUserAccountAuthentication();
   ASSERT_STATUS_OK(options);
@@ -56,7 +59,7 @@ TEST(GetTable, UserAccountAuth) {
 
   ASSERT_STATUS_OK(table);
 }
-#endif // USER_ACCOUNT_AUTH
+#endif  // USER_ACCOUNT_AUTH
 
 TEST(GetTable, ServiceAccountAuth) {
   auto options = CreateServiceAccountAuthentication();
@@ -114,7 +117,8 @@ TEST(GetTable, TableNotExist) {
 
   auto table = table_client.GetTable(request);
 
-  EXPECT_THAT(table, StatusIs(StatusCode::kNotFound, HasSubstr("Not found: Table")));
+  EXPECT_THAT(table,
+              StatusIs(StatusCode::kNotFound, HasSubstr("Not found: Table")));
 }
 
 TEST(GetTable, DatasetNotExist) {
@@ -133,7 +137,8 @@ TEST(GetTable, DatasetNotExist) {
 
   auto table = table_client.GetTable(request);
 
-  EXPECT_THAT(table, StatusIs(StatusCode::kNotFound, HasSubstr("Not found: Dataset")));
+  EXPECT_THAT(table,
+              StatusIs(StatusCode::kNotFound, HasSubstr("Not found: Dataset")));
 }
 
 TEST(GetTable, ProjectNotExist) {
@@ -153,8 +158,9 @@ TEST(GetTable, ProjectNotExist) {
 
   auto table = table_client.GetTable(request);
 
-  EXPECT_THAT(table, StatusIs(StatusCode::kNotFound,
-    HasSubstr("Project " + project_id + " is not found")));
+  EXPECT_THAT(table,
+              StatusIs(StatusCode::kNotFound,
+                       HasSubstr("Project " + project_id + " is not found")));
 }
 
 TEST(GetTable, SelectedFields) {
@@ -204,7 +210,8 @@ TEST(GetTable, SelectedFieldsNotExist) {
 
   auto table = table_client.GetTable(request);
 
-  EXPECT_THAT(table, StatusIs(StatusCode::kInvalidArgument, HasSubstr("Selected non-existent field")));
+  EXPECT_THAT(table, StatusIs(StatusCode::kInvalidArgument,
+                              HasSubstr("Selected non-existent field")));
 }
 
 TEST(GetTable, SetView) {
@@ -231,7 +238,7 @@ TEST(GetTable, SetView) {
   EXPECT_EQ(table.value().num_bytes, -1);
 }
 
-#ifdef USER_ACCOUNT_AUTH // TODO: b/309605217 - Enable once the bug is fixed
+#ifdef USER_ACCOUNT_AUTH  // TODO: b/309605217 - Enable once the bug is fixed
 TEST(GetTable, NoAccessAccountAuth) {
   auto options = CreateNoAccessAccountAuthentication();
   ASSERT_STATUS_OK(options);
@@ -249,8 +256,9 @@ TEST(GetTable, NoAccessAccountAuth) {
 
   auto table = table_client.GetTable(request);
 
-  EXPECT_THAT(table, StatusIs(StatusCode::kPermissionDenied, HasSubstr("Access Denied: Table")));
+  EXPECT_THAT(table, StatusIs(StatusCode::kPermissionDenied,
+                              HasSubstr("Access Denied: Table")));
 }
-#endif // USER_ACCOUNT_AUTH
+#endif  // USER_ACCOUNT_AUTH
 
-} // namespace google::cloud::odbc_integration_tests_apis
+}  // namespace google::cloud::odbc_integration_tests_apis

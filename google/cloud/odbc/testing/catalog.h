@@ -30,9 +30,10 @@ class Catalog {
   SQLLEN str_len;
 
   // Uses the SQLTables API to fetch tables in a dataset.
-  static std::shared_ptr<Results> GetTables(std::shared_ptr<ConnectionHandle> conn, std::string dataset = "");
+  static std::shared_ptr<Results> GetTables(
+      std::shared_ptr<ConnectionHandle> conn, std::string dataset = "");
 };
 
-} // namespace google::cloud::odbc_tests
+}  // namespace google::cloud::odbc_tests
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_CATALOG_H

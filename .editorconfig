@@ -12,20 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//:__subpackages__"])
+# http://editorconfig.org
 
-licenses(["notice"])  # Apache 2.0
+root = true
 
-load(":odbc_bigquery_testing_util.bzl", "odbc_bigquery_testing_util_hdrs", "odbc_bigquery_testing_util_srcs")
+[*]
+charset = utf-8
+indent_style = space
 
-cc_library(
-    name = "odbc_bigquery_testing_util",
-    testonly = True,
-    srcs = odbc_bigquery_testing_util_srcs,
-    hdrs = odbc_bigquery_testing_util_hdrs,
-    visibility = ["//visibility:public"],
-    deps = [
-        "@com_google_cloud_cpp//:experimental-bigquery-rest",
-        "@com_google_googletest//:gtest",
-    ],
-)
+[*.BUILD,*.bzl,*.bazel]
+indent_size = 4
+
+[CMakeLists.*]
+indent_size = 4
+
+[*.h,*.cc]
+indent_size = 2
+
+[*.md]
+indent_size = 2
+
+[*.sh]
+indent_size        = 2
+indent_style       = space
+shell_variant      = bash
+switch_case_indent = true

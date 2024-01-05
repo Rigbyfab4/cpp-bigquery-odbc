@@ -1,0 +1,66 @@
+# Copyright 2023 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Use the Google style in this project.
+BasedOnStyle: Google
+
+# Some folks prefer to write "int& foo" while others prefer "int &foo".  The
+# Google Style Guide only asks for consistency within a project, we chose
+# "int& foo" for this project:
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+# The Google Style Guide only asks for consistency w.r.t. "east const" vs.
+# "const west" alignment of cv-qualifiers. In this project we use "east const".
+QualifierAlignment: Right
+
+IncludeBlocks: Merge
+IncludeCategories:
+  # Matches common headers first, but sorts them after project includes
+  - Regex: '^\"google/cloud/internal/disable_deprecation_warnings.inc\"$'
+    Priority: -1
+  - Regex: '^\"google/cloud/(internal/|grpc_utils/|testing_util/|[^/]+\.h)'
+    Priority: 1000
+  - Regex: '^\"google/cloud/'  # project includes should sort first
+    Priority: 500
+  - Regex: '^\"generator/'     # project includes should sort first
+    Priority: 500
+  - Regex: '^\"google/cloud/odbc'  # project includes should sort first
+    Priority: 800
+  - Regex: '^\"generator/internal/' # project internals second
+    Priority: 1000
+  - Regex: '^\"generator/testing/'  # testing helpers third
+    Priority: 1100
+  - Regex: '^\"'         # And then includes from other projects or the system
+    Priority: 1500
+  - Regex: '^<grpc/'
+    Priority: 2000
+  - Regex: '^<google/*'
+    Priority: 3000
+  - Regex: '^<.*/.*'
+    Priority: 4000
+  - Regex: '^<.*.hpp>'
+    Priority: 4000
+  - Regex: '^<[^/]*>'
+    Priority: 5000
+
+# Format raw string literals with a `pb` or `proto` tag as proto.
+RawStringFormats:
+  - Language: TextProto
+    Delimiters:
+      - 'pb'
+      - 'proto'
+    BasedOnStyle: Google
+
+CommentPragmas: '(@copydoc|@copybrief|@see|@overload|@snippet)'

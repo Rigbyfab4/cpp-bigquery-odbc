@@ -32,7 +32,22 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
-Before raising a pull request, you should be running the affected library targets or tests locally using
-either [cmake](doc/contributor/howto-guide-setup-cmake-environment.md) or [bazel](doc/contributor/howto-guide-setup-bazel-environment.md).
+Before raising a pull request, you should be running the affected library
+targets or tests locally using either
+[cmake](doc/contributor/howto-guide-setup-cmake-environment.md) or
+[bazel](doc/contributor/howto-guide-setup-bazel-environment.md).
 
-If you are updating a new build, refer these [instructions](ci/cloudbuild/README.md).
+If you are updating a new build, refer these
+[instructions](ci/cloudbuild/README.md).
+
+### Formatting
+
+We have a CI build that will check that all code is properly formatted. Our C++
+code is formatted using `clang-format` with our top-level `.clang-format` file,
+which you should be able to configure your editor or IDE to use. To use our
+format-checker build to format your code you must first set up your workstation
+to run CI builds locally, and then run the following command:
+
+```
+$ ci/cloudbuild/build.sh -t checkers-pr --docker
+```

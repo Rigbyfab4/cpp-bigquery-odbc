@@ -24,11 +24,12 @@ namespace google::cloud::odbc_integration_tests_testing_util {
 // Updates GOOGLE_APPLICATION_CREDENTIALS env var.
 StatusOr<Options> CreateUserAccountAuthentication();
 
-// Creates Options object which has credentials for Service Account Authentication.
+// Creates Options object which has credentials for Service Account
+// Authentication.
 StatusOr<Options> CreateServiceAccountAuthentication();
 
-// Creates Options object which has credentials for Service Account With Client ID Authentication.
-// Updates GOOGLE_APPLICATION_CREDENTIALS env var.
+// Creates Options object which has credentials for Service Account With Client
+// ID Authentication. Updates GOOGLE_APPLICATION_CREDENTIALS env var.
 StatusOr<Options> CreateServiceAccountAuthWithClientIdAuthentication();
 
 // Creates WRONG Options object with the path to not existing file.
@@ -43,6 +44,6 @@ StatusOr<Options> CreateWrongAuthentication();
 // Updates GOOGLE_APPLICATION_CREDENTIALS env var.
 StatusOr<Options> CreateNoAccessAccountAuthentication();
 
-} // namespace google::cloud::odbc_integration_tests_testing_util
+}  // namespace google::cloud::odbc_integration_tests_testing_util
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_INTEGRATION_TESTS_TESTING_UTIL_AUTHENTICATION_H
