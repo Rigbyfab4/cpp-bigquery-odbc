@@ -45,11 +45,6 @@ function (odbc_define_tests)
 
   add_executable(
     all_tests
-    testing/commons.cc
-    testing/connection.cc
-    testing/driver_properties.cc
-    testing/statement.cc
-    testing/catalog.cc
     tests/connection_test.cc
     tests/driver_properties_test.cc
     tests/descriptor_test.cc
@@ -60,6 +55,7 @@ function (odbc_define_tests)
   target_link_libraries(
     all_tests
     odbc
+    google_cloud_odbc_testing
     GTest::gtest_main
     GTest::gmock
   )
@@ -90,6 +86,8 @@ if (NOT google_cloud_cpp_bigquery_rest_FOUND OR NOT google_cloud_cpp_common_FOUN
 else()
   find_package(google_cloud_cpp_bigquery_rest CONFIG REQUIRED)
 endif()
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/testing)
 
 include(bq_driver.cmake)
 
