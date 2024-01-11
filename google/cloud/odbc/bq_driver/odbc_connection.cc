@@ -70,8 +70,9 @@ SQLRETURN SQLAllocConnHandle(SQLHDBC in_handle, SQLHANDLE* out_conn_handle) {
       *reinterpret_cast<EnvironmentHandle*>(in_handle_wrapped->handle_ref);
 
   auto* conn_handle = new ConnectionHandle();
-  HandleWrapped wrapped_handle = {HandleType::kConnHandle, conn_handle};
-  *out_conn_handle = &wrapped_handle;
+  auto* wrapped_handle =
+      new HandleWrapped(HandleType::kConnHandle, conn_handle);
+  *out_conn_handle = wrapped_handle;
   return SQL_SUCCESS;
 }
 

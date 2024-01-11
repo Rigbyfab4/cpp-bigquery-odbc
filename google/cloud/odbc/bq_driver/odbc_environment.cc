@@ -22,8 +22,8 @@ using google::cloud::odbc_bq_driver_internal::HandleWrapped;
 
 SQLRETURN SQLAllocEnvHandle(SQLHANDLE* out_env_handle) {
   auto* env_handle = new EnvironmentHandle();
-  HandleWrapped wrapped_handle = {HandleType::kEnvHandle, env_handle};
-  *out_env_handle = &wrapped_handle;
+  auto* wrapped_handle = new HandleWrapped(HandleType::kEnvHandle, env_handle);
+  *out_env_handle = wrapped_handle;
   return SQL_SUCCESS;
 }
 
