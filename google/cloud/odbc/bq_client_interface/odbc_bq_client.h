@@ -15,6 +15,7 @@
 #ifndef GOOGLE_CLOUD_ODBC_BQ_DRIVER_CLIENT_INTERFACE_BQ_CLIENT_H
 #define GOOGLE_CLOUD_ODBC_BQ_DRIVER_CLIENT_INTERFACE_BQ_CLIENT_H
 
+#include "google/cloud/odbc/bq_client_interface/jobs.h"
 #include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
 #include "google/cloud/bigquery/v2/minimal/internal/dataset_client.h"
 #include "google/cloud/bigquery/v2/minimal/internal/job_client.h"
@@ -74,6 +75,28 @@ class ODBCBQClient {
   StatusOr<std::vector<::google::cloud::bigquery_v2_minimal_internal::Project>>
   FilterProjects(std::vector<std::string> const& project_ids,
                  ::google::cloud::Options const& options);
+
+  ///////////////
+  // Job APIs
+  ///////////////
+
+  // Returns detailed info for a specific Job
+  StatusOr<::google::cloud::bigquery_v2_minimal_internal::Job> GetJob(
+      std::string const& project_id, std::string const& job_id,
+      std::string const& location, ::google::cloud::Options const& options);
+
+  // Returns all Jobs in a Project
+  StatusOr<
+      std::vector<::google::cloud::bigquery_v2_minimal_internal::ListFormatJob>>
+  ListAllJobs(std::string const& project_id,
+              ::google::cloud::Options const& options);
+
+  // Returns a filtered list of Jobs in a Project, based on the job filters
+  // passed in
+  StatusOr<
+      std::vector<::google::cloud::bigquery_v2_minimal_internal::ListFormatJob>>
+  FilterJobs(std::string const& project_id, JobFilter const& job_filter,
+             ::google::cloud::Options const& options);
 
  private:
   ODBCBQClient(
