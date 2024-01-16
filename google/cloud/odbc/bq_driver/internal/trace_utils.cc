@@ -24,49 +24,6 @@ std::shared_ptr<TraceOptions> TraceOptions::options_console_ = nullptr;
 std::shared_ptr<TraceOptions> TraceOptions::options_file_ = nullptr;
 std::mutex TraceOptions::mu_;
 
-namespace {
-Status LoadFromConfigs(std::shared_ptr<TraceOptions>& opts,
-                       std::shared_ptr<Sections> const& config_sections) {
-  if (!config_sections) {
-    return Status(StatusCode::kInvalidArgument, "Invalid ODBC Config");
-  }
-
-  Section trace_sections;
-  auto const odbc_section = config_sections->find("ODBC");
-  if (odbc_section != config_sections->end()) {
-    trace_sections = odbc_section->second;
-  }
-
-  std::string trace_file;
-  bool tracing_enabled = false;
-  opts->log_level = 0;
-  opts->logging_enabled = false;
-  for (auto const& s : trace_sections) {
-    if (s.first == "Trace") {
-      int val = std::stoi(s.second);
-      if (val == 1) {
-        tracing_enabled = true;
-      }
-    } else if (s.first == "TraceFile") {
-      trace_file = s.second;
-    }
-  }
-  if (tracing_enabled && !trace_file.empty()) {
-    opts->logging_enabled = true;
-    if (!opts->trace_file.is_open()) {
-      opts->trace_file.open(trace_file,
-                            std::ofstream::out | std::ofstream::app);
-    }
-    if (!opts->trace_file.is_open()) {
-      return Status(StatusCode::kInternal,
-                    "Can't open  trace file: " + trace_file);
-    }
-  }
-
-  return Status(StatusCode::kOk, "");
-}
-}  // namespace
-
 StatusOr<std::shared_ptr<TraceOptions>> TraceOptions::CreateTraceOptionsConsole(
     bool logging_enabled, int log_level) {
   std::lock_guard<std::mutex> lk(mu_);
@@ -86,24 +43,33 @@ StatusOr<std::shared_ptr<TraceOptions>> TraceOptions::CreateTraceOptionsFile(
   auto configs = ParseConfig(file_path);
   if (!configs.ok()) return std::move(configs).status();
 
-  std::lock_guard<std::mutex> lk(mu_);
-  if (options_file_ == nullptr) {
-    // Cannot use std::make_shared because constructor is protected.
-    options_file_ = std::shared_ptr<TraceOptions>(new TraceOptions());
-  }
-
-  auto status = LoadFromConfigs(options_file_, *configs);
-  if (!status.ok()) {
-    return std::move(status);
-  }
-
-  return options_file_;
+  return CreateTraceOptionsFile(*configs);
 }
 
 StatusOr<std::shared_ptr<TraceOptions>> TraceOptions::CreateTraceOptionsFile(
     std::shared_ptr<Sections> const& config_sections) {
-  if (config_sections == nullptr) {
-    return Status(StatusCode::kInvalidArgument, "Invalid ODBC Config");
+  if (!config_sections) {
+    return Status(StatusCode::kInvalidArgument, "Invalid ODBC Driver Config");
+  }
+
+  Section trace_sections;
+  auto const odbc_section = config_sections->find("Driver");
+  if (odbc_section != config_sections->end()) {
+    trace_sections = odbc_section->second;
+  }
+
+  std::string log_file;
+  int log_level = 0;
+  bool logging_enabled = false;
+  for (auto const& s : trace_sections) {
+    if (s.first == "LogLevel") {
+      log_level = std::stoi(s.second);
+      if (log_level > 0) {
+        logging_enabled = true;
+      }
+    } else if (s.first == "LogFile") {
+      log_file = s.second;
+    }
   }
 
   std::lock_guard<std::mutex> lk(mu_);
@@ -112,9 +78,20 @@ StatusOr<std::shared_ptr<TraceOptions>> TraceOptions::CreateTraceOptionsFile(
     options_file_ = std::shared_ptr<TraceOptions>(new TraceOptions());
   }
 
-  auto status = LoadFromConfigs(options_file_, config_sections);
-  if (!status.ok()) {
-    return std::move(status);
+  options_file_->log_level = log_level;
+  options_file_->logging_enabled = logging_enabled;
+
+  if (logging_enabled && !log_file.empty()) {
+    // We are not creating a default log file. If log file is not specified
+    // then we will log to console.
+    if (!options_file_->trace_file.is_open()) {
+      options_file_->trace_file.open(log_file,
+                                     std::ofstream::out | std::ofstream::app);
+    }
+    if (!options_file_->trace_file.is_open()) {
+      return Status(StatusCode::kInternal,
+                    "Can't open  trace file: " + log_file);
+    }
   }
 
   return options_file_;
