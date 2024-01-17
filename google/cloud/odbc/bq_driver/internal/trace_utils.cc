@@ -62,8 +62,8 @@ StatusOr<std::shared_ptr<TraceOptions>> TraceOptions::CreateTraceOptionsFile(
   int log_level = 0;
   bool logging_enabled = false;
   for (auto const& s : trace_sections) {
-    if (s.first == "LogLevel") {
-      log_level = std::stoi(s.second);
+    if (s.first == "LogLevel" && !s.second.empty()) {
+      log_level = std::strtol(s.second.c_str(), nullptr, 10);
       if (log_level > 0) {
         logging_enabled = true;
       }
