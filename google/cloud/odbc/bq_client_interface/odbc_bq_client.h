@@ -15,6 +15,7 @@
 #ifndef GOOGLE_CLOUD_ODBC_BQ_DRIVER_CLIENT_INTERFACE_BQ_CLIENT_H
 #define GOOGLE_CLOUD_ODBC_BQ_DRIVER_CLIENT_INTERFACE_BQ_CLIENT_H
 
+#include "google/cloud/odbc/bq_client_interface/datasets.h"
 #include "google/cloud/odbc/bq_client_interface/jobs.h"
 #include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
 #include "google/cloud/odbc/bq_client_interface/tables.h"
@@ -75,6 +76,29 @@ class ODBCBQClient {
   // Filter projects for the user, based on project_ids.
   StatusOr<std::vector<::google::cloud::bigquery_v2_minimal_internal::Project>>
   FilterProjects(std::vector<std::string> const& project_ids,
+                 ::google::cloud::Options const& options);
+
+  ///////////////
+  // Dataset APIs
+  ///////////////
+
+  // Returns detailed info for a specific Dataset.
+  StatusOr<::google::cloud::bigquery_v2_minimal_internal::Dataset> GetDataset(
+      std::string const& project_id, std::string const& dataset_id,
+      ::google::cloud::Options const& options);
+
+  // Returns all Datasets in a Project.
+  StatusOr<std::vector<
+      ::google::cloud::bigquery_v2_minimal_internal::ListFormatDataset>>
+  ListAllDatasets(std::string const& project_id,
+                  ::google::cloud::Options const& options);
+
+  // Returns filtered list of datasets in a Project, based on the dataset
+  // filters passed in.
+  StatusOr<std::vector<
+      ::google::cloud::bigquery_v2_minimal_internal::ListFormatDataset>>
+  FilterDatasets(std::string const& project_id,
+                 DatasetFilter const& dataset_filter,
                  ::google::cloud::Options const& options);
 
   ///////////////
