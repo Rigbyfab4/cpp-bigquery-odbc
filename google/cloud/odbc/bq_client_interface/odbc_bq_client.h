@@ -17,6 +17,7 @@
 
 #include "google/cloud/odbc/bq_client_interface/jobs.h"
 #include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
+#include "google/cloud/odbc/bq_client_interface/tables.h"
 #include "google/cloud/bigquery/v2/minimal/internal/dataset_client.h"
 #include "google/cloud/bigquery/v2/minimal/internal/job_client.h"
 #include "google/cloud/bigquery/v2/minimal/internal/project_client.h"
@@ -75,6 +76,22 @@ class ODBCBQClient {
   StatusOr<std::vector<::google::cloud::bigquery_v2_minimal_internal::Project>>
   FilterProjects(std::vector<std::string> const& project_ids,
                  ::google::cloud::Options const& options);
+
+  ///////////////
+  // Table APIs
+  ///////////////
+
+  // Returns detailed info for a specific Table
+  StatusOr<::google::cloud::bigquery_v2_minimal_internal::Table> GetTable(
+      std::string const& project_id, std::string const& dataset_id,
+      std::string const& table_id, TableFilter const& table_filter,
+      ::google::cloud::Options const& options);
+
+  // Returns all Tables in a Dataset
+  StatusOr<std::vector<
+      ::google::cloud::bigquery_v2_minimal_internal::ListFormatTable>>
+  ListAllTables(std::string const& project_id, std::string const& dataset_id,
+                ::google::cloud::Options const& options);
 
   ///////////////
   // Job APIs
