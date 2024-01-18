@@ -29,24 +29,4 @@
 #include <sql.h>
 #include <sqlext.h>
 
-namespace google::cloud::odbc_bq_driver_internal {
-
-enum class HandleType {
-  kConnHandle,
-  kEnvHandle,
-  kStatementHandle,
-  kDescriptorHandle
-};
-
-struct HandleWrapped {
-  explicit HandleWrapped(HandleType handle_type, SQLHANDLE handle_ref)
-      : handle_type(handle_type), handle_ref(handle_ref){};
-  ~HandleWrapped() = default;
-
-  HandleType handle_type;
-  SQLHANDLE handle_ref;  // reference to the internal handle we created
-};
-
-}  // namespace google::cloud::odbc_bq_driver_internal
-
 #endif  // GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_INCLUDES_H

@@ -14,6 +14,7 @@
 
 #include "google/cloud/odbc/bq_driver/odbc_connection.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_env_handle.h"
+#include "google/cloud/odbc/bq_driver/odbc_commons.h"
 #include "google/cloud/internal/getenv.h"
 
 // NOLINTBEGIN(misc-unused-parameters, readability-non-const-parameter)
@@ -24,8 +25,6 @@ using google::cloud::odbc_bq_driver_internal::Authentication;
 using google::cloud::odbc_bq_driver_internal::ConnectionHandle;
 using google::cloud::odbc_bq_driver_internal::Dsn;
 using google::cloud::odbc_bq_driver_internal::EnvironmentHandle;
-using google::cloud::odbc_bq_driver_internal::HandleType;
-using google::cloud::odbc_bq_driver_internal::HandleWrapped;
 using google::cloud::odbc_bq_driver_internal::Section;
 
 Authentication CreateAuth(Section& dsn_section) {
@@ -54,7 +53,7 @@ Dsn CreateDsnObj(Section& dsn_section) {
 }
 
 SQLRETURN SQLAllocConnHandle(SQLHDBC in_handle, SQLHANDLE* out_conn_handle) {
-  if (in_handle == nullptr) {
+  if (!in_handle) {
     // TODO(#170): Add error tracing call here
     // TODO(#158): Add logging here
     return SQL_ERROR;
