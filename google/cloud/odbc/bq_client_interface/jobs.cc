@@ -20,18 +20,23 @@ namespace google::cloud::odbc_bigquery_client_interface {
 using ::google::cloud::Options;
 using ::google::cloud::bigquery_v2_minimal_internal::CancelJobRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::GetJobRequest;
+using ::google::cloud::bigquery_v2_minimal_internal::GetQueryResults;
+using ::google::cloud::bigquery_v2_minimal_internal::GetQueryResultsRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::InsertJobRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::Job;
 using ::google::cloud::bigquery_v2_minimal_internal::JobClient;
 using ::google::cloud::bigquery_v2_minimal_internal::ListFormatJob;
 using ::google::cloud::bigquery_v2_minimal_internal::ListJobsRequest;
+using ::google::cloud::bigquery_v2_minimal_internal::PostQueryRequest;
+using ::google::cloud::bigquery_v2_minimal_internal::PostQueryResults;
+using ::google::cloud::bigquery_v2_minimal_internal::QueryRequest;
 
 // When 'Job' object is created, all members are created with default values,
 // usually empty strings. Client library doesn't provide any validation around
 // it, even if BQ API returns an error. We use 'json_filter_keys' to filter out
 // such information from the json in the request. Most of the time we simply
 // don't need this data, but if some field is not empty, we should leave it in
-// json and not populate it in json_filter_keys
+// json and not populate it in json_filter_keys.
 std::vector<std::string> CreateKeysToFilterOut(Job const& job) {
   std::vector<std::string> default_filtered_keys{
       "statistics",        "status",     "timePartitioning",
@@ -57,6 +62,25 @@ std::vector<std::string> CreateKeysToFilterOut(Job const& job) {
     default_filtered_keys.emplace_back("jobReference");
   } else if (job.job_reference.location.empty()) {
     default_filtered_keys.emplace_back("location");
+  }
+  return default_filtered_keys;
+}
+
+// When 'QueryRequest' object is created, all members are created with default
+// values, usually empty strings. Client library doesn't provide any validation
+// around it, even if BQ API returns an error. We use 'json_filter_keys' to
+// filter out such information from the json in the request. Most of the time we
+// simply don't need this data, but if some field is not empty, we should leave
+// it in json and not populate it in json_filter_keys.
+std::vector<std::string> CreateKeysToFilterOut(
+    QueryRequest const& query_request) {
+  std::vector<std::string> default_filtered_keys{"preserveNulls"};
+  if (query_request.default_dataset().project_id.empty() &&
+      query_request.default_dataset().dataset_id.empty()) {
+    default_filtered_keys.emplace_back("defaultDataset");
+  }
+  if (query_request.maximum_bytes_billed() <= 0) {
+    default_filtered_keys.emplace_back("maximumBytesBilled");
   }
   return default_filtered_keys;
 }
@@ -129,16 +153,84 @@ StatusOr<Job> InsertJob(JobClient& job_client, std::string const& project_id,
   return job_client.InsertJob(request, options);
 }
 
-StatusOr<::google::cloud::bigquery_v2_minimal_internal::Job> CancelJob(
-    ::google::cloud::bigquery_v2_minimal_internal::JobClient& job_client,
-    std::string const& project_id, std::string const& job_id,
-    std::string const& location, ::google::cloud::Options const& options) {
+StatusOr<Job> CancelJob(JobClient& job_client, std::string const& project_id,
+                        std::string const& job_id, std::string const& location,
+                        Options const& options) {
   CancelJobRequest request;
   request.set_project_id(project_id);
   request.set_job_id(job_id);
   request.set_location(location);
 
   return job_client.CancelJob(request, options);
+}
+
+StatusOr<PostQueryResults> Query(JobClient& job_client,
+                                 std::string const& project_id,
+                                 QueryRequest const& query_request,
+                                 Options const& options) {
+  PostQueryRequest post_query_request;
+  post_query_request.set_project_id(project_id);
+  post_query_request.set_query_request(query_request);
+  post_query_request.set_json_filter_keys(CreateKeysToFilterOut(query_request));
+
+  return job_client.Query(post_query_request, options);
+}
+
+StatusOr<GetQueryResults> GetAllQueryResults(JobClient& job_client,
+                                             std::string const& project_id,
+                                             std::string const& job_id,
+                                             std::string const& location,
+                                             Options const& options) {
+  GetQueryResultsRequest get_query_results_request;
+  get_query_results_request.set_project_id(project_id);
+  get_query_results_request.set_job_id(job_id);
+  get_query_results_request.set_location(location);
+
+  GetQueryResults get_query_results;
+
+  while (true) {
+    StatusOr<GetQueryResults> get_query_results_partial =
+        job_client.QueryResults(get_query_results_request, options);
+
+    if (!get_query_results_partial) {
+      return get_query_results_partial.status();
+    }
+
+    if (get_query_results.rows.empty()) {
+      // It's the first response. Copy it.
+      get_query_results = *get_query_results_partial;
+    } else {
+      get_query_results.rows.insert(get_query_results.rows.end(),
+                                    get_query_results_partial->rows.begin(),
+                                    get_query_results_partial->rows.end());
+    }
+    if (get_query_results_partial->page_token.empty()) {
+      get_query_results.page_token = "";
+      break;
+    }
+    get_query_results_request.set_page_token(
+        get_query_results_partial->page_token);
+  }
+
+  return get_query_results;
+}
+
+StatusOr<GetQueryResults> FilterQueryResults(
+    JobClient& job_client, std::string const& project_id,
+    std::string const& job_id, std::string const& location,
+    QueryResultsFilterParams const& query_results_filter,
+    Options const& options) {
+  GetQueryResultsRequest get_query_results_request;
+  get_query_results_request.set_project_id(project_id);
+  get_query_results_request.set_job_id(job_id);
+  get_query_results_request.set_location(location);
+  get_query_results_request.set_start_index(query_results_filter.start_index);
+  get_query_results_request.set_timeout(
+      std::chrono::milliseconds(query_results_filter.query_timeout_ms));
+  get_query_results_request.set_max_results(query_results_filter.max_results);
+  get_query_results_request.set_page_token(query_results_filter.page_token);
+
+  return job_client.QueryResults(get_query_results_request, options);
 }
 
 }  // namespace google::cloud::odbc_bigquery_client_interface

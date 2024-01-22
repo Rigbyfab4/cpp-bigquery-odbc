@@ -162,4 +162,33 @@ ODBCBQClient::CancelJob(std::string const& project_id,
       job_client_, project_id, job_id, location, options);
 }
 
+StatusOr<::google::cloud::bigquery_v2_minimal_internal::PostQueryResults>
+ODBCBQClient::Query(
+    std::string const& project_id,
+    ::google::cloud::bigquery_v2_minimal_internal::QueryRequest const&
+        query_request,
+    ::google::cloud::Options const& options) {
+  return ::google::cloud::odbc_bigquery_client_interface::Query(
+      job_client_, project_id, query_request, options);
+}
+
+StatusOr<::google::cloud::bigquery_v2_minimal_internal::GetQueryResults>
+ODBCBQClient::GetAllQueryResults(std::string const& project_id,
+                                 std::string const& job_id,
+                                 std::string const& location,
+                                 ::google::cloud::Options const& options) {
+  return ::google::cloud::odbc_bigquery_client_interface::GetAllQueryResults(
+      job_client_, project_id, job_id, location, options);
+}
+
+StatusOr<::google::cloud::bigquery_v2_minimal_internal::GetQueryResults>
+ODBCBQClient::FilterQueryResults(
+    std::string const& project_id, std::string const& job_id,
+    std::string const& location,
+    QueryResultsFilterParams const& query_results_filter,
+    ::google::cloud::Options const& options) {
+  return ::google::cloud::odbc_bigquery_client_interface::FilterQueryResults(
+      job_client_, project_id, job_id, location, query_results_filter, options);
+}
+
 }  // namespace google::cloud::odbc_bigquery_client_interface
