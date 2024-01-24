@@ -19,7 +19,7 @@ if (NOT CLIENT_LIBRARY_INTEGRATION_TESTING)
 endif ()
 
 add_library(
-    cpp_bigquery_odbc_integration_testing_util
+    google_cloud_odbc_testing_client_library_utils
     authentication.h
     authentication.cc
     common_functions.h
@@ -28,8 +28,8 @@ add_library(
     util_constants.cc)
 
 target_link_libraries(
-    cpp_bigquery_odbc_integration_testing_util
+    google_cloud_odbc_testing_client_library_utils
     google-cloud-cpp::experimental-bigquery_rest
     GTest::gmock)
 
-create_bazel_config(cpp_bigquery_odbc_integration_testing_util YEAR 2023)
+create_bazel_config(google_cloud_odbc_testing_client_library_utils YEAR 2024)

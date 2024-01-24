@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@ package(default_visibility = ["//:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
-load(":cpp_bigquery_odbc_integration_testing_util.bzl", "cpp_bigquery_odbc_integration_testing_util_hdrs", "cpp_bigquery_odbc_integration_testing_util_srcs")
+load(":google_cloud_odbc_testing_utils.bzl", "google_cloud_odbc_testing_utils_hdrs", "google_cloud_odbc_testing_utils_srcs")
 
 cc_library(
-    name = "cpp_bigquery_odbc_integration_testing_util",
+    name = "google_cloud_odbc_testing_utils",
     testonly = True,
-    srcs = cpp_bigquery_odbc_integration_testing_util_srcs,
-    hdrs = cpp_bigquery_odbc_integration_testing_util_hdrs,
+    srcs = google_cloud_odbc_testing_utils_srcs,
+    hdrs = google_cloud_odbc_testing_utils_hdrs,
     visibility = ["//visibility:public"],
     deps = [
         "@com_google_cloud_cpp//:experimental-bigquery-rest",
