@@ -18,6 +18,10 @@ if (NOT CLIENT_LIBRARY_INTEGRATION_TESTING)
   return()
 endif ()
 
+if (NOT COMMAND create_bazel_config)
+  include(CreateOdbcBazelConfig)
+endif()
+
 add_library(
     google_cloud_odbc_testing_client_library_utils
     authentication.h
