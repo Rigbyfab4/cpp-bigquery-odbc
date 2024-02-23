@@ -53,7 +53,7 @@ SQLRETURN HandleConnectionInformationTypes(SQLHDBC connection_handle,
                                            SQLPOINTER info_value_ptr,
                                            SQLSMALLINT in_buffer_len,
                                            SQLSMALLINT* str_len_ptr) {
-  StatusOr<std::shared_ptr<ConnectionHandle>> handle_result =
+  StatusOr<ConnectionHandle*> handle_result =
       ValidateConnectionHandle(connection_handle);
   if (!handle_result.ok()) {
     TracePrintInternal(
@@ -63,7 +63,7 @@ SQLRETURN HandleConnectionInformationTypes(SQLHDBC connection_handle,
     return SQL_INVALID_HANDLE;
   }
 
-  auto handle = *handle_result;
+  auto* handle = *handle_result;
 
   SQLGetInfoSqlChar info_val_char;
   switch (info_type) {
@@ -93,7 +93,7 @@ SQLRETURN SQLGetFunctionsInternal(SQLHDBC connection_handle,
                                   SQLUSMALLINT function_id,
                                   SQLUSMALLINT* supported_fn) {
   SQLRETURN rc = SQL_SUCCESS;
-  StatusOr<std::shared_ptr<ConnectionHandle>> handle_result =
+  StatusOr<ConnectionHandle*> handle_result =
       ValidateConnectionHandle(connection_handle);
   if (!handle_result.ok()) {
     TracePrintInternal(
@@ -173,7 +173,7 @@ SQLRETURN SQLGetInfoInternal(SQLHDBC connection_handle, SQLUSMALLINT info_type,
                              SQLPOINTER info_value_ptr,
                              SQLSMALLINT in_buffer_len,
                              SQLSMALLINT* str_len_ptr) {
-  StatusOr<std::shared_ptr<ConnectionHandle>> handle_result =
+  StatusOr<ConnectionHandle*> handle_result =
       ValidateConnectionHandle(connection_handle);
   if (!handle_result.ok()) {
     TracePrintInternal(
