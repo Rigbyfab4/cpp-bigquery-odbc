@@ -21,7 +21,7 @@ void SetAttributes(std::shared_ptr<ConnectionHandle> conn, int timeout) {
   CheckError(status, "SQLAllocHandle", conn);
 
   status = SQLSetEnvAttr(conn->henv, SQL_ATTR_ODBC_VERSION,
-                         (SQLPOINTER)SQL_OV_ODBC3, SQL_IS_UINTEGER);
+                         (SQLPOINTER)SQL_OV_ODBC3, 0);
   CheckError(status, "SQLSetEnvAttr", conn);
 
   status = SQLAllocHandle(SQL_HANDLE_DBC, conn->henv, &conn->hdbc);
