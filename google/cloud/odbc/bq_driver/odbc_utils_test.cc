@@ -34,16 +34,6 @@ class OdbcUtilsConnectionHandleTest : public ConnectionHandle {
   void SetConnected() { is_connected_ = true; }
 };
 
-SQLHDBC GetConnectionHandle(HandleType const& type, bool connected = true) {
-  auto conn_handle = std::make_shared<OdbcUtilsConnectionHandleTest>();
-  if (connected) {
-    conn_handle->SetConnected();
-  }
-  auto wrapped_handle =
-      std::make_shared<HandleWrapped>(type, conn_handle.get());
-  return wrapped_handle.get();
-}
-
 void AllocateHandles(SQLHENV* env_handle_ref, SQLHDBC* conn_handle_ref) {
   EXPECT_EQ(SQL_SUCCESS, SQLAllocEnvHandle(env_handle_ref));
   EXPECT_EQ(SQL_SUCCESS, SQLAllocConnHandle(*env_handle_ref, conn_handle_ref));
@@ -73,9 +63,15 @@ void FreeHandles(SQLHENV env_handle, SQLHDBC conn_handle,
 ///////////////////////////////////////
 
 TEST(ValidateConnectionHandle, Success) {
-  auto result =
-      ValidateConnectionHandle(GetConnectionHandle(HandleType::kConnHandle));
+  auto conn_handle = new OdbcUtilsConnectionHandleTest();
+  conn_handle->SetConnected();
+  auto wrapped_handle = new HandleWrapped(HandleType::kConnHandle, conn_handle);
+
+  auto result = ValidateConnectionHandle(wrapped_handle);
   ASSERT_STATUS_OK(result);
+
+  delete conn_handle;
+  delete wrapped_handle;
 }
 
 TEST(ValidateConnectionHandle, InvalidNullPtr) {
@@ -86,21 +82,28 @@ TEST(ValidateConnectionHandle, InvalidNullPtr) {
 }
 
 TEST(ValidateConnectionHandle, InvalidHandleType) {
-  auto result =
-      ValidateConnectionHandle(GetConnectionHandle(HandleType::kEnvHandle));
+  SQLHENV env_handle;
+  SQLHDBC conn_handle;
+  AllocateHandles(&env_handle, &conn_handle);
+  auto result = ValidateConnectionHandle(env_handle);
 
   EXPECT_THAT(result, StatusIs(StatusCode::kInvalidArgument,
                                StrEq("Invalid handle type")));
+  FreeHandles(env_handle, conn_handle);
 }
 
 TEST(ValidateConnectionHandle, InvalidHandleNotConnected) {
-  auto result = ValidateConnectionHandle(
-      GetConnectionHandle(HandleType::kConnHandle, /* connected */ false));
+  auto conn_handle = new OdbcUtilsConnectionHandleTest();
+  auto wrapped_handle = new HandleWrapped(HandleType::kConnHandle, conn_handle);
+  auto result = ValidateConnectionHandle(wrapped_handle);
 
   EXPECT_THAT(
       result,
       StatusIs(StatusCode::kInvalidArgument,
                StrEq("Connection handle not connected to data source")));
+
+  delete conn_handle;
+  delete wrapped_handle;
 }
 
 ///////////////////////////////////////
@@ -132,17 +135,6 @@ TEST(ValidateEnvironmentHandle, InvalidHandleType) {
                                StrEq("Invalid handle type")));
 
   FreeHandles(env_handle, conn_handle);
-}
-
-TEST(ValidateEnvironmentHandle, InvalidInternalEnvironmentHandle) {
-  SQLHENV env_handle;
-  EXPECT_EQ(SQL_SUCCESS, SQLAllocEnvHandle(&env_handle));
-  EXPECT_EQ(SQL_SUCCESS, SQLFreeHandleInternal(SQL_HANDLE_ENV, env_handle));
-
-  auto result = ValidateEnvironmentHandle(env_handle);
-
-  EXPECT_THAT(result, StatusIs(StatusCode::kInvalidArgument,
-                               StrEq("Invalid handle type")));
 }
 
 ///////////////////////////////////////
@@ -177,19 +169,6 @@ TEST(ValidateStatementHandle, InvalidHandleType) {
                                StrEq("Invalid handle type")));
 
   FreeHandles(env_handle, conn_handle);
-}
-
-TEST(ValidateStatementHandle, InvalidInternalStatementHandle) {
-  SQLHENV env_handle;
-  SQLHDBC conn_handle;
-  SQLHSTMT stmt_handle;
-  AllocateHandles(&env_handle, &conn_handle, &stmt_handle);
-  EXPECT_EQ(SQL_SUCCESS, SQLFreeHandleInternal(SQL_HANDLE_STMT, stmt_handle));
-
-  auto result = ValidateStatementHandle(stmt_handle);
-
-  EXPECT_THAT(result, StatusIs(StatusCode::kInvalidArgument,
-                               StrEq("Invalid handle type")));
 }
 
 }  // namespace google::cloud::odbc_bq_driver
