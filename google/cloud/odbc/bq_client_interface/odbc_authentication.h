@@ -15,6 +15,7 @@
 #ifndef GOOGLE_CLOUD_ODBC_BQ_DRIVER_CLIENT_INTERFACE_AUTHORIZATION_H
 #define GOOGLE_CLOUD_ODBC_BQ_DRIVER_CLIENT_INTERFACE_AUTHORIZATION_H
 
+#include "google/cloud/odbc/internal/status_record_or.h"
 #include "google/cloud/credentials.h"
 #include "google/cloud/oauth2/access_token_generator.h"
 #include "google/cloud/status_or.h"
@@ -35,10 +36,11 @@ struct Oauth {
 };
 
 /// Creates an object of UnifiedCredentials depending on the input arguments.
-StatusOr<std::shared_ptr<Credentials>> CreateCredentials(Oauth const& oauth);
+odbc_internal::StatusRecordOr<std::shared_ptr<Credentials>> CreateCredentials(
+    Oauth const& oauth);
 
 /// Creates OAuth2 access_token
-StatusOr<AccessToken> GetOAuth2Token(
+odbc_internal::StatusRecordOr<AccessToken> GetOAuth2Token(
     std::shared_ptr<::google::cloud::oauth2::AccessTokenGenerator> const&
         generator);
 

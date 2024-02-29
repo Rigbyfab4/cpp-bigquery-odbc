@@ -18,6 +18,7 @@
 #include "google/cloud/odbc/internal/diagnostic_records.h"
 #include "google/cloud/odbc/internal/odbc_includes.h"
 #include "google/cloud/odbc/internal/sql_state_constants.h"
+#include "google/cloud/status_or.h"
 #include "absl/strings/match.h"
 #include <optional>
 #include <stdexcept>
@@ -30,6 +31,22 @@ class StatusRecordOr final {
  public:
   static_assert(!std::is_reference_v<T>,
                 "StatusRecordOr<T> requires T to **not** be a reference type");
+
+  /**
+   * If status_or.ok() it returns StatusRecordOr with the value from
+   * status_or.value(). If !status_or.ok() it returns StatusRecordOr with the
+   * status from status_or.status().
+   *
+   * @param status_or - google-cloud-cpp StatusOr object
+   * @return StatusRecordOr converted from StatusOr object
+   */
+  static StatusRecordOr<T> ConvertFromStatusOr(StatusOr<T> status_or) {
+    if (status_or) {
+      return StatusRecordOr(*status_or);
+    }
+    return StatusRecordOr(
+        odbc_internal::StatusRecord::ConvertFrom(status_or.status()));
+  }
 
   /**
    * A `value_type` member for use in generic programming.
@@ -133,7 +150,8 @@ class StatusRecordOr final {
    *
    * @throws ... If `T` copy constructor throws.
    */
-  explicit StatusRecordOr(T const& rhs) : value_(rhs) {}
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StatusRecordOr(T const& rhs) : value_(rhs) {}
 
   /// Returns `true` when `this` holds a value.
   [[nodiscard]] bool Ok() const { return value_.has_value(); }
@@ -199,7 +217,7 @@ class StatusRecordOr final {
     return **this;
   }
 
-  T const& GetValue() const& {
+  [[nodiscard]] T const& GetValue() const& {
     CheckHasValue();
     return **this;
   }
@@ -209,7 +227,7 @@ class StatusRecordOr final {
     return std::move(**this);
   }
 
-  T const&& GetValue() const&& {
+  [[nodiscard]] T const&& GetValue() const&& {
     CheckHasValue();
     return std::move(**this);
   }

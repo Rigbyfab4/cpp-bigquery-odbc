@@ -14,6 +14,7 @@
 
 #include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
 #include "google/cloud/odbc/bq_client_interface/setenv.h"
+#include "google/cloud/odbc/internal/sql_state_constants.h"
 #include "google/cloud/odbc/testing/utils/status_matchers.h"
 #include "google/cloud/internal/getenv.h"
 #include "google/cloud/oauth2/access_token_generator.h"
@@ -30,7 +31,7 @@ class MockAccessTokenGenerator
 
 using google::cloud::internal::GetEnv;
 using ::google::cloud::odbc_bigquery_client_interface::SetEnv;
-using google::cloud::odbc_testing_utils::StatusIs;
+using google::cloud::odbc_testing_utils::StatusRecordIs;
 using ::testing::HasSubstr;
 using ::testing::Return;
 using ::testing::StrEq;
@@ -45,15 +46,15 @@ TEST(ServiceAuthentication, ServiceAccountAuthentication) {
   auto credentials = CreateCredentials(
       {OauthMechanism::kServiceAccount, credentials_file_path});
 
-  ASSERT_STATUS_OK(credentials);
+  ASSERT_STATUS_RECORD_OK(credentials);
 }
 
 TEST(ServiceAuthentication, EmptyPath) {
   auto credentials = CreateCredentials({OauthMechanism::kServiceAccount, ""});
 
   EXPECT_THAT(credentials,
-              StatusIs(StatusCode::kInvalidArgument,
-                       HasSubstr("The path to the file can't be empty.")));
+              StatusRecordIs(odbc_internal::SQLStates::k_HY000(),
+                             HasSubstr("The path to the file can't be empty")));
 }
 
 TEST(ServiceAuthentication, FileNotExist) {
@@ -62,8 +63,8 @@ TEST(ServiceAuthentication, FileNotExist) {
 
   EXPECT_THAT(
       credentials,
-      StatusIs(StatusCode::kInvalidArgument,
-               HasSubstr("There was an error while opening the file:")));
+      StatusRecordIs(odbc_internal::SQLStates::k_HY000(),
+                     HasSubstr("There was an error while opening the file")));
 }
 
 TEST(GetOAuth2Token, GetToken) {
@@ -77,9 +78,10 @@ TEST(GetOAuth2Token, GetToken) {
   std::string env_var = "something";
   SetEnv("GOOGLE_CLOUD_CPP_EXPERIMENTAL_DISABLE_SELF_SIGNED_JWT", env_var);
 
-  StatusOr<AccessToken> token = GetOAuth2Token(mock_generator);
+  odbc_internal::StatusRecordOr<AccessToken> token =
+      GetOAuth2Token(mock_generator);
 
-  ASSERT_STATUS_OK(token);
+  ASSERT_STATUS_RECORD_OK(token);
   EXPECT_EQ(GetEnv("GOOGLE_CLOUD_CPP_EXPERIMENTAL_DISABLE_SELF_SIGNED_JWT")
                 .value_or(""),
             env_var);
@@ -93,10 +95,11 @@ TEST(GetOAuth2Token, Unauthenticated) {
   std::string env_var = "something";
   SetEnv("GOOGLE_CLOUD_CPP_EXPERIMENTAL_DISABLE_SELF_SIGNED_JWT", env_var);
 
-  StatusOr<AccessToken> token = GetOAuth2Token(mock_generator);
+  odbc_internal::StatusRecordOr<AccessToken> token =
+      GetOAuth2Token(mock_generator);
 
-  EXPECT_THAT(token,
-              StatusIs(StatusCode::kUnauthenticated, StrEq("no access")));
+  EXPECT_THAT(token, StatusRecordIs(odbc_internal::SQLStates::k_28000(),
+                                    HasSubstr("no access")));
   EXPECT_EQ(GetEnv("GOOGLE_CLOUD_CPP_EXPERIMENTAL_DISABLE_SELF_SIGNED_JWT")
                 .value_or(""),
             env_var);
