@@ -23,7 +23,16 @@
 // SQLGetDiagRecInternal
 ///////////////////////////////////////////////////////////
 
+#include "google/cloud/odbc/internal/odbc_includes.h"
+
 namespace google::cloud::odbc_bq_driver {
+
+SQLRETURN SQLGetDiagFieldInternal(SQLSMALLINT handle_type, SQLHANDLE handle,
+                                  SQLSMALLINT rec_number,
+                                  SQLSMALLINT diag_identifier,
+                                  SQLPOINTER diag_info,
+                                  SQLSMALLINT diag_info_buffer_len,
+                                  SQLSMALLINT* diag_info_string_len);
 
 }  // namespace google::cloud::odbc_bq_driver
 
