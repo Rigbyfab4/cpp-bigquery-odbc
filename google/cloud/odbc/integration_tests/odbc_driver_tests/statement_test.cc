@@ -184,8 +184,9 @@ TEST(StatementTest, SQLDescribeCol) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(StatementTest, SQLFetch) {
-  auto const table_name = kDatasetName + ".ODBC_CHECK_RESULTS_TEST";
+void FetchDataTest(bool use_bind_col) {
+  auto const table_name = kDatasetName + ".ODBC_CHECK_RESULTS_TEST_" +
+                          (use_bind_col ? "true" : "false");
   Table table(table_name);
 
   // TODO(#14): Add integer and floating point fields too
@@ -212,7 +213,7 @@ TEST(StatementTest, SQLFetch) {
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   // TODO(#14): Add integer and floating point fields too
   auto const query = "SELECT StringField FROM " + table_name;
-  auto results = *FetchResults(conn, query);
+  auto results = *FetchResults(conn, query, use_bind_col);
 
   VerifyColumnWiseResults(kSampleData, results, std::vector<std::string>());
 
@@ -223,6 +224,10 @@ TEST(StatementTest, SQLFetch) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
+TEST(StatementTest, SQLFetch) { FetchDataTest(true); }
+
+TEST(StatementTest, SQLFetch_WithoutSQLBindCol) { FetchDataTest(false); }
 
 TEST(StatementTest, SQLFetchScroll) {
   auto const table_name = kDatasetName + ".ODBC_SCROLL_RESULTS_TEST";

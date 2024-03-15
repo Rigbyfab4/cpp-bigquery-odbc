@@ -195,4 +195,48 @@ void BindCol(std::shared_ptr<ODBCHandles> conn, std::shared_ptr<Column> col_ptr,
   CheckError(status, "SQLBindCol", conn);
 }
 
+void BindColManually(std::shared_ptr<ODBCHandles> conn,
+                     std::shared_ptr<Column> col_ptr, SQLUSMALLINT col_index) {
+  SQLHDESC ard_handle;  // Application row descriptor
+  auto status =
+      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_APP_ROW_DESC, &ard_handle, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_APP_ROW_DESC)", conn);
+
+  // Get the highest record
+  SQLSMALLINT record_count;
+  status = SQLGetDescField(ard_handle, 0, SQL_DESC_COUNT, &record_count,
+                           SQL_IS_SMALLINT, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_COUNT)", conn);
+
+  // Update the highest record
+  if (col_index > record_count) {
+    status = SQLSetDescField(ard_handle, 0, SQL_DESC_COUNT,
+                             (SQLPOINTER)col_index, SQL_IS_INTEGER);
+    CheckError(status, "SQLGetStmtAttr(SQL_DESC_COUNT)", conn);
+  }
+
+  // Assign column attributes
+  status = SQLSetDescField(ard_handle, col_index, SQL_DESC_TYPE,
+                           (SQLPOINTER)col_ptr->data_type, SQL_IS_SMALLINT);
+  CheckError(status, "SQLSetDescField(SQL_DESC_TYPE)", conn);
+  status = SQLSetDescField(ard_handle, col_index, SQL_DESC_CONCISE_TYPE,
+                           (SQLPOINTER)col_ptr->data_type, SQL_IS_SMALLINT);
+  CheckError(status, "SQLSetDescField(SQL_DESC_CONCISE_TYPE)", conn);
+  status = SQLSetDescField(ard_handle, col_index, SQL_DESC_LENGTH,
+                           &col_ptr->data_size, SQL_IS_UINTEGER);
+  CheckError(status, "SQLSetDescField(SQL_DESC_LENGTH)", conn);
+  status = SQLSetDescField(ard_handle, col_index, SQL_DESC_OCTET_LENGTH,
+                           &col_ptr->data_size, SQL_IS_UINTEGER);
+  CheckError(status, "SQLSetDescField(SQL_DESC_OCTET_LENGTH)", conn);
+  status = SQLSetDescField(ard_handle, col_index, SQL_DESC_DATA_PTR,
+                           col_ptr->data, SQL_NTS);
+  CheckError(status, "SQLSetDescField(SQL_DESC_OCTET_LENGTH)", conn);
+  status = SQLSetDescField(ard_handle, col_index, SQL_DESC_INDICATOR_PTR,
+                           &col_ptr->data_len, SQL_IS_INTEGER);
+  CheckError(status, "SQLSetDescField(SQL_DESC_INDICATOR_PTR)", conn);
+  status = SQLSetDescField(ard_handle, col_index, SQL_DESC_OCTET_LENGTH_PTR,
+                           &col_ptr->data_len, SQL_IS_INTEGER);
+  CheckError(status, "SQLSetDescField(SQL_DESC_OCTET_LENGTH_PTR)", conn);
+}
+
 }  // namespace google::cloud::odbc_tests
