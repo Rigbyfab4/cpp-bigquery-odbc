@@ -176,7 +176,7 @@ TEST(StatementTest, SQLDescribeCol) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  // CheckColumnData(conn, table_name, schema);
+  CheckColumnData(conn, table_name, schema);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -188,10 +188,6 @@ void FetchDataTest(bool use_bind_col) {
   auto const table_name = kDatasetName + ".ODBC_CHECK_RESULTS_TEST_" +
                           (use_bind_col ? "true" : "false");
   Table table(table_name);
-
-  // TODO(#14): Add integer and floating point fields too
-  // Schema returned by the query
-  Schema schema{{"StringField", SQL_VARCHAR}};
 
   // Create Table
   auto conn = std::make_shared<ODBCHandles>();
@@ -233,9 +229,6 @@ TEST(StatementTest, SQLFetchScroll) {
   auto const table_name = kDatasetName + ".ODBC_SCROLL_RESULTS_TEST";
   Table table(table_name);
 
-  // Schema returned by the query
-  Schema schema{{"StringField", SQL_VARCHAR}};
-
   // Create Table
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -266,10 +259,6 @@ TEST(StatementTest, SQLFetchScroll) {
 TEST(StatementTest, SQLGetData) {
   auto const table_name = kDatasetName + ".ODBC_GET_DATA_TEST";
   Table table(table_name);
-
-  // TODO(#14): Add integer and floating point fields too
-  // Schema returned by the query
-  Schema schema{{"StringField", SQL_VARCHAR}};
 
   // Create Table
   auto conn = std::make_shared<ODBCHandles>();
@@ -315,8 +304,7 @@ TEST(StatementTest, DISABLED_SQLPutData) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   // TODO(#14): Add integer and floating point fields too
-  table.Create(
-      conn, "(StringField1 STRING, StringField2 STRING, StringField3 STRING)");
+  table.Create(conn, getSchemaStr(schema));
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Insert a row
