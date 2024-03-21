@@ -17,16 +17,17 @@
 # Usage: build.sh [options]
 #
 #   Options:
-#     --build=<name>       The basename minus suffix of the build script to run
-#     --distro=<name>      The distro name to use
-#     --docker-clean       Delete the build output directories
-#     -t|--trigger         The trigger file to extract the build name and distro
-#     -c|--cloud=<project> Run the build in GCB in the given project
-#     -l|--local           Run the build in the local environment
-#     -d|--docker          Run the build in a local docker (default)
-#     -s|--docker-shell    Run a shell in the build's docker container
-#     --verbose            Print additional information during the build
-#     -h|--help            Print this help message
+#     --build=<name>          The basename minus suffix of the build script to run
+#     --dependencies=<list>   Comma separated list of dependencies to use
+#     --distro=<name>         The distro name to use
+#     --docker-clean          Delete the build output directories
+#     -t|--trigger            The trigger file to extract the build name and distro
+#     -c|--cloud=<project>    Run the build in GCB in the given project
+#     -l|--local              Run the build in the local environment
+#     -d|--docker             Run the build in a local docker (default)
+#     -s|--docker-shell       Run a shell in the build's docker container
+#     --verbose               Print additional information during the build
+#     -h|--help               Print this help message
 #
 #   Note: flags may be specified in any order and with or without an equals
 #   sign (e.g. `-t=foo` is the same as `-t foo`)
@@ -92,13 +93,14 @@ function die() {
 # Use getopt to parse and normalize all the args.
 PARSED="$(getopt -a \
   --options="t:c:ldsh" \
-  --longoptions="arch:,build:,distro:,trigger:,cloud:,local,docker,docker-shell,docker-clean,verbose,help" \
+  --longoptions="arch:,build:,dependencies:,distro:,trigger:,cloud:,local,docker,docker-shell,docker-clean,verbose,help" \
   --name="${PROGRAM_NAME}" \
   -- "$@")"
 eval set -- "${PARSED}"
 
 ARCH_FLAG=""
 BUILD_FLAG=""
+DEPENDENCIES_FLAG=""
 DISTRO_FLAG=""
 TRIGGER_FLAG=""
 CLOUD_FLAG=""
@@ -115,6 +117,10 @@ while true; do
       ;;
     --build)
       BUILD_FLAG="$2"
+      shift 2
+      ;;
+    --dependencies)
+      DEPENDENCIES_FLAG="$2"
       shift 2
       ;;
     --distro)
@@ -169,7 +175,7 @@ if [[ -n "${TRIGGER_FLAG}" ]]; then
   test -r "${trigger_file}" || die "Cannot open ${trigger_file}"
   : "${BUILD_FLAG:="$(grep _BUILD_NAME "${trigger_file}" | awk '{print $2}')"}"
   : "${DISTRO_FLAG:="$(grep _DISTRO "${trigger_file}" | awk '{print $2}')"}"
-  : "${DEPENDENCIES:="$(grep _DEPENDENCIES "${trigger_file}" | awk '{print $2}')"}"
+  : "${DEPENDENCIES_FLAG:="$(grep _DEPENDENCIES "${trigger_file}" | awk '{print $2}' | sed "s/['\"]//g")"}"
 fi
 
 if [[ -z "${BUILD_FLAG}" ]]; then
@@ -187,7 +193,7 @@ CODECOV_TOKEN="$(tr -d '[:space:]' <<<"${CODECOV_TOKEN:-}")"
 export CODECOV_TOKEN
 export BRANCH_NAME
 export COMMIT_SHA
-export DEPENDENCIES
+export DEPENDENCIES_FLAG
 export TRIGGER_TYPE
 export VERBOSE_FLAG
 
@@ -331,7 +337,7 @@ if [[ "${DOCKER_FLAG}" = "true" ]]; then
     "--env=CODECOV_TOKEN=${CODECOV_TOKEN:-}"
     "--env=BRANCH_NAME=${BRANCH_NAME}"
     "--env=COMMIT_SHA=${COMMIT_SHA}"
-    "--env=DEPENDENCIES=${DEPENDENCIES:-}"
+    "--env=DEPENDENCIES=${DEPENDENCIES_FLAG:-}"
     "--env=TRIGGER_TYPE=${TRIGGER_TYPE:-}"
     "--env=VERBOSE_FLAG=${VERBOSE_FLAG:-}"
     "--env=USE_BAZEL_VERSION=${USE_BAZEL_VERSION:-}"
@@ -346,9 +352,6 @@ if [[ "${DOCKER_FLAG}" = "true" ]]; then
     # Makes the host's gcloud credentials visible inside the docker container,
     # which we need for integration tests.
     "--volume=${HOME}/.config/gcloud:/h/.config/gcloud:Z"
-    # Makes the generate-libraries build ONLY touch golden files in the
-    # generator dir.
-    "--env=GENERATE_GOLDEN_ONLY=${GENERATE_GOLDEN_ONLY-}"
   )
   # All GOOGLE_CLOUD_* env vars will be passed to the docker container.
   for e in $(env); do
