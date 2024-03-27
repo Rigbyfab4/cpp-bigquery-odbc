@@ -78,6 +78,18 @@ TEST(UnbindDescriptorRecord, CountIsNewMaxIndex) {
   EXPECT_EQ(1, handle.GetHeaderRecord().count);
 }
 
+TEST(UnbindDescriptorRecord, CountIsZero) {
+  DescriptorHandle handle;
+  DescriptorRecord descriptor_record;
+  handle.BindNewDescriptorRecord(1, descriptor_record);
+  EXPECT_EQ(1, handle.GetHeaderRecord().count);
+
+  StatusRecordOr<DescriptorRecord> status = handle.UnbindDescriptorRecord(1);
+
+  ASSERT_STATUS_RECORD_OK(status);
+  EXPECT_EQ(0, handle.GetHeaderRecord().count);
+}
+
 TEST(UnbindDescriptorRecord, Fails_WrongIndex) {
   DescriptorHandle handle;
   DescriptorRecord descriptor_record;
@@ -87,6 +99,199 @@ TEST(UnbindDescriptorRecord, Fails_WrongIndex) {
   EXPECT_THAT(status,
               StatusRecordIs(SQLStates::k_HY000(),
                              HasSubstr("non-existent descriptor record")));
+}
+
+TEST(UnbindAllDescriptorRecordsFrom, UnbindAll) {
+  DescriptorHandle handle;
+  DescriptorRecord descriptor_record;
+  handle.BindNewDescriptorRecord(1, descriptor_record);
+  handle.BindNewDescriptorRecord(3, descriptor_record);
+  EXPECT_EQ(3, handle.GetHeaderRecord().count);
+
+  StatusRecord status = handle.UnbindAllDescriptorRecordsFrom(0);
+
+  ASSERT_TRUE(status.ok());
+  EXPECT_EQ(0, handle.GetHeaderRecord().count);
+}
+
+TEST(UnbindAllDescriptorRecordsFrom, UnbindNothing_NewIndexIsTooBig) {
+  DescriptorHandle handle;
+  DescriptorRecord descriptor_record;
+  handle.BindNewDescriptorRecord(1, descriptor_record);
+  handle.BindNewDescriptorRecord(3, descriptor_record);
+  EXPECT_EQ(3, handle.GetHeaderRecord().count);
+
+  StatusRecord status = handle.UnbindAllDescriptorRecordsFrom(5);
+
+  ASSERT_TRUE(status.ok());
+  EXPECT_EQ(3, handle.GetHeaderRecord().count);
+}
+
+TEST(UnbindAllDescriptorRecordsFrom, UnbindNothing_NoRecords) {
+  DescriptorHandle handle;
+  DescriptorRecord descriptor_record;
+  EXPECT_EQ(0, handle.GetHeaderRecord().count);
+
+  StatusRecord status = handle.UnbindAllDescriptorRecordsFrom(5);
+
+  ASSERT_TRUE(status.ok());
+  EXPECT_EQ(0, handle.GetHeaderRecord().count);
+}
+
+TEST(UnbindAllDescriptorRecordsFrom, UnbindNothing_NegativeIndex) {
+  DescriptorHandle handle;
+  DescriptorRecord descriptor_record;
+  handle.BindNewDescriptorRecord(1, descriptor_record);
+  handle.BindNewDescriptorRecord(3, descriptor_record);
+  EXPECT_EQ(3, handle.GetHeaderRecord().count);
+
+  StatusRecord status = handle.UnbindAllDescriptorRecordsFrom(-5);
+
+  ASSERT_FALSE(status.ok());
+  EXPECT_EQ(SQLStates::k_07009(), status.sql_state);
+  EXPECT_EQ(3, handle.GetHeaderRecord().count);
+}
+
+TEST(SetName, SetName) {
+  DescriptorRecord descriptor_record;
+
+  descriptor_record.SetName("test", 4);
+
+  EXPECT_EQ("test", descriptor_record.name);
+  EXPECT_EQ(SQL_NAMED, descriptor_record.unnamed);
+}
+
+TEST(SetName, SetName_SQL_NTS) {
+  DescriptorRecord descriptor_record;
+
+  descriptor_record.SetName("test", SQL_NTS);
+
+  EXPECT_EQ("test", descriptor_record.name);
+  EXPECT_EQ(SQL_NAMED, descriptor_record.unnamed);
+}
+
+TEST(SetName, SetName_Truncated) {
+  DescriptorRecord descriptor_record;
+
+  descriptor_record.SetName("test", 2);
+
+  EXPECT_EQ("te", descriptor_record.name);
+  EXPECT_EQ(SQL_NAMED, descriptor_record.unnamed);
+}
+
+TEST(SetName, SetName_EmptyString) {
+  DescriptorRecord descriptor_record;
+
+  descriptor_record.SetName("", 2);
+
+  EXPECT_EQ("", descriptor_record.name);
+  EXPECT_EQ(SQL_UNNAMED, descriptor_record.unnamed);
+}
+
+TEST(SetName, SetName_ZeroLength) {
+  DescriptorRecord descriptor_record;
+
+  descriptor_record.SetName("test", 0);
+
+  EXPECT_EQ("", descriptor_record.name);
+  EXPECT_EQ(SQL_UNNAMED, descriptor_record.unnamed);
+}
+
+TEST(SetNumPrecRadix, SetForNonNumericValue) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record =
+      descriptor_record.SetNumPrecRadix(kNumPrecRadixForNonNumeric);
+
+  ASSERT_TRUE(status_record.ok());
+  EXPECT_EQ(kNumPrecRadixForNonNumeric, descriptor_record.num_prec_radix);
+}
+
+TEST(SetNumPrecRadix, SetForApproximateNumericValue) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record =
+      descriptor_record.SetNumPrecRadix(kNumPrecRadixForApproximateNumeric);
+
+  ASSERT_TRUE(status_record.ok());
+  EXPECT_EQ(kNumPrecRadixForApproximateNumeric,
+            descriptor_record.num_prec_radix);
+}
+
+TEST(SetNumPrecRadix, SetForExactNumericValue) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record =
+      descriptor_record.SetNumPrecRadix(kNumPrecRadixForExactNumeric);
+
+  ASSERT_TRUE(status_record.ok());
+  EXPECT_EQ(kNumPrecRadixForExactNumeric, descriptor_record.num_prec_radix);
+}
+
+TEST(SetNumPrecRadix, Fails_InvalidValue) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record = descriptor_record.SetNumPrecRadix(8);
+
+  ASSERT_FALSE(status_record.ok());
+  EXPECT_EQ(SQLStates::k_HY092(), status_record.sql_state);
+}
+
+TEST(SetParameterType, Set_SQL_PARAM_INPUT) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record =
+      descriptor_record.SetParameterType(SQL_PARAM_INPUT);
+
+  ASSERT_TRUE(status_record.ok());
+  EXPECT_EQ(SQL_PARAM_INPUT, descriptor_record.parameter_type);
+}
+
+TEST(SetParameterType, Set_SQL_PARAM_INPUT_OUTPUT) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record =
+      descriptor_record.SetParameterType(SQL_PARAM_INPUT_OUTPUT);
+
+  ASSERT_TRUE(status_record.ok());
+  EXPECT_EQ(SQL_PARAM_INPUT_OUTPUT, descriptor_record.parameter_type);
+}
+
+TEST(SetParameterType, Set_SQL_PARAM_OUTPUT) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record =
+      descriptor_record.SetParameterType(SQL_PARAM_OUTPUT);
+
+  ASSERT_TRUE(status_record.ok());
+  EXPECT_EQ(SQL_PARAM_OUTPUT, descriptor_record.parameter_type);
+}
+
+TEST(SetParameterType, Fails_InvalidValue) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record = descriptor_record.SetParameterType(111);
+
+  ASSERT_FALSE(status_record.ok());
+  EXPECT_EQ(SQLStates::k_HY105(), status_record.sql_state);
+}
+
+TEST(SetUnnamed, Set_SQL_UNNAMED) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record = descriptor_record.SetUnnamed(SQL_UNNAMED);
+
+  ASSERT_TRUE(status_record.ok());
+  EXPECT_EQ(SQL_UNNAMED, descriptor_record.unnamed);
+}
+
+TEST(SetUnnamed, Fails_InvalidValue) {
+  DescriptorRecord descriptor_record;
+
+  StatusRecord status_record = descriptor_record.SetUnnamed(111);
+
+  ASSERT_FALSE(status_record.ok());
+  EXPECT_EQ(SQLStates::k_HY091(), status_record.sql_state);
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal

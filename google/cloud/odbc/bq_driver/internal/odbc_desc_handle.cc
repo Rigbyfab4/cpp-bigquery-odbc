@@ -33,11 +33,68 @@ StatusRecordOr<DescriptorRecord> DescriptorHandle::UnbindDescriptorRecord(
   if (descriptor_records_.count(index)) {
     DescriptorRecord erased = descriptor_records_[index];
     descriptor_records_.erase(index);
-    header_record_.count = descriptor_records_.rbegin()->first;
+    header_record_.count =
+        descriptor_records_.empty() ? 0 : descriptor_records_.rbegin()->first;
     return erased;
   }
   return StatusRecord{SQLStates::k_HY000(),
                       "Trying to unbind non-existent descriptor record"};
+}
+
+StatusRecord DescriptorHandle::UnbindAllDescriptorRecordsFrom(int index) {
+  if (index < 0) {
+    return {SQLStates::k_07009(), "Invalid descriptor index"};
+  }
+  int old_val = header_record_.count;
+  for (int i = index + 1; i <= old_val; i++) {
+    descriptor_records_.erase(i);
+  }
+  header_record_.count =
+      descriptor_records_.empty() ? 0 : descriptor_records_.rbegin()->first;
+  return StatusRecord::Ok();
+}
+
+void DescriptorRecord::SetName(std::string const& val,
+                               SQLINTEGER const buffer_len) {
+  if (val.empty() || buffer_len == 0) {
+    name = "";
+    unnamed = SQL_UNNAMED;
+  } else {
+    if (buffer_len == SQL_NTS ||
+        buffer_len >= static_cast<SQLINTEGER>(val.size())) {
+      name = val;
+    } else {
+      name = val.substr(0, buffer_len);
+    }
+    unnamed = SQL_NAMED;
+  }
+}
+
+StatusRecord DescriptorRecord::SetNumPrecRadix(SQLINTEGER value) {
+  if (value != kNumPrecRadixForNonNumeric &&
+      value != kNumPrecRadixForApproximateNumeric &&
+      value != kNumPrecRadixForExactNumeric) {
+    return {SQLStates::k_HY092(), "Invalid attribute/option identifier"};
+  }
+  num_prec_radix = value;
+  return StatusRecord::Ok();
+}
+
+StatusRecord DescriptorRecord::SetParameterType(SQLSMALLINT value) {
+  if (value != SQL_PARAM_INPUT && value != SQL_PARAM_INPUT_OUTPUT &&
+      value != SQL_PARAM_OUTPUT) {
+    return {SQLStates::k_HY105(), "Invalid parameter type"};
+  }
+  parameter_type = value;
+  return StatusRecord::Ok();
+}
+
+StatusRecord DescriptorRecord::SetUnnamed(SQLSMALLINT value) {
+  if (value != SQL_UNNAMED) {
+    return {SQLStates::k_HY091(), "Invalid descriptor field identifier"};
+  }
+  unnamed = value;
+  return StatusRecord::Ok();
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal

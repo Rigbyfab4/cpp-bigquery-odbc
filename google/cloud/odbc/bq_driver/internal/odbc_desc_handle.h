@@ -22,6 +22,10 @@
 
 namespace google::cloud::odbc_bq_driver_internal {
 
+inline constexpr SQLINTEGER kNumPrecRadixForNonNumeric = 0;
+inline constexpr SQLINTEGER kNumPrecRadixForApproximateNumeric = 2;
+inline constexpr SQLINTEGER kNumPrecRadixForExactNumeric = 10;
+
 struct HeaderRecord {
   SQLSMALLINT alloc_type = SQL_DESC_ALLOC_AUTO;
   SQLULEN array_size = 0;
@@ -33,6 +37,11 @@ struct HeaderRecord {
 };
 
 struct DescriptorRecord {
+  void SetName(std::string const& val, SQLINTEGER buffer_len);
+  odbc_internal::StatusRecord SetNumPrecRadix(SQLINTEGER value);
+  odbc_internal::StatusRecord SetParameterType(SQLSMALLINT value);
+  odbc_internal::StatusRecord SetUnnamed(SQLSMALLINT value);
+
   SQLINTEGER auto_unique_value = SQL_FALSE;
   std::string base_column_name;
   std::string base_table_name;
@@ -101,6 +110,8 @@ class DescriptorHandle : public Handle {
 
   odbc_internal::StatusRecordOr<DescriptorRecord> UnbindDescriptorRecord(
       int index);
+
+  odbc_internal::StatusRecord UnbindAllDescriptorRecordsFrom(int index);
 
  private:
   DescriptorType type_;
