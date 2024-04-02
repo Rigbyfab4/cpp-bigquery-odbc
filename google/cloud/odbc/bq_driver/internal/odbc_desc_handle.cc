@@ -51,6 +51,11 @@ static std::vector<Interval> const kIntervalTypes = {
      SQL_CODE_MINUTE_TO_SECOND},
 };
 
+static std::vector<int> const kOtherSupportedTypes = {
+    SQL_CHAR, SQL_C_CHAR,  SQL_BINARY, SQL_NUMERIC,  SQL_C_NUMERIC,
+    SQL_REAL, SQL_C_FLOAT, SQL_DOUBLE, SQL_SMALLINT, SQL_INTEGER,
+    SQL_BIT,  SQL_TINYINT, SQL_GUID};
+
 void DescriptorHandle::BindNewDescriptorRecord(
     SQLSMALLINT index, DescriptorRecord descriptor_record) {
   descriptor_records_[index] = std::move(descriptor_record);
@@ -198,7 +203,7 @@ StatusRecord DescriptorRecord::SetOtherType(SQLSMALLINT const value,
     type = SQL_DATETIME;
     concise_type = value;
     datetime_interval_precision = 0;
-    datetime_interval_code = 3;
+    datetime_interval_code = SQL_CODE_TIMESTAMP;
     scale = 6;
     precision = 6;
     length = 0;
@@ -266,6 +271,69 @@ StatusRecord DescriptorRecord::SetConciseType(SQLSMALLINT value) {
     return StatusRecord::Ok();
   }
   return SetOtherType(value, "Illegal descriptor concise type");
+}
+
+bool DescriptorRecord::IsTypeValid(SQLSMALLINT valid_type,
+                                   SQLSMALLINT valid_concise_type,
+                                   SQLSMALLINT valid_code) const {
+  return type == valid_type && concise_type == valid_concise_type &&
+         datetime_interval_code == valid_code;
+}
+
+bool DescriptorRecord::IsTypeValid(SQLSMALLINT valid_type,
+                                   Interval const& interval) const {
+  return IsTypeValid(valid_type, interval.concise_sql_type,
+                     interval.datetime_interval_code) ||
+         IsTypeValid(valid_type, interval.concise_c_type,
+                     interval.datetime_interval_code);
+}
+
+StatusRecord DescriptorRecord::ConsistencyCheck() const {
+  if (type == SQL_C_DEFAULT && concise_type == SQL_C_DEFAULT) {
+    return StatusRecord::Ok();
+  }
+  for (auto const& entry : kIntervalTypes) {
+    if (IsTypeValid(SQL_INTERVAL, entry) &&
+        precision == GetPrecisionForIntervalCode(datetime_interval_code)) {
+      return StatusRecord::Ok();
+    }
+  }
+  for (auto const& entry : kDatetimeTypes) {
+    if (IsTypeValid(SQL_DATETIME, entry) &&
+        precision == GetPrecisionForDatetimeCode(datetime_interval_code)) {
+      return StatusRecord::Ok();
+    }
+  }
+  if (IsTypeValid(SQL_DATETIME, SQL_DATE, SQL_CODE_DATE)) {
+    return StatusRecord::Ok();
+  }
+  if (IsTypeValid(SQL_DATETIME, SQL_TIME, SQL_CODE_TIME)) {
+    return StatusRecord::Ok();
+  }
+  if (IsTypeValid(SQL_DATETIME, SQL_TIMESTAMP, SQL_CODE_TIMESTAMP)) {
+    return StatusRecord::Ok();
+  }
+
+  if (std::find(kOtherSupportedTypes.begin(), kOtherSupportedTypes.end(),
+                type) != kOtherSupportedTypes.end() &&
+      type == concise_type) {
+    return StatusRecord::Ok();
+  }
+  return StatusRecord{SQLStates::k_HY021(),
+                      "Inconsistent descriptor information"};
+}
+
+StatusRecord DescriptorRecord::SetDataPointer(SQLPOINTER ptr,
+                                              DescriptorType const& desc_type) {
+  StatusRecord status_record = ConsistencyCheck();
+  if (!status_record.ok()) {
+    return status_record;
+  }
+
+  if (desc_type != DescriptorType::kIPD) {
+    data_ptr = ptr;
+  }
+  return StatusRecord::Ok();
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
