@@ -22,14 +22,29 @@
 namespace google::cloud::odbc_tests {
 
 std::map<std::string, Schema> kTables = {
-    {"ODBC_SQLTables_TEST_1", {{"Str1", SQL_VARCHAR}}},
-    {"ODBC_SQLTables_TEST_2",
+    {"ODBC_SQLTables1_TEST_1", {{"Str1", SQL_VARCHAR}}},
+    {"ODBC_SQLTables1_TEST_2",
      {
          {"Str2", SQL_VARCHAR},
          {"Int2", SQL_INTEGER},
          {"Float2", SQL_FLOAT},
      }},
-    {"ODBC_SQLTables_TEST_3",
+    {"ODBC_SQLTables1_TEST_3",
+     {{"Str3", SQL_VARCHAR},
+      {"Int3", SQL_INTEGER},
+      {"Float3", SQL_FLOAT},
+      {"Date3", SQL_DATETIME}}}};
+
+// Tables for ANSI tests
+std::map<std::string, Schema> kTablesAnsi = {
+    {"ODBC_SQLTablesAnsi_TEST_1", {{"Str1", SQL_VARCHAR}}},
+    {"ODBC_SQLTablesAnsi_TEST_2",
+     {
+         {"Str2", SQL_VARCHAR},
+         {"Int2", SQL_INTEGER},
+         {"Float2", SQL_FLOAT},
+     }},
+    {"ODBC_SQLTableAnsi_TEST_3",
      {{"Str3", SQL_VARCHAR},
       {"Int3", SQL_INTEGER},
       {"Float3", SQL_FLOAT},
@@ -80,6 +95,39 @@ TEST(CatalogTest, SQLTables) {
   auto table_names = (*Catalog::GetTables(conn, kDatasetName))[kDatasetName];
   std::vector<std::string> test_table_names;
   for (auto it : kTables) {
+    EXPECT_NE(std::find(table_names.begin(), table_names.end(), it.first),
+              table_names.end());
+    test_table_names.push_back(it.first);
+  }
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  ClearDataset(kDatasetName,
+               std::make_shared<std::vector<std::string>>(test_table_names));
+}
+
+TEST(CatalogTest, SQLTablesA) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  // Create tables
+  for (auto it : kTablesAnsi) {
+    std::string table_name = it.first;
+    std::string table_name_full = kDatasetName + "." + table_name;
+    // Create Table
+    EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn, true), SQL_SUCCESS);
+    Table(table_name_full).Create(conn, getSchemaStr(it.second), true);
+    EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  }
+
+  // Verify if the tables returned by SQLTables are the same as the ones created
+  EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn, true), SQL_SUCCESS);
+
+  EXPECT_EQ(GetDriverInfo(conn), SQL_SUCCESS);
+
+  auto table_names =
+      (*Catalog::GetTables(conn, kDatasetName, true))[kDatasetName];
+  std::vector<std::string> test_table_names;
+  for (auto it : kTablesAnsi) {
     EXPECT_NE(std::find(table_names.begin(), table_names.end(), it.first),
               table_names.end());
     test_table_names.push_back(it.first);
