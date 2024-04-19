@@ -31,6 +31,30 @@ using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
 
+StatusRecord SetConnectionAttributes(ConnectionHandle* conn_handle,
+                                     StatementHandle* stmt_handle) {
+  SQLULEN metadata_id = 0;
+  // GetAttribute requires last argument to not be null
+  SQLINTEGER str_len;
+  StatusRecord status = conn_handle->GetAttribute(SQL_ATTR_METADATA_ID,
+                                                  &metadata_id, 0, &str_len);
+  if (!status.ok()) {
+    return status;
+  }
+  SQLULEN async_enable = 0;
+  status = conn_handle->GetAttribute(SQL_ATTR_ASYNC_ENABLE, &async_enable, 0,
+                                     &str_len);
+  if (!status.ok()) {
+    return status;
+  }
+
+  status = stmt_handle->SetAttribute(SQL_ATTR_METADATA_ID, metadata_id);
+  if (!status.ok()) {
+    return status;
+  }
+  return stmt_handle->SetAttribute(SQL_ATTR_ASYNC_ENABLE, async_enable);
+}
+
 SQLRETURN SQLAllocStmtHandle(SQLHDBC in_handle, SQLHANDLE* out_conn_handle) {
   StatusRecordOr<ConnectionHandle*> handle_result =
       ValidateConnectionHandle(in_handle);
@@ -40,7 +64,19 @@ SQLRETURN SQLAllocStmtHandle(SQLHDBC in_handle, SQLHANDLE* out_conn_handle) {
     return handle_result.GetCalculatedReturnCode();
   }
 
-  auto* stmt_handle = new StatementHandle();
+  DescriptorHandle ard(DescriptorType::kARD, SQL_DESC_ALLOC_AUTO);
+  DescriptorHandle apd(DescriptorType::kAPD, SQL_DESC_ALLOC_AUTO);
+  DescriptorHandle ird(DescriptorType::kIRD, SQL_DESC_ALLOC_AUTO);
+  DescriptorHandle ipd(DescriptorType::kIPD, SQL_DESC_ALLOC_AUTO);
+  auto* stmt_handle = new StatementHandle({ard, apd, ird, ipd});
+
+  StatusRecord status_record =
+      SetConnectionAttributes(*handle_result, stmt_handle);
+  if (!status_record.ok()) {
+    (*handle_result)->GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
+
   *out_conn_handle = stmt_handle;
   return SQL_SUCCESS;
 }
