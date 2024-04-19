@@ -76,6 +76,8 @@ class ConnectionHandle : public Handle {
 
   [[nodiscard]] bool IsConnected() const { return is_connected_; }
 
+  HandleType kType = HandleType::kConnHandle;
+
  protected:
   bool is_connected_ = false;
 

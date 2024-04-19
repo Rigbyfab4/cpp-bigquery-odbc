@@ -50,6 +50,8 @@ class StatementHandle : public Handle {
   odbc_internal::StatusRecord SetAttribute(int attribute, SQLULEN value);
   odbc_internal::StatusRecordOr<SQLULEN> GetAttribute(int attribute);
 
+  HandleType kType = HandleType::kStmtHandle;
+
  private:
   std::map<int, DataBuffer> column_bindings_;
   std::shared_ptr<Query> query_;

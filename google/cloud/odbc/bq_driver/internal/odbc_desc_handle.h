@@ -65,6 +65,8 @@ class DescriptorHandle : public Handle {
   odbc_internal::StatusRecord SetDescriptorRecords(
       std::map<SQLSMALLINT, DescriptorRecord> const& descriptor_records);
 
+  HandleType kType = HandleType::kDescHandle;
+
  private:
   DescriptorType type_;
   HeaderRecord header_record_;
