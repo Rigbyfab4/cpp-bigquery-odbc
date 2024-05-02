@@ -105,6 +105,15 @@ TraceOptions::CreateTraceOptionsFile(
   return options_file_;
 }
 
+StatusRecordOr<std::shared_ptr<TraceOptions>> TraceOptions::GetTraceOption() {
+  if (options_file_ != nullptr) {
+    return options_file_;
+  }
+  if (options_console_ != nullptr) {
+    return options_console_;
+  }
+}
+
 int TracePrintInternalStdOut(TraceOptions& opts, std::string const& s) {
   if (!opts.logging_enabled || s.empty()) {
     return -1;
