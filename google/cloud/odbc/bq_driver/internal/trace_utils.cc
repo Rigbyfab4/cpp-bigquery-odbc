@@ -196,12 +196,20 @@ std::string CollectAndPrintArgsFile(std::string const& func_name,
     va_list args_list;
     va_start(args_list, num_args);
     trace_str.append(CollectArgs(args_list, num_args));
+
+    // check if closeTraceFile flag is provided.
+    bool closeTraceFile = va_arg(args_list, int); 
     va_end(args_list);
 
     int ret = TracePrintInternalFile(opts, trace_str);
     if (ret < 0) {
       return "";
     }
+
+    if (closeTraceFile && opts.trace_file.is_open()){
+        opts.trace_file.close();
+    }
+
   }
   return trace_str;
 }
@@ -611,7 +619,8 @@ std::string ExitInternal(std::string const& func_name, SQLRETURN ret_code,
   if (opts.logging_enabled) {
     if (opts.trace_file.is_open()) {
       return CollectAndPrintArgsFile(func_name, opts, 1,
-                                     ToCStr(FormatSqlReturn(ret_code)));
+                                     ToCStr(FormatSqlReturn(ret_code)),
+                                     /* closeTraceFile flag */ true);
     }
     return CollectAndPrintArgs(func_name, opts, 1,
                                ToCStr(FormatSqlReturn(ret_code)));
