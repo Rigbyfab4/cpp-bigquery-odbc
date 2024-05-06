@@ -57,20 +57,19 @@ TEST(TraceLoggingFile, TraceOptionsFromConfigTraceEnabled) {
   (*test_opts_file)->trace_file.close();
 }
 
-TEST(TraceLogginfFile, TraceOptionsFromConfigLogfileClosed){
+TEST(TraceLogginfFile, TraceOptionsFromConfigLogfileClosed) {
   auto config_sections = std::make_shared<Sections>(kConfigSections1);
   StatusRecordOr<std::shared_ptr<TraceOptions>> test_opts_file =
       TraceOptions::CreateTraceOptionsFile(config_sections);
   ASSERT_STATUS_RECORD_OK(test_opts_file);
 
   std::string fmt1 = FormatSqlSmallInt(1);
-  
-  EXPECT_EQ("TestBasicODBCTypes\t\tSQLSMALLINT, 1\n",
-             CollectAndPrintArgsFile("TestBasicODBCTypes", *(*test_opts_file),
-                                       1, fmt1.c_str(), true));
-                                       
-  EXPECT_FALSE((*test_opts_file)-> trace_file.is_open());
 
+  EXPECT_EQ("TestBasicODBCTypes\t\tSQLSMALLINT, 1\n",
+            CollectAndPrintArgsFile("TestBasicODBCTypes", *(*test_opts_file), 1,
+                                    fmt1.c_str(), true));
+
+  EXPECT_FALSE((*test_opts_file)->trace_file.is_open());
 }
 
 TEST(TraceLoggingFile, TraceOptionsFromConfigTraceDisabled) {
