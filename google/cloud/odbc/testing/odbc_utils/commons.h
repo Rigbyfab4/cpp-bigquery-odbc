@@ -17,6 +17,7 @@
 
 // We need sorting functions
 #include "google/cloud/internal/backoff_policy.h"
+#include "google/cloud/internal/getenv.h"
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <locale.h>
@@ -33,11 +34,20 @@
 namespace google::cloud::odbc_tests {
 
 using ::google::cloud::internal::ExponentialBackoffPolicy;
+using ::google::cloud::internal::GetEnv;
 using Results = std::map<std::string, std::vector<std::string>>;
 
 constexpr SQLSMALLINT kBufferLength = 1024;
 
+inline std::string const GetDefaultTablePrefix() {
+  return google::cloud::internal::GetEnv("CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX")
+      .value_or("");
+}
+
+std::string const kTableNamePrefix = GetDefaultTablePrefix() + "_";
 std::string const kDatasetName = "ODBC_TEST_DATASET";
+std::string const kDatasetWithTablePrefix =
+    kDatasetName + "." + kTableNamePrefix;
 
 // Stores information about the driver fetched from SQLGetInfo within the
 // ODBCHandles. This is populated in the ODBCHandles after calling
