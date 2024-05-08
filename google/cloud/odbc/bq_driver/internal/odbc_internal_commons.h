@@ -64,6 +64,17 @@ inline void DSValueToString(
   str.assign(value.begin(), value.end());
 }
 
+inline void IntToDSValue(int64_t int_val, DSValue& ds_value) {
+  ds_value.resize(sizeof(int_val));
+  std::memcpy(ds_value.data(), &int_val, sizeof(int64_t));
+}
+
+inline int64_t DSValueToInt(DSValue& ds_value) {
+  int64_t int_val;
+  std::memcpy(&int_val, ds_value.data(), sizeof(int_val));
+  return int_val;
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_INTERNAL_COMMONS_H
