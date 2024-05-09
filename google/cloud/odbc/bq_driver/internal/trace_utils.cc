@@ -94,6 +94,7 @@ TraceOptions::CreateTraceOptionsFile(
     if (!options_file_->trace_file.is_open()) {
       options_file_->trace_file.open(log_file,
                                      std::ofstream::out | std::ofstream::app);
+      options_file_->log_file = log_file;
     }
     if (!options_file_->trace_file.is_open()) {
       std::string msg = "Cannot open log file: ";
@@ -196,19 +197,11 @@ std::string CollectAndPrintArgsFile(std::string const& func_name,
     va_list args_list;
     va_start(args_list, num_args);
     trace_str.append(CollectArgs(args_list, num_args));
-
-    // check if closeTraceFile flag is provided.
-    bool close_trace_file = static_cast<bool>(va_arg(args_list, int));
-
     va_end(args_list);
 
     int ret = TracePrintInternalFile(opts, trace_str);
     if (ret < 0) {
       return "";
-    }
-
-    if (close_trace_file && opts.trace_file.is_open()) {
-      opts.trace_file.close();
     }
   }
   return trace_str;
@@ -618,9 +611,11 @@ std::string ExitInternal(std::string const& func_name, SQLRETURN ret_code,
                          TraceOptions& opts) {
   if (opts.logging_enabled) {
     if (opts.trace_file.is_open()) {
-      return CollectAndPrintArgsFile(func_name, opts, 1,
-                                     ToCStr(FormatSqlReturn(ret_code)),
-                                     /* close_trace_file flag */ 1);
+      auto res = CollectAndPrintArgsFile(func_name, opts, 1,
+                                         ToCStr(FormatSqlReturn(ret_code)));
+      opts.trace_file.close();
+      opts.is_file_closed = true;
+      return res;
     }
     return CollectAndPrintArgs(func_name, opts, 1,
                                ToCStr(FormatSqlReturn(ret_code)));
