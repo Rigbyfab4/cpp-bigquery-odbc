@@ -15,6 +15,7 @@
 #include "google/cloud/odbc/bq_driver/odbc_driver_metadata.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_fns.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_info.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_sql_primary_keys.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_type_info.h"
 #include "google/cloud/odbc/bq_driver/odbc_utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
@@ -22,16 +23,21 @@
 namespace google::cloud::odbc_bq_driver {
 
 using ::google::cloud::odbc_bq_driver_internal::ConnectionHandle;
+using ::google::cloud::odbc_bq_driver_internal::DSResults;
+using ::google::cloud::odbc_bq_driver_internal::FetchPrimaryKeysFromDataSource;
 using ::google::cloud::odbc_bq_driver_internal::IsFunctionIdOdbc2;
 using ::google::cloud::odbc_bq_driver_internal::IsFunctionIdOdbc3;
 using ::google::cloud::odbc_bq_driver_internal::kSqlApiAllFuncsSize;
 using ::google::cloud::odbc_bq_driver_internal::kTraceOption;
 using ::google::cloud::odbc_bq_driver_internal::PopulateSupportedODBC2Functions;
 using ::google::cloud::odbc_bq_driver_internal::PopulateSupportedODBC3Functions;
+using ::google::cloud::odbc_bq_driver_internal::ProcessQueryResults;
+using ::google::cloud::odbc_bq_driver_internal::ResultSet;
 using ::google::cloud::odbc_bq_driver_internal::SQLGetInfoBitmask;
 using ::google::cloud::odbc_bq_driver_internal::SQLGetInfoSqlChar;
 using ::google::cloud::odbc_bq_driver_internal::SQLGetInfoSqlUInt;
 using ::google::cloud::odbc_bq_driver_internal::SQLGetInfoSqlUSmallInt;
+using ::google::cloud::odbc_bq_driver_internal::StatementHandle;
 using ::google::cloud::odbc_bq_driver_internal::SupportedInfoType;
 using ::google::cloud::odbc_bq_driver_internal::TraceOptions;
 using ::google::cloud::odbc_bq_driver_internal::TracePrintInternal;
@@ -96,6 +102,10 @@ SQLRETURN HandleConnectionInformationTypes(SQLHDBC connection_handle,
                                                  in_buffer_len, str_len_ptr);
   delete[] info_val_char.info_val;
   return rc;
+}
+
+char* to_char_str(SQLCHAR const* sql_str) {
+  return reinterpret_cast<char*>(const_cast<SQLCHAR*>(sql_str));
 }
 
 }  // namespace
@@ -227,13 +237,50 @@ SQLRETURN SQLGetInfoInternal(SQLHDBC connection_handle, SQLUSMALLINT info_type,
   return status_record.CalculateReturnCode();
 }
 
-// NOLINTBEGIN(misc-unused-parameters)
-
-SQLRETURN SQLGetTypeInfoInternal(SQLHSTMT statementHandle,
-                                 SQLSMALLINT dataType) {
+SQLRETURN SQLGetTypeInfoInternal(SQLHSTMT /* stmt_handle */,
+                                 SQLSMALLINT /* data_type */) {
   return SQL_SUCCESS;
 }
 
-// NOLINTEND(misc-unused-parameters)
+SQLRETURN SQLPrimaryKeys(SQLHSTMT stmt_handle, SQLCHAR const* catalog_name,
+                         SQLSMALLINT catalog_name_len,
+                         SQLCHAR const* schema_name,
+                         SQLSMALLINT schema_name_len, SQLCHAR const* table_name,
+                         SQLSMALLINT table_name_len) {
+  SQLRETURN rc = SQL_SUCCESS;
+  StatusRecordOr<StatementHandle*> handle_result =
+      ValidateStatementHandle(stmt_handle);
+  if (!handle_result) {
+    TracePrintInternal(opts, handle_result.GetStatusRecord().message);
+    return handle_result.GetCalculatedReturnCode();
+  }
+
+  StatementHandle& handle = *(*handle_result);
+
+  // First fetch the primary keys from data source.
+  StatusRecordOr<DSResults> ds_status_record_or =
+      FetchPrimaryKeysFromDataSource(handle, to_char_str(catalog_name),
+                                     catalog_name_len, to_char_str(schema_name),
+                                     schema_name_len, to_char_str(table_name),
+                                     table_name_len);
+  if (!ds_status_record_or) {
+    auto status_record = ds_status_record_or.GetStatusRecord();
+    TracePrintInternal(opts, status_record.message);
+    handle.GetDiagnostics().AddStatusRecord(status_record);
+    return ds_status_record_or.GetCalculatedReturnCode();
+  }
+  // Process the DSResults and convert to ResultSet.
+  StatusRecordOr<ResultSet> rs_status_record_or =
+      ProcessQueryResults(*ds_status_record_or);
+  if (!rs_status_record_or) {
+    auto status_record = rs_status_record_or.GetStatusRecord();
+    TracePrintInternal(opts, status_record.message);
+    handle.GetDiagnostics().AddStatusRecord(status_record);
+    return rs_status_record_or.GetCalculatedReturnCode();
+  }
+  // Store the resultset in statement handle.
+  handle.SetResultSet(*rs_status_record_or);
+  return rc;
+}
 
 }  // namespace google::cloud::odbc_bq_driver

@@ -15,6 +15,7 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "google/cloud/odbc/testing/bq_driver_utils/handles.h"
+#include "google/cloud/odbc/testing/bq_driver_utils/status_utils.h"
 #include "google/cloud/odbc/testing/utils/status_matchers.h"
 #include <gtest/gtest.h>
 
@@ -24,13 +25,9 @@ using ::google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
 using google::cloud::odbc_testing_bq_driver_utils::CreateExplicitDescriptor;
+using ::google::cloud::odbc_testing_bq_driver_utils::GetLastStatusRecord;
 using google::cloud::odbc_testing_utils::StatusRecordIs;
 using ::testing::HasSubstr;
-
-StatusRecord GetLastStatusRecord(StatementHandle& handle) {
-  auto status_records = handle.GetDiagnostics().GetStatusRecords();
-  return status_records[status_records.size() - 1];
-}
 
 TEST(GetDescriptorHandle, GetARD_impl) {
   DescriptorHandle ard(DescriptorType::kARD, SQL_DESC_ALLOC_AUTO);
