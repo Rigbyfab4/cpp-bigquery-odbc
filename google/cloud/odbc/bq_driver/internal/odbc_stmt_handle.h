@@ -64,12 +64,20 @@ class StatementHandle : public Handle {
     result_set_ = result_set;
   }
 
+  [[nodiscard]] inline SQLSMALLINT GetParamCount() const {
+    return param_count_;
+  }
+  inline void SetParamCount(SQLSMALLINT param_count) {
+    param_count_ = param_count;
+  }
+
  private:
   std::shared_ptr<Query> query_;
   Descriptors descriptors_;
   std::map<int, SQLULEN> attributes_;
   ConnectionHandle* conn_handle_{nullptr};
   ResultSet result_set_;
+  SQLSMALLINT param_count_ = 0;
 };
 
 }  // namespace google::cloud::odbc_bq_driver_internal
