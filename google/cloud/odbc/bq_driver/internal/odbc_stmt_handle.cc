@@ -13,11 +13,16 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
+#include "google/cloud/odbc/bq_client_interface/odbc_bq_client.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_conn_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_desc_attr.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver_internal {
 
+using google::cloud::Options;
+using google::cloud::bigquery_v2_minimal_internal::QueryRequest;
+using google::cloud::bigquery_v2_minimal_internal::TableSchema;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
@@ -86,6 +91,58 @@ StatusRecord StatementHandle::SetAttribute(int attribute, SQLULEN value) {
     return status_record;
   }
   attributes_[attribute] = value;
+  return StatusRecord::Ok();
+}
+
+StatusRecord StatementHandle::PopulatResultSet(TableSchema const& schema) {
+  for (int i = 0; i < schema.fields.size(); ++i) {
+    auto const& field = schema.fields[i];
+    ColumnSchema column;
+
+    column.col_index = i;
+
+    StatusRecordOr<BQDataType> type_status_record = ConvertDSType(field.type);
+
+    if (!type_status_record.Ok()) {
+      return type_status_record.GetStatusRecord();
+    }
+
+    column.col_type = *type_status_record;
+    result_set_.row_schema.emplace_back(column);
+  }
+
+  return StatusRecord::Ok();
+}
+
+StatusRecord StatementHandle::PrepareQuery(const SQLCHAR* query_text) {
+  // TODO(b/342044533) Sanitize query text to avoid potential SQL Injection
+  // risk.
+  if (query_text == nullptr) {
+    return StatusRecord{SQLStates::k_HY000(), "Query text is null"};
+  }
+
+  QueryRequest req;
+
+  std::string query(reinterpret_cast<char const*>(query_text));
+
+  req.set_query(query).set_dry_run(true);
+  Options opt;
+
+  auto response = this->GetConnectionHandle()->GetClient()->Query(
+      GetConnectionHandle()->GetDsn().catalog, req, opt);
+
+  if (!response.Ok()) {
+    return response.GetStatusRecord();
+  }
+
+  auto& schema = response.GetValue().schema;
+  auto pop_response = PopulatResultSet(schema);
+
+  if (!pop_response.ok()) {
+    return pop_response;
+  }
+
+  query_str_ = query;
   return StatusRecord::Ok();
 }
 

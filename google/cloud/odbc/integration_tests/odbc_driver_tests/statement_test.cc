@@ -13,10 +13,23 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/testing/odbc_utils/statement.h"
+
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+#include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
+#endif
+
 #include "google/cloud/odbc/testing/odbc_utils/connection.h"
 #include "google/cloud/odbc/testing/odbc_utils/descriptor.h"
 
 namespace google::cloud::odbc_tests {
+
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+using google::cloud::odbc_bq_driver_internal::BQDataType;
+using google::cloud::odbc_bq_driver_internal::ColumnSchema;
+using google::cloud::odbc_bq_driver_internal::ResultSet;
+using google::cloud::odbc_bq_driver_internal::StatementHandle;
+#endif
 
 class StatementParameterizedTest : public ::testing::TestWithParam<bool> {};
 
@@ -1064,6 +1077,36 @@ TEST_P(StatementParameterizedTest, SetAndGetExplicitDescriptor) {
   EXPECT_EQ(arr_size_implicit, arr_size_new);
 
   EXPECT_EQ(SQLFreeHandle(SQL_HANDLE_DESC, desc_expl), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, SQLPrepare) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string query = "Select 1";
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+  // Cast hstmt to StatementHandle*
+  auto stmt_handle = static_cast<StatementHandle*>(conn->hstmt);
+
+  // Retrieve the result set
+  ResultSet const& result_set = stmt_handle->GetResultSet();
+
+  ASSERT_EQ(result_set.row_schema.size(), 1);
+
+  ColumnSchema const& column = result_set.row_schema[0];
+  EXPECT_EQ(column.col_index, 0);
+  EXPECT_EQ(column.col_type, BQDataType::kInt64);
+#endif
+
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

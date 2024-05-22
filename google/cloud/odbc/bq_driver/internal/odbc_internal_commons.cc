@@ -165,8 +165,56 @@ odbc_internal::StatusRecordOr<BQDataType> ConvertDSType(
   if (type == "STRING") {
     return BQDataType::kString;
   }
-  if (type == "INTEGER") {
+  if (type == "INTEGER" || type == "INT64") {
     return BQDataType::kInt64;
+  }
+  if (type == "BOOL" || type == "BOOLEAN") {
+    return BQDataType::kBool;
+  }
+  if (type == "FLOAT64") {
+    return BQDataType::kFloat64;
+  }
+  if (type == "DECIMAL" || type == "NUMERIC") {
+    return BQDataType::kNumeric;
+  }
+  if (type == "BYTES") {
+    return BQDataType::kBytes;
+  }
+  if (type == "DATE") {
+    return BQDataType::kDate;
+  }
+  if (type == "DATETIME") {
+    return BQDataType::kDatetime;
+  }
+  if (type == "TIME") {
+    return BQDataType::kTime;
+  }
+  if (type == "TIMESTAMP") {
+    return BQDataType::kTimeStamp;
+  }
+  if (type == "BIGNUMERIC") {
+    return BQDataType::kBigNumeric;
+  }
+  if (type == "RANGE") {
+    return BQDataType::kRange;
+  }
+  if (type == "STRUCT") {
+    return BQDataType::kStruct;
+  }
+  if (type == "JSON") {
+    return BQDataType::kJson;
+  }
+  if (type == "NULL") {
+    return BQDataType::kNull;
+  }
+  if (type == "INTERVAL") {
+    return BQDataType::kInterval;
+  }
+  if (type == "GEOGRAPHY") {
+    return BQDataType::kGeography;
+  }
+  if (type == "ARRAY") {
+    return BQDataType::kArray;
   }
   std::string err_msg = "Invalid Data Type: ";
   err_msg.append(type);
