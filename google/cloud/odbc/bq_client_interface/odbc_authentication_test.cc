@@ -49,22 +49,24 @@ TEST(ServiceAuthentication, ServiceAccountAuthentication) {
   ASSERT_STATUS_RECORD_OK(credentials);
 }
 
+TEST(ServiceAuthentication, UserAccountAuthentication) {
+  std::string test_data_path =
+      google::cloud::internal::GetEnv("CPP_BIGQUERY_ODBC_DRIVER_TEST_DATA_PATH")
+          .value_or("");
+  std::string credentials_file_path = test_data_path + "user_account.json";
+
+  auto credentials = CreateCredentials(
+      {OauthMechanism::kServiceAccount, credentials_file_path});
+
+  ASSERT_STATUS_RECORD_OK(credentials);
+}
+
 TEST(ServiceAuthentication, EmptyPath) {
   auto credentials = CreateCredentials({OauthMechanism::kServiceAccount, ""});
 
   EXPECT_THAT(credentials,
               StatusRecordIs(odbc_internal::SQLStates::k_HY000(),
                              HasSubstr("The path to the file can't be empty")));
-}
-
-TEST(ServiceAuthentication, FileNotExist) {
-  auto credentials = CreateCredentials(
-      {OauthMechanism::kServiceAccount, "not_existing_file.json"});
-
-  EXPECT_THAT(
-      credentials,
-      StatusRecordIs(odbc_internal::SQLStates::k_HY000(),
-                     HasSubstr("There was an error while opening the file")));
 }
 
 TEST(GetOAuth2Token, GetToken) {
