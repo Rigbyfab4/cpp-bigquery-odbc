@@ -49,11 +49,21 @@ StatusRecordOr<std::shared_ptr<Credentials>> CreateServiceCredentials(
   return ::google::cloud::MakeGoogleDefaultCredentials();
 }
 
+StatusRecordOr<std::shared_ptr<Credentials>>
+CreateApplicationDefaultCredentials() {
+  // C++ client library in google-cloud-cpp first checks
+  // GOOGLE_APPLICATION_CREDENTIALS env var and use it if it's present. Then it
+  // looks for a 'default' location of the file with credentials.
+  return ::google::cloud::MakeGoogleDefaultCredentials();
+}
+
 StatusRecordOr<std::shared_ptr<Credentials>> CreateCredentials(
     Oauth const& oauth) {
   switch (oauth.auth_mechanism) {
     case OauthMechanism::kServiceAccount:
       return CreateServiceCredentials(oauth.credentials_file_path);
+    case OauthMechanism::kApplicationDefault:
+      return CreateApplicationDefaultCredentials();
     case OauthMechanism::kExternalUser:
       return StatusRecord{SQLStates::k_HY000(), "Currently not implemented"};
   }

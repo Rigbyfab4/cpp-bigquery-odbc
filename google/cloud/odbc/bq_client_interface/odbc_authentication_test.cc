@@ -61,6 +61,13 @@ TEST(ServiceAuthentication, UserAccountAuthentication) {
   ASSERT_STATUS_RECORD_OK(credentials);
 }
 
+TEST(DefaultApplicationAuthentication, DefaultApplicationAuthentication) {
+  auto credentials =
+      CreateCredentials({OauthMechanism::kApplicationDefault, ""});
+
+  ASSERT_STATUS_RECORD_OK(credentials);
+}
+
 TEST(ServiceAuthentication, EmptyPath) {
   auto credentials = CreateCredentials({OauthMechanism::kServiceAccount, ""});
 
