@@ -95,6 +95,7 @@ TraceOptions::CreateTraceOptionsFile(
       options_file_->trace_file.open(log_file,
                                      std::ofstream::out | std::ofstream::app);
       options_file_->log_file = log_file;
+      options_file_->is_file_closed = false;
     }
     if (!options_file_->trace_file.is_open()) {
       std::string msg = "Cannot open log file: ";
@@ -107,8 +108,11 @@ TraceOptions::CreateTraceOptionsFile(
 }
 
 StatusRecordOr<std::shared_ptr<TraceOptions>> TraceOptions::GetTraceOption() {
-  if (options_file_ != nullptr) {
+  if (options_file_ != nullptr && !options_file_->log_file.empty()) {
     return options_file_;
+  }
+  if (options_file_ != nullptr && options_file_->log_file.empty()) {
+    return options_console_;
   }
   if (options_console_ != nullptr) {
     return options_console_;
