@@ -57,6 +57,20 @@ TEST(TraceLoggingFile, TraceOptionsFromConfigTraceEnabled) {
   (*test_opts_file)->trace_file.close();
 }
 
+TEST(TraceLogginfFile, TraceOptionsFromConfigLogfileClosed) {
+  auto config_sections = std::make_shared<Sections>(kConfigSections1);
+  StatusRecordOr<std::shared_ptr<TraceOptions>> test_opts_file =
+      TraceOptions::CreateTraceOptionsFile(config_sections);
+  ASSERT_STATUS_RECORD_OK(test_opts_file);
+
+  std::string fmt1 = FormatSqlReturn(1);
+  EXPECT_EQ("SQLAllocHandle_Exit\t\tSQLRETURN, 1\n",
+            ExitInternal("SQLAllocHandle_Exit", 1, *(*test_opts_file)));
+
+  EXPECT_TRUE((*test_opts_file)->is_file_closed);
+  EXPECT_FALSE((*test_opts_file)->trace_file.is_open());
+}
+
 TEST(TraceLoggingFile, TraceOptionsFromConfigTraceDisabled) {
   auto config_sections = std::make_shared<Sections>(kConfigSections2);
   StatusRecordOr<std::shared_ptr<TraceOptions>> test_opts_file =

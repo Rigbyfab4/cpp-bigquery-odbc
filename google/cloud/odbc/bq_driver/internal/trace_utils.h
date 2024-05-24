@@ -100,7 +100,9 @@ struct TraceOptions {
 
   // Shared members.
   bool logging_enabled;
+  bool is_file_closed;
   int log_level{0};
+  std::string log_file;
   std::ofstream trace_file;
   std::mutex
       m;  // Used for guarding any logging operations with file or stdout.

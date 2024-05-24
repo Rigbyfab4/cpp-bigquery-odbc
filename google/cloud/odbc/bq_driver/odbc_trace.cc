@@ -42,6 +42,11 @@ void TraceFunctionEntry_SQLAllocHandle(SQLSMALLINT handle_type,
                                        SQLHANDLE* output_handle,
                                        TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLAllocHandle_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(handle_type)),
@@ -67,6 +72,11 @@ void TraceFunctionEntry_SQLDriverConnect(
     SQLSMALLINT* out_conn_str_len, SQLUSMALLINT driver_completion,
     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLDriverConnect_Entry", opts, 9,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -118,6 +128,11 @@ void TraceFunctionEntry_SQLBrowseConnect(SQLHDBC connection_handle,
                                          SQLSMALLINT* out_conn_str_len,
                                          TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLBrowseConnect_Entry", opts, 7,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -164,6 +179,11 @@ void TraceFunctionEntry_SQLConnect(
     const SQLCHAR* auth_str, SQLSMALLINT auth_str_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
     // Not printing auth string.
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       if (auth_str && auth_str_len > 0) {
         CollectAndPrintArgsFile("SQLConnect_Entry", opts, 6,
@@ -228,6 +248,11 @@ void TraceFunctionEntry_SQLGetInfo(SQLHDBC connection_handle,
                                    SQLSMALLINT* info_value_str_len,
                                    TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetInfo_Entry", opts, 6,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -268,6 +293,11 @@ void TraceFunctionEntry_SQLGetFunctions(SQLHDBC connection_handle,
                                         SQLUSMALLINT* supported_fn,
                                         TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetFunctions_Entry", opts, 4,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -292,6 +322,11 @@ void TraceFunctionEntry_SQLGetTypeInfo(SQLHSTMT statement_handle,
                                        SQLSMALLINT data_type,
                                        TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetTypeInfo_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -315,6 +350,11 @@ void TraceFunctionEntry_SQLSetConnectAttr(SQLHDBC connection_handle,
                                           SQLINTEGER value_str_len,
                                           TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSetConnectAttr_Entry", opts, 5,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -354,6 +394,11 @@ void TraceFunctionEntry_SQLGetConnectAttr(SQLHDBC connection_handle,
                                           SQLINTEGER* value_str_len,
                                           TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetConnectAttr_Entry", opts, 6,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -395,6 +440,11 @@ void TraceFunctionEntry_SQLSetStmtAttr(SQLHSTMT statement_handle,
                                        SQLINTEGER value_str_len,
                                        TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSetStmtAttr_Entry", opts, 5,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -432,6 +482,11 @@ void TraceFunctionEntry_SQLGetStmtAttr(SQLHSTMT statement_handle,
                                        SQLINTEGER* value_str_len,
                                        TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetStmtAttr_Entry", opts, 6,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -471,6 +526,11 @@ void TraceFunctionEntry_SQLSetEnvAttr(SQLHENV env_handle, SQLINTEGER attr,
                                       SQLINTEGER value_str_len,
                                       TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSetEnvAttr_Entry", opts, 5,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_ENV)),
@@ -499,6 +559,11 @@ void TraceFunctionEntry_SQLGetEnvAttr(SQLHENV env_handle, SQLINTEGER attr,
                                       SQLINTEGER* value_str_len,
                                       TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetEnvAttr_Entry", opts, 6,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_ENV)),
@@ -528,6 +593,11 @@ void TraceFunctionEntry_SQLGetDescField(
     SQLPOINTER out_desc_val, SQLINTEGER out_desc_val_buf_len,
     SQLINTEGER* out_desc_val_str_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetDescField_Entry", opts, 7,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
@@ -570,6 +640,11 @@ void TraceFunctionEntry_SQLGetDescRec(
     SQLSMALLINT* desc_sub_type, SQLLEN* desc_oct_len, SQLSMALLINT* desc_prec,
     SQLSMALLINT* desc_sc, SQLSMALLINT* nullable, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetDescRec_Entry", opts, 12,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
@@ -620,6 +695,11 @@ void TraceFunctionEntry_SQLSetDescField(
     SQLHDESC desc_handle, SQLSMALLINT rec_no, SQLSMALLINT field_identifier,
     SQLPOINTER desc_val, SQLINTEGER desc_val_buf_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSetDescField_Entry", opts, 6,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
@@ -659,6 +739,11 @@ void TraceFunctionEntry_SQLSetDescRec(
     SQLSMALLINT desc_sc, SQLPOINTER desc_data, SQLLEN* desc_oct_len_ptr,
     SQLLEN* desc_ind, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSetDescRec_Entry", opts, 11,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
@@ -697,6 +782,11 @@ void TraceFunctionEntry_SQLCopyDesc(SQLHDESC src_desc_handle,
                                     SQLHDESC target_desc_handle,
                                     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLCopyDesc_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DESC)),
@@ -719,6 +809,11 @@ void TraceFunctionEntry_SQLPrepare(SQLHSTMT statement_handle, SQLCHAR* stmt_txt,
                                    SQLINTEGER stmt_txt_len,
                                    TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLPrepare_Entry", opts, 4,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -754,6 +849,11 @@ void TraceFunctionEntry_SQLBindParameter(
     SQLLEN param_data_val_buf_len, SQLLEN* param_data_val_str_len,
     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLBindParameter_Entry", opts, 11,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -795,6 +895,11 @@ void TraceFunctionEntry_SQLGetCursorName(SQLHSTMT statement_handle,
                                          SQLSMALLINT* cur_name_str_len,
                                          TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetCursorName_Entry", opts, 5,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -834,6 +939,11 @@ void TraceFunctionEntry_SQLSetCursorName(SQLHSTMT statement_handle,
                                          SQLSMALLINT cur_name_len,
                                          TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSetCursorName_Entry", opts, 4,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -868,6 +978,11 @@ void TraceFunctionExit_SQLSetCursorNameW(SQLRETURN ret_code,
 void TraceFunctionEntry_SQLExecute(SQLHSTMT statement_handle,
                                    TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLExecute_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -889,6 +1004,11 @@ void TraceFunctionEntry_SQLExecDirect(SQLHSTMT statement_handle,
                                       SQLINTEGER stmt_txt_len,
                                       TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLExecDirect_Entry", opts, 4,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -923,6 +1043,11 @@ void TraceFunctionEntry_SQLNativeSql(
     SQLCHAR* out_stmt_txt, SQLINTEGER out_stmt_txt_buf_len,
     SQLINTEGER* out_stmt_txt_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLNativeSql_Entry", opts, 7,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -965,6 +1090,11 @@ void TraceFunctionEntry_SQLNumParams(SQLHSTMT statement_handle,
                                      SQLSMALLINT* param_count,
                                      TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLNumParams_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -987,6 +1117,11 @@ void TraceFunctionEntry_SQLParamData(SQLHSTMT statement_handle,
                                      SQLPOINTER* param_or_tgt_val,
                                      TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLParamData_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1009,6 +1144,11 @@ void TraceFunctionEntry_SQLPutData(SQLHSTMT statement_handle,
                                    SQLPOINTER param_data, SQLLEN param_data_len,
                                    TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLPutData_Entry", opts, 4,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1034,6 +1174,11 @@ void TraceFunctionEntry_SQLDescribeParam(
     SQLSMALLINT* param_sql_type, SQLULEN* param_sz, SQLSMALLINT* param_scale,
     SQLSMALLINT* param_nullable, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLDescribeParam_Entry", opts, 7,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1066,6 +1211,11 @@ void TraceFunctionEntry_SQLGetData(
     SQLPOINTER target_val, SQLLEN target_val_buf_len,
     SQLLEN* target_val_str_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetData_Entry", opts, 7,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1096,6 +1246,11 @@ void TraceFunctionEntry_SQLNumResultCols(SQLHSTMT statement_handle,
                                          SQLSMALLINT* col_count,
                                          TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLNumResultCols_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1118,6 +1273,11 @@ void TraceFunctionExit_SQLNumResultCols(SQLRETURN ret_code,
 void TraceFunctionEntry_SQLFetch(SQLHSTMT statement_handle,
                                  TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLFetch_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1141,6 +1301,11 @@ void TraceFunctionEntry_SQLExtendedFetch(SQLHSTMT statement_handle,
                                          SQLUSMALLINT* row_status_arr,
                                          TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLExtendedFetch_Entry", opts, 6,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1172,6 +1337,11 @@ void TraceFunctionEntry_SQLColAttribute(
     SQLSMALLINT char_attr_buf_len, SQLSMALLINT* char_attr_str_len,
     SQLLEN* numeric_attr, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLColAttribute_Entry", opts, 8,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1217,6 +1387,11 @@ void TraceFunctionEntry_SQLColAttributes(
     SQLSMALLINT char_attr_buf_len, SQLSMALLINT* char_attr_str_len,
     SQLLEN* numeric_attr, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLColAttributes_Entry", opts, 8,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1263,6 +1438,11 @@ void TraceFunctionEntry_SQLDescribeCol(
     SQLSMALLINT* col_sql_data_type, SQLULEN* col_sz, SQLSMALLINT* dec_digits,
     SQLSMALLINT* col_nullable, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile(
           "SQLDescribeCol_Entry", opts, 10,
@@ -1308,6 +1488,11 @@ void TraceFunctionEntry_SQLBindCol(
     SQLPOINTER target_val, SQLLEN target_val_buf_len,
     SQLLEN* target_val_str_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLBindCol_Entry", opts, 7,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1337,6 +1522,11 @@ void TraceFunctionExit_SQLBindCol(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLRowCount(SQLHSTMT statement_handle,
                                     SQLLEN* row_count, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLRowCount_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1360,6 +1550,11 @@ void TraceFunctionEntry_SQLFetchScroll(SQLHSTMT statement_handle,
                                        SQLLEN fetch_offset,
                                        TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLFetchScroll_Entry", opts, 4,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1383,6 +1578,11 @@ void TraceFunctionExit_SQLFetchScroll(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLMoreResults(SQLHSTMT statement_handle,
                                        TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLMoreResults_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1404,6 +1604,11 @@ void TraceFunctionEntry_SQLGetDiagField(
     SQLSMALLINT diag_id, SQLPOINTER diag_info, SQLSMALLINT diag_info_buf_len,
     SQLSMALLINT* diag_info_str_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLGetDiagField_Entry", opts, 7,
                               ToCStr(FormatSqlHandleType(handle_type)),
@@ -1447,6 +1652,11 @@ void TraceFunctionEntry_SQLGetDiagRec(SQLSMALLINT handle_type, SQLHANDLE handle,
                                       SQLSMALLINT* msg_txt_len,
                                       TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile(
           "SQLGetDiagRec_Entry", opts, 8,
@@ -1490,6 +1700,11 @@ void TraceFunctionEntry_SQLColumns(
     SQLSMALLINT table_name_len, SQLCHAR* col_name, SQLSMALLINT col_name_len,
     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLColumns_Entry", opts, 10,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1540,6 +1755,11 @@ void TraceFunctionEntry_SQLTables(
     SQLSMALLINT table_name_len, SQLCHAR* table_type, SQLSMALLINT table_type_len,
     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLTables_Entry", opts, 10,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1589,6 +1809,11 @@ void TraceFunctionEntry_SQLPrimaryKeys(
     SQLSMALLINT schema_name_len, SQLCHAR* table_name,
     SQLSMALLINT table_name_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLPrimaryKeys_Entry", opts, 8,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1633,6 +1858,11 @@ void TraceFunctionEntry_SQLProcedureColumns(
     SQLSMALLINT schema_name_len, SQLCHAR* proc_name, SQLSMALLINT proc_name_len,
     SQLCHAR* col_name, SQLSMALLINT col_name_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLProcedureColumns_Entry", opts, 10,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1683,6 +1913,11 @@ void TraceFunctionEntry_SQLProcedures(
     SQLSMALLINT schema_name_len, SQLCHAR* proc_name, SQLSMALLINT proc_name_len,
     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLProcedures_Entry", opts, 8,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1728,6 +1963,11 @@ void TraceFunctionEntry_SQLSpecialColumns(
     SQLSMALLINT table_name_len, SQLUSMALLINT min_rowid_scope,
     SQLUSMALLINT col_nullable, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSpecialColumns_Entry", opts, 11,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1782,6 +2022,11 @@ void TraceFunctionEntry_SQLStatistics(
     SQLSMALLINT table_name_len, SQLUSMALLINT index_type, SQLUSMALLINT reserved,
     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLStatistics_Entry", opts, 10,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1831,6 +2076,11 @@ void TraceFunctionEntry_SQLTablePrivileges(
     SQLSMALLINT schema_name_len, SQLCHAR* table_name,
     SQLSMALLINT table_name_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLTablePrivileges_Entry", opts, 8,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1880,6 +2130,11 @@ void TraceFunctionEntry_SQLForeignKeys(
     SQLSMALLINT fk_schema_name_len, SQLCHAR* fk_table_name,
     SQLSMALLINT fk_table_name_len, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLForeignKeys_Entry", opts, 14,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1940,6 +2195,11 @@ void TraceFunctionEntry_SQLColumnPrivileges(
     SQLSMALLINT table_name_len, SQLCHAR* col_name, SQLSMALLINT col_name_len,
     TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLColumnPrivileges_Entry", opts, 10,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -1988,6 +2248,11 @@ void TraceFunctionExit_SQLColumnPrivilegesW(SQLRETURN ret_code,
 void TraceFunctionEntry_SQLFreeStmt(SQLHSTMT statement_handle,
                                     SQLUSMALLINT option, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLFreeStmt_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -2010,6 +2275,11 @@ void TraceFunctionEntry_SQLEndTran(SQLSMALLINT handle_type, SQLHANDLE handle,
                                    SQLSMALLINT completion_type,
                                    TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLEndTran_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(handle_type)),
@@ -2031,6 +2301,11 @@ void TraceFunctionExit_SQLEndTran(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLCancel(SQLHSTMT statement_handle,
                                   TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLCancel_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -2050,6 +2325,11 @@ void TraceFunctionExit_SQLCancel(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLCloseCursor(SQLHSTMT statement_handle,
                                        TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLCloseCursor_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -2069,6 +2349,11 @@ void TraceFunctionExit_SQLCloseCursor(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLDisconnect(SQLHDBC connection_handle,
                                       TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLDisconnect_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_DBC)),
@@ -2088,6 +2373,11 @@ void TraceFunctionExit_SQLDisconnect(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLFreeHandle(SQLSMALLINT handle_type, SQLHANDLE handle,
                                       TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLFreeHandle_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(handle_type)),
@@ -2107,6 +2397,11 @@ void TraceFunctionExit_SQLFreeHandle(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLCancelHandle(SQLSMALLINT handle_type,
                                         SQLHANDLE handle, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLCancelHandle_Entry", opts, 2,
                               ToCStr(FormatSqlHandleType(handle_type)),
@@ -2127,6 +2422,11 @@ void TraceFunctionEntry_SQLSetPos(SQLHSTMT statement_handle,
                                   SQLSETPOSIROW row_number, SQLUSMALLINT op,
                                   SQLUSMALLINT lock_type, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLSetPos_Entry", opts, 5,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
@@ -2152,6 +2452,11 @@ void TraceFunctionExit_SQLSetPos(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLBulkOperations(SQLHSTMT statement_handle,
                                           SQLSMALLINT op, TraceOptions& opts) {
   if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
     if (opts.trace_file.is_open()) {
       CollectAndPrintArgsFile("SQLBulkOperations_Entry", opts, 3,
                               ToCStr(FormatSqlHandleType(SQL_HANDLE_STMT)),
