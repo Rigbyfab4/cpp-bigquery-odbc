@@ -79,6 +79,60 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   }
 }
 
+ConnectionHandle::ConnectionHandle(ConnectionHandle const& connectionHandle)
+    : Handle(connectionHandle) {
+  client_ = connectionHandle.client_;
+  dsn_ = connectionHandle.dsn_;
+  auth_ = connectionHandle.auth_;
+  attribute_str_values_ = connectionHandle.attribute_str_values_;
+  is_connected_ = connectionHandle.is_connected_;
+  // These are pointer structure and shallow copy is only done for now, deep
+  // copy can be done as a follow-up.
+  attribute_values_ = connectionHandle.attribute_values_;
+  stmt_handles_ = connectionHandle.stmt_handles_;
+  desc_handles_ = connectionHandle.desc_handles_;
+}
+
+ConnectionHandle& ConnectionHandle::operator=(
+    ConnectionHandle const& connectionHandle) {
+  if (this != &connectionHandle) {
+    client_ = connectionHandle.client_;
+    dsn_ = connectionHandle.dsn_;
+    auth_ = connectionHandle.auth_;
+    attribute_str_values_ = connectionHandle.attribute_str_values_;
+    attribute_values_ = connectionHandle.attribute_values_;
+    stmt_handles_ = connectionHandle.stmt_handles_;
+    desc_handles_ = connectionHandle.desc_handles_;
+    is_connected_ = connectionHandle.is_connected_;
+    return *this;
+  }
+}
+
+ConnectionHandle::ConnectionHandle(
+    ConnectionHandle&& connectionHandle) noexcept {
+  client_ = std::move(connectionHandle.client_);
+  dsn_ = std::move(connectionHandle.dsn_);
+  auth_ = std::move(connectionHandle.auth_);
+  attribute_str_values_ = std::move(connectionHandle.attribute_str_values_);
+  attribute_values_ = std::move(connectionHandle.attribute_values_);
+  stmt_handles_ = std::move(connectionHandle.stmt_handles_);
+  desc_handles_ = std::move(connectionHandle.desc_handles_);
+  is_connected_ = std::move(connectionHandle.is_connected_);
+}
+
+ConnectionHandle& ConnectionHandle::operator=(
+    ConnectionHandle&& connectionHandle) noexcept {
+  client_ = std::move(connectionHandle.client_);
+  dsn_ = std::move(connectionHandle.dsn_);
+  auth_ = std::move(connectionHandle.auth_);
+  attribute_str_values_ = std::move(connectionHandle.attribute_str_values_);
+  attribute_values_ = std::move(connectionHandle.attribute_values_);
+  stmt_handles_ = std::move(connectionHandle.stmt_handles_);
+  desc_handles_ = std::move(connectionHandle.desc_handles_);
+  is_connected_ = std::move(connectionHandle.is_connected_);
+  return *this;
+}
+
 StatusRecord ConnectionHandle::Connect(Authentication& auth) {
   Oauth oauth;
   oauth.auth_mechanism = auth.auth_mechanism;

@@ -12,8 +12,71 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "odbc_lock.h"
+#include "google/cloud/odbc/bq_driver/odbc_lock.h"
 
 namespace google::cloud::odbc_bq_driver {
+
+using ::google::cloud::odbc_bq_driver_internal::ConnectionHandle;
+using ::google::cloud::odbc_bq_driver_internal::DescriptorHandle;
+using ::google::cloud::odbc_bq_driver_internal::EnvironmentHandle;
+using ::google::cloud::odbc_bq_driver_internal::StatementHandle;
+
+void AcquireHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType) {
+  if (handle) {
+    switch (handleType) {
+      case SQL_HANDLE_ENV: {
+        auto* env_handle_ptr = reinterpret_cast<EnvironmentHandle*>(handle);
+        env_handle_ptr->GetMutex().lock();
+        break;
+      }
+      case SQL_HANDLE_DBC: {
+        auto* conn_handle_ptr = reinterpret_cast<ConnectionHandle*>(handle);
+        conn_handle_ptr->GetMutex().lock();
+        break;
+      }
+      case SQL_HANDLE_STMT: {
+        auto* stmt_handle_ptr = reinterpret_cast<StatementHandle*>(handle);
+        stmt_handle_ptr->GetMutex().lock();
+        break;
+      }
+      case SQL_HANDLE_DESC: {
+        auto* desc_handle_ptr = reinterpret_cast<DescriptorHandle*>(handle);
+        desc_handle_ptr->GetMutex().lock();
+        break;
+      }
+      default:
+        std::cout << "Unknown Handle Type to Acquire the lock" << std::endl;
+    }
+  }
+}
+
+void ReleaseHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType) {
+  if (handle) {
+    switch (handleType) {
+      case SQL_HANDLE_ENV: {
+        auto* env_handle_ptr = reinterpret_cast<EnvironmentHandle*>(handle);
+        env_handle_ptr->GetMutex().unlock();
+        break;
+      }
+      case SQL_HANDLE_DBC: {
+        auto* conn_handle_ptr = reinterpret_cast<ConnectionHandle*>(handle);
+        conn_handle_ptr->GetMutex().unlock();
+        break;
+      }
+      case SQL_HANDLE_STMT: {
+        auto* stmt_handle_ptr = reinterpret_cast<StatementHandle*>(handle);
+        stmt_handle_ptr->GetMutex().unlock();
+        break;
+      }
+      case SQL_HANDLE_DESC: {
+        auto* desc_handle_ptr = reinterpret_cast<DescriptorHandle*>(handle);
+        desc_handle_ptr->GetMutex().unlock();
+        break;
+      }
+      default:
+        std::cout << "Unknown Handle Type to Release the lock" << std::endl;
+    }
+  }
+}
 
 }  // namespace google::cloud::odbc_bq_driver

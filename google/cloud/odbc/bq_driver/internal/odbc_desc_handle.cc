@@ -22,6 +22,48 @@ using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
 
+DescriptorHandle::DescriptorHandle(DescriptorHandle const& descriptorHandle)
+    : Handle(descriptorHandle),
+      type_(descriptorHandle.type_),
+      header_record_(descriptorHandle.header_record_) {
+  descriptor_records_ = descriptorHandle.descriptor_records_;
+  // These are pointer structure and shallow copy is only done for now, deep
+  // copy can be done as a follow-up.
+  associated_stmt_handles_ = descriptorHandle.associated_stmt_handles_;
+  conn_handle_ = descriptorHandle.conn_handle_;
+}
+
+DescriptorHandle& DescriptorHandle::operator=(
+    DescriptorHandle const& descriptorHandle) {
+  if (this != &descriptorHandle) {
+    type_ = descriptorHandle.type_;
+    header_record_ = descriptorHandle.header_record_;
+    descriptor_records_ = descriptorHandle.descriptor_records_;
+    associated_stmt_handles_ = descriptorHandle.associated_stmt_handles_;
+    conn_handle_ = descriptorHandle.conn_handle_;
+  }
+  return *this;
+}
+DescriptorHandle::DescriptorHandle(DescriptorHandle&& descriptorHandle) noexcept
+    : type_(std::move(descriptorHandle.type_)),
+      header_record_(std::move(descriptorHandle.header_record_)) {
+  descriptor_records_ = std::move(descriptorHandle.descriptor_records_);
+  associated_stmt_handles_ =
+      std::move(descriptorHandle.associated_stmt_handles_);
+  conn_handle_ = std::move(descriptorHandle.conn_handle_);
+}
+
+DescriptorHandle& DescriptorHandle::operator=(
+    DescriptorHandle&& descriptorHandle) noexcept {
+  type_ = std::move(descriptorHandle.type_);
+  header_record_ = std::move(descriptorHandle.header_record_);
+  descriptor_records_ = std::move(descriptorHandle.descriptor_records_);
+  associated_stmt_handles_ =
+      std::move(descriptorHandle.associated_stmt_handles_);
+  conn_handle_ = std::move(descriptorHandle.conn_handle_);
+  return *this;
+}
+
 void DescriptorHandle::BindNewDescriptorRecord(
     SQLSMALLINT index, DescriptorRecord descriptor_record) {
   descriptor_records_[index] = std::move(descriptor_record);
