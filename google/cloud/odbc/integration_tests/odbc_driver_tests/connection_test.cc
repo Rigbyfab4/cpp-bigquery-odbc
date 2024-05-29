@@ -442,13 +442,14 @@ void CreateDriverConnection() {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 TEST(MultipleConnectionTest, SQLDriverConnect) {
-  std::thread threads[50];
+  int const number_of_threads = 50;
+  std::thread threads[number_of_threads];
 
-  for (int i = 0; i < 50; i++) {
+  for (int i = 0; i < number_of_threads; i++) {
     threads[i] = std::thread(CreateDriverConnection);
   }
 
-  for (int i = 0; i < 50; i++) {
+  for (int i = 0; i < number_of_threads; i++) {
     threads[i].join();
   }
 }

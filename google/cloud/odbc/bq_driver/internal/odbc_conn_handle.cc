@@ -86,8 +86,8 @@ ConnectionHandle::ConnectionHandle(ConnectionHandle const& connectionHandle)
   auth_ = connectionHandle.auth_;
   attribute_str_values_ = connectionHandle.attribute_str_values_;
   is_connected_ = connectionHandle.is_connected_;
-  // These are pointer structure and shallow copy is only done for now, deep
-  // copy can be done as a follow-up.
+  // These are pointer structure and shallow copy is only done for now,
+  // deep copy can be done as a follow-up.
   attribute_values_ = connectionHandle.attribute_values_;
   stmt_handles_ = connectionHandle.stmt_handles_;
   desc_handles_ = connectionHandle.desc_handles_;
@@ -100,10 +100,12 @@ ConnectionHandle& ConnectionHandle::operator=(
     dsn_ = connectionHandle.dsn_;
     auth_ = connectionHandle.auth_;
     attribute_str_values_ = connectionHandle.attribute_str_values_;
+    is_connected_ = connectionHandle.is_connected_;
+    // These are pointer structure and shallow copy is only done for now,
+    // deep copy can be done as a follow-up.
     attribute_values_ = connectionHandle.attribute_values_;
     stmt_handles_ = connectionHandle.stmt_handles_;
     desc_handles_ = connectionHandle.desc_handles_;
-    is_connected_ = connectionHandle.is_connected_;
     return *this;
   }
 }

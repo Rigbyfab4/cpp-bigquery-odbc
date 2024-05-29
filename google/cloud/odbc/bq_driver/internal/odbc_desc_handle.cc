@@ -27,8 +27,8 @@ DescriptorHandle::DescriptorHandle(DescriptorHandle const& descriptorHandle)
       type_(descriptorHandle.type_),
       header_record_(descriptorHandle.header_record_) {
   descriptor_records_ = descriptorHandle.descriptor_records_;
-  // These are pointer structure and shallow copy is only done for now, deep
-  // copy can be done as a follow-up.
+  // These are pointer structure and shallow copy is only done for now,
+  // deep copy can be done as a follow-up.
   associated_stmt_handles_ = descriptorHandle.associated_stmt_handles_;
   conn_handle_ = descriptorHandle.conn_handle_;
 }
@@ -39,6 +39,8 @@ DescriptorHandle& DescriptorHandle::operator=(
     type_ = descriptorHandle.type_;
     header_record_ = descriptorHandle.header_record_;
     descriptor_records_ = descriptorHandle.descriptor_records_;
+    // These are pointer structure and shallow copy is only done for now,
+    // deep copy can be done as a follow-up.
     associated_stmt_handles_ = descriptorHandle.associated_stmt_handles_;
     conn_handle_ = descriptorHandle.conn_handle_;
   }
