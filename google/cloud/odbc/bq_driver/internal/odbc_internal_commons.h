@@ -20,6 +20,7 @@
 #include "google/cloud/odbc/internal/odbc_includes.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "absl/types/variant.h"
+#include <chrono>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -133,7 +134,7 @@ odbc_internal::StatusRecordOr<DSResults> FetchBQData(
 
 odbc_internal::StatusRecordOr<ResultSet> ProcessResultSetRows(
     google::cloud::bigquery_v2_minimal_internal::TableSchema const& schema,
-    std::vector<google::cloud::bigquery_v2_minimal_internal::Struct> const&
+    std::vector<google::cloud::bigquery_v2_minimal_internal::RowData> const&
         rows);
 
 odbc_internal::StatusRecordOr<ResultSet> ProcessPostQueryResults(

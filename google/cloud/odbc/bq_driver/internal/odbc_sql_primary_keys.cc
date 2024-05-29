@@ -109,6 +109,7 @@ StatusRecordOr<DSResults> FetchPrimaryKeysFromDataSource(
   // Set billing info and query request.
   post_request.set_project_id(catalog_name);
   post_request.set_query_request(query_request);
+
   // Fetch BQ Data using the query request above.
   ConnectionHandle& conn_handle = *(stmt_handle.GetConnectionHandle());
   auto status_record_or = FetchBQData(conn_handle, post_request);
