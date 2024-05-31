@@ -121,10 +121,10 @@ class EnvironmentHandle : public Handle {
   explicit EnvironmentHandle();
   ~EnvironmentHandle() = default;
 
-  EnvironmentHandle(EnvironmentHandle const&) = default;
-  EnvironmentHandle& operator=(EnvironmentHandle const&) = default;
-  EnvironmentHandle(EnvironmentHandle&&) = default;
-  EnvironmentHandle& operator=(EnvironmentHandle&&) = default;
+  EnvironmentHandle(EnvironmentHandle const& environmentHandle);
+  EnvironmentHandle& operator=(EnvironmentHandle const& environmentHandle);
+  EnvironmentHandle(EnvironmentHandle&& environmentHandle) noexcept;
+  EnvironmentHandle& operator=(EnvironmentHandle&& environmentHandle) noexcept;
 
   SQLRETURN GetAttribute(SQLINTEGER attribute, void* value, void* length);
 

@@ -48,17 +48,17 @@ class StatementHandle : public Handle {
   explicit StatementHandle(ConnectionHandle* conn_handle = nullptr)
       : conn_handle_(conn_handle){};
   explicit StatementHandle(ConnectionHandle* conn_handle,
-                           Descriptors descriptors)
+                           Descriptors const& descriptors)
       : conn_handle_(conn_handle),
         descriptors_(std::move(descriptors)),
         attributes_(kDefaultAttributes){};
 
   ~StatementHandle() = default;
 
-  StatementHandle(StatementHandle const&) = default;
-  StatementHandle& operator=(StatementHandle const&) = default;
-  StatementHandle(StatementHandle&&) = default;
-  StatementHandle& operator=(StatementHandle&&) = default;
+  StatementHandle(StatementHandle const& statementHandle);
+  StatementHandle& operator=(StatementHandle const& statementHandle);
+  StatementHandle(StatementHandle&& statementHandle) noexcept;
+  StatementHandle& operator=(StatementHandle&& statementHandle) noexcept;
 
   [[nodiscard]] DescriptorHandle& GetDescriptorHandle(
       DescriptorType type) const;
@@ -119,6 +119,8 @@ class StatementHandle : public Handle {
     return prepared_job_;
   }
 
+  std::mutex& GetMutex() { return statement_handle_mutex_; }
+
  protected:
   StmtStates stmt_state_ = StmtStates::kStatementNotPrepared;
   ResultSet result_set_;
@@ -129,6 +131,7 @@ class StatementHandle : public Handle {
   Descriptors descriptors_;
   std::map<int, SQLULEN> attributes_;
   ConnectionHandle* conn_handle_{nullptr};
+  std::mutex statement_handle_mutex_;
   std::vector<google::cloud::bigquery_v2_minimal_internal::QueryParameter>
       query_parameters_;
   google::cloud::bigquery_v2_minimal_internal::Job prepared_job_;

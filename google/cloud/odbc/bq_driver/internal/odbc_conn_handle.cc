@@ -84,6 +84,7 @@ ConnectionHandle::ConnectionHandle(ConnectionHandle const& connectionHandle)
   client_ = connectionHandle.client_;
   dsn_ = connectionHandle.dsn_;
   auth_ = connectionHandle.auth_;
+  kType = connectionHandle.kType;
   attribute_str_values_ = connectionHandle.attribute_str_values_;
   is_connected_ = connectionHandle.is_connected_;
   // These are pointer structure and shallow copy is only done for now,
@@ -99,6 +100,7 @@ ConnectionHandle& ConnectionHandle::operator=(
     client_ = connectionHandle.client_;
     dsn_ = connectionHandle.dsn_;
     auth_ = connectionHandle.auth_;
+    kType = connectionHandle.kType;
     attribute_str_values_ = connectionHandle.attribute_str_values_;
     is_connected_ = connectionHandle.is_connected_;
     // These are pointer structure and shallow copy is only done for now,
@@ -115,6 +117,7 @@ ConnectionHandle::ConnectionHandle(
   client_ = std::move(connectionHandle.client_);
   dsn_ = std::move(connectionHandle.dsn_);
   auth_ = std::move(connectionHandle.auth_);
+  kType = std::move(connectionHandle.kType);
   attribute_str_values_ = std::move(connectionHandle.attribute_str_values_);
   attribute_values_ = std::move(connectionHandle.attribute_values_);
   stmt_handles_ = std::move(connectionHandle.stmt_handles_);
@@ -127,6 +130,7 @@ ConnectionHandle& ConnectionHandle::operator=(
   client_ = std::move(connectionHandle.client_);
   dsn_ = std::move(connectionHandle.dsn_);
   auth_ = std::move(connectionHandle.auth_);
+  kType = std::move(connectionHandle.kType);
   attribute_str_values_ = std::move(connectionHandle.attribute_str_values_);
   attribute_values_ = std::move(connectionHandle.attribute_values_);
   stmt_handles_ = std::move(connectionHandle.stmt_handles_);
