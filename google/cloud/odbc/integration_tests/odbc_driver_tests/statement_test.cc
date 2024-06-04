@@ -22,7 +22,6 @@
 namespace google::cloud::odbc_tests {
 
 using google::cloud::odbc_bq_driver_internal::BQDataType;
-using google::cloud::odbc_bq_driver_internal::ColumnSchema;
 using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
 using google::cloud::odbc_bq_driver_internal::DescriptorRecord;
 using google::cloud::odbc_bq_driver_internal::DescriptorType;
@@ -1320,6 +1319,25 @@ TEST(SQLPrepare, ValidateIpdDescForParametrizedQuery) {
   EXPECT_EQ(0, out_param_name);
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLPrepare, ValidateIpdDescForPositionalParameterQuery) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  auto stmt_handle = static_cast<StatementHandle*>(conn->hstmt);
+
+  PrepareAndCheckQuery("SELECT * from INTEGRATION_TESTS.Test_Table where id=?",
+                       conn, 1, "INT64");
+  // Retrieve Ipd Descriptor data set
+  DescriptorHandle& handle =
+      stmt_handle->GetDescriptorHandle(DescriptorType::kIPD);
+  std::map<SQLSMALLINT, DescriptorRecord> desRecord =
+      handle.GetDescriptorRecords();
+
+  EXPECT_EQ(desRecord.size(), 1);
+  DescriptorRecord& ipd_record = handle.GetDescriptorRecord(0);
+  EXPECT_EQ(ipd_record.name, "");
+  EXPECT_EQ(ipd_record.concise_type, BQDataType::kInt64);
 }
 
 }  // namespace google::cloud::odbc_tests
