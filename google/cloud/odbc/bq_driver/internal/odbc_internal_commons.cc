@@ -17,12 +17,14 @@
 namespace google::cloud::odbc_bq_driver_internal {
 
 using ::google::cloud::Options;
+using ::google::cloud::bigquery_v2_minimal_internal::DatasetReference;
 using ::google::cloud::bigquery_v2_minimal_internal::GetQueryResults;
 using ::google::cloud::bigquery_v2_minimal_internal::PostQueryRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::PostQueryResults;
 using ::google::cloud::bigquery_v2_minimal_internal::QueryParameter;
 using ::google::cloud::bigquery_v2_minimal_internal::QueryParameterType;
 using ::google::cloud::bigquery_v2_minimal_internal::QueryParameterValue;
+using ::google::cloud::bigquery_v2_minimal_internal::QueryRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::RowData;
 using ::google::cloud::bigquery_v2_minimal_internal::TableFieldSchema;
 using ::google::cloud::bigquery_v2_minimal_internal::TableSchema;
@@ -81,8 +83,8 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
 }
 
 StatusRecordOr<ResultSet> ProcessPostQueryResults(
-    PostQueryResults const& postQueryResults) {
-  if (!postQueryResults.job_complete) {
+    PostQueryResults const& post_query_results) {
+  if (!post_query_results.job_complete) {
     // If this method is being called then the assumption is PostQueryResults
     // contains all the results which in turn means job_complete would be set to
     // true.
@@ -90,12 +92,13 @@ StatusRecordOr<ResultSet> ProcessPostQueryResults(
         SQLStates::k_HY000(),
         "Internal Error: Unexpected value for job_complete: expecting true"};
   }
-  return ProcessResultSetRows(postQueryResults.schema, postQueryResults.rows);
+  return ProcessResultSetRows(post_query_results.schema,
+                              post_query_results.rows);
 }
 
 StatusRecordOr<ResultSet> ProcessGetQueryResults(
-    GetQueryResults const& getQueryResults) {
-  if (!getQueryResults.job_complete) {
+    GetQueryResults const& get_query_results) {
+  if (!get_query_results.job_complete) {
     // If this method is being called then the assumption is GetQueryResults
     // contains all the results which in turn means job_complete would be set to
     // true.
@@ -103,26 +106,26 @@ StatusRecordOr<ResultSet> ProcessGetQueryResults(
         SQLStates::k_HY000(),
         "Internal Error: Unexpected value for job_complete: expecting true"};
   }
-  return ProcessResultSetRows(getQueryResults.schema, getQueryResults.rows);
+  return ProcessResultSetRows(get_query_results.schema, get_query_results.rows);
 }
 
 odbc_internal::StatusRecordOr<ResultSet> ProcessQueryResults(
-    DSResults const& queryResults) {
+    DSResults const& query_results) {
   if (absl::holds_alternative<PostQueryResults>(
-          queryResults.data_source_results)) {
+          query_results.data_source_results)) {
     return ProcessPostQueryResults(
-        absl::get<PostQueryResults>(queryResults.data_source_results));
+        absl::get<PostQueryResults>(query_results.data_source_results));
   }
   if (absl::holds_alternative<GetQueryResults>(
-          queryResults.data_source_results)) {
+          query_results.data_source_results)) {
     return ProcessGetQueryResults(
-        absl::get<GetQueryResults>(queryResults.data_source_results));
+        absl::get<GetQueryResults>(query_results.data_source_results));
   }
   return StatusRecord{SQLStates::k_HY000(), "Invalid query results object"};
 }
 
 StatusRecordOr<DSResults> FetchBQData(
-    ConnectionHandle& conn_handle, PostQueryRequest const& postQueryResults) {
+    ConnectionHandle& conn_handle, PostQueryRequest const& post_query_request) {
   // Validate the  connection handle.
   if (!conn_handle.IsConnected()) {
     return StatusRecord{SQLStates::k_08S01(),
@@ -137,7 +140,7 @@ StatusRecordOr<DSResults> FetchBQData(
   // For now , we use default options.
   // We can set timeout here as needed later.
   Options options;
-  auto pq_status = bq_client->PostQuery(postQueryResults, options);
+  auto pq_status = bq_client->PostQuery(post_query_request, options);
   if (!pq_status) {
     return pq_status.GetStatusRecord();
   }
@@ -247,6 +250,50 @@ ConstructStringQueryParameters(
     query_params.emplace_back(query_param);
   }
   return query_params;
+}
+
+odbc_internal::StatusRecordOr<PostQueryRequest>
+ConstructNamedParametersPostQueryRequest(
+    std::string const& catalog, std::string const& dataset,
+    std::string const& named_query,
+    std::map<std::string, std::string> const& named_query_params) {
+  if (catalog.empty()) {
+    return StatusRecord{SQLStates::k_HY090(),
+                        "Cannot construct named parameter query "
+                        "request: catalog name is required"};
+  }
+  if (dataset.empty()) {
+    return StatusRecord{SQLStates::k_HY090(),
+                        "Cannot construct named parameter query "
+                        "request: dataset name is required"};
+  }
+  if (named_query.empty()) {
+    return StatusRecord{SQLStates::k_HY090(),
+                        "Cannot construct named parameter query "
+                        "request: parametrized query is required"};
+  }
+  auto query_param_status = ConstructStringQueryParameters(named_query_params);
+  if (!query_param_status) {
+    return query_param_status.GetStatusRecord();
+  }
+  PostQueryRequest post_request;
+  QueryRequest query_request;
+  DatasetReference ds_ref;
+  // Set dataset info.
+  ds_ref.project_id = catalog;
+  ds_ref.dataset_id = dataset;
+  // Construct query request.
+  query_request.set_dry_run(false);
+  query_request.set_default_dataset(ds_ref);
+  query_request.set_query(named_query);
+  // Following are specific to parametrized queries.
+  query_request.set_parameter_mode("NAMED");
+  query_request.set_query_parameters(*query_param_status);
+  query_request.set_use_legacy_sql(false);
+  // Set billing info and query request.
+  post_request.set_project_id(catalog);
+  post_request.set_query_request(query_request);
+  return post_request;
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
