@@ -27,7 +27,6 @@ using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
 using google::cloud::odbc_bq_driver_internal::DescriptorRecord;
 using google::cloud::odbc_bq_driver_internal::DescriptorType;
 using google::cloud::odbc_bq_driver_internal::ResultSet;
-using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using google::cloud::odbc_bq_driver_internal::StmtStates;
 
 class StatementParameterizedTest : public ::testing::TestWithParam<bool> {};
@@ -1261,6 +1260,64 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
                            &out_desc_precision, 0, &str_len);
   CheckError(status, "SQLGetDescField(SQL_DESC_PRECISION)", conn);
   EXPECT_EQ(0, out_desc_precision);*/
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLPrepare, ValidateIpdDescForSimpleStatement) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string query = "Select 1";
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+ status =
+      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_PARAM_DESC, &conn->ipd, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_PARAM_DESC)", conn);
+
+  SQLSMALLINT count = 0;
+  status = SQLGetDescField(conn->ipd, 1, SQL_DESC_COUNT, &count, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_COUNT)", conn);
+  EXPECT_EQ(0, count);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLPrepare, ValidateIpdDescForParametrizedQuery) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  PrepareAndCheckQuery("SELECT * from INTEGRATION_TESTS.Test_Table where id=?", conn, 1, "INT64");
+ auto status =
+      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_PARAM_DESC, &conn->ipd, 0, NULL);
+
+  SQLSMALLINT count = 0;
+  status = SQLGetDescField(conn->ipd, 1, SQL_DESC_COUNT, &count, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_COUNT)", conn);
+  EXPECT_EQ(1, count);
+
+  SQLINTEGER str_len = 0;
+  SQLSMALLINT out_concise_c_Type;
+  status = SQLGetDescField(conn->ipd, 1, SQL_DESC_CONCISE_TYPE,
+                           &out_concise_c_Type, 0, &str_len);
+  CheckError(status, "SQLGetDescField(SQL_DESC_CONCISE_TYPE)", conn);
+  EXPECT_EQ(SQL_BIGINT, out_concise_c_Type);
+
+  SQLSMALLINT out_nullable;
+  status =
+      SQLGetDescField(conn->ipd, 1, SQL_DESC_NULLABLE, &out_nullable, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_NULLABLE)", conn);
+  EXPECT_EQ(SQL_NULLABLE, out_nullable);
+
+  SQLCHAR out_param_name;
+  status = SQLGetDescField(conn->ipd, 1, SQL_DESC_NAME, &out_param_name, 0, 0);
+  CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
+  EXPECT_EQ(0, out_param_name);
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
