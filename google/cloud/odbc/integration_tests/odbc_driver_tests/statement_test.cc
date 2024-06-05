@@ -1326,18 +1326,22 @@ TEST(SQLPrepare, ValidateIpdDescForPositionalParameterQuery) {
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   auto stmt_handle = static_cast<StatementHandle*>(conn->hstmt);
 
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
   PrepareAndCheckQuery("SELECT * from INTEGRATION_TESTS.Test_Table where id=?",
                        conn, 1, "INT64");
-  // Retrieve Ipd Descriptor data set
-  DescriptorHandle& handle =
-      stmt_handle->GetDescriptorHandle(DescriptorType::kIPD);
-  std::map<SQLSMALLINT, DescriptorRecord> desRecord =
-      handle.GetDescriptorRecords();
 
-  EXPECT_EQ(desRecord.size(), 1);
-  DescriptorRecord& ipd_record = handle.GetDescriptorRecord(0);
-  EXPECT_EQ(ipd_record.name, "");
-  EXPECT_EQ(ipd_record.concise_type, BQDataType::kInt64);
+  // Retrieve Ipd Descriptor data set
+  DescriptorHandle& ipd =
+      stmt_handle->GetDescriptorHandle(DescriptorType::kIPD);
+  std::map<SQLSMALLINT, DescriptorRecord> desc_record =
+      ipd.GetDescriptorRecords();
+
+  EXPECT_EQ(desc_record.size(), 1);
+  DescriptorRecord& record = ipd.GetDescriptorRecord(0);
+  EXPECT_EQ(record.name, "");
+  EXPECT_EQ(record.concise_type, BQDataType::kInt64);
+
+#endif
 }
 
 }  // namespace google::cloud::odbc_tests
