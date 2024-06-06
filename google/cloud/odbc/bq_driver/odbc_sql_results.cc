@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/odbc_sql_results.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_sql_fetch.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_type_utils.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
@@ -22,15 +23,21 @@
 
 namespace google::cloud::odbc_bq_driver {
 
-using ::google::cloud::odbc_bq_driver_internal::DescriptorHandle;
-using ::google::cloud::odbc_bq_driver_internal::DescriptorType;
-using ::google::cloud::odbc_bq_driver_internal::kTraceOption;
-using ::google::cloud::odbc_bq_driver_internal::StatementHandle;
-using ::google::cloud::odbc_bq_driver_internal::ToSqlPointer;
-using ::google::cloud::odbc_bq_driver_internal::TracePrintInternal;
-using ::google::cloud::odbc_internal::SQLStates;
-using ::google::cloud::odbc_internal::StatusRecord;
-using ::google::cloud::odbc_internal::StatusRecordOr;
+using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
+using google::cloud::odbc_bq_driver_internal::DescriptorType;
+using google::cloud::odbc_bq_driver_internal::DSRow;
+using google::cloud::odbc_bq_driver_internal::DSValue;
+using google::cloud::odbc_bq_driver_internal::kTraceOption;
+using google::cloud::odbc_bq_driver_internal::ResultSet;
+using google::cloud::odbc_bq_driver_internal::RowSchema;
+using google::cloud::odbc_bq_driver_internal::StatementHandle;
+using google::cloud::odbc_bq_driver_internal::StmtStates;
+using google::cloud::odbc_bq_driver_internal::ToSqlPointer;
+using google::cloud::odbc_bq_driver_internal::TracePrintInternal;
+using google::cloud::odbc_bq_driver_internal::WriteRowset;
+using google::cloud::odbc_internal::SQLStates;
+using google::cloud::odbc_internal::StatusRecord;
+using google::cloud::odbc_internal::StatusRecordOr;
 
 SQLRETURN SQLBindColInternal(SQLHSTMT statement_handle,
                              SQLUSMALLINT column_number,
@@ -138,7 +145,45 @@ SQLRETURN SQLBindColInternal(SQLHSTMT statement_handle,
 
 // NOLINTBEGIN(misc-unused-parameters)
 
-SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) { return SQL_SUCCESS; }
+SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
+  StatusRecordOr<StatementHandle*> handle_result =
+      ValidateStatementHandle(statement_handle);
+  if (!handle_result) {
+    TracePrintInternal(**kTraceOption, handle_result.GetStatusRecord().message);
+    return handle_result.GetCalculatedReturnCode();
+  }
+  StatementHandle& handle = *(*handle_result);
+
+  if (handle.GetStmtState() == StmtStates::kStatementExecutedWithoutRs) {
+    return SQL_NO_DATA;
+  }
+
+  if (handle.GetStmtState() != StmtStates::kStatementExecutedWithRs) {
+    StatusRecord status_record = {SQLStates::k_HY010(),
+                                  "No statement has been executed"};
+    handle.GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
+
+  DescriptorHandle& ard = handle.GetDescriptorHandle(DescriptorType::kARD);
+
+  ResultSet const& result_set = handle.GetResultSet();
+  if (result_set.cursor >= result_set.rows.size()) {
+    return SQL_NO_DATA;
+  }
+
+  int rowset_size = ard.GetHeaderRecord().array_size;
+  if (!rowset_size) {
+    rowset_size = 1;
+  }
+  StatusRecord status_record = WriteRowset(result_set, rowset_size, ard);
+  if (!status_record.ok()) {
+    handle.GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
+
+  return status_record.CalculateReturnCode();
+}
 
 // NOLINTEND(misc-unused-parameters)
 
