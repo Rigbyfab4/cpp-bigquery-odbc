@@ -42,13 +42,13 @@ TableSchema CreateTableSchema() {
   f2.type = "INTEGER";
   f3.type = "STRING";
 
-  f1.precision = 20;
+  f1.precision = 1;
   f2.precision = 19;
-  f3.precision = 14;
+  f3.precision = 1;
 
-  f1.max_length = 10;
+  f1.max_length = 1;
   f2.max_length = 19;
-  f3.max_length = 34;
+  f3.max_length = 1;
 
   f1.mode = "NULLABLE";
   f2.mode = "NULLABLE";
