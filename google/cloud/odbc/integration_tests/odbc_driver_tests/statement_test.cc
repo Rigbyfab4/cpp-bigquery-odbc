@@ -1215,7 +1215,7 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
   // Execute a read query and check whether the results returned are as expected
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
 
-  std::string query = "SELECT name from INTEGRATION_TESTS.Test_Table";
+  std::string query = "SELECT id from INTEGRATION_TESTS.Test_Table";
   char read_stmt[kBufferLength];
   StrToChar(read_stmt, query);
 
@@ -1242,27 +1242,25 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
   status = SQLGetDescField(conn->ird, 1, SQL_DESC_CONCISE_TYPE,
                            &out_concise_type, 0, &str_len);
   CheckError(status, "SQLGetDescField(SQL_DESC_CONCISE_TYPE)", conn);
-  EXPECT_EQ(SQL_VARCHAR, out_concise_type);
+  EXPECT_EQ(SQL_BIGINT, out_concise_type);
 
   SQLCHAR out_column_Name[20];
   status = SQLGetDescField(conn->ird, 1, SQL_DESC_NAME, &out_column_Name,
                            kBufferLength, &str_len);
   CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
-  EXPECT_STREQ((char const*)out_column_Name, "name");
-
-// will make changes once SQLdescribeCol implemented
-#ifdef BQ_DRIVER_INTEGRATION_TESTS
-  SQLSMALLINT out_desc_precision;
-  status = SQLGetDescField(conn->ird, 1, SQL_DESC_PRECISION,
-                           &out_desc_precision, 0, &str_len);
-  CheckError(status, "SQLGetDescField(SQL_DESC_PRECISION)", conn);
-  EXPECT_EQ(0, out_desc_precision);
+  EXPECT_STREQ((char const*)out_column_Name, "id");
 
   SQLULEN length = 0;
   status = SQLGetDescField(conn->ird, 1, SQL_DESC_LENGTH, &length, 0, NULL);
   CheckError(status, "SQLGetDescField(SQL_DESC_LENGTH)", conn);
-  EXPECT_EQ(0, length);
-#endif
+  EXPECT_EQ(19, length);
+
+  // TODO(b/345692856) Validate Precision
+  /*SQLSMALLINT out_desc_precision;
+  status = SQLGetDescField(conn->ird, 1, SQL_DESC_PRECISION,
+                           &out_desc_precision, 0, &str_len);
+  CheckError(status, "SQLGetDescField(SQL_DESC_PRECISION)", conn);
+  EXPECT_EQ(0, out_desc_precision);*/
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }

@@ -29,6 +29,7 @@ using ::google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
 using google::cloud::odbc_testing_bq_driver_utils::CreateExplicitDescriptor;
+using google::cloud::odbc_testing_bq_driver_utils::CreateStatementHandle;
 using ::google::cloud::odbc_testing_bq_driver_utils::GetLastStatusRecord;
 using google::cloud::odbc_testing_utils::StatusRecordIs;
 using ::testing::HasSubstr;
@@ -42,11 +43,11 @@ TableSchema CreateTableSchema() {
   f3.type = "STRING";
 
   f1.precision = 20;
-  f2.precision = 10;
+  f2.precision = 19;
   f3.precision = 14;
 
   f1.max_length = 10;
-  f2.max_length = 20;
+  f2.max_length = 19;
   f3.max_length = 34;
 
   f1.mode = "NULLABLE";
@@ -265,12 +266,7 @@ TEST(GetAttribute, GetDefaultAttribute) {
 }
 
 TEST(Populat_IRD_Descriptor, Invalid_Descriptor_Handle) {
-  DescriptorHandle ard;
-  DescriptorHandle apd;
-  DescriptorHandle ird(DescriptorType::kIRD, SQL_DESC_ALLOC_AUTO);
-
-  DescriptorHandle ipd;
-  StatementHandle handle(nullptr, {ard, apd, ird, ipd});
+  StatementHandle handle = CreateStatementHandle();
 
   DescriptorHandle& desc_handle =
       handle.GetDescriptorHandle(DescriptorType::kIPD);
@@ -284,12 +280,7 @@ TEST(Populat_IRD_Descriptor, Invalid_Descriptor_Handle) {
 }
 
 TEST(Populat_IRD_Descriptor, PopulateIrdDescriptorHandle) {
-  DescriptorHandle ard;
-  DescriptorHandle apd;
-  DescriptorHandle ird(DescriptorType::kIRD, SQL_DESC_ALLOC_AUTO);
-
-  DescriptorHandle ipd;
-  StatementHandle handle(nullptr, {ard, apd, ird, ipd});
+  StatementHandle handle = CreateStatementHandle();
 
   DescriptorHandle& desc_handle =
       handle.GetDescriptorHandle(DescriptorType::kIRD);
