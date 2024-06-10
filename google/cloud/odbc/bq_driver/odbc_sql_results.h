@@ -73,7 +73,8 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle);
 // ODBC Spec:
 // https://learn.microsoft.com/en-us/sql/odbc/reference/syntax/sqlfetch-function?view=sql-server-ver16
 SQLRETURN SQLGetTypeInfoInternal(SQLHSTMT stmt_handle, SQLSMALLINT data_type);
-
+SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
+                                   SQLSMALLINT* ColumnCountPtr);
 }  // namespace google::cloud::odbc_bq_driver
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_SQL_RESULTS_H

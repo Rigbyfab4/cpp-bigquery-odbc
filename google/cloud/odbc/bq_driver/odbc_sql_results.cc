@@ -186,6 +186,41 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
 
   return status_record.CalculateReturnCode();
 }
+SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
+                                   SQLSMALLINT* ColumnCountPtr) {
+  if (ColumnCountPtr == nullptr || statement_handle == nullptr)
+    return SQL_ERROR;
+  StatusRecordOr<StatementHandle*> handle_result =
+      ValidateStatementHandle(statement_handle);
+  if (!handle_result) {
+    TracePrintInternal(**kTraceOption, handle_result.GetStatusRecord().message);
+    return handle_result.GetCalculatedReturnCode();
+  }
+  StatementHandle* handle = *handle_result;
+
+  DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
+  *ColumnCountPtr = ird.GetHeaderRecord().count;
+  std::cout << "IRD count: " << std::to_string(ird.GetHeaderRecord().count)
+            << std::endl;
+  std::cout << *ColumnCountPtr << std::endl;
+
+  auto stmt_state = handle->GetStmtState();
+  switch (stmt_state) {
+    case StmtStates::kStatementPrepared:
+    case StmtStates::kStatementExecutedWithRs:
+      break;
+    case StmtStates::kStatementExecutedWithoutRs:
+    case StmtStates::kStatementStillExecuting:
+    case StmtStates::kNeedsPutData:
+    default:
+      return SQL_ERROR;
+  }
+
+  if (ird.GetHeaderRecord().count < 0) {
+    return SQL_ERROR;
+  }
+  return SQL_SUCCESS;
+}
 
 SQLRETURN SQLGetTypeInfoInternal(SQLHSTMT stmt_handle, SQLSMALLINT data_type) {
   SQLRETURN rc = SQL_SUCCESS;

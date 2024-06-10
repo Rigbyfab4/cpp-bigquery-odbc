@@ -1328,5 +1328,35 @@ TEST(SQLPrepare, ValidateIpdDescForParameterQuery) {
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+TEST(SQLNumResultCols, ValidStatementWithResultSet) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string query = "SELECT 1";
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+
+  status =
+      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &conn->ird, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
+
+  SQLINTEGER str_len = 0;
+  SQLSMALLINT count = 1;
+  status = SQLGetDescField(conn->ird, 1, SQL_DESC_COUNT, &count, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_COUNT)", conn);
+  EXPECT_EQ(1, count);
+
+  SQLSMALLINT columnCount;
+  status = SQLNumResultCols(conn->hstmt, &columnCount);
+  EXPECT_EQ(status, SQL_SUCCESS);
+  EXPECT_EQ(columnCount, 1);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
 
 }  // namespace google::cloud::odbc_tests
