@@ -170,16 +170,17 @@ StatusRecord StatementHandle::PrepareQuery(const SQLCHAR* query_text) {
     return ird_response;
   }
 
-  query_str_ = query;
-  stmt_state_ = StmtStates::kStatementPrepared;
-  DescriptorHandle& desc_handle =
+  DescriptorHandle& ipd_desc_handle =
       this->GetDescriptorHandle(DescriptorType::kIPD);
   auto job_statistics = (*response).statistics;
-  StatusRecord ipd_response = PopulateIpd(desc_handle, job_statistics);
-
+  StatusRecord ipd_response = PopulateIpd(ipd_desc_handle, job_statistics);
   if (!ipd_response.ok()) {
     return ipd_response;
   }
+
+  query_str_ = query;
+  stmt_state_ = StmtStates::kStatementPrepared;
+
   return StatusRecord::Ok();
 }
 
@@ -222,7 +223,7 @@ StatusRecordOr<SQLULEN> StatementHandle::GetAttribute(int attribute) {
 
 StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
                                           JobStatistics const& job_statistics) {
-  if (&handle == nullptr || handle.GetType() != DescriptorType::kIPD) {
+  if (handle.GetType() != DescriptorType::kIPD) {
     return StatusRecord(
         {SQLStates::k_HY024(),
          "Invalid attribute value (invalid descriptor handle)"});

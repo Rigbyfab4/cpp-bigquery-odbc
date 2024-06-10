@@ -22,7 +22,11 @@
 
 namespace google::cloud::odbc_bq_driver_internal {
 
+using ::google::cloud::bigquery_v2_minimal_internal::JobQueryStatistics;
+using ::google::cloud::bigquery_v2_minimal_internal::JobStatistics;
 using ::google::cloud::bigquery_v2_minimal_internal::PostQueryResults;
+using ::google::cloud::bigquery_v2_minimal_internal::QueryParameter;
+using ::google::cloud::bigquery_v2_minimal_internal::QueryRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::TableFieldSchema;
 using ::google::cloud::bigquery_v2_minimal_internal::TableSchema;
 using ::google::cloud::odbc_internal::SQLStates;
@@ -32,7 +36,6 @@ using google::cloud::odbc_testing_bq_driver_utils::CreateExplicitDescriptor;
 using google::cloud::odbc_testing_bq_driver_utils::CreateStatementHandle;
 using ::google::cloud::odbc_testing_bq_driver_utils::GetLastStatusRecord;
 using google::cloud::odbc_testing_utils::StatusRecordIs;
-
 using ::testing::HasSubstr;
 
 TableSchema CreateTableSchema() {
@@ -308,12 +311,7 @@ TEST(Populat_IRD_Descriptor, PopulateIrdDescriptorHandle) {
 }
 
 TEST(PopulateIpd, InvalidDescHandle) {
-  DescriptorHandle ard;
-  DescriptorHandle apd;
-  DescriptorHandle ird;
-  DescriptorHandle ipd(DescriptorType::kIPD, SQL_DESC_ALLOC_AUTO);
-
-  StatementHandle handle(nullptr, {ard, apd, ird, ipd});
+  StatementHandle handle = CreateStatementHandle();
 
   DescriptorHandle& desc_handle =
       handle.GetDescriptorHandle(DescriptorType::kARD);
@@ -325,12 +323,7 @@ TEST(PopulateIpd, InvalidDescHandle) {
 }
 
 TEST(PopulateIpd, CheckPopulateIpdDescHandle) {
-  DescriptorHandle ard;
-  DescriptorHandle apd;
-  DescriptorHandle ird;
-  DescriptorHandle ipd(DescriptorType::kIPD, SQL_DESC_ALLOC_AUTO);
-
-  StatementHandle handle(nullptr, {ard, apd, ird, ipd});
+  StatementHandle handle = CreateStatementHandle();
 
   DescriptorHandle& desc_handle =
       handle.GetDescriptorHandle(DescriptorType::kIPD);
@@ -364,9 +357,6 @@ TEST(PopulateIpd, CheckPopulateIpdDescHandle) {
   for (int i = 0; i < stmt_params.size(); i++) {
     auto const& res = stmt_params[i];
     TableSchema res_schema = job_statistics.job_query_stats.schema;
-    std::cout << desc_handle.GetDescriptorRecord(i + 1).type_name << std::endl;
-    std::cout << desc_handle.GetDescriptorRecord(i + 1).nullable << std::endl;
-
     EXPECT_EQ(desc_handle.GetDescriptorRecord(i + 1).type_name,
               res.parameter_type.type);
     EXPECT_EQ(desc_handle.GetDescriptorRecord(i + 1).name, res.name);

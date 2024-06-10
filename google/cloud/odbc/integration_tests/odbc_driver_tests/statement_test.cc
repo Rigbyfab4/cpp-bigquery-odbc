@@ -1264,7 +1264,6 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
 TEST(SQLPrepare, ValidateIpdDescForSimpleStatement) {
   auto conn = std::make_shared<ODBCHandles>();
 
@@ -1277,7 +1276,7 @@ TEST(SQLPrepare, ValidateIpdDescForSimpleStatement) {
 
   auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
   CheckError(status, "SQLPrepare", conn);
- status =
+  status =
       SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_PARAM_DESC, &conn->ipd, 0, NULL);
   CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_PARAM_DESC)", conn);
 
@@ -1289,12 +1288,15 @@ TEST(SQLPrepare, ValidateIpdDescForSimpleStatement) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(SQLPrepare, ValidateIpdDescForParametrizedQuery) {
+TEST(SQLPrepare, ValidateIpdDescForParameterQuery) {
   auto conn = std::make_shared<ODBCHandles>();
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  PrepareAndCheckQuery("SELECT * from INTEGRATION_TESTS.Test_Table where id=?", conn, 1, "INT64");
- auto status =
+
+  PrepareAndCheckQuery("SELECT * from INTEGRATION_TESTS.Test_Table where id=?",
+                       conn, 1, "INT64");
+
+  auto status =
       SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_PARAM_DESC, &conn->ipd, 0, NULL);
 
   SQLSMALLINT count = 0;
@@ -1321,29 +1323,6 @@ TEST(SQLPrepare, ValidateIpdDescForParametrizedQuery) {
   EXPECT_EQ(0, out_param_name);
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-}
-
-TEST(SQLPrepare, ValidateIpdDescForPositionalParameterQuery) {
-  auto conn = std::make_shared<ODBCHandles>();
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  auto stmt_handle = static_cast<StatementHandle*>(conn->hstmt);
-
-#ifdef BQ_DRIVER_INTEGRATION_TESTS
-  PrepareAndCheckQuery("SELECT * from INTEGRATION_TESTS.Test_Table where id=?",
-                       conn, 1, "INT64");
-
-  // Retrieve Ipd Descriptor data set
-  DescriptorHandle& ipd =
-      stmt_handle->GetDescriptorHandle(DescriptorType::kIPD);
-  std::map<SQLSMALLINT, DescriptorRecord> desc_record =
-      ipd.GetDescriptorRecords();
-
-  EXPECT_EQ(desc_record.size(), 1);
-  DescriptorRecord& record = ipd.GetDescriptorRecord(0);
-  EXPECT_EQ(record.name, "");
-  EXPECT_EQ(record.concise_type, BQDataType::kInt64);
-
-#endif
 }
 
 }  // namespace google::cloud::odbc_tests

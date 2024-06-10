@@ -73,6 +73,11 @@ class StatementHandle : public Handle {
       DescriptorHandle& descriptor_handle,
       google::cloud::bigquery_v2_minimal_internal::TableSchema const& schema);
 
+  static odbc_internal::StatusRecord PopulateIpd(
+      DescriptorHandle& handle,
+      google::cloud::bigquery_v2_minimal_internal::JobStatistics const&
+          job_statistics);
+
   odbc_internal::StatusRecord PrepareQuery(const SQLCHAR* query_text);
   HandleType kType = HandleType::kStmtHandle;
 
@@ -106,11 +111,6 @@ class StatementHandle : public Handle {
           query_parameters) {
     query_parameters_ = query_parameters;
   }
-
-  static odbc_internal::StatusRecord PopulateIpd(
-      DescriptorHandle& handle,
-      google::cloud::bigquery_v2_minimal_internal::JobStatistics const&
-          job_statistics);
 
  protected:
   StmtStates stmt_state_ = StmtStates::kStatementNotPrepared;

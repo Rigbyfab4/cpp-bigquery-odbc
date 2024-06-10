@@ -497,4 +497,30 @@ TEST(ProcessResultSetRows, Success_Basic) {
   AssertResults(results_status);
 }
 
+TEST(GetSQLDataType, GetInvalidDataType) {
+  std::string f1 = "INT65";
+  auto res = GetSQLDataType(f1);
+  EXPECT_FALSE(res.Ok());
+  EXPECT_EQ("Invalid Data Type: " + f1, res.GetStatusRecord().message);
+}
+
+TEST(GetSQLDataType, GetValidDataType) {
+  std::string const& f1 = "FLOAT64";
+  std::string const& f2 = "DATE";
+  std::string const& f3 = "ARRAY";
+  std::string const& f4 = "TIMESTAMP";
+  std::string const& f5 = "INTEGER";
+
+  auto first_res = GetSQLDataType(f1);
+  auto second_res = GetSQLDataType(f2);
+  auto third_res = GetSQLDataType(f3);
+  auto fourth_res = GetSQLDataType(f4);
+  auto fifth_res = GetSQLDataType(f5);
+
+  EXPECT_EQ(SQL_DOUBLE, *first_res);
+  EXPECT_EQ(SQL_DATE, *second_res);
+  EXPECT_EQ(SQL_VARCHAR, *third_res);
+  EXPECT_EQ(SQL_TYPE_TIMESTAMP, *fourth_res);
+  EXPECT_EQ(SQL_BIGINT, *fifth_res);
+}
 }  // namespace google::cloud::odbc_bq_driver_internal
