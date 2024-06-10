@@ -31,20 +31,20 @@ namespace google::cloud::odbc_bq_driver_internal {
 enum BQDataType {
   kArray,
   kBigNumeric,
-  kBool,
-  kBytes,
-  kDate,
-  kDatetime,
-  kFloat64,
-  kGeography,
-  kInt64,
-  kInterval,
-  kJson,
   kNumeric,
-  kRange,
-  kString,
-  kStruct,
+  kBytes,
+  kInt64,
+  kDate,
+  kFloat64,
+  kInterval,
+  kGeography,
+  kDatetime,
   kTime,
+  kBool,
+  kString,
+  kRange,
+  kStruct,
+  kJson,
   kTimeStamp,
   kNull
 };
@@ -165,6 +165,9 @@ odbc_internal::StatusRecordOr<ResultSet> ProcessQueryResults(
 // Common helper functions.
 ////////////////////////////////////////////////////////
 odbc_internal::StatusRecordOr<BQDataType> ConvertDSType(
+    std::string const& type);
+
+odbc_internal::StatusRecordOr<SQLSMALLINT> GetSQLDataType(
     std::string const& type);
 
 odbc_internal::StatusRecordOr<

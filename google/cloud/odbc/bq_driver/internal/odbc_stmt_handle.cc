@@ -162,8 +162,45 @@ StatusRecord StatementHandle::PrepareQuery(const SQLCHAR* query_text) {
     return pop_response;
   }
 
+  DescriptorHandle& desc_handle =
+      this->GetDescriptorHandle(DescriptorType::kIRD);
+  StatusRecord ird_response = PopulateIrd(desc_handle, schema);
+  if (!ird_response.ok()) {
+    return ird_response;
+  }
+
   query_str_ = query;
   stmt_state_ = StmtStates::kStatementPrepared;
+  return StatusRecord::Ok();
+}
+
+StatusRecord StatementHandle::PopulateIrd(DescriptorHandle& descriptor_handle,
+                                          TableSchema const& schema) {
+  if (&descriptor_handle == nullptr ||
+      descriptor_handle.GetType() != DescriptorType::kIRD) {
+    return StatusRecord{SQLStates::k_HY024(),
+                        "Invalid attribute value (invalid descriptor handle)"};
+  }
+  std::string const nullable = "NULLABLE";
+  for (int i = 0; i < schema.fields.size(); ++i) {
+    auto const& res = schema.fields[i];
+    DescriptorRecord descriptor_record;
+    descriptor_record.SetName(res.name, res.name.length());
+    descriptor_record.length = res.max_length;
+    StatusRecordOr<SQLSMALLINT> type_status_record = GetSQLDataType(res.type);
+
+    if (!type_status_record.Ok()) {
+      return type_status_record.GetStatusRecord();
+    }
+    StatusRecord status_record = descriptor_record.SetConciseType(
+        *type_status_record, DescriptorType::kIRD);
+    if (!status_record.ok()) {
+      return status_record;
+    }
+    descriptor_record.nullable =
+        res.mode == nullable ? SQL_NULLABLE : SQL_NO_NULLS;
+    descriptor_handle.BindNewDescriptorRecord(i + 1, descriptor_record);
+  }
   return StatusRecord::Ok();
 }
 

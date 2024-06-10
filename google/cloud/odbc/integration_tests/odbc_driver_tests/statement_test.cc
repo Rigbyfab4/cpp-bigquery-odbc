@@ -13,24 +13,22 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/testing/odbc_utils/statement.h"
-
-#ifdef BQ_DRIVER_INTEGRATION_TESTS
+#include "google/cloud/odbc/bq_driver/internal/odbc_desc_attr.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
-#endif
-
 #include "google/cloud/odbc/testing/odbc_utils/connection.h"
 #include "google/cloud/odbc/testing/odbc_utils/descriptor.h"
 
 namespace google::cloud::odbc_tests {
 
-#ifdef BQ_DRIVER_INTEGRATION_TESTS
 using google::cloud::odbc_bq_driver_internal::BQDataType;
 using google::cloud::odbc_bq_driver_internal::ColumnSchema;
+using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
+using google::cloud::odbc_bq_driver_internal::DescriptorRecord;
+using google::cloud::odbc_bq_driver_internal::DescriptorType;
 using google::cloud::odbc_bq_driver_internal::ResultSet;
 using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using google::cloud::odbc_bq_driver_internal::StmtStates;
-#endif
 
 class StatementParameterizedTest : public ::testing::TestWithParam<bool> {};
 
@@ -1207,6 +1205,62 @@ TEST(SQLPrepare, ParametrizedQuery) {
       "SELECT * from INTEGRATION_TESTS.Test_Table where id=@var", conn, 1,
       "INT64", "var");
 #endif
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLPrepare, ValidateIrdDescriptor) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string query = "SELECT id from INTEGRATION_TESTS.Test_Table";
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+
+  status =
+      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &conn->ird, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
+
+  SQLINTEGER str_len = 0;
+  SQLSMALLINT count = 0;
+  status = SQLGetDescField(conn->ird, 1, SQL_DESC_COUNT, &count, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_COUNT)", conn);
+  EXPECT_EQ(1, count);
+
+  SQLSMALLINT out_nullable;
+  status =
+      SQLGetDescField(conn->ird, 1, SQL_DESC_NULLABLE, &out_nullable, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_NULLABLE)", conn);
+  EXPECT_EQ(SQL_NULLABLE, out_nullable);
+
+  SQLSMALLINT out_concise_type;
+  status = SQLGetDescField(conn->ird, 1, SQL_DESC_CONCISE_TYPE,
+                           &out_concise_type, 0, &str_len);
+  CheckError(status, "SQLGetDescField(SQL_DESC_CONCISE_TYPE)", conn);
+  EXPECT_EQ(SQL_BIGINT, out_concise_type);
+
+  SQLCHAR out_column_Name[20];
+  status = SQLGetDescField(conn->ird, 1, SQL_DESC_NAME, &out_column_Name,
+                           kBufferLength, &str_len);
+  CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
+  EXPECT_STREQ((char const*)out_column_Name, "id");
+
+  SQLULEN length = 0;
+  status = SQLGetDescField(conn->ird, 1, SQL_DESC_LENGTH, &length, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_LENGTH)", conn);
+  EXPECT_EQ(19, length);
+
+  // TODO(b/345692856) Validate Precision
+  /*SQLSMALLINT out_desc_precision;
+  status = SQLGetDescField(conn->ird, 1, SQL_DESC_PRECISION,
+                           &out_desc_precision, 0, &str_len);
+  CheckError(status, "SQLGetDescField(SQL_DESC_PRECISION)", conn);
+  EXPECT_EQ(0, out_desc_precision);*/
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
