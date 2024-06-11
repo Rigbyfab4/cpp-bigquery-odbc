@@ -119,7 +119,7 @@ class StatementHandle : public Handle {
     return prepared_job_;
   }
 
-  std::mutex& GetMutex() { return statement_handle_mutex_; }
+  std::mutex& GetMutex() const { return statement_handle_mutex_; }
 
  protected:
   StmtStates stmt_state_ = StmtStates::kStatementNotPrepared;
@@ -131,7 +131,7 @@ class StatementHandle : public Handle {
   Descriptors descriptors_;
   std::map<int, SQLULEN> attributes_;
   ConnectionHandle* conn_handle_{nullptr};
-  std::mutex statement_handle_mutex_;
+  mutable std::mutex statement_handle_mutex_;
   std::vector<google::cloud::bigquery_v2_minimal_internal::QueryParameter>
       query_parameters_;
   google::cloud::bigquery_v2_minimal_internal::Job prepared_job_;

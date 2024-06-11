@@ -32,9 +32,9 @@
 
 namespace google::cloud::odbc_bq_driver {
 
-void AcquireHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType);
+SQLRETURN AcquireHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType);
 
-void ReleaseHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType);
+SQLRETURN ReleaseHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType);
 
 }  // namespace google::cloud::odbc_bq_driver
 
