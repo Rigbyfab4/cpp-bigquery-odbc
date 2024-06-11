@@ -23,6 +23,7 @@ namespace google::cloud::odbc_bq_driver_internal {
 
 using google::cloud::Options;
 using google::cloud::bigquery_v2_minimal_internal::Job;
+using google::cloud::bigquery_v2_minimal_internal::JobStatistics;
 using google::cloud::bigquery_v2_minimal_internal::TableSchema;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
@@ -169,8 +170,17 @@ StatusRecord StatementHandle::PrepareQuery(const SQLCHAR* query_text) {
     return ird_response;
   }
 
+  DescriptorHandle& ipd_desc_handle =
+      this->GetDescriptorHandle(DescriptorType::kIPD);
+  auto job_statistics = (*response).statistics;
+  StatusRecord ipd_response = PopulateIpd(ipd_desc_handle, job_statistics);
+  if (!ipd_response.ok()) {
+    return ipd_response;
+  }
+
   query_str_ = query;
   stmt_state_ = StmtStates::kStatementPrepared;
+
   return StatusRecord::Ok();
 }
 
@@ -209,6 +219,37 @@ StatusRecordOr<SQLULEN> StatementHandle::GetAttribute(int attribute) {
     return StatusRecord{SQLStates::k_HY092(), "Invalid attribute"};
   }
   return attributes_[attribute];
+}
+
+StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
+                                          JobStatistics const& job_statistics) {
+  if (handle.GetType() != DescriptorType::kIPD) {
+    return StatusRecord(
+        {SQLStates::k_HY024(),
+         "Invalid attribute value (invalid descriptor handle)"});
+  }
+  DescriptorRecord descriptor_record;
+  std::string const nullable = "NULLABLE";
+  auto stmt_params = job_statistics.job_query_stats.undeclared_query_parameters;
+  TableSchema schema = job_statistics.job_query_stats.schema;
+  if (stmt_params.empty()) {
+    return StatusRecord::Ok();
+  }
+
+  for (int i = 0; i < stmt_params.size(); i++) {
+    StatusRecordOr<SQLSMALLINT> record_type =
+        GetSQLDataType(stmt_params[i].parameter_type.type);
+    descriptor_record.SetConciseType(*record_type, DescriptorType::kIPD);
+    descriptor_record.SetName(stmt_params[i].name, stmt_params[i].name.size());
+    descriptor_record.type_name = stmt_params[i].parameter_type.type;
+
+    descriptor_record.nullable =
+        schema.fields[i].mode == nullable ? SQL_NULLABLE : SQL_NO_NULLS;
+
+    handle.BindNewDescriptorRecord(i + 1, descriptor_record);
+  }
+
+  return StatusRecord::Ok();
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
