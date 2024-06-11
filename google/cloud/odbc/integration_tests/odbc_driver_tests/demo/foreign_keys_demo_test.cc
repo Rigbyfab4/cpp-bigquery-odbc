@@ -25,7 +25,8 @@ namespace google::cloud::odbc_tests {
 namespace {
 std::string const kCatalog = kCatalogName;
 std::string const kDataset = kCatalogFnsDataset;
-std::string const kPKTable = kCatalogDatasetTableWithPK;
+std::string const kPKTable = kTableCustomer;
+std::string const kFKTable = kTableOrders;
 
 SQLCHAR* const kSqlCatalog =
     reinterpret_cast<SQLCHAR*>(const_cast<char*>(kCatalog.c_str()));
@@ -33,21 +34,26 @@ SQLCHAR* const kSqlDataset =
     reinterpret_cast<SQLCHAR*>(const_cast<char*>(kDataset.c_str()));
 SQLCHAR* const kSqlPKTable =
     reinterpret_cast<SQLCHAR*>(const_cast<char*>(kPKTable.c_str()));
+SQLCHAR* const kSqlFKTable =
+    reinterpret_cast<SQLCHAR*>(const_cast<char*>(kFKTable.c_str()));
 
 SQLSMALLINT const kSqlCatalogLen = kCatalog.length();
 SQLSMALLINT const kSqlDatasetLen = kDataset.length();
 SQLSMALLINT const kSqlPKTableLen = kPKTable.length();
+SQLSMALLINT const kSqlFKTableLen = kFKTable.length();
 
 inline void BindColumns(std::shared_ptr<ODBCHandles> conn,
                         CatalogDataBuffer* columns, int res_cols) {
   SQLRETURN status;
   for (int col_idx = 0; col_idx < res_cols; col_idx++) {
-    if (col_idx == 4) {
+    if (col_idx == 8) {
+      // data type is SMALLINT.
       columns[col_idx].target_type = SQL_C_SSHORT;
     } else {
       // data type is Char.
       columns[col_idx].target_type = SQL_C_CHAR;
     }
+
     status =
         SQLBindCol(conn->hstmt, (SQLUSMALLINT)col_idx + 1,
                    columns[col_idx].target_type, columns[col_idx].target_value,
@@ -58,8 +64,8 @@ inline void BindColumns(std::shared_ptr<ODBCHandles> conn,
 
 }  // namespace
 
-TEST(CatalogDemoTest, SQLPrimaryKeys) {
-  int res_cols = 6;
+TEST(CatalogDemoTest, SQLForeignKeys) {
+  int res_cols = 11;
 
   SQLRETURN status;
   auto conn = std::make_shared<ODBCHandles>();
@@ -72,17 +78,20 @@ TEST(CatalogDemoTest, SQLPrimaryKeys) {
   CatalogDataBuffer columns[res_cols];
   std::cout << "Binding Columns..." << std::endl << std::endl;
   BindColumns(conn, columns, res_cols);
-  // (3) Fetching Primary Keys.
-  std::cout << "Fetching Primary Keys from the data source..." << std::endl
+  // (3) Fetching Foreign Keys.
+  std::cout << "Fetching Foreign Keys from the data source..." << std::endl
             << std::endl;
 
-  status = SQLPrimaryKeys(conn->hstmt, kSqlCatalog, kSqlCatalogLen, kSqlDataset,
-                          kSqlDatasetLen, kSqlPKTable, kSqlPKTableLen);
-  CheckError(status, "SQLPrimaryKeys", conn);
-  std::cout << "Successfully fetched primary Keys for Catalog: " << kCatalog
+  status = SQLForeignKeys(conn->hstmt, kSqlCatalog, kSqlCatalogLen, kSqlDataset,
+                          kSqlDatasetLen, kSqlPKTable, kSqlPKTableLen,
+                          kSqlCatalog, kSqlCatalogLen, kSqlDataset,
+                          kSqlDatasetLen, kSqlFKTable, kSqlFKTableLen);
+  CheckError(status, "SQLForeignKeys", conn);
+  std::cout << "Successfully fetched foreign Keys for Catalog: " << kCatalog
             << ", and Dataset: " << kDataset << std::endl
             << std::endl;
   while (1) {
+    std::map<int, std::string> catalog_results;
     status = SQLFetch(conn->hstmt);
     if (status == SQL_NO_DATA) {
       break;
@@ -90,23 +99,49 @@ TEST(CatalogDemoTest, SQLPrimaryKeys) {
     if (!SQL_SUCCEEDED(status)) {
       CheckError(status, "SQLFetch", conn);
     }
-    std::string table_cat = (char*)columns[0].target_value;
-    std::string table_schema = (char*)columns[1].target_value;
-    std::string table_name = (char*)columns[2].target_value;
-    std::string col_name = (char*)columns[3].target_value;
+    // Col1: pk catalog name , Col2: pk schema name, Col3: pk table name,
+    // Col4: pk column name, Col5: fk catalog name, Col6: fk schema name,
+    // Col7: fk table name, Col8: fk column name,  Col9: key sequence,
+    // Col10: update rule, Col 11: delete rule, Col12: fk name,
+    // Col13: pk name, Col14: Deferrability
+    std::string pk_table_cat = (char*)columns[0].target_value;
+    std::string pk_table_schema = (char*)columns[1].target_value;
+    std::string pk_table_name = (char*)columns[2].target_value;
+    std::string pk_col_name = (char*)columns[3].target_value;
+    std::string fk_table_cat = (char*)columns[4].target_value;
+    std::string fk_table_schema = (char*)columns[5].target_value;
+    std::string fk_table_name = (char*)columns[6].target_value;
+    std::string fk_col_name = (char*)columns[7].target_value;
     SQLSMALLINT* key_seq =
-        reinterpret_cast<SQLSMALLINT*>(columns[4].target_value);
-    std::string pk_name = (char*)columns[5].target_value;
+        reinterpret_cast<SQLSMALLINT*>(columns[8].target_value);
+    std::string fk_name = (char*)columns[9].target_value;
+    std::string pk_name = (char*)columns[10].target_value;
+
     std::cout << "*******************************************************"
               << std::endl;
-    std::cout << "Table Catalog: " << table_cat << ", " << std::endl;
-    std::cout << "Table Schema: " << table_schema << ", " << std::endl;
-    std::cout << "Table Name: " << table_name << ", " << std::endl;
-    std::cout << "Column Name: " << col_name << ", " << std::endl;
+    std::cout << "PrimaryKey Table Catalog: " << pk_table_cat << ", "
+              << std::endl;
+    std::cout << "PrimaryKey Table Schema: " << pk_table_schema << ", "
+              << std::endl;
+    std::cout << "PrimaryKey Table Name: " << pk_table_name << ", "
+              << std::endl;
+    std::cout << "PrimaryKey Column Name: " << pk_col_name << ", " << std::endl;
+    std::cout << "ForeignKey Table Catalog: " << fk_table_cat << ", "
+              << std::endl;
+    std::cout << "ForeignKey Table Schema: " << fk_table_schema << ", "
+              << std::endl;
+    std::cout << "ForeignKey Table Name: " << fk_table_name << ", "
+              << std::endl;
+    std::cout << "ForeignKey Column Name: " << fk_col_name << ", " << std::endl;
     if (key_seq) {
       std::cout << "Key Sequence: " << *key_seq << ", " << std::endl;
     }
-    std::cout << "PrimaryKey Name: " << pk_name << std::endl << std::endl;
+    std::cout << "UPDATE Rule: NULL, " << std::endl;
+    std::cout << "DELETE Rule: NULL, " << std::endl;
+    std::cout << "ForeignKey Name: " << fk_name << std::endl;
+    std::cout << "PrimaryKey Name: " << pk_name << std::endl;
+    std::cout << "Deferrability: " << SQL_NOT_DEFERRABLE << std::endl;
+
     std::cout << "*******************************************************"
               << std::endl;
   }
