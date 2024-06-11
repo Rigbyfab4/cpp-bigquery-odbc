@@ -38,9 +38,9 @@ TEST(OdbcHandleLock, Success_Acquire_Release_Lock) {
 }
 
 TEST(OdbcHandleLock, Invalid_Handle_Acquire_Lock) {
-  SQLHDBC conn_handle;
+  EnvironmentHandle env_handle;
   SQLRETURN status;
-  status = AcquireHandleMutex(conn_handle, SQL_HANDLE_ENV);
+  status = AcquireHandleMutex(env_handle, SQL_HANDLE_DBC);
   EXPECT_EQ(status, SQL_INVALID_HANDLE);
 }
 
