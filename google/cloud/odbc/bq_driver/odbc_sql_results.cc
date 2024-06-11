@@ -198,12 +198,6 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
   }
   StatementHandle* handle = *handle_result;
 
-  DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
-  *ColumnCountPtr = ird.GetHeaderRecord().count;
-  std::cout << "IRD count: " << std::to_string(ird.GetHeaderRecord().count)
-            << std::endl;
-  std::cout << *ColumnCountPtr << std::endl;
-
   auto stmt_state = handle->GetStmtState();
   switch (stmt_state) {
     case StmtStates::kStatementPrepared:
@@ -215,6 +209,9 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
     default:
       return SQL_ERROR;
   }
+
+  DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
+  *ColumnCountPtr = ird.GetHeaderRecord().count;
 
   if (ird.GetHeaderRecord().count < 0) {
     return SQL_ERROR;
