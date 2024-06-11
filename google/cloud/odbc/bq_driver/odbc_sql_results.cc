@@ -209,11 +209,10 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
     default:
       return SQL_ERROR;
   }
-
+  DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
   if (ird.GetHeaderRecord().count < 0) {
     return SQL_ERROR;
   }
-  DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
   *ColumnCountPtr = ird.GetHeaderRecord().count;
   return SQL_SUCCESS;
 }
