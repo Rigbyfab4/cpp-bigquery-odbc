@@ -222,10 +222,10 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
       status_record = {SQLStates::k_HY010(), "No statement has been executed"};
       break;
   }
-if (!status_record.ok()) {
-      handle->GetDiagnostics().AddStatusRecord(status_record);
-      return status_record.CalculateReturnCode();
-}
+  if (!status_record.ok()) {
+    handle->GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
   DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
   if (ird.GetHeaderRecord().count < 0) {
     status_record = {SQLStates::k_07006(),
