@@ -307,7 +307,7 @@ TEST(SQLNumResultColsInternal, NullColumnCountPtr) {
   SQLRETURN ret = SQLNumResultColsInternal(&handle, nullptr);
 
   ASSERT_EQ(ret, SQL_ERROR);
-  EXPECT_EQ(SQLStates::k_HY009(),
+  EXPECT_EQ(SQLStates::k_HY001(),
             handle.GetDiagnostics().GetStatusRecords()[0].sql_state);
 }
 
