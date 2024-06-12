@@ -187,9 +187,7 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
   return status_record.CalculateReturnCode();
 }
 SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
-                                   SQLSMALLINT* ColumnCountPtr) {
-  if (ColumnCountPtr == nullptr || statement_handle == nullptr)
-    return SQL_ERROR;
+                                   SQLSMALLINT* column_count_ptr) {
   StatusRecordOr<StatementHandle*> handle_result =
       ValidateStatementHandle(statement_handle);
   if (!handle_result) {
@@ -197,6 +195,13 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
     return handle_result.GetCalculatedReturnCode();
   }
   StatementHandle* handle = *handle_result;
+  StatusRecord status_record;
+  if (column_count_ptr == nullptr) {
+    status_record = {SQLStates::k_HY009(),
+                     "Column Count Pointer is Null Pointer"};
+    handle->GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
 
   auto stmt_state = handle->GetStmtState();
   switch (stmt_state) {
@@ -204,17 +209,32 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
     case StmtStates::kStatementExecutedWithRs:
       break;
     case StmtStates::kStatementExecutedWithoutRs:
+      status_record = {SQLStates::k_01000(), "Statement Executed without Data"};
+      handle->GetDiagnostics().AddStatusRecord(status_record);
+      return status_record.CalculateReturnCode();
     case StmtStates::kStatementStillExecuting:
+      status_record = {SQLStates::k_HY010(), "Statement is still executing"};
+      handle->GetDiagnostics().AddStatusRecord(status_record);
+      return status_record.CalculateReturnCode();
     case StmtStates::kNeedsPutData:
+      status_record = {SQLStates::k_HY010(),
+                       "Statement needs Data to be executed"};
+      handle->GetDiagnostics().AddStatusRecord(status_record);
+      return status_record.CalculateReturnCode();
     default:
-      return SQL_ERROR;
+      status_record = {SQLStates::k_HY010(), "No statement has been executed"};
+      handle->GetDiagnostics().AddStatusRecord(status_record);
+      return status_record.CalculateReturnCode();
   }
   DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
   if (ird.GetHeaderRecord().count < 0) {
-    return SQL_ERROR;
+    status_record = {SQLStates::k_07006(),
+                     "ColumnCount should not be less than 0"};
+    handle->GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
   }
-  *ColumnCountPtr = ird.GetHeaderRecord().count;
-  return SQL_SUCCESS;
+  *column_count_ptr = ird.GetHeaderRecord().count;
+  return status_record.CalculateReturnCode();
 }
 
 SQLRETURN SQLGetTypeInfoInternal(SQLHSTMT stmt_handle, SQLSMALLINT data_type) {
