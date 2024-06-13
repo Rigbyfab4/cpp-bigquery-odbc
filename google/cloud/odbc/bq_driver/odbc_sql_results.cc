@@ -186,6 +186,56 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
 
   return status_record.CalculateReturnCode();
 }
+SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
+                                   SQLSMALLINT* column_count_ptr) {
+  StatusRecordOr<StatementHandle*> handle_result =
+      ValidateStatementHandle(statement_handle);
+  if (!handle_result) {
+    TracePrintInternal(**kTraceOption, handle_result.GetStatusRecord().message);
+    return handle_result.GetCalculatedReturnCode();
+  }
+  StatementHandle* handle = *handle_result;
+  StatusRecord status_record = StatusRecord::Ok();
+  if (column_count_ptr == nullptr) {
+    status_record = {SQLStates::k_HY001(),
+                     "Parameter 'column_count_ptr' cannot be null"};
+    handle->GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
+
+  auto stmt_state = handle->GetStmtState();
+  switch (stmt_state) {
+    case StmtStates::kStatementPrepared:
+    case StmtStates::kStatementExecutedWithRs:
+      break;
+    case StmtStates::kStatementExecutedWithoutRs:
+      status_record = {SQLStates::k_01000(), "Statement Executed without Data"};
+      break;
+    case StmtStates::kStatementStillExecuting:
+      status_record = {SQLStates::k_HY010(), "Statement is still executing"};
+      break;
+    case StmtStates::kNeedsPutData:
+      status_record = {SQLStates::k_HY010(),
+                       "Statement needs Data to be executed"};
+      break;
+    default:
+      status_record = {SQLStates::k_HY010(), "No statement has been executed"};
+      break;
+  }
+  if (!status_record.ok()) {
+    handle->GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
+  DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
+  if (ird.GetHeaderRecord().count < 0) {
+    status_record = {SQLStates::k_07006(),
+                     "ColumnCount should not be less than 0"};
+    handle->GetDiagnostics().AddStatusRecord(status_record);
+    return status_record.CalculateReturnCode();
+  }
+  *column_count_ptr = ird.GetHeaderRecord().count;
+  return status_record.CalculateReturnCode();
+}
 
 SQLRETURN SQLGetTypeInfoInternal(SQLHSTMT stmt_handle, SQLSMALLINT data_type) {
   SQLRETURN rc = SQL_SUCCESS;

@@ -27,6 +27,8 @@ using google::cloud::odbc_bq_driver_internal::ConnectionHandle;
 using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
 using google::cloud::odbc_bq_driver_internal::DescriptorType;
 using google::cloud::odbc_bq_driver_internal::StatementHandle;
+using google::cloud::odbc_bq_driver_internal::StmtStates;
+using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_testing_bq_driver_utils::CreateConnectionHandle;
 using google::cloud::odbc_testing_bq_driver_utils::CreateStatementHandle;
 
@@ -290,6 +292,35 @@ TEST(SQLBindColInternal, InvalidCType) {
 
   // If SQLBindColInternal has failed, SQL_DESC_COUNT should remain unchanged
   EXPECT_EQ(0, GetDescCount(ard));
+}
+TEST(SQLNumResultColsInternal, InvalidHandle) {
+  StatementHandle* stmt_handle = nullptr;
+  SQLSMALLINT column_count;
+
+  SQLRETURN ret = SQLNumResultColsInternal(stmt_handle, &column_count);
+
+  EXPECT_EQ(ret, SQL_INVALID_HANDLE);
+}
+
+TEST(SQLNumResultColsInternal, NullColumnCountPtr) {
+  StatementHandle handle = CreateStatementHandle();
+  SQLRETURN ret = SQLNumResultColsInternal(&handle, nullptr);
+
+  ASSERT_EQ(ret, SQL_ERROR);
+  EXPECT_EQ(SQLStates::k_HY001(),
+            handle.GetDiagnostics().GetStatusRecords()[0].sql_state);
+}
+
+TEST(SQLNumResultColsInternal, StateCheck) {
+  StatementHandle handle = CreateStatementHandle();
+
+  handle.SetStmtState(StmtStates::kStatementExecutedWithRs);
+
+  SQLSMALLINT column_count;
+  SQLRETURN ret = SQLNumResultColsInternal(&handle, &column_count);
+
+  EXPECT_EQ(ret, SQL_SUCCESS);
+  EXPECT_EQ(column_count, 0);
 }
 
 }  // namespace google::cloud::odbc_bq_driver
