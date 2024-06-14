@@ -280,7 +280,7 @@ SQLRETURN SQLGetTypeInfoInternal(SQLHSTMT stmt_handle, SQLSMALLINT data_type) {
 
 SQLRETURN SQLDescribeColInternal(
     SQLHSTMT statement_handle, SQLUSMALLINT column_number, SQLCHAR* column_name,
-    SQLSMALLINT column_name_buffer_len, SQLSMALLINT* column_name_Le,
+    SQLSMALLINT column_name_buffer_len, SQLSMALLINT* column_name_le,
     SQLSMALLINT* column_sql_data_type, SQLULEN* column_size,
     SQLSMALLINT* decimal_digits, SQLSMALLINT* column_nullable) {
   StatusRecordOr<StatementHandle*> handle_result =
@@ -290,8 +290,6 @@ SQLRETURN SQLDescribeColInternal(
     return handle_result.GetCalculatedReturnCode();
   }
   StatementHandle& handle = *(*handle_result);
-
-  //-------------Validation-------------
 
   if (handle.GetStmtState() == StmtStates::kStatementNotPrepared) {
     StatusRecord status_record = {

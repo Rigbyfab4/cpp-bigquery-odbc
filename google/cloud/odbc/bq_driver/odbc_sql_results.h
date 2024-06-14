@@ -87,7 +87,7 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
 // https://learn.microsoft.com/en-us/sql/odbc/reference/syntax/sqldescribecol-function?view=sql-server-ver16
 SQLRETURN SQLDescribeColInternal(
     SQLHSTMT statement_handle, SQLUSMALLINT column_number, SQLCHAR* column_name,
-    SQLSMALLINT column_name_buffer_len, SQLSMALLINT* column_name_Le,
+    SQLSMALLINT column_name_buffer_len, SQLSMALLINT* column_name_le,
     SQLSMALLINT* column_sql_data_type, SQLULEN* column_size,
     SQLSMALLINT* decimal_digits, SQLSMALLINT* column_nullable);
 
