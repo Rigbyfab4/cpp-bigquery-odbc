@@ -335,7 +335,7 @@ SQLRETURN SQLDescribeColInternal(
 
   StatusRecord status_record =
       StringValueToOutputBufferResponse(desc_record.name.c_str(), column_name,
-                                        column_name_buffer_len, column_name_Le);
+                                        column_name_buffer_len, column_name_le);
   if (!status_record.ok()) {
     handle.GetDiagnostics().AddStatusRecord(status_record);
     return status_record.CalculateReturnCode();
