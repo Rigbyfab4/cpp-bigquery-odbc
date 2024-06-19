@@ -1385,4 +1385,44 @@ TEST(SQLNumResultCols, CheckColumns) {
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
+TEST(SQLDescribeColumn, ValidateColumnDetails) {
+  auto const table_name = "INTEGRATION_TESTS.Test_Table";
+  Table table(table_name);
+
+  Schema schema{{"id", SQL_BIGINT}, {"name", SQL_VARCHAR}, {"age", SQL_BIGINT}};
+
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  SQLRETURN status;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, "SELECT * FROM INTEGRATION_TESTS.Test_Table");
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
+
+  CheckError(status, "SQLPrepare", conn);
+
+  // Check if the number of columns returned is correct
+  SQLSMALLINT num_cols;
+  status = SQLNumResultCols(conn->hstmt, &num_cols);
+  CheckError(status, "SQLNumResultCols", conn);
+  EXPECT_EQ(num_cols, schema.size());
+
+  // Loop through columns and verify descriptions
+  std::vector<std::shared_ptr<Column>> cols(num_cols);
+  for (int i = 0; i < num_cols; i++) {
+    auto col_ptr = std::make_shared<Column>();
+    cols[i] = col_ptr;
+
+    DescribeCol(conn, col_ptr, i + 1);
+
+    // Verify returned column descriptions with the table schema
+    EXPECT_STREQ((char const*)col_ptr->name, schema[i].name.c_str());
+    EXPECT_EQ(col_ptr->name_len, schema[i].name.length());
+    EXPECT_EQ(col_ptr->data_type, schema[i].type);
+    EXPECT_EQ(col_ptr->nullable, SQL_NULLABLE);
+  }
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 }  // namespace google::cloud::odbc_tests
