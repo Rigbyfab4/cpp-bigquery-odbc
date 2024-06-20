@@ -166,7 +166,6 @@ TEST(SQLDescribeColumn, DescribeAllColumns) {
                             &decimal_digits, &nullable);
     CheckError(status, "SQLDescribeCol[" + std::to_string(i) + "]", conn);
 
-    std::cout << "Checking column number: " << i << "\n";
     ValidateExpectedResults(conn, column_name, column_name_Le, i, data_type,
                             column_size, decimal_digits, nullable);
   }
