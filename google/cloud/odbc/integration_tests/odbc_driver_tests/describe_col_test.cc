@@ -78,7 +78,7 @@ void ValidateLength(std::shared_ptr<ODBCHandles> conn,
 }
 
 void ValidateExpectedResults(std::shared_ptr<ODBCHandles> conn,
-                             SQLCHAR column_name[15],
+                             SQLCHAR column_name[kBufferLength],
                              SQLSMALLINT column_name_Le,
                              SQLSMALLINT column_number, SQLSMALLINT sql_type,
                              SQLULEN column_size, SQLSMALLINT decimal_digits,
@@ -109,10 +109,10 @@ void ValidateExpectedResults(std::shared_ptr<ODBCHandles> conn,
   CheckError(status, "SQLGetDescField(SQL_DESC_NULLABLE)", conn);
   EXPECT_EQ(nullable, out_nullable);
 
-  SQLCHAR out_column_Name[20];
+  SQLCHAR out_column_Name[kBufferLength];
   SQLINTEGER str_len = 0;
-  status = SQLGetDescField(conn->ird, 1, SQL_DESC_NAME, &out_column_Name,
-                           kBufferLength, &str_len);
+  status = SQLGetDescField(conn->ird, column_number, SQL_DESC_NAME,
+                           &out_column_Name, kBufferLength, &str_len);
   CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
   EXPECT_STREQ((char const*)out_column_Name, (char const*)column_name);
   EXPECT_EQ(str_len, column_name_Le);
@@ -125,10 +125,10 @@ std::string CreateColumnName(int i) {
   return name;
 }
 
-TEST(SQLDescribeColumn, DescribeAllParams) {
+TEST(SQLDescribeColumn, DescribeAllColumns) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn, true), SQL_SUCCESS);
-  auto table_name = kDatasetWithTablePrefix + "ODBC_DESCRIBE_PARAMS_TEST";
+  auto table_name = kDatasetWithTablePrefix + "ODBC_DESCRIBE_COLUMNS_TEST";
   Table table(table_name);
   std::string table_schema =
       "(" + CreateColumnName(0) + kExpectedResults[0].bq_type;
@@ -141,13 +141,13 @@ TEST(SQLDescribeColumn, DescribeAllParams) {
   table_schema.append(")");
   table.Create(conn, table_schema);
 
-  auto insert_stmt = "INSERT INTO " + table_name + " VALUES (" + params + ")";
-  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt.c_str(), SQL_NTS);
+  auto select_stmt = "SELECT * FROM " + table_name;
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)select_stmt.c_str(), SQL_NTS);
   CheckError(status, "SQLPrepare", conn);
 
   SQLSMALLINT num_columns;
   status = SQLNumResultCols(conn->hstmt, &num_columns);
-  CheckError(status, "SQLNumParams", conn);
+  CheckError(status, "SQLNumResultCols", conn);
   status =
       SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &conn->ird, 0, NULL);
   CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
@@ -157,15 +157,15 @@ TEST(SQLDescribeColumn, DescribeAllParams) {
     SQLULEN column_size = 0;
     SQLSMALLINT decimal_digits = 0;
     SQLSMALLINT nullable = 0;
-    SQLCHAR column_name[15];
+    SQLCHAR column_name[kBufferLength];
     SQLSMALLINT column_name_Le = 0;
 
-    status =
-        SQLDescribeCol(conn->hstmt, i, column_name, 20, &column_name_Le,
-                       &data_type, &column_size, &decimal_digits, &nullable);
+    status = SQLDescribeCol(conn->hstmt, i, column_name, kBufferLength,
+                            &column_name_Le, &data_type, &column_size,
+                            &decimal_digits, &nullable);
     CheckError(status, "SQLDescribeCol[" + std::to_string(i) + "]", conn);
 
-    std::cout << "Checking param number: " << i << "\n";
+    std::cout << "Checking column number: " << i << "\n";
     ValidateExpectedResults(conn, column_name, column_name_Le, i, data_type,
                             column_size, decimal_digits, nullable);
   }
