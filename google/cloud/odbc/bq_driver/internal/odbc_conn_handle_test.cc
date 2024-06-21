@@ -27,6 +27,7 @@ using google::cloud::odbc_internal::StatusRecord;
 
 std::string const kDsnDescription = "test-dsn";
 std::string const kDsnCatalog = "bigquery-test";
+std::string const kDsnDefaultDataset = "bigquery-test-dataset";
 std::string const kDsnDriver = "test-driver";
 std::string const kDsnName = "SampleDSN";
 
@@ -71,15 +72,31 @@ TEST(ConnectionHandle, DsnSetup) {
   dsn_section["Description"] = kDsnDescription;
   dsn_section["Driver"] = kDsnDriver;
   dsn_section["Catalog"] = kDsnCatalog;
+  dsn_section["DefaultDataset"] = kDsnDefaultDataset;
+  dsn_section["SQLDialect"] = "0";
 
   conn_handle->SetUp(dsn_section, kDsnName);
   Dsn actual = conn_handle->GetDsn();
 
   EXPECT_EQ(actual.catalog, kDsnCatalog);
+  EXPECT_EQ(actual.default_dataset, kDsnDefaultDataset);
   EXPECT_EQ(actual.driver, kDsnDriver);
   EXPECT_EQ(actual.description, kDsnDescription);
   EXPECT_EQ(actual.dsn_name, kDsnName);
+  EXPECT_TRUE(actual.is_bq_legacy_sql);
   EXPECT_FALSE(conn_handle->IsConnected());
+
+  delete conn_handle;
+}
+
+TEST(ConnectionHandle, DsnSetup_SQLDialect_NotSet) {
+  auto* conn_handle = new ConnectionHandle();
+  Section dsn_section;
+
+  conn_handle->SetUp(dsn_section, kDsnName);
+
+  Dsn actual = conn_handle->GetDsn();
+  EXPECT_FALSE(actual.is_bq_legacy_sql);
 
   delete conn_handle;
 }
