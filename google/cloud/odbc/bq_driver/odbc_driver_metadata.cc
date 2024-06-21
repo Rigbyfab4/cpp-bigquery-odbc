@@ -17,17 +17,24 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_foreign_keys.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_info.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_primary_keys.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_sql_tables.h"
 #include "google/cloud/odbc/bq_driver/odbc_utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver {
 
+using google::cloud::odbc_bigquery_client_interface::ODBCBQClient;
 using google::cloud::odbc_bq_driver_internal::ConnectionHandle;
+using google::cloud::odbc_bq_driver_internal::CreateResultSetForTableTypes;
 using google::cloud::odbc_bq_driver_internal::DSResults;
 using google::cloud::odbc_bq_driver_internal::FetchForeignKeysFromDataSource;
 using google::cloud::odbc_bq_driver_internal::FetchPrimaryKeysFromDataSource;
+using google::cloud::odbc_bq_driver_internal::GetResultSetForDatasets;
+using google::cloud::odbc_bq_driver_internal::GetResultSetForProjects;
+using google::cloud::odbc_bq_driver_internal::GetResultSetForTables;
 using google::cloud::odbc_bq_driver_internal::IsFunctionIdOdbc2;
 using google::cloud::odbc_bq_driver_internal::IsFunctionIdOdbc3;
+using google::cloud::odbc_bq_driver_internal::kMatchAll;
 using google::cloud::odbc_bq_driver_internal::kSqlApiAllFuncsSize;
 using google::cloud::odbc_bq_driver_internal::kTraceOption;
 using google::cloud::odbc_bq_driver_internal::PopulateSupportedODBC2Functions;
@@ -44,6 +51,7 @@ using google::cloud::odbc_bq_driver_internal::SupportedInfoType;
 using google::cloud::odbc_bq_driver_internal::TraceOptions;
 using google::cloud::odbc_bq_driver_internal::TracePrintInternal;
 using google::cloud::odbc_bq_driver_internal::UnSupportedInfoType;
+using google::cloud::odbc_bq_driver_internal::ValidateInputParameters;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
@@ -52,6 +60,15 @@ TraceOptions& opts = *(*kTraceOption);
 
 // Internal helper functions.
 namespace {
+
+template <typename T>
+SQLRETURN LogAndReturnCode(StatementHandle& handle,
+                           StatusRecordOr<T> status_record_or) {
+  auto status_record = status_record_or.GetStatusRecord();
+  handle.GetDiagnostics().AddStatusRecord(status_record);
+  TracePrintInternal(opts, status_record.message);
+  return status_record_or.GetCalculatedReturnCode();
+}
 
 StatusRecord InvalidType(char const* mesg, SQLUSMALLINT info_type) {
   std::string message = mesg;
@@ -334,6 +351,93 @@ SQLRETURN SQLForeignKeysInternal(
     handle.SetStmtState(StmtStates::kStatementExecutedWithoutRs);
   }
   return rc;
+}
+
+SQLRETURN SQLTablesInternal(SQLHSTMT stmt_handle, SQLCHAR* catalog_name,
+                            SQLSMALLINT catalog_name_len, SQLCHAR* schema_name,
+                            SQLSMALLINT schema_name_len, SQLCHAR* table_name,
+                            SQLSMALLINT table_name_len, SQLCHAR* table_type,
+                            SQLSMALLINT table_type_len) {
+  StatusRecordOr<StatementHandle*> handle_result =
+      ValidateStatementHandle(stmt_handle);
+  if (!handle_result) {
+    TracePrintInternal(opts, handle_result.GetStatusRecord().message);
+    return handle_result.GetCalculatedReturnCode();
+  }
+  StatementHandle& handle = *(*handle_result);
+
+  StatusRecordOr<SQLULEN> attr_status =
+      handle.GetAttribute(SQL_ATTR_METADATA_ID);
+  if (!attr_status) {
+    return LogAndReturnCode(handle, attr_status);
+  }
+  SQLULEN metadata_id = *attr_status;
+
+  auto input_param_status = ValidateInputParameters(
+      catalog_name, catalog_name_len, schema_name, schema_name_len, table_name,
+      table_name_len, table_type_len, metadata_id);
+  if (!input_param_status.ok()) {
+    handle.GetDiagnostics().AddStatusRecord(input_param_status);
+    TracePrintInternal(opts, input_param_status.message);
+    return input_param_status.CalculateReturnCode();
+  }
+
+  std::string project_filter = ToCharStr(catalog_name, kMatchAll);
+  std::string dataset_filter = ToCharStr(schema_name, kMatchAll);
+  std::string table_filter = ToCharStr(table_name, kMatchAll);
+  std::string table_type_filter = ToCharStr(table_type, kMatchAll);
+
+  if (handle.GetConnectionHandle() == nullptr) {
+    auto status_record = StatusRecord{SQLStates::k_HY013(),
+                                      "Internal connection handle is null"};
+    handle.GetDiagnostics().AddStatusRecord(status_record);
+    TracePrintInternal(opts, status_record.message);
+    return status_record.CalculateReturnCode();
+  }
+  ConnectionHandle& conn_handle = *(handle.GetConnectionHandle());
+  if (!conn_handle.IsConnected()) {
+    auto status_record = StatusRecord{
+        SQLStates::k_08S01(), "Connection to the data source is broken"};
+    handle.GetDiagnostics().AddStatusRecord(status_record);
+    TracePrintInternal(opts, status_record.message);
+    return status_record.CalculateReturnCode();
+  }
+  std::shared_ptr<ODBCBQClient> bq_client_ptr = conn_handle.GetClient();
+  if (!bq_client_ptr) {
+    auto status_record = StatusRecord{
+        SQLStates::k_HY000(), "Error establishing Datasource connection"};
+    handle.GetDiagnostics().AddStatusRecord(status_record);
+    TracePrintInternal(opts, status_record.message);
+    return status_record.CalculateReturnCode();
+  }
+  ODBCBQClient& bq_client = *bq_client_ptr;
+  StatusRecordOr<ResultSet> result_set_status;
+
+  if (!metadata_id && project_filter == SQL_ALL_CATALOGS &&
+      dataset_filter.empty() && table_filter.empty()) {
+    result_set_status = GetResultSetForProjects(bq_client, metadata_id);
+  } else if (!metadata_id && project_filter.empty() &&
+             dataset_filter == SQL_ALL_SCHEMAS && table_filter.empty()) {
+    result_set_status = GetResultSetForDatasets(bq_client, metadata_id);
+  } else if (!metadata_id && project_filter.empty() && dataset_filter.empty() &&
+             table_filter.empty() && table_type_filter == SQL_ALL_TABLE_TYPES) {
+    result_set_status = CreateResultSetForTableTypes();
+  } else {
+    result_set_status = GetResultSetForTables(
+        conn_handle, bq_client, project_filter, dataset_filter, table_filter,
+        table_type_filter, metadata_id);
+  }
+  if (!result_set_status) {
+    return LogAndReturnCode(handle, result_set_status);
+  }
+
+  if (!result_set_status->rows.empty()) {
+    handle.SetResultSet(*result_set_status);
+    handle.SetStmtState(StmtStates::kStatementExecutedWithRs);
+  } else {
+    handle.SetStmtState(StmtStates::kStatementExecutedWithoutRs);
+  }
+  return SQL_SUCCESS;
 }
 
 }  // namespace google::cloud::odbc_bq_driver
