@@ -283,6 +283,7 @@ EnvironmentHandle::EnvironmentHandle() {
 
 EnvironmentHandle::EnvironmentHandle(EnvironmentHandle const& environmentHandle)
     : Handle(environmentHandle) {
+  // TODO(b/349757194): Convert shallow copy to deep copy
   connection_pool_ = environmentHandle.connection_pool_;
   connection_pool_match_ = environmentHandle.connection_pool_match_;
   odbc_ver_ = environmentHandle.odbc_ver_;
@@ -293,6 +294,7 @@ EnvironmentHandle::EnvironmentHandle(EnvironmentHandle const& environmentHandle)
 EnvironmentHandle& EnvironmentHandle::operator=(
     EnvironmentHandle const& environmentHandle) {
   if (this != &environmentHandle) {
+    // TODO(b/349757194): Convert shallow copy to deep copy
     connection_pool_ = environmentHandle.connection_pool_;
     connection_pool_match_ = environmentHandle.connection_pool_match_;
     odbc_ver_ = environmentHandle.odbc_ver_;

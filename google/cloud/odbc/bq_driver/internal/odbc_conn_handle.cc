@@ -87,8 +87,7 @@ ConnectionHandle::ConnectionHandle(ConnectionHandle const& connectionHandle)
   kType = connectionHandle.kType;
   attribute_str_values_ = connectionHandle.attribute_str_values_;
   is_connected_ = connectionHandle.is_connected_;
-  // These are pointer structure and shallow copy is only done for now,
-  // deep copy can be done as a follow-up.
+  // TODO(b/349757194): Convert shallow copy to deep copy
   attribute_values_ = connectionHandle.attribute_values_;
   stmt_handles_ = connectionHandle.stmt_handles_;
   desc_handles_ = connectionHandle.desc_handles_;
@@ -103,8 +102,7 @@ ConnectionHandle& ConnectionHandle::operator=(
     kType = connectionHandle.kType;
     attribute_str_values_ = connectionHandle.attribute_str_values_;
     is_connected_ = connectionHandle.is_connected_;
-    // These are pointer structure and shallow copy is only done for now,
-    // deep copy can be done as a follow-up.
+    // TODO(b/349757194): Convert shallow copy to deep copy
     attribute_values_ = connectionHandle.attribute_values_;
     stmt_handles_ = connectionHandle.stmt_handles_;
     desc_handles_ = connectionHandle.desc_handles_;

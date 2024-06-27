@@ -56,6 +56,7 @@ StatementHandle ::StatementHandle(StatementHandle const& statementHandle)
   descriptors_ = statementHandle.descriptors_;
   query_ = statementHandle.query_;
   attributes_ = statementHandle.attributes_;
+  // TODO(b/349757194): Convert shallow copy to deep copy
   conn_handle_ = statementHandle.conn_handle_;
   query_parameters_ = statementHandle.query_parameters_;
 };
@@ -70,6 +71,7 @@ StatementHandle& StatementHandle::operator=(
     descriptors_ = statementHandle.descriptors_;
     query_ = statementHandle.query_;
     attributes_ = statementHandle.attributes_;
+    // TODO(b/349757194): Convert shallow copy to deep copy
     conn_handle_ = statementHandle.conn_handle_;
     query_parameters_ = statementHandle.query_parameters_;
   }
