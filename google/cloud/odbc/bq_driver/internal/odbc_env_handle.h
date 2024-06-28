@@ -21,6 +21,7 @@
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "google/cloud/status_or.h"
 #include <memory>
+#include <mutex>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
@@ -120,10 +121,10 @@ class EnvironmentHandle : public Handle {
   explicit EnvironmentHandle();
   ~EnvironmentHandle() = default;
 
-  EnvironmentHandle(EnvironmentHandle const&) = default;
-  EnvironmentHandle& operator=(EnvironmentHandle const&) = default;
-  EnvironmentHandle(EnvironmentHandle&&) = default;
-  EnvironmentHandle& operator=(EnvironmentHandle&&) = default;
+  EnvironmentHandle(EnvironmentHandle const& environmentHandle);
+  EnvironmentHandle& operator=(EnvironmentHandle const& environmentHandle);
+  EnvironmentHandle(EnvironmentHandle&& environmentHandle) noexcept;
+  EnvironmentHandle& operator=(EnvironmentHandle&& environmentHandle) noexcept;
 
   SQLRETURN GetAttribute(SQLINTEGER attribute, void* value, void* length);
 
@@ -131,11 +132,14 @@ class EnvironmentHandle : public Handle {
 
   HandleType kType = HandleType::kEnvHandle;
 
+  std::mutex& GetMutex() const { return environment_handle_mutex_; }
+
  private:
   std::shared_ptr<EnvAttrConnectionPool> connection_pool_;
   std::shared_ptr<EnvAttrConnectionPoolMatch> connection_pool_match_;
   std::shared_ptr<EnvAttrOdbcVersion> odbc_ver_;
   std::shared_ptr<EnvAttrOutputNTS> output_nts_;
+  mutable std::mutex environment_handle_mutex_;
 };
 
 }  // namespace google::cloud::odbc_bq_driver_internal

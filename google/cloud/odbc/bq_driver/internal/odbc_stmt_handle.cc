@@ -47,6 +47,62 @@ DescriptorHandle& StatementHandle::GetDescriptorHandle(
   }
 }
 
+StatementHandle ::StatementHandle(StatementHandle const& statementHandle)
+    : Handle(statementHandle) {
+  kType = statementHandle.kType;
+  stmt_state_ = statementHandle.stmt_state_;
+  result_set_ = statementHandle.result_set_;
+  query_str_ = statementHandle.query_str_;
+  descriptors_ = statementHandle.descriptors_;
+  query_ = statementHandle.query_;
+  attributes_ = statementHandle.attributes_;
+  // TODO(b/349757194): Convert shallow copy to deep copy
+  conn_handle_ = statementHandle.conn_handle_;
+  query_parameters_ = statementHandle.query_parameters_;
+};
+
+StatementHandle& StatementHandle::operator=(
+    StatementHandle const& statementHandle) {
+  if (this != &statementHandle) {
+    kType = statementHandle.kType;
+    stmt_state_ = statementHandle.stmt_state_;
+    result_set_ = statementHandle.result_set_;
+    query_str_ = statementHandle.query_str_;
+    descriptors_ = statementHandle.descriptors_;
+    query_ = statementHandle.query_;
+    attributes_ = statementHandle.attributes_;
+    // TODO(b/349757194): Convert shallow copy to deep copy
+    conn_handle_ = statementHandle.conn_handle_;
+    query_parameters_ = statementHandle.query_parameters_;
+  }
+  return *this;
+}
+
+StatementHandle::StatementHandle(StatementHandle&& statementHandle) noexcept {
+  kType = std::move(statementHandle.kType);
+  stmt_state_ = std::move(statementHandle.stmt_state_);
+  result_set_ = std::move(statementHandle.result_set_);
+  query_str_ = std::move(statementHandle.query_str_);
+  descriptors_ = std::move(statementHandle.descriptors_);
+  query_ = std::move(statementHandle.query_);
+  attributes_ = std::move(statementHandle.attributes_);
+  conn_handle_ = std::move(statementHandle.conn_handle_);
+  query_parameters_ = std::move(statementHandle.query_parameters_);
+}
+StatementHandle& StatementHandle::operator=(
+    StatementHandle&& statementHandle) noexcept {
+  kType = std::move(statementHandle.kType);
+  stmt_state_ = std::move(statementHandle.stmt_state_);
+  result_set_ = std::move(statementHandle.result_set_);
+  query_str_ = std::move(statementHandle.query_str_);
+  descriptors_ = std::move(statementHandle.descriptors_);
+  query_ = std::move(statementHandle.query_);
+  attributes_ = std::move(statementHandle.attributes_);
+  conn_handle_ = std::move(statementHandle.conn_handle_);
+  query_parameters_ = std::move(statementHandle.query_parameters_);
+  return *this;
+}
+
 void DissociateDescriptorHandle(DescriptorHandle* descriptor_handle,
                                 DescriptorType type, StatementHandle* handle) {
   if (descriptor_handle) {

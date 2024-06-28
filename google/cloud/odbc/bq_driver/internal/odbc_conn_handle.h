@@ -58,10 +58,10 @@ class ConnectionHandle : public Handle {
   explicit ConnectionHandle() = default;
   ~ConnectionHandle() = default;
 
-  ConnectionHandle(ConnectionHandle const&) = default;
-  ConnectionHandle& operator=(ConnectionHandle const&) = default;
-  ConnectionHandle(ConnectionHandle&&) = default;
-  ConnectionHandle& operator=(ConnectionHandle&&) = default;
+  ConnectionHandle(ConnectionHandle const& connectionHandle);
+  ConnectionHandle& operator=(ConnectionHandle const& connectionHandle);
+  ConnectionHandle(ConnectionHandle&& connectionHandle) noexcept;
+  ConnectionHandle& operator=(ConnectionHandle&& connectionHandle) noexcept;
 
   odbc_internal::StatusRecord Connect(Authentication& auth);
 
@@ -87,6 +87,8 @@ class ConnectionHandle : public Handle {
   std::set<StatementHandle*>& GetStatementHandles() { return stmt_handles_; }
   std::set<DescriptorHandle*>& GetDescriptorHandles() { return desc_handles_; }
 
+  std::mutex& GetMutex() const { return connection_handle_mutex_; }
+
  protected:
   bool is_connected_ = false;
 
@@ -106,6 +108,7 @@ class ConnectionHandle : public Handle {
   // storage of all explicitly allocated descriptor handles associated with this
   // connection handle
   std::set<DescriptorHandle*> desc_handles_;
+  mutable std::mutex connection_handle_mutex_;
 };
 
 }  // namespace google::cloud::odbc_bq_driver_internal
