@@ -640,6 +640,61 @@ TEST(StatementTest, FetchDirectRowWise) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(StatementTest, RollBackTransaction) {
+  std::string const table_name =
+      kDatasetWithTablePrefix + "_RollBackTransaction";
+  Table table(table_name);
+
+  // Create Table
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.Create(
+      conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+
+  // Insert some data to the table
+  StdRow row = {"a1", 0, 0};
+  table.InsertData(conn, {row}, false, true);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kSessionEnabledConnectionString, conn), SQL_SUCCESS);
+  SQLUINTEGER autocommit = SQL_AUTOCOMMIT_OFF;
+  auto status = SQLSetConnectAttr(conn->hdbc, SQL_ATTR_AUTOCOMMIT,
+                                  (SQLPOINTER)autocommit, 0);
+
+  // Try to update data in the table
+  std::string update_stmt = "UPDATE " + table_name +
+                            " SET StringField='b1' WHERE StringField = 'a1';";
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)update_stmt.c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare(update)", conn);
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute(update)", conn);
+
+  // Check that the data was updated
+  auto const query = "SELECT StringField FROM " + table_name;
+  auto results = *FetchResults(conn, query, true);
+  VerifyColumnWiseResults({{"b1", 0, 0}}, results, std::vector<std::string>());
+
+  // ROLLBACK TRANSACTION
+  status = SQLEndTran(SQL_HANDLE_DBC, conn->hdbc, SQL_ROLLBACK);
+  CheckError(status, "SQLEndTran(after select)", conn);
+
+  // Check that transaction was rolled back and the data has initial value
+  results = *FetchResults(conn, query, true);
+  VerifyColumnWiseResults({{"a1", 0, 0}}, results, std::vector<std::string>());
+
+  // COMMIT TRANSACTION
+  status = SQLEndTran(SQL_HANDLE_DBC, conn->hdbc, SQL_COMMIT);
+  CheckError(status, "SQLEndTran(after select)", conn);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.Drop(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 void PrepareAndCheckQuery(std::string const& query,
