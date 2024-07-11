@@ -16,6 +16,7 @@
 
 namespace google::cloud::odbc_bq_driver {
 
+using google::cloud::odbc_bq_driver_internal::ConvertSQLWCHARToString;
 using google::cloud::odbc_bq_driver_internal::FormatSqlChar;
 using google::cloud::odbc_bq_driver_internal::FormatSqlHandle;
 using google::cloud::odbc_bq_driver_internal::FormatSqlHandleType;
@@ -28,6 +29,7 @@ using google::cloud::odbc_bq_driver_internal::FormatSqlULen;
 using google::cloud::odbc_bq_driver_internal::FormatSqlUSmallInt;
 using google::cloud::odbc_bq_driver_internal::FormatString;
 using google::cloud::odbc_bq_driver_internal::ToCStr;
+using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
 
 // Following functionality still needs to be implemented for the
 // entry functions.
@@ -113,7 +115,28 @@ void TraceFunctionEntry_SQLDriverConnectW(
     SQLWCHAR* in_connection_str, SQLSMALLINT in_connection_str_len,
     SQLWCHAR* out_conn_str, SQLSMALLINT out_conn_str_buf_len,
     SQLSMALLINT* out_conn_str_len, SQLUSMALLINT driver_completion,
-    TraceOptions& opts) {}
+    TraceOptions& opts) {
+  std::string utf8_in_connection_str =
+      ConvertSQLWCHARToString(in_connection_str, in_connection_str_len);
+  in_connection_str_len = utf8_in_connection_str.length();
+  std::string utf8_out_conn_str =
+      ConvertSQLWCHARToString(out_conn_str, *out_conn_str_len);
+  *out_conn_str_len = utf8_out_conn_str.length();
+
+  TraceFunctionEntry_SQLDriverConnect(
+      connection_handle, window_handle,
+      reinterpret_cast<SQLCHAR*>(utf8_in_connection_str.data()),
+      in_connection_str_len,
+      reinterpret_cast<SQLCHAR*>(utf8_out_conn_str.data()),
+      out_conn_str_buf_len, out_conn_str_len, driver_completion, opts);
+
+  std::wstring utf16_in_connection_str(Utf8ToUtf16(utf8_in_connection_str));
+  in_connection_str =
+      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.data());
+  std::wstring utf16_out_conn_str(Utf8ToUtf16(utf8_out_conn_str));
+  out_conn_str = reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.data());
+  *out_conn_str_len = utf16_out_conn_str.length();
+}
 
 void TraceFunctionExit_SQLDriverConnectW(SQLRETURN ret_code,
                                          TraceOptions& opts) {
@@ -166,7 +189,26 @@ void TraceFunctionEntry_SQLBrowseConnectW(SQLHDBC connection_handle,
                                           SQLWCHAR* out_conn_str,
                                           SQLSMALLINT out_conn_str_buf_len,
                                           SQLSMALLINT* out_conn_str_len,
-                                          TraceOptions& opts) {}
+                                          TraceOptions& opts) {
+  std::string utf8_in_connection_str =
+      ConvertSQLWCHARToString(in_conn_str, in_conn_str_len);
+  in_conn_str_len = utf8_in_connection_str.length();
+  std::string utf8_out_conn_str =
+      ConvertSQLWCHARToString(out_conn_str, *out_conn_str_len);
+  *out_conn_str_len = utf8_out_conn_str.length();
+
+  TraceFunctionEntry_SQLBrowseConnect(
+      connection_handle,
+      reinterpret_cast<SQLCHAR*>(utf8_in_connection_str.data()),
+      in_conn_str_len, reinterpret_cast<SQLCHAR*>(utf8_out_conn_str.data()),
+      out_conn_str_buf_len, out_conn_str_len, opts);
+
+  std::wstring utf16_in_connection_str(Utf8ToUtf16(utf8_in_connection_str));
+  in_conn_str = reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.data());
+  std::wstring utf16_out_conn_str(Utf8ToUtf16(utf8_out_conn_str));
+  out_conn_str = reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.data());
+  *out_conn_str_len = utf16_out_conn_str.length();
+}
 
 void TraceFunctionExit_SQLBrowseConnectW(SQLRETURN ret_code,
                                          TraceOptions& opts) {
@@ -235,7 +277,34 @@ void TraceFunctionExit_SQLConnect(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLConnectW(
     SQLHDBC connection_handle, SQLWCHAR* server_name,
     SQLSMALLINT server_name_len, SQLWCHAR* user_name, SQLSMALLINT user_name_len,
-    const SQLWCHAR* auth_str, SQLSMALLINT auth_str_len, TraceOptions& opts) {}
+    const SQLWCHAR* auth_str, SQLSMALLINT auth_str_len, TraceOptions& opts) {
+  std::string utf8_server_name =
+      ConvertSQLWCHARToString(server_name, server_name_len);
+  server_name_len = utf8_server_name.length();
+  std::string utf8_user_name =
+      ConvertSQLWCHARToString(user_name, user_name_len);
+  user_name_len = utf8_user_name.length();
+  auto* auth_string = new SQLWCHAR[auth_str_len];
+  for (int i = 0; i < auth_str_len; ++i) *(auth_string + i) = *(auth_str + i);
+  std::string utf8_auth_str =
+      ConvertSQLWCHARToString(auth_string, auth_str_len);
+  auth_str_len = utf8_auth_str.length();
+  delete[] auth_string;
+  auth_string = nullptr;
+
+  TraceFunctionEntry_SQLConnect(
+      connection_handle, reinterpret_cast<SQLCHAR*>(utf8_server_name.data()),
+      server_name_len, reinterpret_cast<SQLCHAR*>(utf8_user_name.data()),
+      user_name_len, reinterpret_cast<SQLCHAR*>(utf8_auth_str.data()),
+      auth_str_len, opts);
+
+  std::wstring utf16_server_name(Utf8ToUtf16(utf8_server_name));
+  server_name = reinterpret_cast<SQLWCHAR*>(utf16_server_name.data());
+  std::wstring utf16_user_name(Utf8ToUtf16(utf8_user_name));
+  user_name = reinterpret_cast<SQLWCHAR*>(utf16_user_name.data());
+  std::wstring utf16_auth_str(Utf8ToUtf16(utf8_auth_str));
+  auth_str = reinterpret_cast<SQLWCHAR*>(utf16_auth_str.data());
+}
 
 void TraceFunctionExit_SQLConnectW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLConnectW_Exit", ret_code, opts);
@@ -282,7 +351,10 @@ void TraceFunctionEntry_SQLGetInfoW(SQLHDBC connection_handle,
                                     SQLPOINTER info_value,
                                     SQLSMALLINT info_value_buf_len,
                                     SQLSMALLINT* info_value_str_len,
-                                    TraceOptions& opts) {}
+                                    TraceOptions& opts) {
+  TraceFunctionEntry_SQLGetInfo(connection_handle, info_type, info_value,
+                                info_value_buf_len, info_value_str_len, opts);
+}
 
 void TraceFunctionExit_SQLGetInfoW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLGetInfoW_Exit", ret_code, opts);
@@ -381,7 +453,10 @@ void TraceFunctionExit_SQLSetConnectAttr(SQLRETURN ret_code,
 void TraceFunctionEntry_SQLSetConnectAttrW(SQLHDBC connection_handle,
                                            SQLINTEGER attr, SQLPOINTER value,
                                            SQLINTEGER value_str_len,
-                                           TraceOptions& opts) {}
+                                           TraceOptions& opts) {
+  TraceFunctionEntry_SQLSetConnectAttr(connection_handle, attr, value,
+                                       value_str_len, opts);
+}
 
 void TraceFunctionExit_SQLSetConnectAttrW(SQLRETURN ret_code,
                                           TraceOptions& opts) {
@@ -428,7 +503,10 @@ void TraceFunctionEntry_SQLGetConnectAttrW(SQLHDBC connection_handle,
                                            SQLINTEGER attr, SQLPOINTER value,
                                            SQLINTEGER value_buf_len,
                                            SQLINTEGER* value_str_len,
-                                           TraceOptions& opts) {}
+                                           TraceOptions& opts) {
+  TraceFunctionEntry_SQLGetConnectAttr(connection_handle, attr, value,
+                                       value_buf_len, value_str_len, opts);
+}
 
 void TraceFunctionExit_SQLGetConnectAttrW(SQLRETURN ret_code,
                                           TraceOptions& opts) {
@@ -470,7 +548,10 @@ void TraceFunctionExit_SQLSetStmtAttr(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLSetStmtAttrW(SQLHSTMT statement_handle,
                                         SQLINTEGER attr, SQLPOINTER value,
                                         SQLINTEGER value_str_len,
-                                        TraceOptions& opts) {}
+                                        TraceOptions& opts) {
+  TraceFunctionEntry_SQLSetStmtAttr(statement_handle, attr, value,
+                                    value_str_len, opts);
+}
 
 void TraceFunctionExit_SQLSetStmtAttrW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLSetStmtAttrW_Exit", ret_code, opts);
@@ -515,7 +596,10 @@ void TraceFunctionEntry_SQLGetStmtAttrW(SQLHSTMT statement_handle,
                                         SQLINTEGER attr, SQLPOINTER value,
                                         SQLINTEGER value_buf_len,
                                         SQLINTEGER* value_str_len,
-                                        TraceOptions& opts) {}
+                                        TraceOptions& opts) {
+  TraceFunctionEntry_SQLGetStmtAttr(statement_handle, attr, value,
+                                    value_buf_len, value_str_len, opts);
+}
 
 void TraceFunctionExit_SQLGetStmtAttrW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLGetStmtAttrW_Exit", ret_code, opts);
@@ -627,7 +711,11 @@ void TraceFunctionExit_SQLGetDescField(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLGetDescFieldW(
     SQLHDESC desc_handle, SQLSMALLINT rec_no, SQLSMALLINT field_id,
     SQLPOINTER out_desc_val, SQLINTEGER out_desc_val_buf_len,
-    SQLINTEGER* out_desc_val_str_len, TraceOptions& opts) {}
+    SQLINTEGER* out_desc_val_str_len, TraceOptions& opts) {
+  TraceFunctionEntry_SQLGetDescField(desc_handle, rec_no, field_id,
+                                     out_desc_val, out_desc_val_buf_len,
+                                     out_desc_val_str_len, opts);
+}
 
 void TraceFunctionExit_SQLGetDescFieldW(SQLRETURN ret_code,
                                         TraceOptions& opts) {
@@ -685,7 +773,17 @@ void TraceFunctionEntry_SQLGetDescRecW(
     SQLHDESC desc_handle, SQLSMALLINT rec_no, SQLWCHAR* name,
     SQLSMALLINT name_buf_len, SQLSMALLINT* name_str_len, SQLSMALLINT* desc_type,
     SQLSMALLINT* desc_sub_type, SQLLEN* desc_oct_len, SQLSMALLINT* desc_prec,
-    SQLSMALLINT* desc_sc, SQLSMALLINT* nullable, TraceOptions& opts) {}
+    SQLSMALLINT* desc_sc, SQLSMALLINT* nullable, TraceOptions& opts) {
+  std::string utf8_name = ConvertSQLWCHARToString(name, *name_str_len);
+  *name_str_len = utf8_name.length();
+  TraceFunctionEntry_SQLGetDescRec(
+      desc_handle, rec_no, reinterpret_cast<SQLCHAR*>(utf8_name.data()),
+      name_buf_len, name_str_len, desc_type, desc_sub_type, desc_oct_len,
+      desc_prec, desc_sc, nullable, opts);
+  std::wstring utf16_name(Utf8ToUtf16(utf8_name));
+  name = reinterpret_cast<SQLWCHAR*>(utf16_name.data());
+  *name_str_len = utf16_name.length();
+}
 
 void TraceFunctionExit_SQLGetDescRecW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLGetDescRecW_Exit", ret_code, opts);
@@ -726,7 +824,10 @@ void TraceFunctionExit_SQLSetDescField(SQLRETURN ret_code, TraceOptions& opts) {
 
 void TraceFunctionEntry_SQLSetDescFieldW(
     SQLHDESC desc_handle, SQLSMALLINT rec_no, SQLSMALLINT field_identifier,
-    SQLPOINTER desc_val, SQLINTEGER desc_val_buf_len, TraceOptions& opts) {}
+    SQLPOINTER desc_val, SQLINTEGER desc_val_buf_len, TraceOptions& opts) {
+  TraceFunctionEntry_SQLSetDescField(desc_handle, rec_no, field_identifier,
+                                     desc_val, desc_val_buf_len, opts);
+}
 
 void TraceFunctionExit_SQLSetDescFieldW(SQLRETURN ret_code,
                                         TraceOptions& opts) {
@@ -836,7 +937,17 @@ void TraceFunctionExit_SQLPrepare(SQLRETURN ret_code, TraceOptions& opts) {
 
 void TraceFunctionEntry_SQLPrepareW(SQLHSTMT statement_handle,
                                     SQLWCHAR* stmt_txt, SQLINTEGER stmt_txt_len,
-                                    TraceOptions& opts) {}
+                                    TraceOptions& opts) {
+  std::string utf8_stmt_txt = ConvertSQLWCHARToString(stmt_txt, stmt_txt_len);
+  if (stmt_txt_len != SQL_NTS) stmt_txt_len = utf8_stmt_txt.length();
+
+  TraceFunctionEntry_SQLPrepare(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_stmt_txt.data()),
+      stmt_txt_len, opts);
+
+  std::wstring utf16_stmt_txt(Utf8ToUtf16(utf8_stmt_txt));
+  stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.data());
+}
 
 void TraceFunctionExit_SQLPrepareW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLPrepareW_Exit", ret_code, opts);
@@ -927,7 +1038,19 @@ void TraceFunctionEntry_SQLGetCursorNameW(SQLHSTMT statement_handle,
                                           SQLWCHAR* cur_name,
                                           SQLSMALLINT cur_name_buf_len,
                                           SQLSMALLINT* cur_name_str_len,
-                                          TraceOptions& opts) {}
+                                          TraceOptions& opts) {
+  std::string utf8_cur_name =
+      ConvertSQLWCHARToString(cur_name, *cur_name_str_len);
+  *cur_name_str_len = utf8_cur_name.length();
+
+  TraceFunctionEntry_SQLGetCursorName(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_cur_name.data()),
+      cur_name_buf_len, cur_name_str_len, opts);
+
+  std::wstring utf16_cur_name(Utf8ToUtf16(utf8_cur_name));
+  cur_name = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.data());
+  *cur_name_str_len = utf16_cur_name.length();
+}
 
 void TraceFunctionExit_SQLGetCursorNameW(SQLRETURN ret_code,
                                          TraceOptions& opts) {
@@ -968,7 +1091,17 @@ void TraceFunctionExit_SQLSetCursorName(SQLRETURN ret_code,
 void TraceFunctionEntry_SQLSetCursorNameW(SQLHSTMT statement_handle,
                                           SQLWCHAR* cur_name,
                                           SQLSMALLINT cur_name_len,
-                                          TraceOptions& opts) {}
+                                          TraceOptions& opts) {
+  std::string utf8_cur_name = ConvertSQLWCHARToString(cur_name, cur_name_len);
+  cur_name_len = utf8_cur_name.length();
+
+  TraceFunctionEntry_SQLSetCursorName(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_cur_name.data()),
+      cur_name_len, opts);
+
+  std::wstring utf16_cur_name(Utf8ToUtf16(utf8_cur_name));
+  cur_name = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.data());
+}
 
 void TraceFunctionExit_SQLSetCursorNameW(SQLRETURN ret_code,
                                          TraceOptions& opts) {
@@ -1032,7 +1165,17 @@ void TraceFunctionExit_SQLExecDirect(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLExecDirectW(SQLHSTMT statement_handle,
                                        SQLWCHAR* stmt_txt,
                                        SQLINTEGER stmt_txt_len,
-                                       TraceOptions& opts) {}
+                                       TraceOptions& opts) {
+  std::string utf8_stmt_txt = ConvertSQLWCHARToString(stmt_txt, stmt_txt_len);
+  if (stmt_txt_len != SQL_NTS) stmt_txt_len = utf8_stmt_txt.length();
+
+  TraceFunctionEntry_SQLExecDirect(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_stmt_txt.data()),
+      stmt_txt_len, opts);
+
+  std::wstring utf16_stmt_txt(Utf8ToUtf16(utf8_stmt_txt));
+  stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.data());
+}
 
 void TraceFunctionExit_SQLExecDirectW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLExecDirectW_Exit", ret_code, opts);
@@ -1080,7 +1223,25 @@ void TraceFunctionEntry_SQLNativeSqlW(SQLHDBC connection_handle,
                                       SQLWCHAR* out_stmt_txt,
                                       SQLINTEGER out_stmt_txt_buf_len,
                                       SQLINTEGER* out_stmt_txt_len,
-                                      TraceOptions& opts) {}
+                                      TraceOptions& opts) {
+  std::string utf8_in_stmt_txt =
+      ConvertSQLWCHARToString(in_stmt_txt, in_stmt_txt_len);
+  in_stmt_txt_len = utf8_in_stmt_txt.length();
+  std::string utf8_out_stmt_txt =
+      ConvertSQLWCHARToString(out_stmt_txt, *out_stmt_txt_len);
+  *out_stmt_txt_len = utf8_out_stmt_txt.length();
+
+  TraceFunctionEntry_SQLNativeSql(
+      connection_handle, reinterpret_cast<SQLCHAR*>(utf8_in_stmt_txt.data()),
+      in_stmt_txt_len, reinterpret_cast<SQLCHAR*>(utf8_out_stmt_txt.data()),
+      out_stmt_txt_buf_len, out_stmt_txt_len, opts);
+
+  std::wstring utf16_in_stmt_txt(Utf8ToUtf16(utf8_in_stmt_txt));
+  in_stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_in_stmt_txt.data());
+  std::wstring utf16_out_stmt_txt(Utf8ToUtf16(utf8_out_stmt_txt));
+  out_stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_out_stmt_txt.data());
+  *out_stmt_txt_len = utf16_out_stmt_txt.length();
+}
 
 void TraceFunctionExit_SQLNativeSqlW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLNativeSqlW_Exit", ret_code, opts);
@@ -1374,7 +1535,11 @@ void TraceFunctionEntry_SQLColAttributeW(
     SQLHSTMT statement_handle, SQLUSMALLINT col_num,
     SQLUSMALLINT field_identifier, SQLPOINTER char_attr,
     SQLSMALLINT char_attr_buf_len, SQLSMALLINT* char_attr_str_len,
-    SQLLEN* numeric_attr, TraceOptions& opts) {}
+    SQLLEN* numeric_attr, TraceOptions& opts) {
+  TraceFunctionEntry_SQLColAttribute(
+      statement_handle, col_num, field_identifier, char_attr, char_attr_buf_len,
+      char_attr_str_len, numeric_attr, opts);
+}
 
 void TraceFunctionExit_SQLColAttributeW(SQLRETURN ret_code,
                                         TraceOptions& opts) {
@@ -1425,7 +1590,11 @@ void TraceFunctionEntry_SQLColAttributesW(
     SQLHSTMT statement_handle, SQLUSMALLINT col_num,
     SQLUSMALLINT field_identifier, SQLPOINTER char_attr,
     SQLSMALLINT char_attr_buf_len, SQLSMALLINT* char_attr_str_len,
-    SQLLEN* numeric_attr, TraceOptions& opts) {}
+    SQLLEN* numeric_attr, TraceOptions& opts) {
+  TraceFunctionEntry_SQLColAttributes(
+      statement_handle, col_num, field_identifier, char_attr, char_attr_buf_len,
+      char_attr_str_len, numeric_attr, opts);
+}
 
 void TraceFunctionExit_SQLColAttributesW(SQLRETURN ret_code,
                                          TraceOptions& opts) {
@@ -1477,7 +1646,19 @@ void TraceFunctionEntry_SQLDescribeColW(
     SQLHSTMT statement_handle, SQLUSMALLINT col_num, SQLWCHAR* col_name,
     SQLSMALLINT col_name_buf_len, SQLSMALLINT* col_name_len,
     SQLSMALLINT* col_sql_data_type, SQLULEN* col_sz, SQLSMALLINT* dec_digits,
-    SQLSMALLINT* col_nullable, TraceOptions& opts) {}
+    SQLSMALLINT* col_nullable, TraceOptions& opts) {
+  std::string utf8_col_name = ConvertSQLWCHARToString(col_name, *col_name_len);
+  *col_name_len = utf8_col_name.length();
+
+  TraceFunctionEntry_SQLDescribeCol(
+      statement_handle, col_num,
+      reinterpret_cast<SQLCHAR*>(utf8_col_name.data()), col_name_buf_len,
+      col_name_len, col_sql_data_type, col_sz, dec_digits, col_nullable, opts);
+
+  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
+  *col_name_len = utf16_col_name.length();
+}
 
 void TraceFunctionExit_SQLDescribeColW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLDescribeColW_Exit", ret_code, opts);
@@ -1638,7 +1819,11 @@ void TraceFunctionExit_SQLGetDiagField(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLGetDiagFieldW(
     SQLSMALLINT handle_type, SQLHANDLE handle, SQLSMALLINT rec_no,
     SQLSMALLINT diag_id, SQLPOINTER diag_info, SQLSMALLINT diag_info_buf_len,
-    SQLSMALLINT* diag_info_str_len, TraceOptions& opts) {}
+    SQLSMALLINT* diag_info_str_len, TraceOptions& opts) {
+  TraceFunctionEntry_SQLGetDiagField(handle_type, handle, rec_no, diag_id,
+                                     diag_info, diag_info_buf_len,
+                                     diag_info_str_len, opts);
+}
 
 void TraceFunctionExit_SQLGetDiagFieldW(SQLRETURN ret_code,
                                         TraceOptions& opts) {
@@ -1687,6 +1872,21 @@ void TraceFunctionEntry_SQLGetDiagRecW(
     SQLSMALLINT handle_type, SQLHANDLE handle, SQLSMALLINT rec_no,
     SQLWCHAR* sql_state, SQLINTEGER* native_err, SQLWCHAR* msg_txt,
     SQLSMALLINT msg_txt_buf_len, SQLSMALLINT* msg_txt_len, TraceOptions& opts) {
+  std::string utf8_sql_state = ConvertSQLWCHARToString(sql_state, NULL);
+  std::string utf8_msg_txt = ConvertSQLWCHARToString(msg_txt, *msg_txt_len);
+  *msg_txt_len = utf8_msg_txt.length();
+
+  TraceFunctionEntry_SQLGetDiagRec(
+      handle_type, handle, rec_no,
+      reinterpret_cast<SQLCHAR*>(utf8_sql_state.data()), native_err,
+      reinterpret_cast<SQLCHAR*>(utf8_msg_txt.data()), msg_txt_buf_len,
+      msg_txt_len, opts);
+
+  std::wstring utf16_sql_state(Utf8ToUtf16(utf8_sql_state));
+  sql_state = reinterpret_cast<SQLWCHAR*>(utf16_sql_state.data());
+  std::wstring utf16_msg_txt(Utf8ToUtf16(utf8_msg_txt));
+  msg_txt = reinterpret_cast<SQLWCHAR*>(utf16_msg_txt.data());
+  *msg_txt_len = utf16_msg_txt.length();
 }
 
 void TraceFunctionExit_SQLGetDiagRecW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -1742,7 +1942,35 @@ void TraceFunctionEntry_SQLColumnsW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLWCHAR* col_name, SQLSMALLINT col_name_len,
-    TraceOptions& opts) {}
+    TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  table_name_len = utf8_table_name.length();
+  std::string utf8_col_name = ConvertSQLWCHARToString(col_name, col_name_len);
+  col_name_len = utf8_col_name.length();
+
+  TraceFunctionEntry_SQLColumns(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_table_name.data()),
+      table_name_len, reinterpret_cast<SQLCHAR*>(utf8_col_name.data()),
+      col_name_len, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
+}
 
 void TraceFunctionExit_SQLColumnsW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLColumnsW_Exit", ret_code, opts);
@@ -1797,7 +2025,37 @@ void TraceFunctionEntry_SQLTablesW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLWCHAR* table_type,
-    SQLSMALLINT table_type_len, TraceOptions& opts) {}
+    SQLSMALLINT table_type_len, TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  table_name_len = utf8_table_name.length();
+  std::wstring table_type_wstr(reinterpret_cast<wchar_t const*>(table_type));
+  std::string utf8_table_type =
+      ConvertSQLWCHARToString(table_type, table_type_len);
+  table_type_len = utf8_table_type.length();
+
+  TraceFunctionEntry_SQLTables(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_table_name.data()),
+      table_name_len, reinterpret_cast<SQLCHAR*>(utf8_table_type.data()),
+      table_type_len, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+  std::wstring utf16_table_type(Utf8ToUtf16(utf8_table_type));
+  table_type = reinterpret_cast<SQLWCHAR*>(utf16_table_type.data());
+}
 
 void TraceFunctionExit_SQLTablesW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLTablesW_Exit", ret_code, opts);
@@ -1846,7 +2104,30 @@ void TraceFunctionEntry_SQLPrimaryKeysW(
     SQLHSTMT statement_handle, SQLWCHAR* catalog_name,
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
-    SQLSMALLINT table_name_len, TraceOptions& opts) {}
+    SQLSMALLINT table_name_len, TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  table_name_len = utf8_table_name.length();
+
+  TraceFunctionEntry_SQLPrimaryKeys(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_table_name.data()),
+      table_name_len, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+}
 
 void TraceFunctionExit_SQLPrimaryKeysW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLPrimaryKeysW_Exit", ret_code, opts);
@@ -1900,7 +2181,35 @@ void TraceFunctionEntry_SQLProcedureColumnsW(
     SQLHSTMT statement_handle, SQLWCHAR* catalog_name,
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* proc_name, SQLSMALLINT proc_name_len,
-    SQLWCHAR* col_name, SQLSMALLINT col_name_len, TraceOptions& opts) {}
+    SQLWCHAR* col_name, SQLSMALLINT col_name_len, TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_proc_name =
+      ConvertSQLWCHARToString(proc_name, proc_name_len);
+  proc_name_len = utf8_proc_name.length();
+  std::string utf8_col_name = ConvertSQLWCHARToString(col_name, col_name_len);
+  col_name_len = utf8_col_name.length();
+
+  TraceFunctionEntry_SQLProcedureColumns(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_proc_name.data()),
+      proc_name_len, reinterpret_cast<SQLCHAR*>(utf8_col_name.data()),
+      col_name_len, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_proc_name(Utf8ToUtf16(utf8_proc_name));
+  proc_name = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.data());
+  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
+}
 
 void TraceFunctionExit_SQLProcedureColumnsW(SQLRETURN ret_code,
                                             TraceOptions& opts) {
@@ -1950,7 +2259,30 @@ void TraceFunctionEntry_SQLProceduresW(
     SQLHSTMT statement_handle, SQLWCHAR* catalog_name,
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* proc_name, SQLSMALLINT proc_name_len,
-    TraceOptions& opts) {}
+    TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_proc_name =
+      ConvertSQLWCHARToString(proc_name, proc_name_len);
+  proc_name_len = utf8_proc_name.length();
+
+  TraceFunctionEntry_SQLProcedures(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_proc_name.data()),
+      proc_name_len, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_proc_name(Utf8ToUtf16(utf8_proc_name));
+  proc_name = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.data());
+}
 
 void TraceFunctionExit_SQLProceduresW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLProceduresW_Exit", ret_code, opts);
@@ -2008,7 +2340,31 @@ void TraceFunctionEntry_SQLSpecialColumnsW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLUSMALLINT min_rowid_scope,
-    SQLUSMALLINT col_nullable, TraceOptions& opts) {}
+    SQLUSMALLINT col_nullable, TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  table_name_len = utf8_table_name.length();
+
+  TraceFunctionEntry_SQLSpecialColumns(
+      statement_handle, id_type,
+      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()), catalog_name_len,
+      reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()), schema_name_len,
+      reinterpret_cast<SQLCHAR*>(utf8_table_name.data()), table_name_len,
+      min_rowid_scope, col_nullable, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+}
 
 void TraceFunctionExit_SQLSpecialColumnsW(SQLRETURN ret_code,
                                           TraceOptions& opts) {
@@ -2064,7 +2420,30 @@ void TraceFunctionEntry_SQLStatisticsW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLUSMALLINT index_type, SQLUSMALLINT reserved,
-    TraceOptions& opts) {}
+    TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  table_name_len = utf8_table_name.length();
+
+  TraceFunctionEntry_SQLStatistics(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_table_name.data()),
+      table_name_len, index_type, reserved, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+}
 
 void TraceFunctionExit_SQLStatisticsW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLStatisticsW_Exit", ret_code, opts);
@@ -2114,7 +2493,30 @@ void TraceFunctionEntry_SQLTablePrivilegesW(
     SQLHSTMT statement_handle, SQLWCHAR* catalog_name,
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
-    SQLSMALLINT table_name_len, TraceOptions& opts) {}
+    SQLSMALLINT table_name_len, TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  table_name_len = utf8_table_name.length();
+
+  TraceFunctionEntry_SQLTablePrivileges(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_table_name.data()),
+      table_name_len, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+}
 
 void TraceFunctionExit_SQLTablePrivilegesW(SQLRETURN ret_code,
                                            TraceOptions& opts) {
@@ -2182,7 +2584,51 @@ void TraceFunctionEntry_SQLForeignKeysW(
     SQLSMALLINT pk_table_name_len, SQLWCHAR* fk_catalog_name,
     SQLSMALLINT fk_catalog_name_len, SQLWCHAR* fk_schema_name,
     SQLSMALLINT fk_schema_name_len, SQLWCHAR* fk_table_name,
-    SQLSMALLINT fk_table_name_len, TraceOptions& opts) {}
+    SQLSMALLINT fk_table_name_len, TraceOptions& opts) {
+  std::string utf8_pk_catalog_name =
+      ConvertSQLWCHARToString(pk_catalog_name, pk_catalog_name_len);
+  pk_catalog_name_len = utf8_pk_catalog_name.length();
+  std::string utf8_pk_schema_name =
+      ConvertSQLWCHARToString(pk_schema_name, pk_schema_name_len);
+  pk_schema_name_len = utf8_pk_schema_name.length();
+  std::string utf8_pk_table_name =
+      ConvertSQLWCHARToString(pk_table_name, pk_table_name_len);
+  pk_table_name_len = utf8_pk_table_name.length();
+  std::string utf8_fk_catalog_name =
+      ConvertSQLWCHARToString(fk_catalog_name, fk_catalog_name_len);
+  fk_catalog_name_len = utf8_fk_catalog_name.length();
+  std::string utf8_fk_schema_name =
+      ConvertSQLWCHARToString(fk_schema_name, fk_schema_name_len);
+  fk_schema_name_len = utf8_fk_schema_name.length();
+  std::string utf8_fk_table_name =
+      ConvertSQLWCHARToString(fk_table_name, fk_table_name_len);
+  fk_table_name_len = utf8_fk_table_name.length();
+
+  TraceFunctionEntry_SQLForeignKeys(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_pk_catalog_name.data()),
+      pk_catalog_name_len,
+      reinterpret_cast<SQLCHAR*>(utf8_pk_schema_name.data()),
+      pk_schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_pk_table_name.data()),
+      pk_table_name_len,
+      reinterpret_cast<SQLCHAR*>(utf8_fk_catalog_name.data()),
+      fk_catalog_name_len,
+      reinterpret_cast<SQLCHAR*>(utf8_fk_schema_name.data()),
+      fk_schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_fk_table_name.data()),
+      fk_table_name_len, opts);
+
+  std::wstring utf16_pk_catalog_name(Utf8ToUtf16(utf8_pk_catalog_name));
+  pk_catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_pk_catalog_name.data());
+  std::wstring utf16_pk_schema_name(Utf8ToUtf16(utf8_pk_schema_name));
+  pk_schema_name = reinterpret_cast<SQLWCHAR*>(utf16_pk_schema_name.data());
+  std::wstring utf16_pk_table_name(Utf8ToUtf16(utf8_pk_table_name));
+  pk_table_name = reinterpret_cast<SQLWCHAR*>(utf16_pk_table_name.data());
+  std::wstring utf16_fk_catalog_name(Utf8ToUtf16(utf8_fk_catalog_name));
+  fk_catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_fk_catalog_name.data());
+  std::wstring utf16_fk_schema_name(Utf8ToUtf16(utf8_fk_schema_name));
+  fk_schema_name = reinterpret_cast<SQLWCHAR*>(utf16_fk_schema_name.data());
+  std::wstring utf16_fk_table_name(Utf8ToUtf16(utf8_fk_table_name));
+  fk_table_name = reinterpret_cast<SQLWCHAR*>(utf16_fk_table_name.data());
+}
 
 void TraceFunctionExit_SQLForeignKeysW(SQLRETURN ret_code, TraceOptions& opts) {
   ExitInternal("SQLForeignKeysW_Exit", ret_code, opts);
@@ -2238,7 +2684,35 @@ void TraceFunctionEntry_SQLColumnPrivilegesW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLWCHAR* col_name, SQLSMALLINT col_name_len,
-    TraceOptions& opts) {}
+    TraceOptions& opts) {
+  std::string utf8_catalog_name =
+      ConvertSQLWCHARToString(catalog_name, catalog_name_len);
+  catalog_name_len = utf8_catalog_name.length();
+  std::string utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  schema_name_len = utf8_schema_name.length();
+  std::string utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  table_name_len = utf8_table_name.length();
+  std::string utf8_col_name = ConvertSQLWCHARToString(col_name, col_name_len);
+  col_name_len = utf8_col_name.length();
+
+  TraceFunctionEntry_SQLColumnPrivileges(
+      statement_handle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
+      catalog_name_len, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
+      schema_name_len, reinterpret_cast<SQLCHAR*>(utf8_table_name.data()),
+      table_name_len, reinterpret_cast<SQLCHAR*>(utf8_col_name.data()),
+      col_name_len, opts);
+
+  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
+  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
+  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
+}
 
 void TraceFunctionExit_SQLColumnPrivilegesW(SQLRETURN ret_code,
                                             TraceOptions& opts) {

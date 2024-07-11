@@ -237,4 +237,119 @@ std::vector<std::string> SplitTableTypes(std::string const& table_types) {
   return types;
 }
 
+std::string Utf16ToUtf8(std::wstring const& utf16Str) {
+#ifdef _WIN32
+  int utf8Length = WideCharToMultiByte(CP_UTF8, 0, utf16Str.c_str(), -1, NULL,
+                                       0, NULL, NULL);
+  if (utf8Length == 0) {
+    throw std::runtime_error(
+        "Error determining buffer size while converting wstring to string");
+  }
+  std::string utf8Str(utf8Length, 0);
+  int result = WideCharToMultiByte(CP_UTF8, 0, utf16Str.c_str(), -1,
+                                   &utf8Str[0], utf8Length, NULL, NULL);
+  if (result == 0) {
+    throw std::runtime_error("Error while converting wstring to string");
+  }
+  return utf8Str;
+#else
+  iconv_t cd = iconv_open("UTF-8", "WCHAR_T");
+  int errorno = -1;
+  int* errorptr = &errorno;
+  if (cd == reinterpret_cast<iconv_t>(errorptr)) {
+    throw std::runtime_error(
+        "iconv_open failed while converting wstring to string: " +
+        std::string(strerror(errno)));
+  }
+
+  std::vector<char> inbuf(
+      reinterpret_cast<char const*>(utf16Str.data()),
+      reinterpret_cast<char const*>(utf16Str.data() + utf16Str.length()));
+  size_t inbytesleft = inbuf.size();
+  size_t outbytesleft = inbytesleft * 3;  // Allocate more space for output
+
+  std::string utf8str(outbytesleft, '\0');
+  char* inptr = inbuf.data();
+  char* outptr = utf8str.data();
+
+  size_t res = iconv(cd, &inptr, &inbytesleft, &outptr, &outbytesleft);
+  if (res == static_cast<size_t>(-1)) {
+    iconv_close(cd);
+    throw std::runtime_error(
+        "iconv16 failed while converting wstring to string " +
+        std::string(strerror(errno)));
+  }
+
+  iconv_close(cd);
+  utf8str.resize(outptr - utf8str.data());
+  return utf8str;
+#endif
+}
+
+std::wstring Utf8ToUtf16(std::string const& utf8Str) {
+#ifdef _WIN32
+  int utf16Length =
+      MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, NULL, 0);
+  if (utf16Length == 0) {
+    throw std::runtime_error(
+        "Error determining buffer size while converting string to wstring");
+  }
+  std::wstring utf16Str(utf16Length, 0);
+  int result = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1,
+                                   &utf16Str[0], utf16Length);
+  if (result == 0) {
+    throw std::runtime_error("Error while converting string to wstring");
+  }
+  return utf16Str;
+#else
+
+  iconv_t cd = iconv_open("WCHAR_T", "UTF-8");
+  int errorno = -1;
+  int* errorptr = &errorno;
+  if (cd == reinterpret_cast<iconv_t>(errorptr)) {
+    throw std::runtime_error(
+        "iconv_open failed while converting string to wstring " +
+        std::string(strerror(errno)));
+  }
+
+  // Use string length for input byte count
+  size_t inbytesleft = utf8Str.length();
+  // Allocate more space for the output buffer
+  size_t outbytesleft = inbytesleft * sizeof(wchar_t);
+  std::wstring utf16str(outbytesleft + sizeof(wchar_t), L'\0');
+
+  char* inbuf = const_cast<char*>(utf8Str.data());
+  char* outbuf = reinterpret_cast<char*>(utf16str.data());
+
+  size_t res = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+  if (res == static_cast<size_t>(-1)) {
+    iconv_close(cd);
+    throw std::runtime_error(
+        "iconv8 failed while converting string to wstring " +
+        std::string(strerror(errno)));
+  }
+
+  iconv_close(cd);
+
+  // Resize the output string to the actual converted size
+  utf16str.resize((outbuf - reinterpret_cast<char*>(utf16str.data())) /
+                  sizeof(wchar_t));
+
+  return utf16str;
+#endif
+}
+
+std::string ConvertSQLWCHARToString(SQLWCHAR* SQLWCHARString,
+                                    SQLINTEGER SQLWCHARStringLen) {
+  std::wstring stmt_txt_wstr;
+  std::wstring wstr(reinterpret_cast<wchar_t const*>(SQLWCHARString));
+  if (SQLWCHARStringLen == SQL_NTS || SQLWCHARStringLen == NULL) {
+    SQLWCHARStringLen = wstr.size();
+  }
+  stmt_txt_wstr.reserve(SQLWCHARStringLen);
+  for (SQLINTEGER i = 0; i < SQLWCHARStringLen; ++i) {
+    stmt_txt_wstr.push_back(static_cast<wchar_t>(SQLWCHARString[i]));
+  }
+  return Utf16ToUtf8(stmt_txt_wstr);
+}
 }  // namespace google::cloud::odbc_bq_driver_internal
