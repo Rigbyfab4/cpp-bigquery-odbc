@@ -1374,9 +1374,9 @@ TEST(SQLPrepareW, UnicodeStatement_SQL_NTS) {
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
 
   std::wstring query(
-      L"INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)");
+      L"INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)\0");
   std::vector<SQLWCHAR> sqlWStr(query.begin(), query.end());
-  sqlWStr.emplace_back(L'\0');
+ 
 
   auto status = SQLPrepareW(conn->hstmt, sqlWStr.data(), SQL_NTS);
   CheckError(status, "SQLPrepare", conn);
