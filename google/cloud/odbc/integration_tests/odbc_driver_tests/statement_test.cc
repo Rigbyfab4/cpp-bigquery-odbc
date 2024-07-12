@@ -1345,7 +1345,7 @@ TEST(SQLPrepare, InsertQuery) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(SQLPrepare, InsertQueryUnicode) {
+TEST(SQLPrepareW, InsertQueryUnicode) {
   auto conn = std::make_shared<ODBCHandles>();
 
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -1365,6 +1365,44 @@ TEST(SQLPrepare, InsertQueryUnicode) {
   EXPECT_EQ(stmt_handle->GetStmtState(), StmtStates::kStatementPrepared);
 
 #endif
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLPrepareW, UnicodeStatement_SQL_NTS) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::wstring query(
+      L"INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)");
+  std::vector<SQLWCHAR> sqlWStr(query.begin(), query.end());
+  sqlWStr.emplace_back(L'\0');
+
+  auto status = SQLPrepareW(conn->hstmt, sqlWStr.data(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+  // Cast hstmt to StatementHandle*
+  auto stmt_handle = static_cast<StatementHandle*>(conn->hstmt);
+
+  EXPECT_EQ(stmt_handle->GetStmtState(), StmtStates::kStatementPrepared);
+
+#endif
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLPrepareW, UnicodeStatementFailure) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::wstring query = L"Select * from NON_EXISTENT_TABLE";
+  std::vector<SQLWCHAR> sqlWStr(query.begin(), query.end());
+  sqlWStr.emplace_back(L'\0');
+
+  auto status = SQLPrepareW(conn->hstmt, sqlWStr.data(), query.length());
+  EXPECT_EQ(SQL_ERROR, status);
+
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

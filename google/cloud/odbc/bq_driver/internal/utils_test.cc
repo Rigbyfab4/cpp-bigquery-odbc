@@ -303,18 +303,13 @@ TEST(UnicodeConversion, Success_UnicodeConversion) {
   SQLWCHAR* statementText = sqlWStr.data();
 
   SQLSMALLINT length = sqlWStr.size();
-  std::wstring stmt_txt_wstr;
-  stmt_txt_wstr.reserve(length);
-  for (SQLSMALLINT i = 0; i < length; ++i) {
-    stmt_txt_wstr.push_back(static_cast<wchar_t>(statementText[i]));
-  }
 
-  std::string result_str = Utf16ToUtf8(stmt_txt_wstr.c_str());
+  std::string result_str = ConvertSQLWCHARToString(statementText, length);
 
   EXPECT_STREQ("INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)",
                result_str.c_str());
   std::wstring result_wstr = Utf8ToUtf16(result_str);
-  EXPECT_STREQ(stmt_txt_wstr.data(), result_wstr.data());
+  EXPECT_STREQ(query.data(), result_wstr.data());
 }
 
 TEST(UnicodeConversion, Success_UnicodeConversion_test) {
