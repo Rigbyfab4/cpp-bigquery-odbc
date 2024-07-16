@@ -19,6 +19,7 @@
 #include "google/cloud/internal/backoff_policy.h"
 #include "google/cloud/internal/getenv.h"
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 // We need sorting functions
 #include <algorithm>
 #include <fstream>
@@ -368,6 +369,12 @@ class Table {
   void InsertIntervalData(std::shared_ptr<ODBCHandles> conn,
                           std::vector<SQL_INTERVAL_STRUCT> rows,
                           bool use_ansi = false);
+
+  // This is used to insert json darainto a table which only has a string
+  // column.
+  void InsertJsonData(std::shared_ptr<ODBCHandles> conn,
+                      std::vector<nlohmann::json> rows,
+                      bool insert_index = false);
 
  private:
   std::string table_name_;

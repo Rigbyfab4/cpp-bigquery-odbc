@@ -16,6 +16,7 @@
 #include "google/cloud/odbc/testing/odbc_utils/connection.h"
 #include "google/cloud/odbc/testing/odbc_utils/descriptor.h"
 #include "google/cloud/odbc/testing/odbc_utils/statement.h"
+#include <nlohmann/json.hpp>
 
 namespace google::cloud::odbc_tests {
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
@@ -942,7 +943,6 @@ TEST(DataTranslationTest, From_INT64_to_all) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
 struct TimestampBasicTestStruct {
   // The target C type SQLBindCol will convert SQL type to
   SQLSMALLINT target_c_type;
@@ -1393,4 +1393,110 @@ TEST(DataTranslationTest, From_SQL_Time_to_all) {
   table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+struct JsonBasicTestStruct {
+  // The target C type SQLGetData will convert SQL type to
+  SQLSMALLINT target_c_type;
+  // The value that should be returned by SQLGetData if it succeeds
+  nlohmann::json value;
+  // The status that should be returned by SQLGetData for this C Type
+  SQLRETURN status;
+};
+
+std::vector<JsonBasicTestStruct> const kConversionFromJsonTestData{
+    {SQL_C_CHAR, {{"age", 30}, {"name", "Sita"}}, SQL_SUCCESS},
+    {SQL_C_CHAR, {{"age", 30}, {"name", "Alice"}}, SQL_SUCCESS},
+    {SQL_C_CHAR, {{"age", 90}, {"name", "Ram"}}, SQL_SUCCESS},
+    {SQL_C_CHAR, {{"age", 26}, {"name", "Bob"}}, SQL_SUCCESS},
+    {SQL_C_CHAR, {{"age", 32}, {"name", "Kapoor"}}, SQL_SUCCESS},
+    {SQL_C_SLONG, {{"age", 44}, {"name", "Shetty"}}, SQL_ERROR},
+    {SQL_C_SSHORT, {{"age", 29}, {"name", "Spider"}}, SQL_ERROR},
+    {SQL_C_WCHAR, {{"age", 30}, {"name", "Kiran"}}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {{"age", 80}, {"name", "Ravi"}}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {{"age", 100}, {"name", "Shanti"}}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {{"age", 76}, {"name", "Sushma"}}, SQL_SUCCESS},
+
+};
+
+void TestTranslationsFromJsonToALL(std::shared_ptr<ODBCHandles> conn,
+                                   std::string query) {
+  SQLRETURN status;
+  SQLPOINTER data[kBufferLength];
+  SQLLEN strlen_or_ind;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query.c_str());
+
+  int row_count = 0;
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+  for (auto const& expected : kConversionFromJsonTestData) {
+    status = SQLBindCol(conn->hstmt, 1, expected.target_c_type, data,
+                        kBufferLength, &strlen_or_ind);
+
+    CheckError(status, "SQLBindCol", conn);
+    status = SQLFetch(conn->hstmt);
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+    if (SQL_SUCCEEDED(status)) {
+      CheckError(status, "SQLFetch", conn);
+    }
+
+    switch (expected.target_c_type) {
+      case SQL_C_CHAR: {
+        std::string returned_val = (char*)data;
+        std::string expected_val = to_string(expected.value);
+        EXPECT_EQ(returned_val, expected_val);
+        break;
+      }
+      case SQL_C_WCHAR: {
+        SQLINTEGER length = strlen_or_ind / sizeof(SQLWCHAR);
+        std::string returned_val =
+            ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(data), length);
+        std::string expected_val = to_string(expected.value);
+        EXPECT_STREQ(returned_val.c_str(), expected_val.c_str());
+        break;
+      }
+      case SQL_C_SLONG: {
+        EXPECT_EQ(status, expected.status);
+        break;
+      }
+      case SQL_C_SSHORT: {
+        EXPECT_EQ(status, expected.status);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+    ++row_count;
+  }
+}
+
+TEST(DataTranslationTest, From_Json_to_ALL) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  SQLRETURN status;
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_INSERT_PARAMS_TEST_JSON_STRING";
+  char insert_stmt[kBufferLength];
+  Table table(table_name);
+  table.CreateWithPrepare(conn, "(Id INTEGER, PersonDetails JSON)");
+  std::vector<nlohmann::json> json_data_to_insert;
+  for (auto elem : kConversionFromJsonTestData) {
+    json_data_to_insert.push_back(elem.value);
+  }
+  table.InsertJsonData(conn, json_data_to_insert, true);
+  auto const query = "SELECT PersonDetails FROM " + table_name + " Order by Id";
+  TestTranslationsFromJsonToALL(conn, query);
+  // Delete table
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.DropWithPrepare(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 }  // namespace google::cloud::odbc_tests

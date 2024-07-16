@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/data_translation.h"
+#include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/odbc/testing/utils/status_matchers.h"
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
@@ -23,6 +25,7 @@ using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
 using ::google::cloud::odbc_testing_utils::StatusRecIs;
 using ::testing::StrEq;
+using json = nlohmann::json;
 
 TEST(CheckLimitsArithmetic, Basic) {
   StatusRecord status_record;
@@ -534,6 +537,48 @@ TEST(ConvertFromTimeDSValue, convertToInvalidType_Failed) {
   auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
   ASSERT_EQ(status.sql_state, odbc_internal::SQLStates::k_HY000());
   ASSERT_FALSE(status.ok());
+}
+
+TEST(ConvertFromJsonDSValue, To_SQL_C_CHAR_success) {
+  SQLPOINTER buf = malloc(100);
+  DataBuffer data = {SQL_C_CHAR, buf, 100, nullptr};
+  DSValue ds_value;
+  json src_val = nlohmann::json({{"age", 30}, {"name", "Sita"}});
+  std::string expected_val = "{\"age\":30,\"name\":\"Sita\"}";
+  JsonToDSValue(src_val, ds_value);
+  StatusRecord status_record = ConvertFromJsonDSValue(ds_value, data);
+  std::string returned_val = (char*)data.buf;
+  EXPECT_EQ(returned_val, expected_val);
+  free(buf);
+}
+
+TEST(ConvertFromJsonDSValue, To_SQL_C_CHAR_Failure) {
+  SQLPOINTER buf = malloc(10);
+  DataBuffer data = {SQL_C_CHAR, buf, 10, nullptr};
+  DSValue ds_value;
+  json src_val = nlohmann::json({{"age", 30}, {"name", "Suzan"}});
+  std::string expected_val = "{\"age\":30,\"name\":\"Suzan\"}";
+  JsonToDSValue(src_val, ds_value);
+  StatusRecord status_record = ConvertFromJsonDSValue(ds_value, data);
+  EXPECT_THAT(
+      status_record,
+      StatusRecIs(SQLStates::k_01004(), StrEq("String data, right truncated")));
+  free(buf);
+}
+
+TEST(ConvertFromJsonDSValue, To_SQL_C_WCHAR_success) {
+  SQLWCHAR dest_buf[100] = {0};
+  SQLLEN data_len;
+  DataBuffer data = {SQL_C_WCHAR, dest_buf, sizeof(dest_buf), &data_len};
+  DSValue ds_value;
+  json src_val = nlohmann::json({{"age", 30}, {"name", "Shivam"}});
+  std::string expected_val = "{\"age\":30,\"name\":\"Shivam\"}";
+  JsonToDSValue(src_val, ds_value);
+  StatusRecord status_record = ConvertFromJsonDSValue(ds_value, data);
+  SQLINTEGER length = data_len / sizeof(SQLWCHAR);
+  StatusRecordOr<std::string> returned_val =
+      ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(dest_buf), 26);
+  EXPECT_STREQ(returned_val.GetValue().c_str(), expected_val.c_str());
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
