@@ -302,10 +302,9 @@ StatusRecord StatementHandle::PopulateIrd(DescriptorHandle& descriptor_handle,
       auto type_info =
           kSqlToBqDataTypes.at(type_status_record.GetValue()).at(res.type);
 
-      descriptor_record.length = type_info.col_size;
-      descriptor_record.precision = type_info.interval_precision == NULL
-                                        ? type_info.col_size
-                                        : type_info.interval_precision;
+      descriptor_record.length = type_info.col_size_desc_field;
+      descriptor_record.precision = type_info.precision;
+
       descriptor_record.scale = type_info.fixed_prec_scale;
     }
 
@@ -360,10 +359,9 @@ StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
       auto type_info = kSqlToBqDataTypes.at(record_type.GetValue())
                            .at(stmt_params[i].parameter_type.type);
 
-      descriptor_record.length = type_info.col_size;
-      descriptor_record.precision = type_info.interval_precision == NULL
-                                        ? type_info.col_size
-                                        : type_info.interval_precision;
+      descriptor_record.length = type_info.col_size_desc_field;
+      descriptor_record.precision = type_info.precision;
+
       descriptor_record.scale = type_info.fixed_prec_scale;
     }
     handle.BindNewDescriptorRecord(i + 1, descriptor_record);

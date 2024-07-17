@@ -1269,7 +1269,8 @@ TEST(SQLPrepare, ParametrizedQuery) {
 }
 
 TEST(SQLPrepare, ValidateIrdDescriptor) {
-  auto const table_name = kDatasetWithTablePrefix + "ValidateIrdDescriptor_TEST";
+  auto const table_name =
+      kDatasetWithTablePrefix + "ValidateIrdDescriptor_TEST";
   Table table(table_name);
 
   Schema schema{{"StringField", SQL_VARCHAR},
@@ -1279,13 +1280,15 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
   // Create Table and insert data
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  table.CreateWithPrepare(conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+  table.CreateWithPrepare(
+      conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
   table.InsertData(conn, kSampleData, false, true);
-  
+
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   CheckColumnData(conn, table_name, schema);
-  
-  auto status = SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &conn->ird, 0, NULL);
+
+  auto status =
+      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &conn->ird, 0, NULL);
   CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
 
   SQLINTEGER str_len = 0;
@@ -1297,16 +1300,19 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
   // Check each column
   for (SQLSMALLINT i = 1; i <= 3; i++) {
     SQLSMALLINT out_nullable;
-    status = SQLGetDescField(conn->ird, i, SQL_DESC_NULLABLE, &out_nullable, 0, NULL);
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_NULLABLE, &out_nullable, 0,
+                             NULL);
     CheckError(status, "SQLGetDescField(SQL_DESC_NULLABLE)", conn);
     EXPECT_EQ(SQL_NULLABLE, out_nullable);
 
     SQLSMALLINT out_concise_type;
-    status = SQLGetDescField(conn->ird, i, SQL_DESC_CONCISE_TYPE, &out_concise_type, 0, &str_len);
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_CONCISE_TYPE,
+                             &out_concise_type, 0, &str_len);
     CheckError(status, "SQLGetDescField(SQL_DESC_CONCISE_TYPE)", conn);
 
     SQLCHAR out_column_Name[20];
-    status = SQLGetDescField(conn->ird, i, SQL_DESC_NAME, &out_column_Name, sizeof(out_column_Name), &str_len);
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_NAME, &out_column_Name,
+                             sizeof(out_column_Name), &str_len);
     CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
 
     SQLULEN length = 0;
@@ -1314,7 +1320,8 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
     CheckError(status, "SQLGetDescField(SQL_DESC_LENGTH)", conn);
 
     SQLSMALLINT out_desc_precision;
-    status = SQLGetDescField(conn->ird, i, SQL_DESC_PRECISION, &out_desc_precision, 0, &str_len);
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_PRECISION,
+                             &out_desc_precision, 0, &str_len);
     CheckError(status, "SQLGetDescField(SQL_DESC_PRECISION)", conn);
 
     switch (i) {
@@ -1333,8 +1340,8 @@ TEST(SQLPrepare, ValidateIrdDescriptor) {
       case 3:  // FloatField
         EXPECT_EQ(SQL_DOUBLE, out_concise_type);
         EXPECT_STREQ("FloatField", (char const*)out_column_Name);
-        EXPECT_EQ(15, length); 
-        EXPECT_EQ(53, out_desc_precision);  
+        EXPECT_EQ(15, length);
+        EXPECT_EQ(53, out_desc_precision);
         break;
     }
   }

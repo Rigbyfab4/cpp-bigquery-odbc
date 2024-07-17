@@ -138,32 +138,6 @@ TypeInfoRow const kBqFloat64TypeInfoRow = {
     NULL,                                              // interval_precision
 };
 
-TypeInfoRow const kBqFloatTypeInfoRow = {
-    const_cast<SQLCHAR*>(
-        reinterpret_cast<const SQLCHAR*>("FLOAT64")),  // type_name
-    SQL_DOUBLE,                                        // data_type
-    15,                                                // col_size
-    const_cast<SQLCHAR*>(
-        reinterpret_cast<const SQLCHAR*>("\"")),  // literal_prefix
-    const_cast<SQLCHAR*>(
-        reinterpret_cast<const SQLCHAR*>("\"")),  // literal_suffix
-    nullptr,                                      // create_params
-    1,                                            // nullable
-    0,                                            // case_sensitive
-    2,                                            // searchable
-    0,                                            // unsigned_attribute
-    0,                                            // fixed_prec_scale
-    NULL,                                         // auto_unique_value
-    const_cast<SQLCHAR*>(
-        reinterpret_cast<const SQLCHAR*>("FLOAT64")),  // local_type_name
-    0,                                                 // minimum_scale
-    0,                                                 // maximum_scale
-    SQL_DOUBLE,                                        // sql_data_type
-    1,                                                 // sql_datetime_sub
-    2,                                                 // num_prec_radix
-    53,                                              // interval_precision
-};
-
 TypeInfoRow const kBqTimeTypeInfoRow = {
     const_cast<SQLCHAR*>(
         reinterpret_cast<const SQLCHAR*>("TIME")),  // type_name
@@ -496,7 +470,7 @@ std::map<SQLSMALLINT, std::map<std::string, TypeInfoRow>> const
                          {SQL_DOUBLE,
                           {
                               {"FLOAT64", kBqFloat64TypeInfoRow},
-                              {"FLOAT", kBqFloatTypeInfoRow},
+                              {"FLOAT", kBqFloat64TypeInfoRow},
                           }},
                          {SQL_TYPE_TIME,
                           {
@@ -684,6 +658,7 @@ void CheckDataTypes(std::shared_ptr<ODBCHandles> conn,
     ASSERT_TRUE(kSqlToBqDataTypes.at(data_type).count(bq_data_type));
     TypeInfoRow validationData =
         kSqlToBqDataTypes.at(data_type).at(bq_data_type);
+
     EXPECT_STREQ((char const*)type_name, (char const*)validationData.type_name);
     EXPECT_EQ(data_type, validationData.data_type);
     EXPECT_EQ(col_size, validationData.col_size);
