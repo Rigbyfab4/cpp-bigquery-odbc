@@ -176,4 +176,25 @@ void CreateTypeInfoRowSchema(ResultSet& result_set) {
   row_schema.emplace_back(ColumnSchema{18, BQDataType::kInt64});
 }
 
+void GetTypeInfoFromBQType(SQLSMALLINT const& sql_type,
+                           std::string const& bq_type, bool const& is_array,
+                           TypeInfoRow& type_info) {
+  if (is_array) {
+    type_info = kBqArrayTypeInfoRow;
+  } else if (bq_type == "INTEGER") {
+    type_info = kBqInt64TypeInfoRow;
+  } else if (bq_type == "BOOLEAN") {
+    type_info = kBqBoolTypeInfoRow;
+  } else if (bq_type == "FLOAT") {
+    type_info = kBqFloat64TypeInfoRow;
+  } else {
+    if (kSqlToBqDataTypes.count(sql_type) > 0 &&
+        kSqlToBqDataTypes.at(sql_type).count(bq_type) > 0) {
+      type_info = kSqlToBqDataTypes.at(sql_type).at(bq_type);
+    } else {
+      type_info = kBqStringTypeInfoRow;
+    }
+  }
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal

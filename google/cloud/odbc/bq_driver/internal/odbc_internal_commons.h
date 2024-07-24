@@ -192,7 +192,7 @@ odbc_internal::StatusRecordOr<BQDataType> ConvertDSType(
     std::string const& type);
 
 odbc_internal::StatusRecordOr<SQLSMALLINT> GetSQLDataType(
-    std::string const& type);
+    std::string const& type, bool isArray = false);
 
 odbc_internal::StatusRecordOr<
     google::cloud::bigquery_v2_minimal_internal::QueryParameter>

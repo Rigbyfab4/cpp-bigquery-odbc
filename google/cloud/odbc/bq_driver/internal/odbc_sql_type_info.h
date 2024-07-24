@@ -461,12 +461,10 @@ std::map<SQLSMALLINT, std::map<std::string, TypeInfoRow>> const
     kSqlToBqDataTypes = {{SQL_BIGINT,
                           {
                               {"INT64", kBqInt64TypeInfoRow},
-                              {"INTEGER", kBqInt64TypeInfoRow},
                           }},
                          {SQL_BIT,
                           {
                               {"BOOL", kBqBoolTypeInfoRow},
-                              {"BOOLEAN", kBqBoolTypeInfoRow},
                           }},
                          {SQL_TYPE_DATE,
                           {
@@ -475,7 +473,6 @@ std::map<SQLSMALLINT, std::map<std::string, TypeInfoRow>> const
                          {SQL_DOUBLE,
                           {
                               {"FLOAT64", kBqFloat64TypeInfoRow},
-                              {"FLOAT", kBqFloat64TypeInfoRow},
                           }},
                          {SQL_TYPE_TIME,
                           {
@@ -509,6 +506,9 @@ DSRow CreateDSRowFromTypeInfo(TypeInfoRow const& type_info);
 
 void CreateTypeInfoRowSchema(ResultSet& result_set);
 
+void GetTypeInfoFromBQType(SQLSMALLINT const& sql_type,
+                           std::string const& bq_type, bool const& is_array,
+                           TypeInfoRow& type_info);
 class TypeInfoQuery : public Query {
  public:
   explicit TypeInfoQuery() = default;
