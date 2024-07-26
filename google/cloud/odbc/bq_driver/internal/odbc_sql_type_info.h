@@ -506,6 +506,9 @@ DSRow CreateDSRowFromTypeInfo(TypeInfoRow const& type_info);
 
 void CreateTypeInfoRowSchema(ResultSet& result_set);
 
+void GetTypeInfoFromBQType(SQLSMALLINT const& sql_type,
+                           std::string const& bq_type, bool const& is_array,
+                           TypeInfoRow& type_info);
 class TypeInfoQuery : public Query {
  public:
   explicit TypeInfoQuery() = default;

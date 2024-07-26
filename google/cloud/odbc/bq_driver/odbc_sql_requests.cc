@@ -208,16 +208,23 @@ SQLRETURN SQLDescribeParamInternal(SQLHSTMT statement_handle,
     case SQL_TYPE_DATE:
     case SQL_TYPE_TIME:
     case SQL_TYPE_TIMESTAMP:
-    case SQL_CODE_SECOND:
-    case SQL_CODE_DAY_TO_SECOND:
-    case SQL_CODE_HOUR_TO_SECOND:
-    case SQL_CODE_MINUTE_TO_SECOND:
+    case SQL_INTERVAL_SECOND:
+    case SQL_INTERVAL_DAY_TO_SECOND:
+    case SQL_INTERVAL_HOUR_TO_SECOND:
+    case SQL_INTERVAL_MINUTE_TO_SECOND:
       IntValueToOutputBufferResponse<SQLSMALLINT, SQLSMALLINT>(
           desc_record.precision, decimal_digits_ptr, nullptr);
       break;
-    default:
+    case SQL_DECIMAL:
+    case SQL_NUMERIC:
+    case SQL_SMALLINT:
+    case SQL_INTEGER:
+    case SQL_BIGINT:
       IntValueToOutputBufferResponse<SQLSMALLINT, SQLSMALLINT>(
           desc_record.scale, decimal_digits_ptr, nullptr);
+      break;
+    default:
+      *decimal_digits_ptr = 0;
   }
   IntValueToOutputBufferResponse<SQLSMALLINT, SQLSMALLINT>(
       desc_record.nullable, nullable_ptr, nullptr);

@@ -16,6 +16,7 @@
 #include "google/cloud/odbc/bq_client_interface/odbc_bq_client.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_conn_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_desc_attr.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_sql_type_info.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_transactions.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include <regex>
@@ -278,12 +279,15 @@ StatusRecord StatementHandle::PopulateIrd(DescriptorHandle& descriptor_handle,
                         "Invalid attribute value (invalid descriptor handle)"};
   }
   std::string const nullable = "NULLABLE";
+  std::string const nullable_required = "REQUIRED";
+  std::string const array_field = "REPEATED";
   for (int i = 0; i < schema.fields.size(); ++i) {
     auto const& res = schema.fields[i];
     DescriptorRecord descriptor_record;
     descriptor_record.SetName(res.name, res.name.length());
     descriptor_record.length = res.max_length;
-    StatusRecordOr<SQLSMALLINT> type_status_record = GetSQLDataType(res.type);
+    StatusRecordOr<SQLSMALLINT> type_status_record =
+        GetSQLDataType(res.type, (res.mode == array_field));
 
     if (!type_status_record.Ok()) {
       return type_status_record.GetStatusRecord();
@@ -293,9 +297,35 @@ StatusRecord StatementHandle::PopulateIrd(DescriptorHandle& descriptor_handle,
     if (!status_record.ok()) {
       return status_record;
     }
-    descriptor_record.scale = res.scale;
-    descriptor_record.nullable =
-        res.mode == nullable ? SQL_NULLABLE : SQL_NO_NULLS;
+
+    TypeInfoRow type_info;
+    GetTypeInfoFromBQType(type_status_record.GetValue(), res.type,
+                          res.mode == array_field, type_info);
+
+    if (res.type == "TIME" || res.type == "DATETIME") {
+      descriptor_record.precision = 6;
+      descriptor_record.scale = 6;
+    } else if (res.type == "TIMESTAMP" || res.type == "DATE") {
+      descriptor_record.precision;
+      descriptor_record.scale = type_info.maximum_scale;
+    } else {
+      descriptor_record.precision = type_info.interval_precision == NULL
+                                        ? type_info.col_size
+                                        : type_info.interval_precision;
+      descriptor_record.scale = type_info.maximum_scale;
+    }
+    if (type_status_record.GetValue() == SQL_DOUBLE) {
+      // hard-coding to 15 to have the same behaviour as internal driver
+      descriptor_record.length = 15;
+    } else {
+      descriptor_record.length = type_info.col_size;
+    }
+
+    descriptor_record.nullable = (res.mode == nullable) ? SQL_NULLABLE
+                                 : (res.mode == nullable_required)
+                                     ? SQL_NULLABLE
+                                     : SQL_NO_NULLS;
+
     descriptor_handle.BindNewDescriptorRecord(i + 1, descriptor_record);
   }
   return StatusRecord::Ok();
@@ -317,6 +347,8 @@ StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
   }
   DescriptorRecord descriptor_record;
   std::string const nullable = "NULLABLE";
+  std::string const nullable_required = "REQUIRED";
+  std::string const array_field = "REPEATED";
   auto stmt_params = job_statistics.job_query_stats.undeclared_query_parameters;
   TableSchema schema = job_statistics.job_query_stats.schema;
   if (stmt_params.empty()) {
@@ -325,13 +357,42 @@ StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
 
   for (int i = 0; i < stmt_params.size(); i++) {
     StatusRecordOr<SQLSMALLINT> record_type =
-        GetSQLDataType(stmt_params[i].parameter_type.type);
+        GetSQLDataType(stmt_params[i].parameter_type.type,
+                       (schema.fields[i].mode == array_field));
     descriptor_record.SetConciseType(*record_type, DescriptorType::kIPD);
     descriptor_record.SetName(stmt_params[i].name, stmt_params[i].name.size());
     descriptor_record.type_name = stmt_params[i].parameter_type.type;
 
     descriptor_record.nullable =
-        schema.fields[i].mode == nullable ? SQL_NULLABLE : SQL_NO_NULLS;
+        (schema.fields[i].mode == nullable)            ? SQL_NULLABLE
+        : (schema.fields[i].mode == nullable_required) ? SQL_NULLABLE
+                                                       : SQL_NO_NULLS;
+
+    TypeInfoRow type_info;
+    GetTypeInfoFromBQType(record_type.GetValue(),
+                          stmt_params[i].parameter_type.type,
+                          schema.fields[i].mode == array_field, type_info);
+
+    if (stmt_params[i].parameter_type.type == "TIME" ||
+        stmt_params[i].parameter_type.type == "DATETIME") {
+      descriptor_record.precision = 6;
+      descriptor_record.scale = 6;
+    } else if (stmt_params[i].parameter_type.type == "TIMESTAMP" ||
+               stmt_params[i].parameter_type.type == "DATE") {
+      descriptor_record.precision;
+    } else {
+      descriptor_record.precision = type_info.interval_precision == NULL
+                                        ? type_info.col_size
+                                        : type_info.interval_precision;
+      descriptor_record.scale = type_info.maximum_scale;
+    }
+
+    if (record_type.GetValue() == SQL_DOUBLE) {
+      // hard-coding to 15 to have the same behaviour as internal driver
+      descriptor_record.length = 15;
+    } else {
+      descriptor_record.length = type_info.col_size;
+    }
 
     handle.BindNewDescriptorRecord(i + 1, descriptor_record);
   }

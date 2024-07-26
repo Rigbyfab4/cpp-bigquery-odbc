@@ -391,7 +391,10 @@ ConstructNamedParametersPostQueryRequest(
 }
 
 odbc_internal::StatusRecordOr<SQLSMALLINT> GetSQLDataType(
-    std::string const& type) {
+    std::string const& type, bool isArray) {
+  if (isArray) {
+    return SQL_VARCHAR;
+  }
   if (type == "STRING") {
     return SQL_VARCHAR;
   }

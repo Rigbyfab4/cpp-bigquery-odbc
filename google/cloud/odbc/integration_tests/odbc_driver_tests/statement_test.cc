@@ -41,8 +41,6 @@ INSTANTIATE_TEST_SUITE_P(TestingWithOrWithoutANSI, StatementParameterizedTest,
 
 // This preprocessor flag is used to disable tests for unimplemented bq_driver
 // ODBC APIs
-#ifndef BQ_DRIVER_INTEGRATION_TESTS
-
 StdRows const kSampleData{
     {"Test String 1", 1, 1.1},      {.int_field = 237, .float_field = 2.22},
     {"Test String 3", NULL, 3.333}, {"Test String 4", 49},
@@ -85,6 +83,8 @@ void CheckColumnData(std::shared_ptr<ODBCHandles> conn, std::string table_name,
     EXPECT_EQ(col_ptr->nullable, SQL_NULLABLE);
   }
 }
+
+#ifndef BQ_DRIVER_INTEGRATION_TESTS
 
 // Verify if the inserted data(<input_data>) is the same as the data fetched
 // col-wise Note: This doesn't verify the integrity of the fetched rows
@@ -1268,61 +1268,6 @@ TEST(SQLPrepare, ParametrizedQuery) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(SQLPrepare, ValidateIrdDescriptor) {
-  auto conn = std::make_shared<ODBCHandles>();
-
-  // Execute a read query and check whether the results returned are as expected
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-
-  std::string query = "SELECT id from INTEGRATION_TESTS.Test_Table";
-  char read_stmt[kBufferLength];
-  StrToChar(read_stmt, query);
-
-  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
-  CheckError(status, "SQLPrepare", conn);
-
-  status =
-      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &conn->ird, 0, NULL);
-  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
-
-  SQLINTEGER str_len = 0;
-  SQLSMALLINT count = 0;
-  status = SQLGetDescField(conn->ird, 1, SQL_DESC_COUNT, &count, 0, NULL);
-  CheckError(status, "SQLGetDescField(SQL_DESC_COUNT)", conn);
-  EXPECT_EQ(1, count);
-
-  SQLSMALLINT out_nullable;
-  status =
-      SQLGetDescField(conn->ird, 1, SQL_DESC_NULLABLE, &out_nullable, 0, NULL);
-  CheckError(status, "SQLGetDescField(SQL_DESC_NULLABLE)", conn);
-  EXPECT_EQ(SQL_NULLABLE, out_nullable);
-
-  SQLSMALLINT out_concise_type;
-  status = SQLGetDescField(conn->ird, 1, SQL_DESC_CONCISE_TYPE,
-                           &out_concise_type, 0, &str_len);
-  CheckError(status, "SQLGetDescField(SQL_DESC_CONCISE_TYPE)", conn);
-  EXPECT_EQ(SQL_BIGINT, out_concise_type);
-
-  SQLCHAR out_column_Name[20];
-  status = SQLGetDescField(conn->ird, 1, SQL_DESC_NAME, &out_column_Name,
-                           kBufferLength, &str_len);
-  CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
-  EXPECT_STREQ((char const*)out_column_Name, "id");
-
-  SQLULEN length = 0;
-  status = SQLGetDescField(conn->ird, 1, SQL_DESC_LENGTH, &length, 0, NULL);
-  CheckError(status, "SQLGetDescField(SQL_DESC_LENGTH)", conn);
-  EXPECT_EQ(19, length);
-
-  // TODO(b/345692856) Validate Precision
-  /*SQLSMALLINT out_desc_precision;
-  status = SQLGetDescField(conn->ird, 1, SQL_DESC_PRECISION,
-                           &out_desc_precision, 0, &str_len);
-  CheckError(status, "SQLGetDescField(SQL_DESC_PRECISION)", conn);
-  EXPECT_EQ(0, out_desc_precision);*/
-
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-}
 TEST(SQLPrepare, ValidateIpdDescForSimpleStatement) {
   auto conn = std::make_shared<ODBCHandles>();
 
@@ -1501,6 +1446,108 @@ TEST(SQLPrepare, SimpleStatementTest_SQL_NTS) {
   EXPECT_EQ(stmt_handle->GetQueryString(), query);
 
 #endif
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLPrepare, ValidateIrdDescriptor) {
+  auto const table_name =
+      kDatasetWithTablePrefix + "ValidateIrdDescriptor_TEST";
+  Table table(table_name);
+
+  // Create Table and insert data
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.CreateWithPrepare(conn, getSchemaStr(kFullSchema));
+
+  auto select_stmt = "SELECT * FROM " + table_name;
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)select_stmt.c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status =
+      SQLGetStmtAttr(conn->hstmt, SQL_ATTR_IMP_ROW_DESC, &conn->ird, 0, NULL);
+  CheckError(status, "SQLGetStmtAttr(SQL_ATTR_IMP_ROW_DESC)", conn);
+
+  SQLSMALLINT count = 0;
+  status = SQLGetDescField(conn->ird, 0, SQL_DESC_COUNT, &count, 0, NULL);
+  CheckError(status, "SQLGetDescField(SQL_DESC_COUNT)", conn);
+  EXPECT_EQ(kFullSchema.size(), count);
+
+  // Check each column
+  for (SQLSMALLINT i = 1; i <= count; i++) {
+    SQLSMALLINT nullable, concise_type, desc_type, desc_precision, desc_scale;
+    SQLULEN length, column_size;
+    SQLCHAR column_name[256];
+    SQLINTEGER str_len;
+
+    status =
+        SQLGetDescField(conn->ird, i, SQL_DESC_NULLABLE, &nullable, 0, NULL);
+    CheckError(status, "SQLGetDescField(SQL_DESC_NULLABLE)", conn);
+
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_CONCISE_TYPE, &concise_type,
+                             0, NULL);
+    CheckError(status, "SQLGetDescField(SQL_DESC_CONCISE_TYPE)", conn);
+
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_TYPE, &desc_type, 0, NULL);
+    CheckError(status, "SQLGetDescField(SQL_DESC_TYPE)", conn);
+
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_NAME, column_name,
+                             sizeof(column_name), &str_len);
+    CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
+
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_LENGTH, &length, 0, NULL);
+    CheckError(status, "SQLGetDescField(SQL_DESC_LENGTH)", conn);
+
+    status = SQLGetDescField(conn->ird, i, SQL_DESC_PRECISION, &desc_precision,
+                             0, NULL);
+    CheckError(status, "SQLGetDescField(SQL_DESC_PRECISION)", conn);
+
+    status =
+        SQLGetDescField(conn->ird, i, SQL_DESC_SCALE, &desc_scale, 0, NULL);
+
+    std::string bq_type = kFullSchema[i - 1].type;
+    std::string col_name = kFullSchema[i - 1].name;
+
+    EXPECT_STREQ(col_name.c_str(), (char*)column_name);
+
+    TypeInfoRow type_info =
+        kSqlToBqDataTypes.at(concise_type).at(SanitizeBQColType(bq_type));
+
+    if (bq_type == "DATE" || bq_type == "TIME" || bq_type == "TIMESTAMP" ||
+        bq_type == "DATETIME") {
+      EXPECT_EQ(desc_type, SQL_DATETIME);
+    } else {
+      EXPECT_EQ(concise_type, desc_type);
+    }
+    EXPECT_EQ(nullable, type_info.nullable);
+    // Specific checks for date and time types
+    if (bq_type == "DATE") {
+      EXPECT_EQ(concise_type, SQL_TYPE_DATE);
+      EXPECT_EQ(length, 10);
+      EXPECT_EQ(desc_precision, 0);
+      EXPECT_EQ(desc_scale, 0);
+    } else if (bq_type == "TIME") {
+      EXPECT_EQ(concise_type, SQL_TYPE_TIME);
+      EXPECT_EQ(length, 15);
+      EXPECT_EQ(desc_precision, 6);
+      EXPECT_EQ(desc_scale, 6);
+    } else if (bq_type == "TIMESTAMP" || bq_type == "DATETIME") {
+      EXPECT_EQ(concise_type, SQL_TYPE_TIMESTAMP);
+      EXPECT_EQ(length, 26);
+      EXPECT_EQ(desc_precision, 6);
+
+      EXPECT_EQ(desc_scale, 6);
+    } else if (bq_type == "FLOAT64") {
+      EXPECT_EQ(length, 15);
+    } else {
+      EXPECT_EQ(length, type_info.col_size);
+      if (type_info.interval_precision != NULL) {
+        EXPECT_EQ(desc_precision, type_info.interval_precision);
+      }
+      EXPECT_EQ(desc_scale, type_info.maximum_scale);
+    }
+  }
+
+  table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
