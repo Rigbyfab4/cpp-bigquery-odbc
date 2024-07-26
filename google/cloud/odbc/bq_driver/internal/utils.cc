@@ -14,7 +14,7 @@
 
 #ifndef _WIN32
 #include <iconv.h>
-#endif  //LINUX
+#endif  // LINUX
 
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/internal/getenv.h"
