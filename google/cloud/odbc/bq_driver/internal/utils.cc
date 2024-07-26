@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _WIN32
+#include <iconv.h>
+#endif  //LINUX
+
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/internal/getenv.h"
 

@@ -24,9 +24,6 @@
 #include <windows.h>
 #undef max
 #include <winreg.h>
-
-#else
-#include <iconv.h>
 #endif  //_WIN32
 
 #include "google/cloud/odbc/internal/status_record_or.h"
