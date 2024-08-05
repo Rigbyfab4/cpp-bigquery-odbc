@@ -294,7 +294,7 @@ TEST(SplitTableTypes, SplitTwoTypesWithOneQuote) {
   EXPECT_EQ("VIEW '", types[1]);
 }
 
-TEST(UnicodeConversion, Success_UnicodeConversion) {
+TEST(UnicodeConversion, Success_ConvertSQLWCHARToString) {
   std::wstring query(
       L"INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)");
   std::vector<SQLWCHAR> sqlWStr(query.begin(), query.end());
@@ -304,21 +304,40 @@ TEST(UnicodeConversion, Success_UnicodeConversion) {
 
   SQLSMALLINT length = sqlWStr.size();
 
-  std::string result_str = ConvertSQLWCHARToString(statementText, length);
+  auto result_str = ConvertSQLWCHARToString(statementText, length);
 
   EXPECT_STREQ("INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)",
-               result_str.c_str());
-  std::wstring result_wstr = Utf8ToUtf16(result_str);
-  EXPECT_STREQ(query.data(), result_wstr.data());
+               result_str.GetValue().c_str());
+  auto result_wstr = Utf8ToUtf16(result_str.GetValue());
+  EXPECT_STREQ(query.data(), result_wstr.GetValue().data());
 }
 
-TEST(UnicodeConversion, Success_UnicodeConversion_test) {
+TEST(UnicodeConversion, Success_Utf16ToUtf8) {
   std::wstring wstr = L"आपका स्वागत है";
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
-  std::string result_str = Utf16ToUtf8(sqlWStr.data());
-  EXPECT_EQ("आपका स्वागत है", result_str);
-  std::wstring result_wstr = Utf8ToUtf16(result_str);
-  EXPECT_STREQ(sqlWStr.data(), result_wstr.data());
+  auto result_str = Utf16ToUtf8(sqlWStr.data());
+  EXPECT_EQ("आपका स्वागत है", result_str.GetValue());
+  auto result_wstr = Utf8ToUtf16(result_str.GetValue());
+  EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
+}
+
+TEST(UnicodeConversion, Success_Utf16ToUtf8_chinese) {
+  std::wstring wstr = L"你好，先生，你好吗";
+  std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
+  sqlWStr.emplace_back(L'\0');
+  auto result_str = Utf16ToUtf8(sqlWStr.data());
+  EXPECT_EQ("你好，先生，你好吗", result_str.GetValue());
+  auto result_wstr = Utf8ToUtf16(result_str.GetValue());
+  EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
+}
+
+TEST(UnicodeConversion, EmptyData_Utf16ToUtf8) {
+  std::wstring wstr = L"";
+  std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
+  sqlWStr.emplace_back(L'\0');
+  auto result_str = Utf16ToUtf8(sqlWStr.data());
+  EXPECT_THAT(result_str, StatusRecordIs(SQLStates::k_HY000(),
+                                         HasSubstr("string is empty/Null")));
 }
 }  // namespace google::cloud::odbc_bq_driver_internal

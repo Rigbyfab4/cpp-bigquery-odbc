@@ -387,29 +387,30 @@ SQLRETURN SQL_API SQLDriverConnectW(
         *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_in_connection_str =
+  auto utf8_in_connection_str =
       ConvertSQLWCHARToString(inConnectionString, inConnectionStringLen);
-  inConnectionStringLen = utf8_in_connection_str.length();
-  std::string utf8_out_conn_str =
+  inConnectionStringLen = utf8_in_connection_str.GetValue().length();
+  auto utf8_out_conn_str =
       ConvertSQLWCHARToString(outConnectionString, *outConnectionStringLen);
-  *outConnectionStringLen = utf8_out_conn_str.length();
+  *outConnectionStringLen = utf8_out_conn_str.GetValue().length();
 
   // Call to internal common function for SQLDriverConnect and SQLDriverConnectW
   // in odbc_connection.h.
   rc = google::cloud::odbc_bq_driver::SQLDriverConnectInternal(
       connectionHandle, windowHandle,
-      reinterpret_cast<SQLCHAR*>(utf8_in_connection_str.data()),
+      reinterpret_cast<SQLCHAR*>(utf8_in_connection_str.GetValue().data()),
       inConnectionStringLen,
-      reinterpret_cast<SQLCHAR*>(utf8_out_conn_str.data()),
+      reinterpret_cast<SQLCHAR*>(utf8_out_conn_str.GetValue().data()),
       outConnectionStringBufferLen, outConnectionStringLen, driverCompletion);
 
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_in_connection_str(Utf8ToUtf16(utf8_in_connection_str));
+  auto utf16_in_connection_str = Utf8ToUtf16(utf8_in_connection_str.GetValue());
   inConnectionString =
-      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.data());
-  std::wstring utf16_out_conn_str(Utf8ToUtf16(utf8_out_conn_str));
-  outConnectionString = reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.data());
-  *outConnectionStringLen = utf16_out_conn_str.length();
+      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.GetValue().data());
+  auto utf16_out_conn_str = Utf8ToUtf16(utf8_out_conn_str.GetValue());
+  outConnectionString =
+      reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.GetValue().data());
+  *outConnectionStringLen = utf16_out_conn_str.GetValue().length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -492,22 +493,23 @@ SQLRETURN SQL_API SQLBrowseConnectW(SQLHDBC connectionHandle,
         outConnectionStringLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_in_connection_str =
+  auto utf8_in_connection_str =
       ConvertSQLWCHARToString(inConnectionString, inConnectionStringLen);
-  inConnectionStringLen = utf8_in_connection_str.length();
-  std::string utf8_out_conn_str =
+  inConnectionStringLen = utf8_in_connection_str.GetValue().length();
+  auto utf8_out_conn_str =
       ConvertSQLWCHARToString(outConnectionString, *outConnectionStringLen);
-  *outConnectionStringLen = utf8_out_conn_str.length();
+  *outConnectionStringLen = utf8_out_conn_str.GetValue().length();
 
   // Call to internal common function for SQLBrowseConnect and SQLBrowseConnectW
   // in odbc_connection.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_in_connection_str(Utf8ToUtf16(utf8_in_connection_str));
+  auto utf16_in_connection_str = Utf8ToUtf16(utf8_in_connection_str.GetValue());
   inConnectionString =
-      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.data());
-  std::wstring utf16_out_conn_str(Utf8ToUtf16(utf8_out_conn_str));
-  outConnectionString = reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.data());
-  *outConnectionStringLen = utf16_out_conn_str.length();
+      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.GetValue().data());
+  auto utf16_out_conn_str = Utf8ToUtf16(utf8_out_conn_str.GetValue());
+  outConnectionString =
+      reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.GetValue().data());
+  *outConnectionStringLen = utf16_out_conn_str.GetValue().length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -590,24 +592,22 @@ SQLRETURN SQL_API SQLConnectW(SQLHDBC connectionHandle, SQLWCHAR* serverName,
                                    authStringLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_server_name =
-      ConvertSQLWCHARToString(serverName, serverNameLen);
-  serverNameLen = utf8_server_name.length();
-  std::string utf8_user_name = ConvertSQLWCHARToString(userName, userNameLen);
-  userNameLen = utf8_user_name.length();
-  std::string utf8_auth_str =
-      ConvertSQLWCHARToString(authString, authStringLen);
-  authStringLen = utf8_auth_str.length();
+  auto utf8_server_name = ConvertSQLWCHARToString(serverName, serverNameLen);
+  serverNameLen = utf8_server_name.GetValue().length();
+  auto utf8_user_name = ConvertSQLWCHARToString(userName, userNameLen);
+  userNameLen = utf8_user_name.GetValue().length();
+  auto utf8_auth_str = ConvertSQLWCHARToString(authString, authStringLen);
+  authStringLen = utf8_auth_str.GetValue().length();
 
   // Call to internal common function for SQLConnect and SQLConnectW
   // in odbc_connection.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_server_name(Utf8ToUtf16(utf8_server_name));
-  serverName = reinterpret_cast<SQLWCHAR*>(utf16_server_name.data());
-  std::wstring utf16_user_name(Utf8ToUtf16(utf8_user_name));
-  userName = reinterpret_cast<SQLWCHAR*>(utf16_user_name.data());
-  std::wstring utf16_auth_str(Utf8ToUtf16(utf8_auth_str));
-  authString = reinterpret_cast<SQLWCHAR*>(utf16_auth_str.data());
+  auto utf16_server_name = Utf8ToUtf16(utf8_server_name.GetValue());
+  serverName = reinterpret_cast<SQLWCHAR*>(utf16_server_name.GetValue().data());
+  auto utf16_user_name = Utf8ToUtf16(utf8_user_name.GetValue());
+  userName = reinterpret_cast<SQLWCHAR*>(utf16_user_name.GetValue().data());
+  auto utf16_auth_str = Utf8ToUtf16(utf8_auth_str.GetValue());
+  authString = reinterpret_cast<SQLWCHAR*>(utf16_auth_str.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLConnectW(rc, *(*kTraceOption));
@@ -1348,20 +1348,21 @@ SQLRETURN SQL_API SQLGetDescRecW(
                                       descScale, nullable, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_name = ConvertSQLWCHARToString(name, *nameStringLen);
-  *nameStringLen = utf8_name.length();
+  auto utf8_name = ConvertSQLWCHARToString(name, *nameStringLen);
+  *nameStringLen = utf8_name.GetValue().length();
 
   // Call to common internal function for SQLGetDescRec and SQLGetDescRecW
   // in odbc_descriptor.h.
   rc = google::cloud::odbc_bq_driver::SQLGetDescRecInternal(
-      descriptorHandle, recNumber, reinterpret_cast<SQLCHAR*>(utf8_name.data()),
-      nameBufferLen, nameStringLen, descType, descSubType, descOctetLen,
-      descPrecision, descScale, nullable);
+      descriptorHandle, recNumber,
+      reinterpret_cast<SQLCHAR*>(utf8_name.GetValue().data()), nameBufferLen,
+      nameStringLen, descType, descSubType, descOctetLen, descPrecision,
+      descScale, nullable);
 
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_name(Utf8ToUtf16(utf8_name));
-  name = reinterpret_cast<SQLWCHAR*>(utf16_name.data());
-  *nameStringLen = utf16_name.length();
+  auto utf16_name = Utf8ToUtf16(utf8_name.GetValue());
+  name = reinterpret_cast<SQLWCHAR*>(utf16_name.GetValue().data());
+  *nameStringLen = utf16_name.GetValue().length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -1549,19 +1550,20 @@ SQLRETURN SQL_API SQLPrepareW(SQLHSTMT statementHandle, SQLWCHAR* statementText,
                                    statementTextLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_stmt_txt =
-      ConvertSQLWCHARToString(statementText, statementTextLen);
-  if (statementTextLen != SQL_NTS) statementTextLen = utf8_stmt_txt.length();
+  auto utf8_stmt_txt = ConvertSQLWCHARToString(statementText, statementTextLen);
+  if (statementTextLen != SQL_NTS)
+    statementTextLen = utf8_stmt_txt.GetValue().length();
 
   // Call to common internal function for SQLPrepare and SQLPrepareW
   // in odbc_sql_requests.h.
   rc = google::cloud::odbc_bq_driver::SQLPrepareInternal(
-      statementHandle, reinterpret_cast<SQLCHAR*>(utf8_stmt_txt.data()),
+      statementHandle,
+      reinterpret_cast<SQLCHAR*>(utf8_stmt_txt.GetValue().data()),
       statementTextLen);
 
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_stmt_txt(Utf8ToUtf16(utf8_stmt_txt));
-  statementText = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.data());
+  auto utf16_stmt_txt = Utf8ToUtf16(utf8_stmt_txt.GetValue());
+  statementText = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (IsTracingEnabled) TraceFunctionExit_SQLPrepareW(rc, *(*kTraceOption));
@@ -1659,16 +1661,16 @@ SQLRETURN SQL_API SQLGetCursorNameW(SQLHSTMT statementHandle,
                                          cursorNameStringLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_cur_name =
+  auto utf8_cur_name =
       ConvertSQLWCHARToString(cursorName, *cursorNameStringLen);
-  *cursorNameStringLen = utf8_cur_name.length();
+  *cursorNameStringLen = utf8_cur_name.GetValue().length();
 
   // Call to common internal function for SQLGetCursorName and SQLGetCursorNameW
   // in odbc_sql_requests.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_cur_name(Utf8ToUtf16(utf8_cur_name));
-  cursorName = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.data());
-  *cursorNameStringLen = utf16_cur_name.length();
+  auto utf16_cur_name = Utf8ToUtf16(utf8_cur_name.GetValue());
+  cursorName = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.GetValue().data());
+  *cursorNameStringLen = utf16_cur_name.GetValue().length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (IsTracingEnabled)
@@ -1726,15 +1728,14 @@ SQLRETURN SQL_API SQLSetCursorNameW(SQLHSTMT statementHandle,
                                          cursorNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_cur_name =
-      ConvertSQLWCHARToString(cursorName, cursorNameLen);
-  cursorNameLen = utf8_cur_name.length();
+  auto utf8_cur_name = ConvertSQLWCHARToString(cursorName, cursorNameLen);
+  cursorNameLen = utf8_cur_name.GetValue().length();
 
   // Call to common internal function for SQLSetCursorName and SQLSetCursorNameW
   // in odbc_sql_requests.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_cur_name(Utf8ToUtf16(utf8_cur_name));
-  cursorName = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.data());
+  auto utf16_cur_name = Utf8ToUtf16(utf8_cur_name.GetValue());
+  cursorName = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (IsTracingEnabled)
@@ -1814,15 +1815,15 @@ SQLRETURN SQL_API SQLExecDirectW(SQLHSTMT statementHandle,
                                       statementTextLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_stmt_txt =
-      ConvertSQLWCHARToString(statementText, statementTextLen);
-  if (statementTextLen != SQL_NTS) statementTextLen = utf8_stmt_txt.length();
+  auto utf8_stmt_txt = ConvertSQLWCHARToString(statementText, statementTextLen);
+  if (statementTextLen != SQL_NTS)
+    statementTextLen = utf8_stmt_txt.GetValue().length();
 
   // Call to common internal function for SQLExecDirect and SQLExecDirectW
   // in odbc_sql_requests.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_stmt_txt(Utf8ToUtf16(utf8_stmt_txt));
-  statementText = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.data());
+  auto utf16_stmt_txt = Utf8ToUtf16(utf8_stmt_txt.GetValue());
+  statementText = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -1901,21 +1902,23 @@ SQLRETURN SQL_API SQLNativeSqlW(SQLHDBC connectionHandle,
         outStatementTextBufferLen, outStatementTextLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_in_stmt_txt =
+  auto utf8_in_stmt_txt =
       ConvertSQLWCHARToString(inStatementText, inStatementTextLen);
-  inStatementTextLen = utf8_in_stmt_txt.length();
-  std::string utf8_out_stmt_txt =
+  inStatementTextLen = utf8_in_stmt_txt.GetValue().length();
+  auto utf8_out_stmt_txt =
       ConvertSQLWCHARToString(outStatementText, *outStatementTextLen);
-  *outStatementTextLen = utf8_out_stmt_txt.length();
+  *outStatementTextLen = utf8_out_stmt_txt.GetValue().length();
 
   // Call to common internal function for SQLNativeSql and SQLNativeSqlW
   // in odbc_sql_requests.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_in_stmt_txt(Utf8ToUtf16(utf8_in_stmt_txt));
-  inStatementText = reinterpret_cast<SQLWCHAR*>(utf16_in_stmt_txt.data());
-  std::wstring utf16_out_stmt_txt(Utf8ToUtf16(utf8_out_stmt_txt));
-  outStatementText = reinterpret_cast<SQLWCHAR*>(utf16_out_stmt_txt.data());
-  *outStatementTextLen = utf16_out_stmt_txt.length();
+  auto utf16_in_stmt_txt = Utf8ToUtf16(utf8_in_stmt_txt.GetValue());
+  inStatementText =
+      reinterpret_cast<SQLWCHAR*>(utf16_in_stmt_txt.GetValue().data());
+  auto utf16_out_stmt_txt = Utf8ToUtf16(utf8_out_stmt_txt.GetValue());
+  outStatementText =
+      reinterpret_cast<SQLWCHAR*>(utf16_out_stmt_txt.GetValue().data());
+  *outStatementTextLen = utf16_out_stmt_txt.GetValue().length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLNativeSqlW(rc, *(*kTraceOption));
@@ -2345,22 +2348,21 @@ SQLRETURN SQL_API SQLDescribeColW(
         columnNullable, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_col_name =
-      ConvertSQLWCHARToString(columnName, *columnNameLen);
-  *columnNameLen = utf8_col_name.length();
+  auto utf8_col_name = ConvertSQLWCHARToString(columnName, *columnNameLen);
+  *columnNameLen = utf8_col_name.GetValue().length();
 
   // Call to common internal function for SQLDescribeCol and SQLDescribeColW
   // in odbc_sql_results.h.
   rc = ::google::cloud::odbc_bq_driver::SQLDescribeColInternal(
       statementHandle, columnNumber,
-      reinterpret_cast<SQLCHAR*>(utf8_col_name.data()), columnNameBufferLen,
-      columnNameLen, columnSQLdataType, columnSize, decimalDigits,
-      columnNullable);
+      reinterpret_cast<SQLCHAR*>(utf8_col_name.GetValue().data()),
+      columnNameBufferLen, columnNameLen, columnSQLdataType, columnSize,
+      decimalDigits, columnNullable);
 
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
-  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
-  *columnNameLen = utf16_col_name.length();
+  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
+  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
+  *columnNameLen = utf16_col_name.GetValue().length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -2648,25 +2650,24 @@ SQLRETURN SQL_API SQLGetDiagRecW(SQLSMALLINT handleType, SQLHANDLE handle,
         messageTextBufferLen, messageTextLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_sql_state = ConvertSQLWCHARToString(sqlState, NULL);
-  std::string utf8_msg_txt =
-      ConvertSQLWCHARToString(messageText, *messageTextLen);
-  *messageTextLen = utf8_msg_txt.length();
+  auto utf8_sql_state = ConvertSQLWCHARToString(sqlState, NULL);
+  auto utf8_msg_txt = ConvertSQLWCHARToString(messageText, *messageTextLen);
+  *messageTextLen = utf8_msg_txt.GetValue().length();
 
   // Call to common internal function for SQLGetDiagRec and SQLGetDiagRecW
   // in odbc_diagnostics.h.
   rc = google::cloud::odbc_bq_driver::SQLGetDiagRecInternal(
       handleType, handle, recNumber,
-      reinterpret_cast<SQLCHAR*>(utf8_sql_state.data()), nativeError,
-      reinterpret_cast<SQLCHAR*>(utf8_msg_txt.data()), messageTextBufferLen,
-      messageTextLen);
+      reinterpret_cast<SQLCHAR*>(utf8_sql_state.GetValue().data()), nativeError,
+      reinterpret_cast<SQLCHAR*>(utf8_msg_txt.GetValue().data()),
+      messageTextBufferLen, messageTextLen);
 
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_sql_state(Utf8ToUtf16(utf8_sql_state));
-  sqlState = reinterpret_cast<SQLWCHAR*>(utf16_sql_state.data());
-  std::wstring utf16_msg_txt(Utf8ToUtf16(utf8_msg_txt));
-  messageText = reinterpret_cast<SQLWCHAR*>(utf16_msg_txt.data());
-  *messageTextLen = utf16_msg_txt.length();
+  auto utf16_sql_state = Utf8ToUtf16(utf8_sql_state.GetValue());
+  sqlState = reinterpret_cast<SQLWCHAR*>(utf16_sql_state.GetValue().data());
+  auto utf16_msg_txt = Utf8ToUtf16(utf8_msg_txt.GetValue());
+  messageText = reinterpret_cast<SQLWCHAR*>(utf16_msg_txt.GetValue().data());
+  *messageTextLen = utf16_msg_txt.GetValue().length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLGetDiagRec(rc, *(*kTraceOption));
@@ -2729,30 +2730,27 @@ SQLRETURN SQL_API SQLColumnsW(SQLHSTMT statementHandle, SQLWCHAR* catalogName,
         tableName, tableNameLen, columnName, columnNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_table_name =
-      ConvertSQLWCHARToString(tableName, tableNameLen);
-  tableNameLen = utf8_table_name.length();
-  std::string utf8_col_name =
-      ConvertSQLWCHARToString(columnName, columnNameLen);
-  columnNameLen = utf8_col_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
+  tableNameLen = utf8_table_name.GetValue().length();
+  auto utf8_col_name = ConvertSQLWCHARToString(columnName, columnNameLen);
+  columnNameLen = utf8_col_name.GetValue().length();
 
   // Call to common internal function for SQLColumns and SQLColumnsW
   // in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
-  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
-  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
-  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
+  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
+  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
+  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLColumnsW(rc, *(*kTraceOption));
@@ -2820,30 +2818,27 @@ SQLRETURN SQL_API SQLTablesW(SQLHSTMT statementHandle, SQLWCHAR* catalogName,
         tableName, tableNameLen, tableType, tableTypeLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_table_name =
-      ConvertSQLWCHARToString(tableName, tableNameLen);
-  tableNameLen = utf8_table_name.length();
-  std::string utf8_table_type =
-      ConvertSQLWCHARToString(tableType, tableNameLen);
-  tableTypeLen = utf8_table_type.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
+  tableNameLen = utf8_table_name.GetValue().length();
+  auto utf8_table_type = ConvertSQLWCHARToString(tableType, tableNameLen);
+  tableTypeLen = utf8_table_type.GetValue().length();
 
   // Call to common internal function for SQLTables and SQLTablesW
   // in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
-  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
-  std::wstring utf16_table_type(Utf8ToUtf16(utf8_table_type));
-  tableType = reinterpret_cast<SQLWCHAR*>(utf16_table_type.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
+  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
+  auto utf16_table_type = Utf8ToUtf16(utf8_table_type.GetValue());
+  tableType = reinterpret_cast<SQLWCHAR*>(utf16_table_type.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLTablesW(rc, *(*kTraceOption));
@@ -2905,31 +2900,32 @@ SQLRETURN SQL_API SQLPrimaryKeysW(
         tableName, tableNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_table_name =
-      ConvertSQLWCHARToString(tableName, tableNameLen);
-  tableNameLen = utf8_table_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
+  tableNameLen = utf8_table_name.GetValue().length();
 
   // Call to common internal function for SQLPrimaryKeys and SQLPrimaryKeysW
   // in odbc_driver_metadata.h.
   rc = google::cloud::odbc_bq_driver::SQLPrimaryKeysInternal(
-      statementHandle, reinterpret_cast<SQLCHAR*>(utf8_catalog_name.data()),
-      catalogNameLen, reinterpret_cast<SQLCHAR*>(utf8_schema_name.data()),
-      schemaNameLen, reinterpret_cast<SQLCHAR*>(utf8_table_name.data()),
+      statementHandle,
+      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
+      catalogNameLen,
+      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
+      schemaNameLen,
+      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
       tableNameLen);
 
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
-  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
+  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -2986,29 +2982,27 @@ SQLRETURN SQL_API SQLProcedureColumnsW(
         procName, procNameLen, columnName, columnNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_proc_name = ConvertSQLWCHARToString(procName, procNameLen);
-  procNameLen = utf8_proc_name.length();
-  std::string utf8_col_name =
-      ConvertSQLWCHARToString(columnName, columnNameLen);
-  columnNameLen = utf8_col_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_proc_name = ConvertSQLWCHARToString(procName, procNameLen);
+  procNameLen = utf8_proc_name.GetValue().length();
+  auto utf8_col_name = ConvertSQLWCHARToString(columnName, columnNameLen);
+  columnNameLen = utf8_col_name.GetValue().length();
 
   // Call to common internal function for SQLProcedureColumns and
   // SQLProcedureColumnsW in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_proc_name(Utf8ToUtf16(utf8_proc_name));
-  procName = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.data());
-  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
-  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_proc_name = Utf8ToUtf16(utf8_proc_name.GetValue());
+  procName = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.GetValue().data());
+  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
+  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -3065,24 +3059,23 @@ SQLRETURN SQL_API SQLProceduresW(SQLHSTMT statementHandle,
                                       procName, procNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_proc_name = ConvertSQLWCHARToString(procName, procNameLen);
-  procNameLen = utf8_proc_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_proc_name = ConvertSQLWCHARToString(procName, procNameLen);
+  procNameLen = utf8_proc_name.GetValue().length();
 
   // Call to common internal function for SQLProcedures and SQLProceduresW
   // in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_proc_name(Utf8ToUtf16(utf8_proc_name));
-  procName = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_proc_name = Utf8ToUtf16(utf8_proc_name.GetValue());
+  procName = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -3145,25 +3138,23 @@ SQLRETURN SQL_API SQLSpecialColumnsW(
         colNullable, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_table_name =
-      ConvertSQLWCHARToString(tableName, tableNameLen);
-  tableNameLen = utf8_table_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
+  tableNameLen = utf8_table_name.GetValue().length();
 
   // Call to common internal function for SQLSpecialColumns and
   // SQLSpecialColumnsW in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
-  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
+  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -3224,25 +3215,23 @@ SQLRETURN SQL_API SQLStatisticsW(
         tableName, tableNameLen, indexType, reserved, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_table_name =
-      ConvertSQLWCHARToString(tableName, tableNameLen);
-  tableNameLen = utf8_table_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
+  tableNameLen = utf8_table_name.GetValue().length();
 
   // Call to common internal function for SQLStatistics and SQLStatisticsW
   // in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
-  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
+  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -3299,25 +3288,23 @@ SQLRETURN SQL_API SQLTablePrivilegesW(
         tableName, tableNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_table_name =
-      ConvertSQLWCHARToString(tableName, tableNameLen);
-  tableNameLen = utf8_table_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
+  tableNameLen = utf8_table_name.GetValue().length();
 
   // Call to common internal function for SQLTablePrivileges and
   // SQLTablePrivilegesW in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
-  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
+  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -3407,49 +3394,61 @@ SQLForeignKeysW(SQLHSTMT statementHandle, SQLWCHAR* pkCatalogName,
         fkTableNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_pk_catalog_name =
+  auto utf8_pk_catalog_name =
       ConvertSQLWCHARToString(pkCatalogName, pkCatalogNameLen);
-  pkCatalogNameLen = utf8_pk_catalog_name.length();
-  std::string utf8_pk_schema_name =
+  pkCatalogNameLen = utf8_pk_catalog_name.GetValue().length();
+  auto utf8_pk_schema_name =
       ConvertSQLWCHARToString(pkSchemaName, pkSchemaNameLen);
-  pkSchemaNameLen = utf8_pk_schema_name.length();
-  std::string utf8_pk_table_name =
+  pkSchemaNameLen = utf8_pk_schema_name.GetValue().length();
+  auto utf8_pk_table_name =
       ConvertSQLWCHARToString(pkTableName, pkTableNameLen);
-  pkTableNameLen = utf8_pk_table_name.length();
-  std::string utf8_fk_catalog_name =
+  pkTableNameLen = utf8_pk_table_name.GetValue().length();
+  auto utf8_fk_catalog_name =
       ConvertSQLWCHARToString(fkCatalogName, fkCatalogNameLen);
-  fkCatalogNameLen = utf8_fk_catalog_name.length();
-  std::string utf8_fk_schema_name =
+  fkCatalogNameLen = utf8_fk_catalog_name.GetValue().length();
+  auto utf8_fk_schema_name =
       ConvertSQLWCHARToString(fkSchemaName, fkSchemaNameLen);
-  fkSchemaNameLen = utf8_fk_schema_name.length();
-  std::string utf8_fk_table_name =
+  fkSchemaNameLen = utf8_fk_schema_name.GetValue().length();
+  auto utf8_fk_table_name =
       ConvertSQLWCHARToString(fkTableName, fkTableNameLen);
-  fkTableNameLen = utf8_fk_table_name.length();
+  fkTableNameLen = utf8_fk_table_name.GetValue().length();
 
   // Call to common internal function for SQLForeignKeys and SQLForeignKeysW
   // in odbc_driver_metadata.h.
   rc = google::cloud::odbc_bq_driver::SQLForeignKeysInternal(
-      statementHandle, reinterpret_cast<SQLCHAR*>(utf8_pk_catalog_name.data()),
-      pkCatalogNameLen, reinterpret_cast<SQLCHAR*>(utf8_pk_schema_name.data()),
-      pkSchemaNameLen, reinterpret_cast<SQLCHAR*>(utf8_pk_table_name.data()),
-      pkTableNameLen, reinterpret_cast<SQLCHAR*>(utf8_fk_catalog_name.data()),
-      fkCatalogNameLen, reinterpret_cast<SQLCHAR*>(utf8_fk_schema_name.data()),
-      fkSchemaNameLen, reinterpret_cast<SQLCHAR*>(utf8_fk_table_name.data()),
+      statementHandle,
+      reinterpret_cast<SQLCHAR*>(utf8_pk_catalog_name.GetValue().data()),
+      pkCatalogNameLen,
+      reinterpret_cast<SQLCHAR*>(utf8_pk_schema_name.GetValue().data()),
+      pkSchemaNameLen,
+      reinterpret_cast<SQLCHAR*>(utf8_pk_table_name.GetValue().data()),
+      pkTableNameLen,
+      reinterpret_cast<SQLCHAR*>(utf8_fk_catalog_name.GetValue().data()),
+      fkCatalogNameLen,
+      reinterpret_cast<SQLCHAR*>(utf8_fk_schema_name.GetValue().data()),
+      fkSchemaNameLen,
+      reinterpret_cast<SQLCHAR*>(utf8_fk_table_name.GetValue().data()),
       fkTableNameLen);
 
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_pk_catalog_name(Utf8ToUtf16(utf8_pk_catalog_name));
-  pkCatalogName = reinterpret_cast<SQLWCHAR*>(utf16_pk_catalog_name.data());
-  std::wstring utf16_pk_schema_name(Utf8ToUtf16(utf8_pk_schema_name));
-  pkSchemaName = reinterpret_cast<SQLWCHAR*>(utf16_pk_schema_name.data());
-  std::wstring utf16_pk_table_name(Utf8ToUtf16(utf8_pk_table_name));
-  pkTableName = reinterpret_cast<SQLWCHAR*>(utf16_pk_table_name.data());
-  std::wstring utf16_fk_catalog_name(Utf8ToUtf16(utf8_fk_catalog_name));
-  fkCatalogName = reinterpret_cast<SQLWCHAR*>(utf16_fk_catalog_name.data());
-  std::wstring utf16_fk_schema_name(Utf8ToUtf16(utf8_fk_schema_name));
-  fkSchemaName = reinterpret_cast<SQLWCHAR*>(utf16_fk_schema_name.data());
-  std::wstring utf16_fk_table_name(Utf8ToUtf16(utf8_fk_table_name));
-  fkTableName = reinterpret_cast<SQLWCHAR*>(utf16_fk_table_name.data());
+  auto utf16_pk_catalog_name = Utf8ToUtf16(utf8_pk_catalog_name.GetValue());
+  pkCatalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_pk_catalog_name.GetValue().data());
+  auto utf16_pk_schema_name = Utf8ToUtf16(utf8_pk_schema_name.GetValue());
+  pkSchemaName =
+      reinterpret_cast<SQLWCHAR*>(utf16_pk_schema_name.GetValue().data());
+  auto utf16_pk_table_name = Utf8ToUtf16(utf8_pk_table_name.GetValue());
+  pkTableName =
+      reinterpret_cast<SQLWCHAR*>(utf16_pk_table_name.GetValue().data());
+  auto utf16_fk_catalog_name = Utf8ToUtf16(utf8_fk_catalog_name.GetValue());
+  fkCatalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_fk_catalog_name.GetValue().data());
+  auto utf16_fk_schema_name = Utf8ToUtf16(utf8_fk_schema_name.GetValue());
+  fkSchemaName =
+      reinterpret_cast<SQLWCHAR*>(utf16_fk_schema_name.GetValue().data());
+  auto utf16_fk_table_name = Utf8ToUtf16(utf8_fk_table_name.GetValue());
+  fkTableName =
+      reinterpret_cast<SQLWCHAR*>(utf16_fk_table_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -3505,29 +3504,26 @@ SQLRETURN SQL_API SQLColumnPrivilegesW(
         tableName, tableNameLen, columnName, columnNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  std::string utf8_catalog_name =
-      ConvertSQLWCHARToString(catalogName, catalogNameLen);
-  catalogNameLen = utf8_catalog_name.length();
-  std::string utf8_schema_name =
-      ConvertSQLWCHARToString(schemaName, schemaNameLen);
-  schemaNameLen = utf8_schema_name.length();
-  std::string utf8_table_name =
-      ConvertSQLWCHARToString(tableName, tableNameLen);
-  tableNameLen = utf8_table_name.length();
-  std::string utf8_col_name =
-      ConvertSQLWCHARToString(columnName, columnNameLen);
-  columnNameLen = utf8_col_name.length();
+  auto utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
+  catalogNameLen = utf8_catalog_name.GetValue().length();
+  auto utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
+  schemaNameLen = utf8_schema_name.GetValue().length();
+  auto utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
+  tableNameLen = utf8_table_name.GetValue().length();
+  auto utf8_col_name = ConvertSQLWCHARToString(columnName, columnNameLen);
+  columnNameLen = utf8_col_name.GetValue().length();
   // Call to common internal function for SQLColumnPrivileges and
   // SQLColumnPrivilegesW in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
-  std::wstring utf16_catalog_name(Utf8ToUtf16(utf8_catalog_name));
-  catalogName = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.data());
-  std::wstring utf16_schema_name(Utf8ToUtf16(utf8_schema_name));
-  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.data());
-  std::wstring utf16_table_name(Utf8ToUtf16(utf8_table_name));
-  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.data());
-  std::wstring utf16_col_name(Utf8ToUtf16(utf8_col_name));
-  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.data());
+  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
+  catalogName =
+      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
+  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
+  schemaName = reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
+  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
+  tableName = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
+  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
+  columnName = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)

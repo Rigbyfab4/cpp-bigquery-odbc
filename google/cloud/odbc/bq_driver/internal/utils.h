@@ -83,12 +83,14 @@ std::vector<std::string> Split(std::string const& s,
 std::string Join(std::vector<std::string> v, std::string const& separator = "",
                  int start_ind = 0);
 
-std::string Utf16ToUtf8(std::wstring const& utf16Str);
+odbc_internal::StatusRecordOr<std::string> Utf16ToUtf8(
+    std::wstring const& utf_16_str);
 
-std::wstring Utf8ToUtf16(std::string const& utf8Str);
+odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
+    std::string const& utf_8_str);
 
-std::string ConvertSQLWCHARToString(SQLWCHAR* SQLWCHARString,
-                                    SQLINTEGER SQLWCHARStringLen);
+odbc_internal::StatusRecordOr<std::string> ConvertSQLWCHARToString(
+    SQLWCHAR* in_str, SQLINTEGER in_str_len);
 
 #ifdef _WIN32
 
