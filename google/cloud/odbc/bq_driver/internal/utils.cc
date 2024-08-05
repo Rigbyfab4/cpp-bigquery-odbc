@@ -318,7 +318,8 @@ StatusRecordOr<std::wstring> Utf8ToUtf16(std::string const& utf_8_str) {
   if (result == 0) {
     return StatusRecord{SQLStates::k_HY000(),
                         "Error while converting string to wstring"};
-    return utf16Str;
+  }
+  return utf16Str;
 #else
 
   iconv_t cd = iconv_open("WCHAR_T", "UTF-8");
@@ -356,22 +357,22 @@ StatusRecordOr<std::wstring> Utf8ToUtf16(std::string const& utf_8_str) {
 
   return utf16str;
 #endif
-  }
+}
 
-  StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR * in_str,
-                                                      SQLINTEGER in_str_len) {
-    if (((in_str != nullptr) && (in_str[0] == '\0'))) {
-      return StatusRecord{SQLStates::k_HY000(), "in_str string is empty/Null"};
-    }
-    std::wstring stmt_txt_wstr;
-    std::wstring wstr(reinterpret_cast<wchar_t const*>(in_str));
-    if (in_str_len == SQL_NTS || in_str_len == NULL) {
-      in_str_len = wstr.size();
-    }
-    stmt_txt_wstr.reserve(in_str_len);
-    for (SQLINTEGER i = 0; i < in_str_len; ++i) {
-      stmt_txt_wstr.push_back(static_cast<wchar_t>(in_str[i]));
-    }
-    return Utf16ToUtf8(stmt_txt_wstr);
+StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR* in_str,
+                                                    SQLINTEGER in_str_len) {
+  if (((in_str != nullptr) && (in_str[0] == '\0'))) {
+    return StatusRecord{SQLStates::k_HY000(), "in_str string is empty/Null"};
   }
+  std::wstring stmt_txt_wstr;
+  std::wstring wstr(reinterpret_cast<wchar_t const*>(in_str));
+  if (in_str_len == SQL_NTS || in_str_len == NULL) {
+    in_str_len = wstr.size();
+  }
+  stmt_txt_wstr.reserve(in_str_len);
+  for (SQLINTEGER i = 0; i < in_str_len; ++i) {
+    stmt_txt_wstr.push_back(static_cast<wchar_t>(in_str[i]));
+  }
+  return Utf16ToUtf8(stmt_txt_wstr);
+}
 }  // namespace google::cloud::odbc_bq_driver_internal
