@@ -278,7 +278,7 @@ StatusRecordOr<std::string> Utf16ToUtf8(std::wstring const& utf_16_str) {
       reinterpret_cast<char const*>(utf_16_str.data()),
       reinterpret_cast<char const*>(utf_16_str.data() + utf_16_str.length()));
   size_t inbytesleft = inbuf.size();
-  size_t outbytesleft = inbytesleft * 3;  // Allocate more space for utf8 output
+  size_t outbytesleft = inbytesleft * 4;  // Allocate more space for utf8 output
 
   std::string utf8str(outbytesleft, '\0');
   char* inptr = inbuf.data();
