@@ -23,6 +23,7 @@
 
 namespace google::cloud::odbc_bq_driver_internal {
 
+using google::cloud::odbc_internal::StatusRecordOr;
 // Checks if an arithmetic value can be converted to another accurately.
 template <typename SrcType, typename DestType>
 inline odbc_internal::StatusRecord CheckLimitsArithmetic(SrcType value) {
@@ -333,6 +334,113 @@ inline odbc_internal::StatusRecord ConvertFromStringDSValue(
     }
   }
   return StatusRecord::Ok();
+}
+
+inline odbc_internal::StatusRecord ConvertFromTimeDSValue(
+    DSValue const& src_dsval, DataBuffer& dest_data) {
+  using odbc_internal::SQLStates;
+  using odbc_internal::StatusRecord;
+
+  SQL_TIME_STRUCT dest_time;
+  DSValueToTime(src_dsval, dest_time);
+
+  SQLSMALLINT dest_type = dest_data.type;
+  SQLPOINTER dest_buf = dest_data.buf;
+  SQLLEN buffer_length = dest_data.buflen;
+  SQLLEN* res_len = dest_data.result_len;
+
+  constexpr int kTimeCharLength = 8;
+  constexpr int kTimeWcharLength = kTimeCharLength;
+  constexpr int kTimeBinaryLength = sizeof(SQL_TIME_STRUCT);
+
+  if (!dest_buf) {
+    return StatusRecord::Ok();
+  }
+  if (buffer_length < 0) {
+    return StatusRecord{SQLStates::k_HY090(), "Buffer length is negative"};
+  }
+
+  StatusRecord status_record = StatusRecord::Ok();
+
+  switch (dest_type) {
+    case SQL_C_CHAR: {
+      auto* dest = reinterpret_cast<char*>(dest_buf);
+      if (buffer_length < kTimeCharLength) {
+        strncpy(dest, "HH:MM:SS", buffer_length - 1);
+        dest[buffer_length - 1] = '\0';
+        status_record =
+            StatusRecord{SQLStates::k_01004(), "String data, right truncated"};
+      } else {
+        snprintf(dest, buffer_length, "%02d:%02d:%02d.000000", dest_time.hour,
+                 dest_time.minute, dest_time.second);
+      }
+      break;
+    }
+    case SQL_C_TYPE_TIME: {
+      return TimeToOutputBufferResponse(
+          dest_time, dest_buf, buffer_length,
+          reinterpret_cast<SQLLEN*>(dest_data.result_len));
+    }
+
+    case SQL_C_TYPE_TIMESTAMP: {
+      auto* timestamp = reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(dest_buf);
+      timestamp->year = 0;
+      timestamp->month = 0;
+      timestamp->day = 0;
+      timestamp->hour = dest_time.hour;
+      timestamp->minute = dest_time.minute;
+      timestamp->second = dest_time.second;
+      break;
+    }
+
+    case SQL_C_WCHAR: {
+      std::string time_src_str;
+      time_src_str = FormatTimetoString(dest_time);
+      time_src_str.append(".000000");
+      int k_time_src_len = time_src_str.length();
+      StatusRecordOr<std::wstring> wstr = Utf8ToUtf16(time_src_str);
+      if (!wstr) {
+        status_record = StatusRecord{SQLStates::k_HY000(),
+                                     "DSValueToWchar Conversion Failed"};
+        break;
+      }
+      std::vector<SQLWCHAR> wstr_data(wstr->begin(), wstr->end());
+      wstr_data.emplace_back(L'\0');
+
+      auto* dest = static_cast<SQLWCHAR*>(dest_buf);
+      if (buffer_length > k_time_src_len) {
+        if (res_len) {
+          *res_len = k_time_src_len * sizeof(SQLWCHAR);
+        }
+        std::memcpy(dest, wstr_data.data(),
+                    (k_time_src_len) * sizeof(SQLWCHAR));
+      } else if (9 <= buffer_length && buffer_length <= k_time_src_len) {
+        if (res_len) {
+          *res_len = buffer_length * sizeof(SQLWCHAR);
+        }
+        std::memcpy(dest, wstr_data.data(), (buffer_length) * sizeof(SQLWCHAR));
+        status_record = StatusRecord{SQLStates::k_01004(), "Data truncated"};
+      } else {
+        status_record =
+            StatusRecord{SQLStates::k_22003(), "Buffer length is insufficient"};
+      }
+      break;
+    }
+    case SQL_C_BINARY: {
+      if (buffer_length < kTimeBinaryLength) {
+        memcpy(dest_buf, &dest_time, buffer_length);
+        status_record =
+            StatusRecord{SQLStates::k_01004(), "Binary data, right truncated"};
+      } else {
+        memcpy(dest_buf, &dest_time, kTimeBinaryLength);
+      }
+      break;
+    }
+    default:
+      return StatusRecord{SQLStates::k_HY000(), "Conversion is unsupported"};
+  }
+
+  return status_record;
 }
 
 inline odbc_internal::StatusRecord ConvertFromDateDSValue(

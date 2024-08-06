@@ -170,6 +170,23 @@ SQLRETURN IntValueToOutputBufferResponse(T val, SQLPOINTER buffer_ptr,
   return SQL_SUCCESS;
 }
 
+inline odbc_internal::StatusRecord TimeToOutputBufferResponse(
+    const SQL_TIME_STRUCT& conn_time, SQLPOINTER dest_buf, SQLLEN buffer_length,
+    SQLLEN* result_len) {
+  auto* dest_time = reinterpret_cast<SQL_TIME_STRUCT*>(dest_buf);
+  auto status_record = odbc_internal::StatusRecord::Ok();
+  if (buffer_length >= sizeof(SQL_TIME_STRUCT)) {
+    *dest_time = conn_time;
+    if (result_len) {
+      *result_len = sizeof(SQL_TIME_STRUCT);
+    }
+    return status_record;
+  }
+  status_record = odbc_internal::StatusRecord{
+      odbc_internal::SQLStates::k_01004(), "Date data, right truncated"};
+  return status_record;
+}
+
 SQLRETURN AddressToPointer(SQLPOINTER ptr, SQLPOINTER out_buf,
                            SQLINTEGER* str_len_ptr);
 
