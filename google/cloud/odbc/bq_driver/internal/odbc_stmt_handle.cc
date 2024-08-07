@@ -400,4 +400,14 @@ StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
   return StatusRecord::Ok();
 }
 
+void StatementHandle::CloseCursor() {
+  ResultSet result_set;
+  result_set_ = result_set;
+  if (WasStatementPrepared()) {
+    SetStmtState(StmtStates::kStatementPrepared);
+  } else {
+    SetStmtState(StmtStates::kStatementNotPrepared);
+  }
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal

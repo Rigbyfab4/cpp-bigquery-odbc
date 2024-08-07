@@ -371,4 +371,26 @@ TEST(PopulateIpd, CheckPopulateIpdDescHandle) {
   }
 }
 
+TEST(CloseCursor, DoNothing_CursorIsNotOpen) {
+  StatementHandle handle = CreateStatementHandle();
+
+  handle.CloseCursor();
+
+  // TODO(b/358002035) Change to kStatementNotPrepared
+  EXPECT_EQ(StmtStates::kStatementPrepared, handle.GetStmtState());
+  EXPECT_FALSE(handle.IsCursorOpen());
+}
+
+TEST(CloseCursor, CloseCursor_AfterSQLExecute) {
+  StatementHandle handle = CreateStatementHandle();
+  handle.SetStmtState(StmtStates::kStatementExecutedWithRs);
+  ResultSet result_set;
+  handle.SetResultSet(result_set);
+
+  handle.CloseCursor();
+
+  EXPECT_EQ(StmtStates::kStatementPrepared, handle.GetStmtState());
+  EXPECT_FALSE(handle.IsCursorOpen());
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal
