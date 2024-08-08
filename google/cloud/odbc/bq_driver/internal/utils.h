@@ -24,16 +24,18 @@
 #include <windows.h>
 #undef max
 #include <winreg.h>
-
 #endif  //_WIN32
 
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "google/cloud/status_or.h"
 #include <algorithm>
+#include <codecvt>
 #include <fstream>
+#include <locale>
 #include <map>
 #include <memory>
 #include <regex>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -80,6 +82,15 @@ std::vector<std::string> Split(std::string const& s,
 
 std::string Join(std::vector<std::string> v, std::string const& separator = "",
                  int start_ind = 0);
+
+odbc_internal::StatusRecordOr<std::string> Utf16ToUtf8(
+    std::wstring const& utf_16_str);
+
+odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
+    std::string const& utf_8_str);
+
+odbc_internal::StatusRecordOr<std::string> ConvertSQLWCHARToString(
+    SQLWCHAR* in_str, SQLINTEGER in_str_len);
 
 #ifdef _WIN32
 
