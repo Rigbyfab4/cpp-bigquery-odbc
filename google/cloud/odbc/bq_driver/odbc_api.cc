@@ -90,7 +90,6 @@ using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLNumResultCols;
 
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLAllocHandle;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLBindCol;
-using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLBindParameter;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLCloseCursor;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLColAttribute;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLConnect;
