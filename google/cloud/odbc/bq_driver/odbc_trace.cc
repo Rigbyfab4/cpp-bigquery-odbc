@@ -30,6 +30,7 @@ using google::cloud::odbc_bq_driver_internal::FormatSqlUSmallInt;
 using google::cloud::odbc_bq_driver_internal::FormatString;
 using google::cloud::odbc_bq_driver_internal::ToCStr;
 using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
+using ::google::cloud::odbc_internal::StatusRecordOr;
 
 // Following functionality still needs to be implemented for the
 // entry functions.
@@ -116,27 +117,43 @@ void TraceFunctionEntry_SQLDriverConnectW(
     SQLWCHAR* out_conn_str, SQLSMALLINT out_conn_str_buf_len,
     SQLSMALLINT* out_conn_str_len, SQLUSMALLINT driver_completion,
     TraceOptions& opts) {
-  auto utf8_in_connection_str =
+  StatusRecordOr<std::string> utf8_in_connection_str =
       ConvertSQLWCHARToString(in_connection_str, in_connection_str_len);
-  in_connection_str_len = utf8_in_connection_str.GetValue().length();
-  auto utf8_out_conn_str =
+  if (!utf8_in_connection_str) {
+    TracePrintInternal(opts, utf8_in_connection_str.GetStatusRecord().message);
+    return;
+  }
+  in_connection_str_len = utf8_in_connection_str->length();
+  StatusRecordOr<std::string> utf8_out_conn_str =
       ConvertSQLWCHARToString(out_conn_str, *out_conn_str_len);
-  *out_conn_str_len = utf8_out_conn_str.GetValue().length();
+  if (!utf8_out_conn_str) {
+    TracePrintInternal(opts, utf8_out_conn_str.GetStatusRecord().message);
+    return;
+  }
+  *out_conn_str_len = utf8_out_conn_str->length();
 
   TraceFunctionEntry_SQLDriverConnect(
       connection_handle, window_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_in_connection_str.GetValue().data()),
-      in_connection_str_len,
-      reinterpret_cast<SQLCHAR*>(utf8_out_conn_str.GetValue().data()),
-      out_conn_str_buf_len, out_conn_str_len, driver_completion, opts);
+      ToSqlChar(utf8_in_connection_str->data()), in_connection_str_len,
+      ToSqlChar(utf8_out_conn_str->data()), out_conn_str_buf_len,
+      out_conn_str_len, driver_completion, opts);
 
-  auto utf16_in_connection_str = Utf8ToUtf16(utf8_in_connection_str.GetValue());
+  StatusRecordOr<std::wstring> utf16_in_connection_str =
+      Utf8ToUtf16(*utf8_in_connection_str);
+  if (!utf16_in_connection_str) {
+    TracePrintInternal(opts, utf16_in_connection_str.GetStatusRecord().message);
+    return;
+  }
   in_connection_str =
-      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.GetValue().data());
-  auto utf16_out_conn_str = Utf8ToUtf16(utf8_out_conn_str.GetValue());
-  out_conn_str =
-      reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.GetValue().data());
-  *out_conn_str_len = utf16_out_conn_str.GetValue().length();
+      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str->data());
+  StatusRecordOr<std::wstring> utf16_out_conn_str =
+      Utf8ToUtf16(*utf8_out_conn_str);
+  if (!utf16_out_conn_str) {
+    TracePrintInternal(opts, utf16_out_conn_str.GetStatusRecord().message);
+    return;
+  }
+  out_conn_str = reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str->data());
+  *out_conn_str_len = utf16_out_conn_str->length();
 }
 
 void TraceFunctionExit_SQLDriverConnectW(SQLRETURN ret_code,
@@ -191,27 +208,41 @@ void TraceFunctionEntry_SQLBrowseConnectW(SQLHDBC connection_handle,
                                           SQLSMALLINT out_conn_str_buf_len,
                                           SQLSMALLINT* out_conn_str_len,
                                           TraceOptions& opts) {
-  auto utf8_in_connection_str =
+  StatusRecordOr<std::string> utf8_in_connection_str =
       ConvertSQLWCHARToString(in_conn_str, in_conn_str_len);
-  in_conn_str_len = utf8_in_connection_str.GetValue().length();
-  auto utf8_out_conn_str =
+  if (!utf8_in_connection_str) {
+    TracePrintInternal(opts, utf8_in_connection_str.GetStatusRecord().message);
+    return;
+  }
+  in_conn_str_len = utf8_in_connection_str->length();
+  StatusRecordOr<std::string> utf8_out_conn_str =
       ConvertSQLWCHARToString(out_conn_str, *out_conn_str_len);
-  *out_conn_str_len = utf8_out_conn_str.GetValue().length();
+  if (!utf8_out_conn_str) {
+    TracePrintInternal(opts, utf8_out_conn_str.GetStatusRecord().message);
+    return;
+  }
+  *out_conn_str_len = utf8_out_conn_str->length();
 
   TraceFunctionEntry_SQLBrowseConnect(
-      connection_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_in_connection_str.GetValue().data()),
-      in_conn_str_len,
-      reinterpret_cast<SQLCHAR*>(utf8_out_conn_str.GetValue().data()),
+      connection_handle, ToSqlChar(utf8_in_connection_str->data()),
+      in_conn_str_len, ToSqlChar(utf8_out_conn_str->data()),
       out_conn_str_buf_len, out_conn_str_len, opts);
 
-  auto utf16_in_connection_str = Utf8ToUtf16(utf8_in_connection_str.GetValue());
-  in_conn_str =
-      reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str.GetValue().data());
-  auto utf16_out_conn_str = Utf8ToUtf16(utf8_out_conn_str.GetValue());
-  out_conn_str =
-      reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str.GetValue().data());
-  *out_conn_str_len = utf16_out_conn_str.GetValue().length();
+  StatusRecordOr<std::wstring> utf16_in_connection_str =
+      Utf8ToUtf16(*utf8_in_connection_str);
+  if (!utf16_in_connection_str) {
+    TracePrintInternal(opts, utf16_in_connection_str.GetStatusRecord().message);
+    return;
+  }
+  in_conn_str = reinterpret_cast<SQLWCHAR*>(utf16_in_connection_str->data());
+  StatusRecordOr<std::wstring> utf16_out_conn_str =
+      Utf8ToUtf16(*utf8_out_conn_str);
+  if (!utf16_out_conn_str) {
+    TracePrintInternal(opts, utf16_out_conn_str.GetStatusRecord().message);
+    return;
+  }
+  out_conn_str = reinterpret_cast<SQLWCHAR*>(utf16_out_conn_str->data());
+  *out_conn_str_len = utf16_out_conn_str->length();
 }
 
 void TraceFunctionExit_SQLBrowseConnectW(SQLRETURN ret_code,
@@ -282,33 +313,56 @@ void TraceFunctionEntry_SQLConnectW(
     SQLHDBC connection_handle, SQLWCHAR* server_name,
     SQLSMALLINT server_name_len, SQLWCHAR* user_name, SQLSMALLINT user_name_len,
     const SQLWCHAR* auth_str, SQLSMALLINT auth_str_len, TraceOptions& opts) {
-  auto utf8_server_name = ConvertSQLWCHARToString(server_name, server_name_len);
-  server_name_len = utf8_server_name.GetValue().length();
-  auto utf8_user_name = ConvertSQLWCHARToString(user_name, user_name_len);
-  user_name_len = utf8_user_name.GetValue().length();
+  StatusRecordOr<std::string> utf8_server_name =
+      ConvertSQLWCHARToString(server_name, server_name_len);
+  if (!utf8_server_name) {
+    TracePrintInternal(opts, utf8_server_name.GetStatusRecord().message);
+    return;
+  }
+  server_name_len = utf8_server_name->length();
+  StatusRecordOr<std::string> utf8_user_name =
+      ConvertSQLWCHARToString(user_name, user_name_len);
+  if (!utf8_user_name) {
+    TracePrintInternal(opts, utf8_user_name.GetStatusRecord().message);
+    return;
+  }
+  user_name_len = utf8_user_name->length();
   auto* auth_string = new SQLWCHAR[auth_str_len];
   for (int i = 0; i < auth_str_len; ++i) *(auth_string + i) = *(auth_str + i);
-  auto utf8_auth_str = ConvertSQLWCHARToString(auth_string, auth_str_len);
-  auth_str_len = utf8_auth_str.GetValue().length();
+  StatusRecordOr<std::string> utf8_auth_str =
+      ConvertSQLWCHARToString(auth_string, auth_str_len);
+  if (!utf8_auth_str) {
+    TracePrintInternal(opts, utf8_auth_str.GetStatusRecord().message);
+    return;
+  }
+  auth_str_len = utf8_auth_str->length();
   delete[] auth_string;
   auth_string = nullptr;
 
   TraceFunctionEntry_SQLConnect(
-      connection_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_server_name.GetValue().data()),
-      server_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_user_name.GetValue().data()),
-      user_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_auth_str.GetValue().data()), auth_str_len,
-      opts);
+      connection_handle, ToSqlChar(utf8_server_name->data()), server_name_len,
+      ToSqlChar(utf8_user_name->data()), user_name_len,
+      ToSqlChar(utf8_auth_str->data()), auth_str_len, opts);
 
-  auto utf16_server_name = Utf8ToUtf16(utf8_server_name.GetValue());
-  server_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_server_name.GetValue().data());
-  auto utf16_user_name = Utf8ToUtf16(utf8_user_name.GetValue());
-  user_name = reinterpret_cast<SQLWCHAR*>(utf16_user_name.GetValue().data());
-  auto utf16_auth_str = Utf8ToUtf16(utf8_auth_str.GetValue());
-  auth_str = reinterpret_cast<SQLWCHAR*>(utf16_auth_str.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_server_name =
+      Utf8ToUtf16(*utf8_server_name);
+  if (!utf16_server_name) {
+    TracePrintInternal(opts, utf16_server_name.GetStatusRecord().message);
+    return;
+  }
+  server_name = reinterpret_cast<SQLWCHAR*>(utf16_server_name->data());
+  StatusRecordOr<std::wstring> utf16_user_name = Utf8ToUtf16(*utf8_user_name);
+  if (!utf16_user_name) {
+    TracePrintInternal(opts, utf16_user_name.GetStatusRecord().message);
+    return;
+  }
+  user_name = reinterpret_cast<SQLWCHAR*>(utf16_user_name->data());
+  StatusRecordOr<std::wstring> utf16_auth_str = Utf8ToUtf16(*utf8_auth_str);
+  if (!utf16_auth_str) {
+    TracePrintInternal(opts, utf16_auth_str.GetStatusRecord().message);
+    return;
+  }
+  auth_str = reinterpret_cast<SQLWCHAR*>(utf16_auth_str->data());
 }
 
 void TraceFunctionExit_SQLConnectW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -779,16 +833,24 @@ void TraceFunctionEntry_SQLGetDescRecW(
     SQLSMALLINT name_buf_len, SQLSMALLINT* name_str_len, SQLSMALLINT* desc_type,
     SQLSMALLINT* desc_sub_type, SQLLEN* desc_oct_len, SQLSMALLINT* desc_prec,
     SQLSMALLINT* desc_sc, SQLSMALLINT* nullable, TraceOptions& opts) {
-  auto utf8_name = ConvertSQLWCHARToString(name, *name_str_len);
-  *name_str_len = utf8_name.GetValue().length();
+  StatusRecordOr<std::string> utf8_name =
+      ConvertSQLWCHARToString(name, *name_str_len);
+  if (!utf8_name) {
+    TracePrintInternal(opts, utf8_name.GetStatusRecord().message);
+    return;
+  }
+  *name_str_len = utf8_name->length();
   TraceFunctionEntry_SQLGetDescRec(
-      desc_handle, rec_no,
-      reinterpret_cast<SQLCHAR*>(utf8_name.GetValue().data()), name_buf_len,
+      desc_handle, rec_no, ToSqlChar(utf8_name->data()), name_buf_len,
       name_str_len, desc_type, desc_sub_type, desc_oct_len, desc_prec, desc_sc,
       nullable, opts);
-  auto utf16_name = Utf8ToUtf16(utf8_name.GetValue());
-  name = reinterpret_cast<SQLWCHAR*>(utf16_name.GetValue().data());
-  *name_str_len = utf16_name.GetValue().length();
+  StatusRecordOr<std::wstring> utf16_name = Utf8ToUtf16(*utf8_name);
+  if (!utf16_name) {
+    TracePrintInternal(opts, utf16_name.GetStatusRecord().message);
+    return;
+  }
+  name = reinterpret_cast<SQLWCHAR*>(utf16_name->data());
+  *name_str_len = utf16_name->length();
 }
 
 void TraceFunctionExit_SQLGetDescRecW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -944,16 +1006,23 @@ void TraceFunctionExit_SQLPrepare(SQLRETURN ret_code, TraceOptions& opts) {
 void TraceFunctionEntry_SQLPrepareW(SQLHSTMT statement_handle,
                                     SQLWCHAR* stmt_txt, SQLINTEGER stmt_txt_len,
                                     TraceOptions& opts) {
-  auto utf8_stmt_txt = ConvertSQLWCHARToString(stmt_txt, stmt_txt_len);
-  if (stmt_txt_len != SQL_NTS) stmt_txt_len = utf8_stmt_txt.GetValue().length();
+  StatusRecordOr<std::string> utf8_stmt_txt =
+      ConvertSQLWCHARToString(stmt_txt, stmt_txt_len);
+  if (!utf8_stmt_txt) {
+    TracePrintInternal(opts, utf8_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  if (stmt_txt_len != SQL_NTS) stmt_txt_len = utf8_stmt_txt->length();
 
   TraceFunctionEntry_SQLPrepare(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_stmt_txt.GetValue().data()), stmt_txt_len,
-      opts);
+      statement_handle, ToSqlChar(utf8_stmt_txt->data()), stmt_txt_len, opts);
 
-  auto utf16_stmt_txt = Utf8ToUtf16(utf8_stmt_txt.GetValue());
-  stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_stmt_txt = Utf8ToUtf16(*utf8_stmt_txt);
+  if (!utf16_stmt_txt) {
+    TracePrintInternal(opts, utf16_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt->data());
 }
 
 void TraceFunctionExit_SQLPrepareW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -1046,17 +1115,25 @@ void TraceFunctionEntry_SQLGetCursorNameW(SQLHSTMT statement_handle,
                                           SQLSMALLINT cur_name_buf_len,
                                           SQLSMALLINT* cur_name_str_len,
                                           TraceOptions& opts) {
-  auto utf8_cur_name = ConvertSQLWCHARToString(cur_name, *cur_name_str_len);
-  *cur_name_str_len = utf8_cur_name.GetValue().length();
+  StatusRecordOr<std::string> utf8_cur_name =
+      ConvertSQLWCHARToString(cur_name, *cur_name_str_len);
+  if (!utf8_cur_name) {
+    TracePrintInternal(opts, utf8_cur_name.GetStatusRecord().message);
+    return;
+  }
+  *cur_name_str_len = utf8_cur_name->length();
 
-  TraceFunctionEntry_SQLGetCursorName(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_cur_name.GetValue().data()),
-      cur_name_buf_len, cur_name_str_len, opts);
+  TraceFunctionEntry_SQLGetCursorName(statement_handle,
+                                      ToSqlChar(utf8_cur_name->data()),
+                                      cur_name_buf_len, cur_name_str_len, opts);
 
-  auto utf16_cur_name = Utf8ToUtf16(utf8_cur_name.GetValue());
-  cur_name = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.GetValue().data());
-  *cur_name_str_len = utf16_cur_name.GetValue().length();
+  StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
+  if (!utf16_cur_name) {
+    TracePrintInternal(opts, utf16_cur_name.GetStatusRecord().message);
+    return;
+  }
+  cur_name = reinterpret_cast<SQLWCHAR*>(utf16_cur_name->data());
+  *cur_name_str_len = utf16_cur_name->length();
 }
 
 void TraceFunctionExit_SQLGetCursorNameW(SQLRETURN ret_code,
@@ -1099,16 +1176,23 @@ void TraceFunctionEntry_SQLSetCursorNameW(SQLHSTMT statement_handle,
                                           SQLWCHAR* cur_name,
                                           SQLSMALLINT cur_name_len,
                                           TraceOptions& opts) {
-  auto utf8_cur_name = ConvertSQLWCHARToString(cur_name, cur_name_len);
-  cur_name_len = utf8_cur_name.GetValue().length();
+  StatusRecordOr<std::string> utf8_cur_name =
+      ConvertSQLWCHARToString(cur_name, cur_name_len);
+  if (!utf8_cur_name) {
+    TracePrintInternal(opts, utf8_cur_name.GetStatusRecord().message);
+    return;
+  }
+  cur_name_len = utf8_cur_name->length();
 
   TraceFunctionEntry_SQLSetCursorName(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_cur_name.GetValue().data()), cur_name_len,
-      opts);
+      statement_handle, ToSqlChar(utf8_cur_name->data()), cur_name_len, opts);
 
-  auto utf16_cur_name = Utf8ToUtf16(utf8_cur_name.GetValue());
-  cur_name = reinterpret_cast<SQLWCHAR*>(utf16_cur_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
+  if (!utf16_cur_name) {
+    TracePrintInternal(opts, utf16_cur_name.GetStatusRecord().message);
+    return;
+  }
+  cur_name = reinterpret_cast<SQLWCHAR*>(utf16_cur_name->data());
 }
 
 void TraceFunctionExit_SQLSetCursorNameW(SQLRETURN ret_code,
@@ -1174,16 +1258,23 @@ void TraceFunctionEntry_SQLExecDirectW(SQLHSTMT statement_handle,
                                        SQLWCHAR* stmt_txt,
                                        SQLINTEGER stmt_txt_len,
                                        TraceOptions& opts) {
-  auto utf8_stmt_txt = ConvertSQLWCHARToString(stmt_txt, stmt_txt_len);
-  if (stmt_txt_len != SQL_NTS) stmt_txt_len = utf8_stmt_txt.GetValue().length();
+  StatusRecordOr<std::string> utf8_stmt_txt =
+      ConvertSQLWCHARToString(stmt_txt, stmt_txt_len);
+  if (!utf8_stmt_txt) {
+    TracePrintInternal(opts, utf8_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  if (stmt_txt_len != SQL_NTS) stmt_txt_len = utf8_stmt_txt->length();
 
   TraceFunctionEntry_SQLExecDirect(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_stmt_txt.GetValue().data()), stmt_txt_len,
-      opts);
+      statement_handle, ToSqlChar(utf8_stmt_txt->data()), stmt_txt_len, opts);
 
-  auto utf16_stmt_txt = Utf8ToUtf16(utf8_stmt_txt.GetValue());
-  stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_stmt_txt = Utf8ToUtf16(*utf8_stmt_txt);
+  if (!utf16_stmt_txt) {
+    TracePrintInternal(opts, utf16_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_stmt_txt->data());
 }
 
 void TraceFunctionExit_SQLExecDirectW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -1233,26 +1324,41 @@ void TraceFunctionEntry_SQLNativeSqlW(SQLHDBC connection_handle,
                                       SQLINTEGER out_stmt_txt_buf_len,
                                       SQLINTEGER* out_stmt_txt_len,
                                       TraceOptions& opts) {
-  auto utf8_in_stmt_txt = ConvertSQLWCHARToString(in_stmt_txt, in_stmt_txt_len);
-  in_stmt_txt_len = utf8_in_stmt_txt.GetValue().length();
-  auto utf8_out_stmt_txt =
+  StatusRecordOr<std::string> utf8_in_stmt_txt =
+      ConvertSQLWCHARToString(in_stmt_txt, in_stmt_txt_len);
+  if (!utf8_in_stmt_txt) {
+    TracePrintInternal(opts, utf8_in_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  in_stmt_txt_len = utf8_in_stmt_txt->length();
+  StatusRecordOr<std::string> utf8_out_stmt_txt =
       ConvertSQLWCHARToString(out_stmt_txt, *out_stmt_txt_len);
-  *out_stmt_txt_len = utf8_out_stmt_txt.GetValue().length();
+  if (!utf8_out_stmt_txt) {
+    TracePrintInternal(opts, utf8_out_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  *out_stmt_txt_len = utf8_out_stmt_txt->length();
 
   TraceFunctionEntry_SQLNativeSql(
-      connection_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_in_stmt_txt.GetValue().data()),
-      in_stmt_txt_len,
-      reinterpret_cast<SQLCHAR*>(utf8_out_stmt_txt.GetValue().data()),
-      out_stmt_txt_buf_len, out_stmt_txt_len, opts);
+      connection_handle, ToSqlChar(utf8_in_stmt_txt->data()), in_stmt_txt_len,
+      ToSqlChar(utf8_out_stmt_txt->data()), out_stmt_txt_buf_len,
+      out_stmt_txt_len, opts);
 
-  auto utf16_in_stmt_txt = Utf8ToUtf16(utf8_in_stmt_txt.GetValue());
-  in_stmt_txt =
-      reinterpret_cast<SQLWCHAR*>(utf16_in_stmt_txt.GetValue().data());
-  auto utf16_out_stmt_txt = Utf8ToUtf16(utf8_out_stmt_txt.GetValue());
-  out_stmt_txt =
-      reinterpret_cast<SQLWCHAR*>(utf16_out_stmt_txt.GetValue().data());
-  *out_stmt_txt_len = utf16_out_stmt_txt.GetValue().length();
+  StatusRecordOr<std::wstring> utf16_in_stmt_txt =
+      Utf8ToUtf16(*utf8_in_stmt_txt);
+  if (!utf16_in_stmt_txt) {
+    TracePrintInternal(opts, utf16_in_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  in_stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_in_stmt_txt->data());
+  StatusRecordOr<std::wstring> utf16_out_stmt_txt =
+      Utf8ToUtf16(*utf8_out_stmt_txt);
+  if (!utf16_out_stmt_txt) {
+    TracePrintInternal(opts, utf16_out_stmt_txt.GetStatusRecord().message);
+    return;
+  }
+  out_stmt_txt = reinterpret_cast<SQLWCHAR*>(utf16_out_stmt_txt->data());
+  *out_stmt_txt_len = utf16_out_stmt_txt->length();
 }
 
 void TraceFunctionExit_SQLNativeSqlW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -1659,18 +1765,26 @@ void TraceFunctionEntry_SQLDescribeColW(
     SQLSMALLINT col_name_buf_len, SQLSMALLINT* col_name_len,
     SQLSMALLINT* col_sql_data_type, SQLULEN* col_sz, SQLSMALLINT* dec_digits,
     SQLSMALLINT* col_nullable, TraceOptions& opts) {
-  auto utf8_col_name = ConvertSQLWCHARToString(col_name, *col_name_len);
-  *col_name_len = utf8_col_name.GetValue().length();
+  StatusRecordOr<std::string> utf8_col_name =
+      ConvertSQLWCHARToString(col_name, *col_name_len);
+  if (!utf8_col_name) {
+    TracePrintInternal(opts, utf8_col_name.GetStatusRecord().message);
+    return;
+  }
+  *col_name_len = utf8_col_name->length();
 
   TraceFunctionEntry_SQLDescribeCol(
-      statement_handle, col_num,
-      reinterpret_cast<SQLCHAR*>(utf8_col_name.GetValue().data()),
+      statement_handle, col_num, ToSqlChar(utf8_col_name->data()),
       col_name_buf_len, col_name_len, col_sql_data_type, col_sz, dec_digits,
       col_nullable, opts);
 
-  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
-  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
-  *col_name_len = utf16_col_name.GetValue().length();
+  StatusRecordOr<std::wstring> utf16_col_name = Utf8ToUtf16(*utf8_col_name);
+  if (!utf16_col_name) {
+    TracePrintInternal(opts, utf16_col_name.GetStatusRecord().message);
+    return;
+  }
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name->data());
+  *col_name_len = utf16_col_name->length();
 }
 
 void TraceFunctionExit_SQLDescribeColW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -1885,21 +1999,38 @@ void TraceFunctionEntry_SQLGetDiagRecW(
     SQLSMALLINT handle_type, SQLHANDLE handle, SQLSMALLINT rec_no,
     SQLWCHAR* sql_state, SQLINTEGER* native_err, SQLWCHAR* msg_txt,
     SQLSMALLINT msg_txt_buf_len, SQLSMALLINT* msg_txt_len, TraceOptions& opts) {
-  auto utf8_sql_state = ConvertSQLWCHARToString(sql_state, NULL);
-  auto utf8_msg_txt = ConvertSQLWCHARToString(msg_txt, *msg_txt_len);
-  *msg_txt_len = utf8_msg_txt.GetValue().length();
+  StatusRecordOr<std::string> utf8_sql_state =
+      ConvertSQLWCHARToString(sql_state, NULL);
+  if (!utf8_sql_state) {
+    TracePrintInternal(opts, utf8_sql_state.GetStatusRecord().message);
+    return;
+  }
+  StatusRecordOr<std::string> utf8_msg_txt =
+      ConvertSQLWCHARToString(msg_txt, *msg_txt_len);
+  if (!utf8_msg_txt) {
+    TracePrintInternal(opts, utf8_msg_txt.GetStatusRecord().message);
+    return;
+  }
+  *msg_txt_len = utf8_msg_txt->length();
 
-  TraceFunctionEntry_SQLGetDiagRec(
-      handle_type, handle, rec_no,
-      reinterpret_cast<SQLCHAR*>(utf8_sql_state.GetValue().data()), native_err,
-      reinterpret_cast<SQLCHAR*>(utf8_msg_txt.GetValue().data()),
-      msg_txt_buf_len, msg_txt_len, opts);
+  TraceFunctionEntry_SQLGetDiagRec(handle_type, handle, rec_no,
+                                   ToSqlChar(utf8_sql_state->data()),
+                                   native_err, ToSqlChar(utf8_msg_txt->data()),
+                                   msg_txt_buf_len, msg_txt_len, opts);
 
-  auto utf16_sql_state = Utf8ToUtf16(utf8_sql_state.GetValue());
-  sql_state = reinterpret_cast<SQLWCHAR*>(utf16_sql_state.GetValue().data());
-  auto utf16_msg_txt = Utf8ToUtf16(utf8_msg_txt.GetValue());
-  msg_txt = reinterpret_cast<SQLWCHAR*>(utf16_msg_txt.GetValue().data());
-  *msg_txt_len = utf16_msg_txt.GetValue().length();
+  StatusRecordOr<std::wstring> utf16_sql_state = Utf8ToUtf16(*utf8_sql_state);
+  if (!utf16_sql_state) {
+    TracePrintInternal(opts, utf16_sql_state.GetStatusRecord().message);
+    return;
+  }
+  sql_state = reinterpret_cast<SQLWCHAR*>(utf16_sql_state->data());
+  StatusRecordOr<std::wstring> utf16_msg_txt = Utf8ToUtf16(*utf8_msg_txt);
+  if (!utf16_msg_txt) {
+    TracePrintInternal(opts, utf16_msg_txt.GetStatusRecord().message);
+    return;
+  }
+  msg_txt = reinterpret_cast<SQLWCHAR*>(utf16_msg_txt->data());
+  *msg_txt_len = utf16_msg_txt->length();
 }
 
 void TraceFunctionExit_SQLGetDiagRecW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -1956,37 +2087,67 @@ void TraceFunctionEntry_SQLColumnsW(
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLWCHAR* col_name, SQLSMALLINT col_name_len,
     TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_table_name = ConvertSQLWCHARToString(table_name, table_name_len);
-  table_name_len = utf8_table_name.GetValue().length();
-  auto utf8_col_name = ConvertSQLWCHARToString(col_name, col_name_len);
-  col_name_len = utf8_col_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  if (!utf8_table_name) {
+    TracePrintInternal(opts, utf8_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name_len = utf8_table_name->length();
+  StatusRecordOr<std::string> utf8_col_name =
+      ConvertSQLWCHARToString(col_name, col_name_len);
+  if (!utf8_col_name) {
+    TracePrintInternal(opts, utf8_col_name.GetStatusRecord().message);
+    return;
+  }
+  col_name_len = utf8_col_name->length();
 
   TraceFunctionEntry_SQLColumns(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
-      table_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_col_name.GetValue().data()), col_name_len,
-      opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_table_name->data()), table_name_len,
+      ToSqlChar(utf8_col_name->data()), col_name_len, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
-  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
-  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
-  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_table_name = Utf8ToUtf16(*utf8_table_name);
+  if (!utf16_table_name) {
+    TracePrintInternal(opts, utf16_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name->data());
+  StatusRecordOr<std::wstring> utf16_col_name = Utf8ToUtf16(*utf8_col_name);
+  if (!utf16_col_name) {
+    TracePrintInternal(opts, utf16_col_name.GetStatusRecord().message);
+    return;
+  }
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name->data());
 }
 
 void TraceFunctionExit_SQLColumnsW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -2043,37 +2204,67 @@ void TraceFunctionEntry_SQLTablesW(
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLWCHAR* table_type,
     SQLSMALLINT table_type_len, TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_table_name = ConvertSQLWCHARToString(table_name, table_name_len);
-  table_name_len = utf8_table_name.GetValue().length();
-  auto utf8_table_type = ConvertSQLWCHARToString(table_type, table_type_len);
-  table_type_len = utf8_table_type.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  if (!utf8_table_name) {
+    TracePrintInternal(opts, utf8_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name_len = utf8_table_name->length();
+  StatusRecordOr<std::string> utf8_table_type =
+      ConvertSQLWCHARToString(table_type, table_type_len);
+  if (!utf8_table_type) {
+    TracePrintInternal(opts, utf8_table_type.GetStatusRecord().message);
+    return;
+  }
+  table_type_len = utf8_table_type->length();
 
   TraceFunctionEntry_SQLTables(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
-      table_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_type.GetValue().data()),
-      table_type_len, opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_table_name->data()), table_name_len,
+      ToSqlChar(utf8_table_type->data()), table_type_len, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
-  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
-  auto utf16_table_type = Utf8ToUtf16(utf8_table_type.GetValue());
-  table_type = reinterpret_cast<SQLWCHAR*>(utf16_table_type.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_table_name = Utf8ToUtf16(*utf8_table_name);
+  if (!utf16_table_name) {
+    TracePrintInternal(opts, utf16_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name->data());
+  StatusRecordOr<std::wstring> utf16_table_type = Utf8ToUtf16(*utf8_table_type);
+  if (!utf16_table_type) {
+    TracePrintInternal(opts, utf16_table_type.GetStatusRecord().message);
+    return;
+  }
+  table_type = reinterpret_cast<SQLWCHAR*>(utf16_table_type->data());
 }
 
 void TraceFunctionExit_SQLTablesW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -2124,31 +2315,53 @@ void TraceFunctionEntry_SQLPrimaryKeysW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_table_name = ConvertSQLWCHARToString(table_name, table_name_len);
-  table_name_len = utf8_table_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  if (!utf8_table_name) {
+    TracePrintInternal(opts, utf8_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name_len = utf8_table_name->length();
 
   TraceFunctionEntry_SQLPrimaryKeys(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
-      table_name_len, opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_table_name->data()), table_name_len, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
-  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_table_name = Utf8ToUtf16(*utf8_table_name);
+  if (!utf16_table_name) {
+    TracePrintInternal(opts, utf16_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name->data());
 }
 
 void TraceFunctionExit_SQLPrimaryKeysW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -2204,37 +2417,67 @@ void TraceFunctionEntry_SQLProcedureColumnsW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* proc_name, SQLSMALLINT proc_name_len,
     SQLWCHAR* col_name, SQLSMALLINT col_name_len, TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_proc_name = ConvertSQLWCHARToString(proc_name, proc_name_len);
-  proc_name_len = utf8_proc_name.GetValue().length();
-  auto utf8_col_name = ConvertSQLWCHARToString(col_name, col_name_len);
-  col_name_len = utf8_col_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_proc_name =
+      ConvertSQLWCHARToString(proc_name, proc_name_len);
+  if (!utf8_proc_name) {
+    TracePrintInternal(opts, utf8_proc_name.GetStatusRecord().message);
+    return;
+  }
+  proc_name_len = utf8_proc_name->length();
+  StatusRecordOr<std::string> utf8_col_name =
+      ConvertSQLWCHARToString(col_name, col_name_len);
+  if (!utf8_col_name) {
+    TracePrintInternal(opts, utf8_col_name.GetStatusRecord().message);
+    return;
+  }
+  col_name_len = utf8_col_name->length();
 
   TraceFunctionEntry_SQLProcedureColumns(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_proc_name.GetValue().data()),
-      proc_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_col_name.GetValue().data()), col_name_len,
-      opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_proc_name->data()), proc_name_len,
+      ToSqlChar(utf8_col_name->data()), col_name_len, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_proc_name = Utf8ToUtf16(utf8_proc_name.GetValue());
-  proc_name = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.GetValue().data());
-  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
-  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_proc_name = Utf8ToUtf16(*utf8_proc_name);
+  if (!utf16_proc_name) {
+    TracePrintInternal(opts, utf16_proc_name.GetStatusRecord().message);
+    return;
+  }
+  proc_name = reinterpret_cast<SQLWCHAR*>(utf16_proc_name->data());
+  StatusRecordOr<std::wstring> utf16_col_name = Utf8ToUtf16(*utf8_col_name);
+  if (!utf16_col_name) {
+    TracePrintInternal(opts, utf16_col_name.GetStatusRecord().message);
+    return;
+  }
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name->data());
 }
 
 void TraceFunctionExit_SQLProcedureColumnsW(SQLRETURN ret_code,
@@ -2286,31 +2529,53 @@ void TraceFunctionEntry_SQLProceduresW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* proc_name, SQLSMALLINT proc_name_len,
     TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_proc_name = ConvertSQLWCHARToString(proc_name, proc_name_len);
-  proc_name_len = utf8_proc_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_proc_name =
+      ConvertSQLWCHARToString(proc_name, proc_name_len);
+  if (!utf8_proc_name) {
+    TracePrintInternal(opts, utf8_proc_name.GetStatusRecord().message);
+    return;
+  }
+  proc_name_len = utf8_proc_name->length();
 
   TraceFunctionEntry_SQLProcedures(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_proc_name.GetValue().data()),
-      proc_name_len, opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_proc_name->data()), proc_name_len, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_proc_name = Utf8ToUtf16(utf8_proc_name.GetValue());
-  proc_name = reinterpret_cast<SQLWCHAR*>(utf16_proc_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_proc_name = Utf8ToUtf16(*utf8_proc_name);
+  if (!utf16_proc_name) {
+    TracePrintInternal(opts, utf16_proc_name.GetStatusRecord().message);
+    return;
+  }
+  proc_name = reinterpret_cast<SQLWCHAR*>(utf16_proc_name->data());
 }
 
 void TraceFunctionExit_SQLProceduresW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -2370,31 +2635,54 @@ void TraceFunctionEntry_SQLSpecialColumnsW(
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLUSMALLINT min_rowid_scope,
     SQLUSMALLINT col_nullable, TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_table_name = ConvertSQLWCHARToString(table_name, table_name_len);
-  table_name_len = utf8_table_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  if (!utf8_table_name) {
+    TracePrintInternal(opts, utf8_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name_len = utf8_table_name->length();
 
   TraceFunctionEntry_SQLSpecialColumns(
-      statement_handle, id_type,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
-      table_name_len, min_rowid_scope, col_nullable, opts);
+      statement_handle, id_type, ToSqlChar(utf8_catalog_name->data()),
+      catalog_name_len, ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_table_name->data()), table_name_len, min_rowid_scope,
+      col_nullable, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
-  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_table_name = Utf8ToUtf16(*utf8_table_name);
+  if (!utf16_table_name) {
+    TracePrintInternal(opts, utf16_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name->data());
 }
 
 void TraceFunctionExit_SQLSpecialColumnsW(SQLRETURN ret_code,
@@ -2452,31 +2740,54 @@ void TraceFunctionEntry_SQLStatisticsW(
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLUSMALLINT index_type, SQLUSMALLINT reserved,
     TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_table_name = ConvertSQLWCHARToString(table_name, table_name_len);
-  table_name_len = utf8_table_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  if (!utf8_table_name) {
+    TracePrintInternal(opts, utf8_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name_len = utf8_table_name->length();
 
   TraceFunctionEntry_SQLStatistics(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
-      table_name_len, index_type, reserved, opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_table_name->data()), table_name_len, index_type, reserved,
+      opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
-  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_table_name = Utf8ToUtf16(*utf8_table_name);
+  if (!utf16_table_name) {
+    TracePrintInternal(opts, utf16_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name->data());
 }
 
 void TraceFunctionExit_SQLStatisticsW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -2528,31 +2839,53 @@ void TraceFunctionEntry_SQLTablePrivilegesW(
     SQLSMALLINT catalog_name_len, SQLWCHAR* schema_name,
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_table_name = ConvertSQLWCHARToString(table_name, table_name_len);
-  table_name_len = utf8_table_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  if (!utf8_table_name) {
+    TracePrintInternal(opts, utf8_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name_len = utf8_table_name->length();
 
   TraceFunctionEntry_SQLTablePrivileges(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
-      table_name_len, opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_table_name->data()), table_name_len, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
-  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_table_name = Utf8ToUtf16(*utf8_table_name);
+  if (!utf16_table_name) {
+    TracePrintInternal(opts, utf16_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name->data());
 }
 
 void TraceFunctionExit_SQLTablePrivilegesW(SQLRETURN ret_code,
@@ -2622,58 +2955,100 @@ void TraceFunctionEntry_SQLForeignKeysW(
     SQLSMALLINT fk_catalog_name_len, SQLWCHAR* fk_schema_name,
     SQLSMALLINT fk_schema_name_len, SQLWCHAR* fk_table_name,
     SQLSMALLINT fk_table_name_len, TraceOptions& opts) {
-  auto utf8_pk_catalog_name =
+  StatusRecordOr<std::string> utf8_pk_catalog_name =
       ConvertSQLWCHARToString(pk_catalog_name, pk_catalog_name_len);
-  pk_catalog_name_len = utf8_pk_catalog_name.GetValue().length();
-  auto utf8_pk_schema_name =
+  if (!utf8_pk_catalog_name) {
+    TracePrintInternal(opts, utf8_pk_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  pk_catalog_name_len = utf8_pk_catalog_name->length();
+  StatusRecordOr<std::string> utf8_pk_schema_name =
       ConvertSQLWCHARToString(pk_schema_name, pk_schema_name_len);
-  pk_schema_name_len = utf8_pk_schema_name.GetValue().length();
-  auto utf8_pk_table_name =
+  if (!utf8_pk_schema_name) {
+    TracePrintInternal(opts, utf8_pk_schema_name.GetStatusRecord().message);
+    return;
+  }
+  pk_schema_name_len = utf8_pk_schema_name->length();
+  StatusRecordOr<std::string> utf8_pk_table_name =
       ConvertSQLWCHARToString(pk_table_name, pk_table_name_len);
-  pk_table_name_len = utf8_pk_table_name.GetValue().length();
-  auto utf8_fk_catalog_name =
+  if (!utf8_pk_table_name) {
+    TracePrintInternal(opts, utf8_pk_table_name.GetStatusRecord().message);
+    return;
+  }
+  pk_table_name_len = utf8_pk_table_name->length();
+  StatusRecordOr<std::string> utf8_fk_catalog_name =
       ConvertSQLWCHARToString(fk_catalog_name, fk_catalog_name_len);
-  fk_catalog_name_len = utf8_fk_catalog_name.GetValue().length();
-  auto utf8_fk_schema_name =
+  if (!utf8_fk_catalog_name) {
+    TracePrintInternal(opts, utf8_fk_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  fk_catalog_name_len = utf8_fk_catalog_name->length();
+  StatusRecordOr<std::string> utf8_fk_schema_name =
       ConvertSQLWCHARToString(fk_schema_name, fk_schema_name_len);
-  fk_schema_name_len = utf8_fk_schema_name.GetValue().length();
-  auto utf8_fk_table_name =
+  if (!utf8_fk_schema_name) {
+    TracePrintInternal(opts, utf8_fk_schema_name.GetStatusRecord().message);
+    return;
+  }
+  fk_schema_name_len = utf8_fk_schema_name->length();
+  StatusRecordOr<std::string> utf8_fk_table_name =
       ConvertSQLWCHARToString(fk_table_name, fk_table_name_len);
-  fk_table_name_len = utf8_fk_table_name.GetValue().length();
+  if (!utf8_fk_table_name) {
+    TracePrintInternal(opts, utf8_fk_table_name.GetStatusRecord().message);
+    return;
+  }
+  fk_table_name_len = utf8_fk_table_name->length();
 
   TraceFunctionEntry_SQLForeignKeys(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_pk_catalog_name.GetValue().data()),
-      pk_catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_pk_schema_name.GetValue().data()),
-      pk_schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_pk_table_name.GetValue().data()),
-      pk_table_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_fk_catalog_name.GetValue().data()),
-      fk_catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_fk_schema_name.GetValue().data()),
-      fk_schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_fk_table_name.GetValue().data()),
+      statement_handle, ToSqlChar(utf8_pk_catalog_name->data()),
+      pk_catalog_name_len, ToSqlChar(utf8_pk_schema_name->data()),
+      pk_schema_name_len, ToSqlChar(utf8_pk_table_name->data()),
+      pk_table_name_len, ToSqlChar(utf8_fk_catalog_name->data()),
+      fk_catalog_name_len, ToSqlChar(utf8_fk_schema_name->data()),
+      fk_schema_name_len, ToSqlChar(utf8_fk_table_name->data()),
       fk_table_name_len, opts);
 
-  auto utf16_pk_catalog_name = Utf8ToUtf16(utf8_pk_catalog_name.GetValue());
-  pk_catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_pk_catalog_name.GetValue().data());
-  auto utf16_pk_schema_name = Utf8ToUtf16(utf8_pk_schema_name.GetValue());
-  pk_schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_pk_schema_name.GetValue().data());
-  auto utf16_pk_table_name = Utf8ToUtf16(utf8_pk_table_name.GetValue());
-  pk_table_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_pk_table_name.GetValue().data());
-  auto utf16_fk_catalog_name = Utf8ToUtf16(utf8_fk_catalog_name.GetValue());
-  fk_catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_fk_catalog_name.GetValue().data());
-  auto utf16_fk_schema_name = Utf8ToUtf16(utf8_fk_schema_name.GetValue());
-  fk_schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_fk_schema_name.GetValue().data());
-  auto utf16_fk_table_name = Utf8ToUtf16(utf8_fk_table_name.GetValue());
-  fk_table_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_fk_table_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_pk_catalog_name =
+      Utf8ToUtf16(*utf8_pk_catalog_name);
+  if (!utf16_pk_catalog_name) {
+    TracePrintInternal(opts, utf16_pk_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  pk_catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_pk_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_pk_schema_name =
+      Utf8ToUtf16(*utf8_pk_schema_name);
+  if (!utf16_pk_schema_name) {
+    TracePrintInternal(opts, utf16_pk_schema_name.GetStatusRecord().message);
+    return;
+  }
+  pk_schema_name = reinterpret_cast<SQLWCHAR*>(utf16_pk_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_pk_table_name =
+      Utf8ToUtf16(*utf8_pk_table_name);
+  if (!utf16_pk_table_name) {
+    TracePrintInternal(opts, utf16_pk_table_name.GetStatusRecord().message);
+    return;
+  }
+  pk_table_name = reinterpret_cast<SQLWCHAR*>(utf16_pk_table_name->data());
+  StatusRecordOr<std::wstring> utf16_fk_catalog_name =
+      Utf8ToUtf16(*utf8_fk_catalog_name);
+  if (!utf16_fk_catalog_name) {
+    TracePrintInternal(opts, utf16_fk_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  fk_catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_fk_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_fk_schema_name =
+      Utf8ToUtf16(*utf8_fk_schema_name);
+  if (!utf16_fk_schema_name) {
+    TracePrintInternal(opts, utf16_fk_schema_name.GetStatusRecord().message);
+    return;
+  }
+  fk_schema_name = reinterpret_cast<SQLWCHAR*>(utf16_fk_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_fk_table_name =
+      Utf8ToUtf16(*utf8_fk_table_name);
+  if (!utf16_fk_table_name) {
+    TracePrintInternal(opts, utf16_fk_table_name.GetStatusRecord().message);
+    return;
+  }
+  fk_table_name = reinterpret_cast<SQLWCHAR*>(utf16_fk_table_name->data());
 }
 
 void TraceFunctionExit_SQLForeignKeysW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -2731,37 +3106,67 @@ void TraceFunctionEntry_SQLColumnPrivilegesW(
     SQLSMALLINT schema_name_len, SQLWCHAR* table_name,
     SQLSMALLINT table_name_len, SQLWCHAR* col_name, SQLSMALLINT col_name_len,
     TraceOptions& opts) {
-  auto utf8_catalog_name =
+  StatusRecordOr<std::string> utf8_catalog_name =
       ConvertSQLWCHARToString(catalog_name, catalog_name_len);
-  catalog_name_len = utf8_catalog_name.GetValue().length();
-  auto utf8_schema_name = ConvertSQLWCHARToString(schema_name, schema_name_len);
-  schema_name_len = utf8_schema_name.GetValue().length();
-  auto utf8_table_name = ConvertSQLWCHARToString(table_name, table_name_len);
-  table_name_len = utf8_table_name.GetValue().length();
-  auto utf8_col_name = ConvertSQLWCHARToString(col_name, col_name_len);
-  col_name_len = utf8_col_name.GetValue().length();
+  if (!utf8_catalog_name) {
+    TracePrintInternal(opts, utf8_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name_len = utf8_catalog_name->length();
+  StatusRecordOr<std::string> utf8_schema_name =
+      ConvertSQLWCHARToString(schema_name, schema_name_len);
+  if (!utf8_schema_name) {
+    TracePrintInternal(opts, utf8_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name_len = utf8_schema_name->length();
+  StatusRecordOr<std::string> utf8_table_name =
+      ConvertSQLWCHARToString(table_name, table_name_len);
+  if (!utf8_table_name) {
+    TracePrintInternal(opts, utf8_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name_len = utf8_table_name->length();
+  StatusRecordOr<std::string> utf8_col_name =
+      ConvertSQLWCHARToString(col_name, col_name_len);
+  if (!utf8_col_name) {
+    TracePrintInternal(opts, utf8_col_name.GetStatusRecord().message);
+    return;
+  }
+  col_name_len = utf8_col_name->length();
 
   TraceFunctionEntry_SQLColumnPrivileges(
-      statement_handle,
-      reinterpret_cast<SQLCHAR*>(utf8_catalog_name.GetValue().data()),
-      catalog_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_schema_name.GetValue().data()),
-      schema_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_table_name.GetValue().data()),
-      table_name_len,
-      reinterpret_cast<SQLCHAR*>(utf8_col_name.GetValue().data()), col_name_len,
-      opts);
+      statement_handle, ToSqlChar(utf8_catalog_name->data()), catalog_name_len,
+      ToSqlChar(utf8_schema_name->data()), schema_name_len,
+      ToSqlChar(utf8_table_name->data()), table_name_len,
+      ToSqlChar(utf8_col_name->data()), col_name_len, opts);
 
-  auto utf16_catalog_name = Utf8ToUtf16(utf8_catalog_name.GetValue());
-  catalog_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_catalog_name.GetValue().data());
-  auto utf16_schema_name = Utf8ToUtf16(utf8_schema_name.GetValue());
-  schema_name =
-      reinterpret_cast<SQLWCHAR*>(utf16_schema_name.GetValue().data());
-  auto utf16_table_name = Utf8ToUtf16(utf8_table_name.GetValue());
-  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name.GetValue().data());
-  auto utf16_col_name = Utf8ToUtf16(utf8_col_name.GetValue());
-  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name.GetValue().data());
+  StatusRecordOr<std::wstring> utf16_catalog_name =
+      Utf8ToUtf16(*utf8_catalog_name);
+  if (!utf16_catalog_name) {
+    TracePrintInternal(opts, utf16_catalog_name.GetStatusRecord().message);
+    return;
+  }
+  catalog_name = reinterpret_cast<SQLWCHAR*>(utf16_catalog_name->data());
+  StatusRecordOr<std::wstring> utf16_schema_name =
+      Utf8ToUtf16(*utf8_schema_name);
+  if (!utf16_schema_name) {
+    TracePrintInternal(opts, utf16_schema_name.GetStatusRecord().message);
+    return;
+  }
+  schema_name = reinterpret_cast<SQLWCHAR*>(utf16_schema_name->data());
+  StatusRecordOr<std::wstring> utf16_table_name = Utf8ToUtf16(*utf8_table_name);
+  if (!utf16_table_name) {
+    TracePrintInternal(opts, utf16_table_name.GetStatusRecord().message);
+    return;
+  }
+  table_name = reinterpret_cast<SQLWCHAR*>(utf16_table_name->data());
+  StatusRecordOr<std::wstring> utf16_col_name = Utf8ToUtf16(*utf8_col_name);
+  if (!utf16_col_name) {
+    TracePrintInternal(opts, utf16_col_name.GetStatusRecord().message);
+    return;
+  }
+  col_name = reinterpret_cast<SQLWCHAR*>(utf16_col_name->data());
 }
 
 void TraceFunctionExit_SQLColumnPrivilegesW(SQLRETURN ret_code,
