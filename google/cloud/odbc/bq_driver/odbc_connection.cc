@@ -27,6 +27,8 @@
 namespace google::cloud::odbc_bq_driver {
 
 using google::cloud::odbc_bigquery_client_interface::OauthMechanism;
+using google::cloud::odbc_bq_driver::IsValidEmail;
+using google::cloud::odbc_bq_driver::ToCharStr;
 using google::cloud::odbc_bq_driver_internal::Authentication;
 using google::cloud::odbc_bq_driver_internal::ConnectionHandle;
 using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
@@ -146,6 +148,82 @@ SQLRETURN SQLDriverConnectInternal(SQLHDBC conn_handle, SQLHWND window_handle,
   StatusRecord status = handle_ref->Connect(auth);
   if (!status.ok()) {
     return LogAndReturnCode(*handle_ref, status);
+  }
+  return SQL_SUCCESS;
+}
+
+SQLRETURN SQLConnectInternal(SQLHDBC conn_handle, SQLCHAR* server_name,
+                             SQLSMALLINT server_name_len, SQLCHAR* user_name,
+                             SQLSMALLINT user_name_len, SQLCHAR* auth_string,
+                             SQLSMALLINT auth_string_len) {
+  StatusRecordOr<ConnectionHandle*> handle_result =
+      ValidateConnectionHandle(conn_handle, false);
+  if (!handle_result) {
+    TracePrintInternal(*(*kTraceOption),
+                       handle_result.GetStatusRecord().message);
+    return handle_result.GetCalculatedReturnCode();
+  }
+  auto& handle_ref = *(*handle_result);
+  if (server_name_len < 0 && server_name_len != SQL_NTS) {
+    auto status_record =
+        StatusRecord{SQLStates::k_HY090(), "Invalid server name length"};
+    return LogAndReturnCode(handle_ref, status_record);
+  }
+  if (user_name_len < 0 && user_name_len != SQL_NTS) {
+    auto status_record =
+        StatusRecord{SQLStates::k_HY090(), "Invalid user name length"};
+    return LogAndReturnCode(handle_ref, status_record);
+  }
+  if (auth_string_len < 0 && auth_string_len != SQL_NTS) {
+    auto status_record =
+        StatusRecord{SQLStates::k_HY090(), "Invalid auth string length"};
+    return LogAndReturnCode(handle_ref, status_record);
+  }
+
+  std::string dsn_name = ToCharStr(server_name);
+  std::string user_name_str = ToCharStr(user_name);
+  std::string auth_string_str = ToCharStr(auth_string);
+
+  Section dsn_section;
+  if (!dsn_name.empty()) {
+    auto status_record = OverrideDsnSectionFromEnv(dsn_section, dsn_name);
+    if (!status_record.ok()) {
+      return LogAndReturnCode(handle_ref, status_record);
+    }
+  } else {
+    // DSN is not provided. Use the optional username and auth string which in
+    // our case is email and a credentials file path. For security reasons,
+    // refresh_token as auth string is not supported.
+    if (user_name_str.empty()) {
+      auto status_record =
+          StatusRecord{SQLStates::k_HY090(),
+                       "Username cannot be empty for DSN-less usecase"};
+      return LogAndReturnCode(handle_ref, status_record);
+    }
+    if (auth_string_str.empty()) {
+      auto status_record =
+          StatusRecord{SQLStates::k_HY090(),
+                       "Auth String cannot be empty for DSN-less usecase"};
+      return LogAndReturnCode(handle_ref, status_record);
+    }
+    if (!IsValidEmail(user_name_str)) {
+      auto status_record = StatusRecord{
+          SQLStates::k_HY090(), "Username needs to be an email address"};
+      return LogAndReturnCode(handle_ref, status_record);
+    }
+    dsn_section["OAuthMechanism"] =
+        std::to_string(static_cast<int>(OauthMechanism::kServiceAccount));
+    dsn_section["Email"] = user_name_str;
+    dsn_section["KeyFilePath"] = auth_string_str;
+  }
+  // Populate the DSN info inside the handle.
+  // This wasn't being called before.
+  handle_ref.SetUp(dsn_section, dsn_name);
+
+  Authentication auth = CreateAuth(dsn_section);
+  StatusRecord status = handle_ref.Connect(auth);
+  if (!status.ok()) {
+    return LogAndReturnCode(handle_ref, status);
   }
   return SQL_SUCCESS;
 }
