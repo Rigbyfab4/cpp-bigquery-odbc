@@ -49,6 +49,13 @@ inline SQLCHAR* ToSqlChar(char const* str) {
   return reinterpret_cast<SQLCHAR*>(const_cast<char*>(str));
 }
 
+inline SQLWCHAR* ToSqlWChar(wchar_t const* wstr) {
+  if (!wstr) {
+    return reinterpret_cast<SQLWCHAR*>(const_cast<wchar_t*>(L""));
+  }
+  return reinterpret_cast<SQLWCHAR*>(const_cast<wchar_t*>(wstr));
+}
+
 // Very simple client side check for email. We want all validations to be
 // done on the BQ server hence keeping the client side check simple. Otherwise
 // client can reject emails that server accepts or vice-versa. It is not
