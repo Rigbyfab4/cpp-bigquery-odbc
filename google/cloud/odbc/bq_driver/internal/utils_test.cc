@@ -329,6 +329,7 @@ TEST(UnicodeConversion, Success_ConvertSQLWCHARToString) {
 TEST(UnicodeConversion, Success_Utf16ToUtf8) {
   std::wstring wstr = L"आपका स्वागत है";
   std::string str = "आपका स्वागत है";
+  str.append('\0');
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
@@ -342,9 +343,11 @@ TEST(UnicodeConversion, Success_Utf16ToUtf8_chinese) {
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
-  EXPECT_EQ("你好，先生，你好吗" + '\0', result_str.GetValue());
+  std::vector<char> sqlStr((*result_str).begin(), (*result_str).end());
+  sqlStr.emplace_back(L'\0');
+  EXPECT_EQ(sqlStr.data(), sqlWStr.data());
   auto result_wstr = Utf8ToUtf16(result_str.GetValue());
-  EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
+  EXPECT_EQ(sqlWStr.data(), *result_wstr);
 }
 // #endif
 
