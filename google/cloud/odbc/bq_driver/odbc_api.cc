@@ -373,6 +373,7 @@ SQLRETURN SQL_API SQLDriverConnect(
 //////////////////////////////////////
 // Unicode version of SQLDriverConnect.
 //////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLDriverConnectW(
     SQLHDBC connectionHandle, SQLHWND windowHandle,
     SQLWCHAR* inConnectionString, SQLSMALLINT inConnectionStringLen,
@@ -498,6 +499,7 @@ SQLRETURN SQL_API SQLBrowseConnect(SQLHDBC connectionHandle,
 //////////////////////////////////////
 // Unicode version of SQLBrowseConnect.
 //////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLBrowseConnectW(SQLHDBC connectionHandle,
                                     SQLWCHAR* inConnectionString,
                                     SQLSMALLINT inConnectionStringLen,
@@ -622,6 +624,7 @@ SQLRETURN SQL_API SQLConnect(SQLHDBC connectionHandle, SQLCHAR* serverName,
 //////////////////////////////////////
 // Unicode version of SQLConnect.
 //////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLConnectW(SQLHDBC connectionHandle, SQLWCHAR* serverName,
                               SQLSMALLINT serverNameLen, SQLWCHAR* userName,
                               SQLSMALLINT userNameLen, SQLWCHAR* authString,
@@ -757,6 +760,7 @@ SQLRETURN SQL_API SQLGetInfo(SQLHDBC connectionHandle, SQLUSMALLINT infoType,
 //////////////////////////////////////
 // Unicode version of SQLGetInfo.
 //////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetInfoW(SQLHDBC connectionHandle, SQLUSMALLINT infoType,
                               SQLPOINTER infoValue,
                               SQLSMALLINT infoValueBufferLen,
@@ -881,6 +885,7 @@ SQLRETURN SQL_API SQLGetTypeInfo(SQLHSTMT statementHandle,
 ////////////////////////////////////////
 // Unicode version of SQLGetTypeInfo.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetTypeInfoW(SQLHSTMT statementHandle,
                                   SQLSMALLINT dataType) {
   SQLRETURN rc = SQL_SUCCESS;
@@ -963,6 +968,7 @@ SQLRETURN SQL_API SQLSetConnectAttr(SQLHDBC connectionHandle,
 ////////////////////////////////////////
 // Unicode version of SQLSetConnectAttr.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLSetConnectAttrW(SQLHDBC connectionHandle,
                                      SQLINTEGER attribute, SQLPOINTER value,
                                      SQLINTEGER valueStringLen) {
@@ -1052,6 +1058,7 @@ SQLRETURN SQL_API SQLGetConnectAttr(SQLHDBC connectionHandle,
 ////////////////////////////////////////
 // Unicode version of SQLGetConnectAttr.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetConnectAttrW(SQLHDBC connectionHandle,
                                      SQLINTEGER attribute, SQLPOINTER value,
                                      SQLINTEGER valueBufferLen,
@@ -1127,6 +1134,7 @@ SQLRETURN SQL_API SQLSetStmtAttr(SQLHSTMT statementHandle, SQLINTEGER attribute,
 ////////////////////////////////////////
 // Unicode version of SQLSetStmtAttr.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLSetStmtAttrW(SQLHSTMT statementHandle,
                                   SQLINTEGER attribute, SQLPOINTER value,
                                   SQLINTEGER valueStringLen) {
@@ -1193,6 +1201,7 @@ SQLRETURN SQL_API SQLGetStmtAttr(SQLHSTMT statementHandle, SQLINTEGER attribute,
 ////////////////////////////////////////
 // Unicode version of SQLSetStmtAttr.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetStmtAttrW(SQLHSTMT statementHandle,
                                   SQLINTEGER attribute, SQLPOINTER value,
                                   SQLINTEGER valueBufferLen,
@@ -1340,6 +1349,7 @@ SQLRETURN SQL_API SQLGetDescField(SQLHDESC descriptorHandle,
 ////////////////////////////////////////
 // Unicode version of SQLGetDescField.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
                                    SQLSMALLINT recNumber, SQLSMALLINT fieldId,
                                    SQLPOINTER outDescValue,
@@ -1416,6 +1426,7 @@ SQLRETURN SQL_API SQLGetDescRec(
 ////////////////////////////////////////
 // Unicode version of SQLGetDescRec.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetDescRecW(
     SQLHDESC descriptorHandle, SQLSMALLINT recNumber, SQLWCHAR* name,
     SQLSMALLINT nameBufferLen, SQLSMALLINT* nameStringLen,
@@ -1505,6 +1516,7 @@ SQLRETURN SQL_API SQLSetDescField(SQLHDESC descriptorHandle,
 ////////////////////////////////////////
 // Unicode version of SQLSetDescField.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLSetDescFieldW(SQLHDESC descriptorHandle,
                                    SQLSMALLINT recNumber,
                                    SQLSMALLINT fieldIdentifier,
@@ -1632,6 +1644,7 @@ SQLRETURN SQL_API SQLPrepare(SQLHSTMT statementHandle, SQLCHAR* statementText,
 ////////////////////////////////////////
 // Unicode version of SQLPrepare.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLPrepareW(SQLHSTMT statementHandle, SQLWCHAR* statementText,
                               SQLINTEGER statementTextLen) {
   SQLRETURN rc = SQL_SUCCESS;
@@ -1747,6 +1760,7 @@ SQLRETURN SQL_API SQLGetCursorName(SQLHSTMT statementHandle,
 ////////////////////////////////////////
 // Unicode version of SQLGetCursorName.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetCursorNameW(SQLHSTMT statementHandle,
                                     SQLWCHAR* cursorName,
                                     SQLSMALLINT cursorNameBufferLen,
@@ -1826,6 +1840,7 @@ SQLRETURN SQL_API SQLSetCursorName(SQLHSTMT statementHandle,
 ////////////////////////////////////////
 // Unicode version of SQLSetCursorName.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLSetCursorNameW(SQLHSTMT statementHandle,
                                     SQLWCHAR* cursorName,
                                     SQLSMALLINT cursorNameLen) {
@@ -1924,6 +1939,7 @@ SQLRETURN SQL_API SQLExecDirect(SQLHSTMT statementHandle,
 ////////////////////////////////////////
 // Unicode version of SQLExecDirect.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLExecDirectW(SQLHSTMT statementHandle,
                                  SQLWCHAR* statementText,
                                  SQLINTEGER statementTextLen) {
@@ -2011,6 +2027,7 @@ SQLRETURN SQL_API SQLNativeSql(SQLHDBC connectionHandle,
 ////////////////////////////////////////
 // Unicode version of SQLNativeSql.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLNativeSqlW(SQLHDBC connectionHandle,
                                 SQLWCHAR* inStatementText,
                                 SQLINTEGER inStatementTextLen,
@@ -2338,6 +2355,7 @@ SQLRETURN SQL_API SQLColAttribute(SQLHSTMT statementHandle,
 ////////////////////////////////////////
 // Unicode version of SQLColAttribute.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
                                    SQLUSMALLINT columnNumber,
                                    SQLUSMALLINT fieldIdentifier,
@@ -2407,6 +2425,7 @@ SQLRETURN SQL_API SQLColAttributes(SQLHSTMT statementHandle,
 ////////////////////////////////////////
 // Unicode version of SQLColAttributes.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLColAttributesW(SQLHSTMT statementHandle,
                                     SQLUSMALLINT columnNumber,
                                     SQLUSMALLINT fieldIdentifier,
@@ -2483,6 +2502,7 @@ SQLRETURN SQL_API SQLDescribeCol(
 ////////////////////////////////////////
 // Unicode version of SQLDescribeCol.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLDescribeColW(
     SQLHSTMT statementHandle, SQLUSMALLINT columnNumber, SQLWCHAR* columnName,
     SQLSMALLINT columnNameBufferLen, SQLSMALLINT* columnNameLen,
@@ -2692,6 +2712,7 @@ SQLRETURN SQL_API SQLGetDiagField(SQLSMALLINT handleType, SQLHANDLE handle,
 ////////////////////////////////////////
 // Unicode version of SQLGetDiagField.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetDiagFieldW(SQLSMALLINT handleType, SQLHANDLE handle,
                                    SQLSMALLINT recNumber,
                                    SQLSMALLINT diagIdentifier,
@@ -2790,6 +2811,7 @@ SQLRETURN SQL_API SQLGetDiagRec(SQLSMALLINT handleType, SQLHANDLE handle,
 ////////////////////////////////////////
 // Unicode version of SQLGetDiagRec.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLGetDiagRecW(SQLSMALLINT handleType, SQLHANDLE handle,
                                  SQLSMALLINT recNumber, SQLWCHAR* sqlState,
                                  SQLINTEGER* nativeError, SQLWCHAR* messageText,
@@ -2897,6 +2919,7 @@ SQLRETURN SQL_API SQLColumns(SQLHSTMT statementHandle, SQLCHAR* catalogName,
 ////////////////////////////////////////
 // Unicode version of SQLColumns.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLColumnsW(SQLHSTMT statementHandle, SQLWCHAR* catalogName,
                               SQLSMALLINT catalogNameLen, SQLWCHAR* schemaName,
                               SQLSMALLINT schemaNameLen, SQLWCHAR* tableName,
@@ -3030,6 +3053,7 @@ SQLRETURN SQL_API SQLTables(SQLHSTMT statementHandle, SQLCHAR* catalogName,
 ////////////////////////////////////////
 // Unicode version of SQLTables.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLTablesW(SQLHSTMT statementHandle, SQLWCHAR* catalogName,
                              SQLSMALLINT catalogNameLen, SQLWCHAR* schemaName,
                              SQLSMALLINT schemaNameLen, SQLWCHAR* tableName,
@@ -3158,6 +3182,7 @@ SQLRETURN SQL_API SQLPrimaryKeys(SQLHSTMT statementHandle, SQLCHAR* catalogName,
 ////////////////////////////////////////
 // Unicode version of SQLPrimaryKeys.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLPrimaryKeysW(
     SQLHSTMT statementHandle, SQLWCHAR* catalogName, SQLSMALLINT catalogNameLen,
     SQLWCHAR* schemaName, SQLSMALLINT schemaNameLen, SQLWCHAR* tableName,
@@ -3270,6 +3295,7 @@ SQLRETURN SQL_API SQLProcedureColumns(
 ////////////////////////////////////////
 // Unicode version of SQLProcedureColumns.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLProcedureColumnsW(
     SQLHSTMT statementHandle, SQLWCHAR* catalogName, SQLSMALLINT catalogNameLen,
     SQLWCHAR* schemaName, SQLSMALLINT schemaNameLen, SQLWCHAR* procName,
@@ -3390,6 +3416,7 @@ SQLRETURN SQL_API SQLProcedures(SQLHSTMT statementHandle, SQLCHAR* catalogName,
 ////////////////////////////////////////
 // Unicode version of SQLProcedures.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLProceduresW(SQLHSTMT statementHandle,
                                  SQLWCHAR* catalogName,
                                  SQLSMALLINT catalogNameLen,
@@ -3503,6 +3530,7 @@ SQLRETURN SQL_API SQLSpecialColumns(
 ////////////////////////////////////////
 // Unicode version of SQLSpecialColumns.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLSpecialColumnsW(
     SQLHSTMT statementHandle, SQLUSMALLINT identifierType,
     SQLWCHAR* catalogName, SQLSMALLINT catalogNameLen, SQLWCHAR* schemaName,
@@ -3616,6 +3644,7 @@ SQLRETURN SQL_API SQLStatistics(SQLHSTMT statementHandle, SQLCHAR* catalogName,
 ////////////////////////////////////////
 // Unicode version of SQLStatistics.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLStatisticsW(
     SQLHSTMT statementHandle, SQLWCHAR* catalogName, SQLSMALLINT catalogNameLen,
     SQLWCHAR* schemaName, SQLSMALLINT schemaNameLen, SQLWCHAR* tableName,
@@ -3723,6 +3752,7 @@ SQLRETURN SQL_API SQLTablePrivileges(
 ////////////////////////////////////////
 // Unicode version of SQLTablePrivileges.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLTablePrivilegesW(
     SQLHSTMT statementHandle, SQLWCHAR* catalogName, SQLSMALLINT catalogNameLen,
     SQLWCHAR* schemaName, SQLSMALLINT schemaNameLen, SQLWCHAR* tableName,
@@ -3857,6 +3887,7 @@ SQLForeignKeys(SQLHSTMT statementHandle, SQLCHAR* pkCatalogName,
 ////////////////////////////////////////
 // Unicode version of SQLForeignKeys.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API
 SQLForeignKeysW(SQLHSTMT statementHandle, SQLWCHAR* pkCatalogName,
                 SQLSMALLINT pkCatalogNameLen, SQLWCHAR* pkSchemaName,
@@ -4026,6 +4057,7 @@ SQLRETURN SQL_API SQLColumnPrivileges(
 ////////////////////////////////////////
 // Unicode version of SQLColumnPrivileges.
 ////////////////////////////////////////
+//TODO(b/361047481): Add Integration Testcase for Unicode Support.
 SQLRETURN SQL_API SQLColumnPrivilegesW(
     SQLHSTMT statementHandle, SQLWCHAR* catalogName, SQLSMALLINT catalogNameLen,
     SQLWCHAR* schemaName, SQLSMALLINT schemaNameLen, SQLWCHAR* tableName,
