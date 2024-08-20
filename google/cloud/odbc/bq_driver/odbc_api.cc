@@ -65,6 +65,7 @@ using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLExecute;
 using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLFetch;
 using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLForeignKeys;
 using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLFreeHandle;
+using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLFreeStmt;
 using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLGetConnectAttr;
 using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLGetCursorName;
 using ::google::cloud::odbc_bq_driver::TraceFunctionEntry_SQLGetDescField;
@@ -169,6 +170,7 @@ using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLExecute;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLFetch;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLForeignKeys;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLFreeHandle;
+using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLFreeStmt;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLGetConnectAttr;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLGetCursorName;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLGetDescField;
@@ -191,6 +193,8 @@ using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLSetDescRec;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLSetEnvAttr;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLSetStmtAttr;
 using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLTables;
+
+using ::google::cloud::odbc_bq_driver::TraceFunctionExit_SQLPrepare;
 using ::google::cloud::odbc_bq_driver::TraceOptions;
 using google::cloud::odbc_bq_driver_internal::ConvertSQLWCHARToString;
 using ::google::cloud::odbc_bq_driver_internal::kTraceOption;
@@ -601,6 +605,9 @@ SQLRETURN SQL_API SQLConnect(SQLHDBC connectionHandle, SQLCHAR* serverName,
 
   // Call to internal common function for SQLConnect and SQLConnectW
   // in odbc_connection.h.
+  rc = google::cloud::odbc_bq_driver::SQLConnectInternal(
+      connectionHandle, serverName, serverNameLen, userName, userNameLen,
+      authString, authStringLen);
 
   // Call to Trace function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLConnect(rc, *(*kTraceOption));
@@ -4117,16 +4124,22 @@ SQLRETURN SQL_API SQLColumnPrivilegesW(
 SQLRETURN SQL_API SQLFreeStmt(SQLHSTMT statementHandle, SQLUSMALLINT option) {
   SQLRETURN rc = SQL_SUCCESS;
   SQLRETURN status;
+  bool is_tracing_enabled = IsTracingEnabled("SQLFreeStmt");
   // Call to Acquire mutex for statement handle in odbc_lock.h.
   status = AcquireHandleMutex(statementHandle, SQL_HANDLE_STMT);
   if (status != SQL_SUCCESS) {
     return status;
   }
   // Call to Trace function entry in odbc_trace.h if tracing is enabled.
+  if (is_tracing_enabled)
+    TraceFunctionEntry_SQLFreeStmt(statementHandle, option, *(*kTraceOption));
 
   // Call to internal function for SQLFreeStmt in odbc_statement.h.
+  rc = google::cloud::odbc_bq_driver::SQLFreeStmtInternal(statementHandle,
+                                                          option);
 
   // Call to Trace function exit in odbc_trace.h if tracing is enabled.
+  if (is_tracing_enabled) TraceFunctionExit_SQLFreeStmt(rc, *(*kTraceOption));
   // Call to Release mutex for statement handle in odbc_lock.h.
   status = ReleaseHandleMutex(statementHandle, SQL_HANDLE_STMT);
   if (status != SQL_SUCCESS) {
@@ -4291,6 +4304,8 @@ SQLRETURN SQL_API SQLFreeHandle(SQLSMALLINT handleType, SQLHANDLE handle) {
 //
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !defined(_WIN32) || defined(_WIN64)
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Cancels the processing on a connection or statement.
 //
@@ -4340,6 +4355,8 @@ SQLRETURN SQLSetPos(SQLHSTMT statementHandle, SQLSETPOSIROW rowNumber,
 
   return rc;
 }
+
+#endif  //_WIN32
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Performs bulk insertions and bulk bookmark operations, including update,
