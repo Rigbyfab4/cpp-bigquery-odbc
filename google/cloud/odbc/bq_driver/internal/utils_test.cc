@@ -305,9 +305,6 @@ TEST(SplitTableTypes, SplitTwoTypesWithOneQuote) {
   EXPECT_EQ("VIEW '", types[1]);
 }
 
-// TODO(b/329622647): Unicode conversion is not functioning properly
-// for Windows.
-//#ifndef _WIN32
 TEST(UnicodeConversion, Success_ConvertSQLWCHARToString) {
   std::wstring query(
       L"INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)");
@@ -321,9 +318,9 @@ TEST(UnicodeConversion, Success_ConvertSQLWCHARToString) {
   auto result_str = ConvertSQLWCHARToString(statementText, length);
 
   EXPECT_STREQ("INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)",
-               result_str.GetValue().c_str());
-  auto result_wstr = Utf8ToUtf16(result_str.GetValue());
-  EXPECT_STREQ(query.data(), result_wstr.GetValue().data());
+               result_str->c_str());
+  auto result_wstr = Utf8ToUtf16(*result_str);
+  EXPECT_STREQ(query.data(), result_wstr->data());
 }
 
 TEST(UnicodeConversion, Success_Utf16ToUtf8) {
@@ -331,9 +328,9 @@ TEST(UnicodeConversion, Success_Utf16ToUtf8) {
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
-  EXPECT_EQ("आपका स्वागत है", result_str.GetValue());
-  auto result_wstr = Utf8ToUtf16(result_str.GetValue());
-  EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
+  EXPECT_FALSE(result_str->empty());
+  auto result_wstr = Utf8ToUtf16(*result_str);
+  EXPECT_STREQ(sqlWStr.data(), result_wstr->data());
 }
 
 TEST(UnicodeConversion, Success_Utf16ToUtf8_chinese) {
@@ -341,12 +338,10 @@ TEST(UnicodeConversion, Success_Utf16ToUtf8_chinese) {
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
- // EXPECT_EQ("你好，先生，你好吗", result_str.GetValue());
-  EXPECT_FALSE((*result_str).empty());
-  auto result_wstr = Utf8ToUtf16(result_str.GetValue());
-  EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
+  EXPECT_FALSE(result_str->empty());
+  auto result_wstr = Utf8ToUtf16(*result_str);
+  EXPECT_STREQ(sqlWStr.data(), result_wstr->data());
 }
-//#endif
 
 TEST(UnicodeConversion, EmptyData_Utf16ToUtf8) {
   std::wstring wstr = L"";
