@@ -307,7 +307,7 @@ TEST(SplitTableTypes, SplitTwoTypesWithOneQuote) {
 
 // TODO(b/329622647): Unicode conversion is not functioning properly
 // for Windows.
-#ifndef _WIN32
+//#ifndef _WIN32
 TEST(UnicodeConversion, Success_ConvertSQLWCHARToString) {
   std::wstring query(
       L"INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)");
@@ -345,7 +345,7 @@ TEST(UnicodeConversion, Success_Utf16ToUtf8_chinese) {
   auto result_wstr = Utf8ToUtf16(result_str.GetValue());
   EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
 }
-#endif
+//#endif
 
 TEST(UnicodeConversion, EmptyData_Utf16ToUtf8) {
   std::wstring wstr = L"";
