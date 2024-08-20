@@ -307,7 +307,7 @@ TEST(SplitTableTypes, SplitTwoTypesWithOneQuote) {
 
 // TODO(b/329622647): Unicode conversion is not functioning properly
 // for Windows.
-//#ifndef _WIN32
+// #ifndef _WIN32
 TEST(UnicodeConversion, Success_ConvertSQLWCHARToString) {
   std::wstring query(
       L"INSERT INTO INTEGRATION_TESTS.Test_Table VALUES(4, 'अच्छा', 28)");
@@ -328,10 +328,11 @@ TEST(UnicodeConversion, Success_ConvertSQLWCHARToString) {
 
 TEST(UnicodeConversion, Success_Utf16ToUtf8) {
   std::wstring wstr = L"आपका स्वागत है";
+  std::string str = "आपका स्वागत है";
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
-  EXPECT_EQ("आपका स्वागत है\0", result_str.GetValue());
+  EXPECT_EQ(str, result_str.GetValue());
   auto result_wstr = Utf8ToUtf16(result_str.GetValue());
   EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
 }
@@ -341,11 +342,11 @@ TEST(UnicodeConversion, Success_Utf16ToUtf8_chinese) {
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
-  EXPECT_EQ("你好，先生，你好吗\0", result_str.GetValue());
+  EXPECT_EQ("你好，先生，你好吗" + '\0', result_str.GetValue());
   auto result_wstr = Utf8ToUtf16(result_str.GetValue());
   EXPECT_STREQ(sqlWStr.data(), result_wstr.GetValue().data());
 }
-//#endif
+// #endif
 
 TEST(UnicodeConversion, EmptyData_Utf16ToUtf8) {
   std::wstring wstr = L"";
