@@ -328,7 +328,7 @@ TEST(UnicodeConversion, Success_Utf16ToUtf8) {
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
-  EXPECT_FALSE(result_str->empty());
+  ASSERT_FALSE(result_str->empty());
   auto result_wstr = Utf8ToUtf16(*result_str);
   EXPECT_STREQ(sqlWStr.data(), result_wstr->data());
 }
@@ -338,7 +338,7 @@ TEST(UnicodeConversion, Success_Utf16ToUtf8_chinese) {
   std::vector<wchar_t> sqlWStr(wstr.begin(), wstr.end());
   sqlWStr.emplace_back(L'\0');
   auto result_str = Utf16ToUtf8(sqlWStr.data());
-  EXPECT_FALSE(result_str->empty());
+  ASSERT_FALSE(result_str->empty());
   auto result_wstr = Utf8ToUtf16(*result_str);
   EXPECT_STREQ(sqlWStr.data(), result_wstr->data());
 }
