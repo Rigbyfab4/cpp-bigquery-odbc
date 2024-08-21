@@ -248,6 +248,7 @@ StatusRecord StatementHandle::PrepareQuery(const SQLCHAR* query_text) {
 
   DescriptorHandle& desc_handle =
       this->GetDescriptorHandle(DescriptorType::kIRD);
+  desc_handle.ClearDescriptorRecordsMap();
   StatusRecord ird_response = PopulateIrd(desc_handle, schema);
   if (!ird_response.ok()) {
     return ird_response;
@@ -255,6 +256,7 @@ StatusRecord StatementHandle::PrepareQuery(const SQLCHAR* query_text) {
 
   DescriptorHandle& ipd_desc_handle =
       this->GetDescriptorHandle(DescriptorType::kIPD);
+  ipd_desc_handle.ClearDescriptorRecordsMap();
   auto job_statistics = (*response).statistics;
   StatusRecord ipd_response = PopulateIpd(ipd_desc_handle, job_statistics);
   if (!ipd_response.ok()) {
@@ -274,7 +276,6 @@ StatusRecord StatementHandle::PrepareQuery(const SQLCHAR* query_text) {
 
 StatusRecord StatementHandle::PopulateIrd(DescriptorHandle& descriptor_handle,
                                           TableSchema const& schema) {
-  descriptor_handle.ClearDescriptorRecordsMap();
   if (&descriptor_handle == nullptr ||
       descriptor_handle.GetType() != DescriptorType::kIRD) {
     return StatusRecord{SQLStates::k_HY024(),
@@ -342,7 +343,6 @@ StatusRecordOr<SQLULEN> StatementHandle::GetAttribute(int attribute) {
 
 StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
                                           JobStatistics const& job_statistics) {
-  handle.ClearDescriptorRecordsMap();
   if (handle.GetType() != DescriptorType::kIPD) {
     return StatusRecord(
         {SQLStates::k_HY024(),
