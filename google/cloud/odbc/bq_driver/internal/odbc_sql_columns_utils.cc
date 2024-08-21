@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_columns_utils.h"
+#include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver_internal {
@@ -194,6 +195,32 @@ StatusRecordOr<SQLSMALLINT> GetSQLDataType(SQLSMALLINT data_type) {
     sql_data_type = SQL_DATETIME;
   }
   return sql_data_type;
+}
+
+odbc_internal::StatusRecord ValidateColumnParameters(
+    const SQLCHAR* catalog_name, SQLSMALLINT catalog_name_len,
+    const SQLCHAR* schema_name, SQLSMALLINT schema_name_len,
+    const SQLCHAR* table_name, SQLSMALLINT table_name_len,
+    const SQLCHAR* /*column_name*/, SQLSMALLINT column_name_len,
+    SQLULEN metadata_id) {
+  // Validate table and table related parameters.
+  auto status_record = ValidateTableParameters(
+      catalog_name, catalog_name_len, schema_name, schema_name_len, table_name,
+      table_name_len, metadata_id);
+  if (!status_record.ok()) {
+    return status_record;
+  }
+  if (column_name_len < 0 && column_name_len != SQL_NTS) {
+    return StatusRecord{SQLStates::k_HY090(),
+                        "Invalid buffer length - column length is invalid"};
+  }
+  // Validate SQLColumns specific parameters.
+
+  if (IsSearchPatternArgument(reinterpret_cast<char const*>(catalog_name))) {
+    return StatusRecord{SQLStates::k_HY090(),
+                        "Catalog name cannot be a search pattern"};
+  }
+  return StatusRecord::Ok();
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
