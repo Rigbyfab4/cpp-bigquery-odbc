@@ -21,11 +21,14 @@
 #include <gtest/gtest.h>
 // We need sorting functions
 #include <algorithm>
-#include <locale.h>
+#include <fstream>
+#include <locale>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <thread>
 
 namespace google::cloud::odbc_tests {
@@ -386,6 +389,12 @@ void BindColManually(std::shared_ptr<ODBCHandles> conn,
 // Binds buffers TestingDataBuffer for StdRow type of data
 void BindStdColumns(std::shared_ptr<ODBCHandles> conn,
                     TestingDataBuffer* columns);
+
+std::string Utf16ToUtf8(std::wstring const& utf_16_str);
+
+std::wstring Utf8ToUtf16(std::string const& utf_8_str);
+
+std::string ConvertSQLWCHARToString(SQLWCHAR* in_str, SQLINTEGER in_str_len);
 
 }  // namespace google::cloud::odbc_tests
 

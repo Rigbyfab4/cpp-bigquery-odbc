@@ -417,32 +417,26 @@ struct TimestampBasicTestStruct {
 };
 
 StdTimestampRows const kTimestampSampleData{
-    {1, {2024, 01, 20, 01, 02, 03, 000000}},
-    {2, {2024, 01, 20, 01, 02, 03, 000000}},
-    {3, {2024, 01, 20, 01, 02, 03, 000000}},
-    {4, {2024, 01, 20, 01, 02, 03, 000000}},
-    {5, {2024, 01, 20, 01, 02, 03, 000000}},
-    {6, {2024, 01, 20, 01, 02, 03, 000000}},
-    {7, {2024, 01, 20, 01, 02, 03, 000000}},
+    {1, {2024, 01, 20, 00, 00, 00, 000000}},
+    {2, {2024, 01, 20, 00, 00, 00, 000000}},
+    {3, {2024, 01, 20, 00, 00, 00, 000000}},
+    {4, {2024, 01, 20, 00, 00, 00, 000000}},
+    {5, {2024, 01, 20, 00, 00, 00, 000000}},
+    {6, {2024, 01, 20, 00, 00, 00, 000000}},
+    {7, {2024, 01, 20, 00, 00, 00, 000000}},
 };
 
 std::vector<TimestampBasicTestStruct> const kConversionFromTimestampTestData{
-    {SQL_C_CHAR, {2024, 01, 20, 01, 02, 03, 000000}, SQL_SUCCESS},
-   // {SQL_C_WCHAR, {2024, 01, 20, 01, 02, 03, 000000}, SQL_SUCCESS},
-    {SQL_C_BINARY, {2024, 01, 20, 01, 02, 03, 000000}, SQL_SUCCESS},
-    {SQL_C_TYPE_DATE, {2024, 01, 20, 01, 02, 03, 000000}, SQL_SUCCESS_WITH_INFO},
-    {SQL_C_TYPE_TIME, {2024, 01, 20, 01, 02, 03, 000000}, SQL_SUCCESS},
-    {SQL_C_TYPE_TIMESTAMP, {2024, 01, 20, 01, 02, 03, 000000}, SQL_SUCCESS},
-    {SQL_C_SLONG, {2024, 01, 20, 01, 02, 03, 000000}, SQL_ERROR},
+    {SQL_C_CHAR, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_BINARY, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_TYPE_DATE,
+     {2024, 01, 20, 00, 00, 00, 000000},
+     SQL_SUCCESS_WITH_INFO},
+    {SQL_C_TYPE_TIME, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIMESTAMP, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_SLONG, {2024, 01, 20, 00, 00, 00, 000000}, SQL_ERROR},
 };
-
-inline std::string FormatTimestampString(SQL_TIMESTAMP_STRUCT timestamp) {
-  char buffer[30];
-  snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d.%06d",
-           timestamp.year, timestamp.month, timestamp.day, timestamp.hour,
-           timestamp.minute, timestamp.second, timestamp.fraction);
-  return std::string(buffer);
-}
 
 void TestTranslationsFromTimestamp(std::shared_ptr<ODBCHandles> conn,
                                    std::string query) {
@@ -451,24 +445,14 @@ void TestTranslationsFromTimestamp(std::shared_ptr<ODBCHandles> conn,
   SQLLEN strlen_or_ind;
   char read_stmt[kBufferLength];
   StrToChar(read_stmt, query.c_str());
-
-  std::cout<<"Query "<<query <<std::endl;
-
-  int row_count = 0;
-
-    status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
-    CheckError(status, "SQLPrepare", conn);
-
-    std::cout<<"Prepare Done "<<query <<std::endl;
-
-    status = SQLExecute(conn->hstmt);
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+  status = SQLExecute(conn->hstmt);
   CheckError(status, "SQLExecute", conn);
-  std::cout<<"execute done "<<query <<std::endl;
 
-    for (auto const& expected : kConversionFromTimestampTestData) {
+  for (auto const& expected : kConversionFromTimestampTestData) {
     status = SQLBindCol(conn->hstmt, 1, expected.target_c_type, data,
                         kBufferLength, &strlen_or_ind);
-
     CheckError(status, "SQLBindCol", conn);
 
     status = SQLFetch(conn->hstmt);
@@ -476,83 +460,89 @@ void TestTranslationsFromTimestamp(std::shared_ptr<ODBCHandles> conn,
     if (status == SQL_NO_DATA) {
       break;
     }
-    if (SQL_SUCCEEDED(status)) {
-      CheckError(status, "SQLFetch", conn);
+
+    if (!SQL_SUCCEEDED(status)) {
+      EXPECT_EQ(SQL_ERROR, expected.status);
       break;
     }
 
     switch (expected.target_c_type) {
       case SQL_C_CHAR: {
         std::string returned_val = reinterpret_cast<char*>(data);
-        std::string expected_val = FormatTimestampString(expected.value);
+        char expected_val[30];
+        snprintf(expected_val, sizeof(expected_val),
+                 "%04d-%02d-%02d %02d:%02d:%02d.%06d", expected.value.year,
+                 expected.value.month, expected.value.day, expected.value.hour,
+                 expected.value.minute, expected.value.second,
+                 expected.value.fraction);
         EXPECT_EQ(returned_val, expected_val);
         break;
       }
       case SQL_C_WCHAR: {
-        // to be fixed after unicode support ticket
+        SQLINTEGER length = strlen_or_ind / sizeof(SQLWCHAR);
+
+        std::string returned_val =
+            ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(data), length);
+
+        char expected_val[30];
+        snprintf(expected_val, sizeof(expected_val),
+                 "%04d-%02d-%02d %02d:%02d:%02d.%06d", expected.value.year,
+                 expected.value.month, expected.value.day, expected.value.hour,
+                 expected.value.minute, expected.value.second,
+                 expected.value.fraction);
+        std::string expected_str = expected_val;
+        EXPECT_STREQ(returned_val.data(), expected_str.data());
+        break;
       }
       case SQL_C_BINARY: {
-        if (strlen_or_ind == sizeof(SQL_TIMESTAMP_STRUCT)) {
-          SQL_TIMESTAMP_STRUCT* timestamp =
-              reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(data);
-          char returned_val[30];
-          snprintf(returned_val, sizeof(returned_val),
-                   "%04d-%02d-%02d %02d:%02d:%02d.%06d", timestamp->year,
-                   timestamp->month, timestamp->day, timestamp->hour,
-                   timestamp->minute, timestamp->second, timestamp->fraction);
-          std::string expected_val = FormatTimestampString(expected.value);
-          EXPECT_EQ(returned_val, expected_val);
-        }
+        SQL_TIMESTAMP_STRUCT* timestamp =
+            reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(data);
+        char expected_val[30];
+        snprintf(expected_val, sizeof(expected_val),
+                 "%04d-%02d-%02d %02d:%02d:%02d.%06d", expected.value.year,
+                 expected.value.month, expected.value.day, expected.value.hour,
+                 expected.value.minute, expected.value.second,
+                 expected.value.fraction);
+        char returned_val[30];
+        snprintf(returned_val, sizeof(returned_val),
+                 "%04d-%02d-%02d %02d:%02d:%02d.%06d", timestamp->year,
+                 timestamp->month, timestamp->day, timestamp->hour,
+                 timestamp->minute, timestamp->second, timestamp->fraction);
+        EXPECT_EQ(std::string(returned_val), std::string(expected_val));
         break;
       }
       case SQL_C_TYPE_DATE: {
         SQL_DATE_STRUCT* date = reinterpret_cast<SQL_DATE_STRUCT*>(data);
-        char buffer[20];
-        snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", date->year,
-                 date->month, date->day);
-        std::string val = buffer;
-        char expected_val[11];
-        snprintf(expected_val, sizeof(expected_val), "%04d-%02d-%02d",
-                 expected.value.year, expected.value.month, expected.value.day);
-        EXPECT_EQ(val, std::string(expected_val));
+        EXPECT_EQ(date->year, expected.value.year);
+        EXPECT_EQ(date->month, expected.value.month);
+        EXPECT_EQ(date->day, expected.value.day);
         break;
       }
-
-      case SQL_C_TYPE_TIME: {
-        SQL_TIME_STRUCT* time = reinterpret_cast<SQL_TIME_STRUCT*>(data);
-        char buffer[20];
-        snprintf(buffer, sizeof(buffer), "%02d-%02d-%02d", time->hour,
-                 time->minute, time->second);
-        std::string val = buffer;
-        char expected_val[11];
-        snprintf(expected_val, sizeof(expected_val), "%02d-%02d-%02d",
-                 expected.value.hour, expected.value.minute,
-                 expected.value.second);
-        EXPECT_EQ(val, std::string(expected_val));
-        break;
-      }
-
       case SQL_C_TYPE_TIMESTAMP: {
         SQL_TIMESTAMP_STRUCT* timestamp =
             reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(data);
-        std::string buff = FormatTimestampString(*timestamp);
-        std::cout << "buffffff  " << buff << std::endl;
-        char buffer[30];
-        snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d",
-                 timestamp->year, timestamp->month, timestamp->day, 0, 0, 0);
-        std::string val = buffer;
-        std::string expected_val = FormatTimestampString(expected.value);
-        EXPECT_EQ(val, expected_val);
+        EXPECT_EQ(timestamp->year, expected.value.year);
+        EXPECT_EQ(timestamp->month, expected.value.month);
+        EXPECT_EQ(timestamp->day, expected.value.day);
+        EXPECT_EQ(timestamp->hour, expected.value.hour);
+        EXPECT_EQ(timestamp->minute, expected.value.minute);
+        EXPECT_EQ(timestamp->second, expected.value.second);
+        break;
+      }
+      case SQL_C_TYPE_TIME: {
+        SQL_TIME_STRUCT* time = reinterpret_cast<SQL_TIME_STRUCT*>(data);
+        EXPECT_EQ(time->hour, expected.value.hour);
+        EXPECT_EQ(time->minute, expected.value.minute);
+        EXPECT_EQ(time->second, expected.value.second);
         break;
       }
       default:
         break;
     }
-    ++row_count;
   }
 }
 
-TEST(DataTranslationTest, From_SQL_Date_to_all) {
+TEST(DataTranslationTest, From_SQL_Timestamp_to_all) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
 

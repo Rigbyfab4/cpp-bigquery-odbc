@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _WIN32
+#include <iconv.h>
+#endif  // LINUX
+
 #include "google/cloud/odbc/testing/odbc_utils/commons.h"
 
 namespace google::cloud::odbc_tests {
@@ -520,6 +524,135 @@ void BindStdColumns(std::shared_ptr<ODBCHandles> conn,
                       columns[2].target_value, columns[2].buffer_length,
                       &(columns[2].str_len));
   CheckError(status, "SQLBindCol", conn);
+}
+
+std::string Utf16ToUtf8(std::wstring const& utf_16_str) {
+  if (utf_16_str.empty()) {
+    throw std::runtime_error(" utf16 string is empty/Null");
+  }
+#ifdef _WIN32
+  // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
+  int utf8Length = WideCharToMultiByte(CP_UTF8, 0, utf_16_str.c_str(), -1, NULL,
+                                       0, NULL, NULL);
+  if (utf8Length == 0) {
+    throw std::runtime_error(
+        "Error determining buffer size while converting wstring to string");
+  }
+  std::string utf8Str(utf8Length, 0);
+  // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
+  int result = WideCharToMultiByte(CP_UTF8, 0, utf_16_str.c_str(), -1,
+                                   &utf8Str[0], utf8Length, NULL, NULL);
+  if (result == 0) {
+    throw std::runtime_error("Error while converting wstring to string");
+  }
+  return utf8Str;
+#else
+  iconv_t cd = iconv_open("UTF-8", "WCHAR_T");
+  int errorno = -1;
+  int* errorptr = &errorno;
+  if (cd == reinterpret_cast<iconv_t>(errorptr)) {
+    throw std::runtime_error(
+        "iconv_open failed while converting wstring to string: " +
+        std::string(strerror(errno)));
+  }
+
+  std::vector<char> inbuf(
+      reinterpret_cast<char const*>(utf_16_str.data()),
+      reinterpret_cast<char const*>(utf_16_str.data() + utf_16_str.length()));
+  size_t inbytesleft = inbuf.size();
+  size_t outbytesleft = inbytesleft * 4;  // Allocate more space for utf8 output
+
+  std::string utf8str(outbytesleft, '\0');
+  char* inptr = inbuf.data();
+  char* outptr = const_cast<char*>(utf8str.data());
+
+  size_t res = iconv(cd, &inptr, &inbytesleft, &outptr, &outbytesleft);
+  if (res == static_cast<size_t>(-1)) {
+    iconv_close(cd);
+    throw std::runtime_error(
+        "iconv16 failed while converting wstring to string " +
+        std::string(strerror(errno)));
+  }
+
+  iconv_close(cd);
+  utf8str.resize(outptr - utf8str.data());
+  return utf8str;
+#endif
+}
+
+std::wstring Utf8ToUtf16(std::string const& utf_8_str) {
+  if (utf_8_str.empty()) {
+    throw std::runtime_error("utf_8_str string isempty/Null");
+  }
+#ifdef _WIN32
+  // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
+  int utf16Length =
+      MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1, NULL, 0);
+  if (utf16Length == 0) {
+    throw std::runtime_error(
+        "Error determining buffer size while converting string to wstring");
+  }
+  std::wstring utf16Str(utf16Length, 0);
+  // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
+  int result = MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1,
+                                   &utf16Str[0], utf16Length);
+  if (result == 0) {
+    throw std::runtime_error("Error while converting string to wstring");
+  }
+  return utf16Str;
+#else
+
+  iconv_t cd = iconv_open("WCHAR_T", "UTF-8");
+  int errorno = -1;
+  int* errorptr = &errorno;
+  if (cd == reinterpret_cast<iconv_t>(errorptr)) {
+    throw std::runtime_error(
+        "iconv_open failed while converting string to wstring " +
+        std::string(strerror(errno)));
+  }
+
+  // Use string length for input byte count
+  size_t inbytesleft = utf_8_str.length();
+  // Allocate more space for the output buffer
+  size_t outbytesleft = inbytesleft * sizeof(wchar_t);
+  std::wstring utf16str(outbytesleft + sizeof(wchar_t), L'\0');
+
+  char* inbuf = const_cast<char*>(utf_8_str.data());
+  char* outbuf = reinterpret_cast<char*>(const_cast<wchar_t*>(utf16str.data()));
+
+  size_t res = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+  if (res == static_cast<size_t>(-1)) {
+    iconv_close(cd);
+    throw std::runtime_error(
+        "iconv8 failed while converting string to wstring " +
+        std::string(strerror(errno)));
+  }
+
+  iconv_close(cd);
+
+  // Resize the output string to the actual converted size
+  utf16str.resize((outbuf - reinterpret_cast<char*>(
+                                const_cast<wchar_t*>(utf16str.data()))) /
+                  sizeof(wchar_t));
+
+  return utf16str;
+#endif
+}
+
+std::string ConvertSQLWCHARToString(SQLWCHAR* in_str, SQLINTEGER in_str_len) {
+  if (((in_str != nullptr) && (in_str[0] == '\0'))) {
+    throw std::runtime_error("in_str string is empty/Null");
+  }
+  std::wstring stmt_txt_wstr;
+  std::wstring wstr(reinterpret_cast<wchar_t const*>(in_str));
+  if (in_str_len == SQL_NTS || in_str_len == NULL) {
+    in_str_len = wstr.size();
+  }
+  stmt_txt_wstr.reserve(in_str_len);
+  for (SQLINTEGER i = 0; i < in_str_len; ++i) {
+    stmt_txt_wstr.push_back(static_cast<wchar_t>(in_str[i]));
+  }
+  return Utf16ToUtf8(stmt_txt_wstr);
 }
 
 }  // namespace google::cloud::odbc_tests
