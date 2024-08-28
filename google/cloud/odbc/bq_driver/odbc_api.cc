@@ -674,6 +674,11 @@ SQLRETURN SQL_API SQLConnectW(SQLHDBC connectionHandle, SQLWCHAR* serverName,
 
   // Call to internal common function for SQLConnect and SQLConnectW
   // in odbc_connection.h.
+  rc = google::cloud::odbc_bq_driver::SQLConnectInternal(
+      connectionHandle, ToSqlChar(utf8_server_name->data()), serverNameLen,
+      ToSqlChar(utf8_user_name->data()), userNameLen,
+      ToSqlChar(utf8_auth_str->data()), authStringLen);
+
   // Handle Unicode conversion of output parameters.
   StatusRecordOr<std::wstring> utf16_server_name =
       Utf8ToUtf16(*utf8_server_name);
@@ -1788,6 +1793,10 @@ SQLRETURN SQL_API SQLGetCursorNameW(SQLHSTMT statementHandle,
 
   // Call to common internal function for SQLGetCursorName and SQLGetCursorNameW
   // in odbc_sql_requests.h.
+  rc = ::google::cloud::odbc_bq_driver::SQLGetCursorNameInternal(
+      statementHandle, ToSqlChar(utf8_cur_name->data()), cursorNameBufferLen,
+      cursorNameStringLen);
+
   // Handle Unicode conversion of output parameters.
   StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
   if (!utf16_cur_name) {
@@ -1866,6 +1875,9 @@ SQLRETURN SQL_API SQLSetCursorNameW(SQLHSTMT statementHandle,
 
   // Call to common internal function for SQLSetCursorName and SQLSetCursorNameW
   // in odbc_sql_requests.h.
+  rc = ::google::cloud::odbc_bq_driver::SQLSetCursorNameInternal(
+      statementHandle, ToSqlChar(utf8_cur_name->data()), cursorNameLen);
+
   // Handle Unicode conversion of output parameters.
   StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
   if (!utf16_cur_name) {
@@ -2378,6 +2390,10 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
   // Handle Unicode conversion of input parameters.
   // Call to common internal function for SQLColAttribute and SQLColAttributeW
   // in odbc_sql_results.h.
+  rc = ::google::cloud::odbc_bq_driver::SQLColAttributeInternal(
+      statementHandle, columnNumber, fieldIdentifier, characterAttribute,
+      characterAttributeBufferLen, characterAttributeStringLen,
+      numericAttribute);
   // Handle Unicode conversion of output parameters.
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
@@ -3122,6 +3138,11 @@ SQLRETURN SQL_API SQLTablesW(SQLHSTMT statementHandle, SQLWCHAR* catalogName,
 
   // Call to common internal function for SQLTables and SQLTablesW
   // in odbc_driver_metadata.h.
+  rc = google::cloud::odbc_bq_driver::SQLTablesInternal(
+      statementHandle, ToSqlChar(utf8_catalog_name->data()), catalogNameLen,
+      ToSqlChar(utf8_schema_name->data()), schemaNameLen,
+      ToSqlChar(utf8_table_name->data()), tableNameLen,
+      ToSqlChar(utf8_table_type->data()), tableTypeLen);
   // Handle Unicode conversion of output parameters.
   StatusRecordOr<std::wstring> utf16_catalog_name =
       Utf8ToUtf16(*utf8_catalog_name);
