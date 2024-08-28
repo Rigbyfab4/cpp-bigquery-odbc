@@ -67,8 +67,8 @@ StatusRecordOr<std::shared_ptr<Section>> GetSectionWin(
     std::string const& registry_key) {
   Section section;
   HKEY key_handle;
-  LONG status = RegOpenKeyEx(HKEY_CURRENT_USER, LPCSTR(registry_key.c_str()), 0,
-                             KEY_READ, &key_handle);
+  LONG status = RegOpenKeyEx(HKEY_LOCAL_MACHINE, LPCSTR(registry_key.c_str()),
+                             0, KEY_READ, &key_handle);
   if (status != ERROR_SUCCESS) {
     RegCloseKey(key_handle);
     std::string msg = "Can't open registry key with path: ";
@@ -98,6 +98,7 @@ StatusRecordOr<std::shared_ptr<Section>> GetSectionWin(
                                           buffer, &data_len);
       if (query_status == ERROR_SUCCESS) {
         std::string value(reinterpret_cast<char*>(buffer), data_len);
+        value.erase(std::find(value.begin(), value.end(), '\0'), value.end());
         section[std::string(property_name)] = value;
       }
     }
@@ -109,8 +110,8 @@ StatusRecordOr<std::shared_ptr<Section>> GetSectionWin(
 StatusRecordOr<std::shared_ptr<Sections>> ParseConfig(
     std::string const& registry_key) {
   HKEY key_handle;
-  LONG status = RegOpenKeyEx(HKEY_CURRENT_USER, LPCSTR(registry_key.c_str()), 0,
-                             KEY_READ, &key_handle);
+  LONG status = RegOpenKeyEx(HKEY_LOCAL_MACHINE, LPCSTR(registry_key.c_str()),
+                             0, KEY_READ, &key_handle);
   if (status != ERROR_SUCCESS) {
     RegCloseKey(key_handle);
     return StatusRecord{SQLStates::k_HY000(),
@@ -224,7 +225,7 @@ StatusRecordOr<Section> ParseConnectionString(std::string& str) {
 
 std::string GetPathToOdbcIni() {
 #ifdef _WIN32
-  absl::optional<std::string> path = "Software\\ODBC\\ODBC.INI";
+  absl::optional<std::string> path = "SOFTWARE\\ODBC\\ODBC.INI";
   if (path) {
     return *path;
   }
