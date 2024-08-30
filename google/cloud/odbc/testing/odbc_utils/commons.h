@@ -22,6 +22,7 @@
 // We need sorting functions
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <locale>
 #include <memory>
 #include <optional>
@@ -149,13 +150,6 @@ struct ExpectedDescriptorConfig {
   SQLSMALLINT desc_scale;
   SQLINTEGER desc_datetime_precision;
 };
-
-struct StdTimestampRow {
-  SQLBIGINT int_field;
-  SQL_TIMESTAMP_STRUCT timestamp_field;
-};
-
-using StdTimestampRows = std::vector<StdTimestampRow>;
 
 static std::map<SQLSMALLINT, ExpectedDescriptorConfig> const kAppDescTestMap = {
     {SQL_C_CHAR, {SQL_C_CHAR, SQL_C_CHAR, 0, 1, 1, 0, 1}},
@@ -323,7 +317,8 @@ class Table {
                        std::vector<SQLBIGINT> rows, bool insert_index = false);
 
   void InsertTimestampData(std::shared_ptr<ODBCHandles> conn,
-                           StdTimestampRows rows, bool use_ansi);
+                           std::vector<SQL_TIMESTAMP_STRUCT> rows,
+                           bool insert_index);
 
  private:
   std::string table_name_;
@@ -332,6 +327,10 @@ class Table {
 std::string GetRandomString(int len);
 
 std::string getSchemaStr(Schema schema);
+
+std::string FormatTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
+
+std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 
 void CreateTableDirect(std::shared_ptr<ODBCHandles> conn,
                        std::string create_table_schema, bool use_ansi = false);

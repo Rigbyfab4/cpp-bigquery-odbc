@@ -14,7 +14,7 @@
 
 #ifndef _WIN32
 #include <iconv.h>
-#endif  // LINUX
+#endif  // _WIN32
 
 #include "google/cloud/odbc/testing/odbc_utils/commons.h"
 
@@ -306,53 +306,48 @@ void Table::InsertInt64Data(std::shared_ptr<ODBCHandles> conn,
 }
 
 void Table::InsertTimestampData(std::shared_ptr<ODBCHandles> conn,
-                                StdTimestampRows rows, bool use_ansi) {
-  auto insert_stmt = "INSERT INTO " + table_name_ + " VALUES ";
-  int num_rows = rows.size();
-  if (!num_rows) {
+                                std::vector<SQL_TIMESTAMP_STRUCT> rows,
+                                bool insert_index) {
+  if (rows.empty()) {
     return;
   }
+  std::ostringstream insert_stmt;
+  insert_stmt << "INSERT INTO " << table_name_ << " VALUES ";
 
-  for (int i = 0; i < num_rows; i++) {
-    auto row = rows[i];
-    std::string row_str = "( ";
+  for (size_t i = 0; i < rows.size(); ++i) {
+    auto const& row = rows[i];
+    insert_stmt << "(";
 
-    if (row.int_field != NULL) {
-      row_str.append(std::to_string(row.int_field) + ", ");
+    if (insert_index) {
+      insert_stmt << i << ", ";
+    }
+
+    // Insert the timestamp
+    if (row.year != 0) {
+      insert_stmt << "'" << row.year << "-" << (row.month < 10 ? "0" : "")
+                  << row.month << "-" << (row.day < 10 ? "0" : "") << row.day
+                  << " " << (row.hour < 10 ? "0" : "") << row.hour << ":"
+                  << (row.minute < 10 ? "0" : "") << row.minute << ":"
+                  << (row.second < 10 ? "0" : "") << row.second << "."
+                  << row.fraction << "'";
     } else {
-      row_str.append("NULL, ");
+      insert_stmt << "NULL";
     }
 
-    if (row.timestamp_field.year != 0) {
-      row_str.append("'");
-      row_str.append(std::to_string(row.timestamp_field.year) + "-");
-      row_str.append(std::to_string(row.timestamp_field.month) + "-");
-      row_str.append(std::to_string(row.timestamp_field.day) + " ");
-      row_str.append(std::to_string(row.timestamp_field.hour) + ":");
-      row_str.append(std::to_string(row.timestamp_field.minute) + ":");
-      row_str.append(std::to_string(row.timestamp_field.second) + ".");
-      row_str.append(std::to_string(row.timestamp_field.fraction) + "'");
-    } else {
-      row_str.append("NULL");
-    }
+    insert_stmt << ")";
 
-    row_str.append(")");
-    if (i != (num_rows - 1)) {
-      row_str.append(", ");
+    if (i != rows.size() - 1) {
+      insert_stmt << ", ";
     }
-    insert_stmt.append(row_str);
   }
+
+  std::string insert_stmt_str = insert_stmt.str();
   SQLRETURN status;
-  if (use_ansi) {
-    status = SQLPrepareA(conn->hstmt, (SQLCHAR*)insert_stmt.c_str(),
-                         insert_stmt.size());
-  } else {
-    status = SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt.c_str(),
-                        insert_stmt.size());
-  }
-  CheckError(status, "SQLPrepareA", conn, use_ansi);
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt_str.c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
   status = SQLExecute(conn->hstmt);
-  CheckError(status, "SQLExecute", conn, use_ansi);
+  CheckError(status, "SQLExecute", conn);
 }
 
 void CreateTableDirect(std::shared_ptr<ODBCHandles> conn,
@@ -524,6 +519,32 @@ void BindStdColumns(std::shared_ptr<ODBCHandles> conn,
                       columns[2].target_value, columns[2].buffer_length,
                       &(columns[2].str_len));
   CheckError(status, "SQLBindCol", conn);
+}
+
+std::string FormatTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp) {
+  std::ostringstream ts;
+  ts << std::setfill('0') << std::setw(4) << timestamp.year << "-"
+     << std::setfill('0') << std::setw(2) << timestamp.month << "-"
+     << std::setfill('0') << std::setw(2) << timestamp.day << " "
+     << std::setfill('0') << std::setw(2) << timestamp.hour << ":"
+     << std::setfill('0') << std::setw(2) << timestamp.minute << ":"
+     << std::setfill('0') << std::setw(2) << timestamp.second << "."
+     << std::setfill('0') << std::left << std::setw(6) << timestamp.fraction;
+
+  return ts.str();
+}
+
+std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp) {
+  std::ostringstream ts;
+  ts << std::setfill('0') << std::setw(4) << timestamp.year << "-"
+     << std::setfill('0') << std::setw(2) << timestamp.month << "-"
+     << std::setfill('0') << std::setw(2) << timestamp.day << " "
+     << std::setfill('0') << std::setw(2) << timestamp.hour << ":"
+     << std::setfill('0') << std::setw(2) << timestamp.minute << ":"
+     << std::setfill('0') << std::setw(2) << timestamp.second << "."
+     << std::setfill('0') << std::left << std::setw(9) << timestamp.fraction;
+
+  return ts.str();
 }
 
 std::string Utf16ToUtf8(std::wstring const& utf_16_str) {
