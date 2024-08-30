@@ -38,7 +38,11 @@ StatusRecord WriteToApplicationBuffer(DSValue const& ds_val,
     *indicator_ptr = SQL_NULL_DATA;
     return StatusRecord::Ok();
   }
-
+  // We need to reset the indicator_ptr once it has been set to SQL_NULL_DATA
+  // for DSNullValues.
+  if (indicator_ptr) {
+    *indicator_ptr = ds_val.size();
+  }
   StatusRecord status_record;
   switch (bq_data_type) {
     case BQDataType::kInt64:
