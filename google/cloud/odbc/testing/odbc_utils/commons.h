@@ -21,11 +21,15 @@
 #include <gtest/gtest.h>
 // We need sorting functions
 #include <algorithm>
-#include <locale.h>
+#include <fstream>
+#include <iomanip>
+#include <locale>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <thread>
 
 namespace google::cloud::odbc_tests {
@@ -268,6 +272,9 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
     case SQL_CHAR:
       col_ptr->data_type = SQL_C_CHAR;
       break;
+    case SQL_TYPE_TIMESTAMP:
+      col_ptr->data_type = SQL_C_TYPE_TIMESTAMP;
+      break;
     default:
       throw std::runtime_error("Invalid column data type: " +
                                col_ptr->data_type);
@@ -309,6 +316,10 @@ class Table {
   void InsertInt64Data(std::shared_ptr<ODBCHandles> conn,
                        std::vector<SQLBIGINT> rows, bool insert_index = false);
 
+  void InsertTimestampData(std::shared_ptr<ODBCHandles> conn,
+                           std::vector<SQL_TIMESTAMP_STRUCT> rows,
+                           bool insert_index);
+
  private:
   std::string table_name_;
 };
@@ -316,6 +327,10 @@ class Table {
 std::string GetRandomString(int len);
 
 std::string getSchemaStr(Schema schema);
+
+std::string FormatTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
+
+std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 
 void CreateTableDirect(std::shared_ptr<ODBCHandles> conn,
                        std::string create_table_schema, bool use_ansi = false);
@@ -373,6 +388,12 @@ void BindColManually(std::shared_ptr<ODBCHandles> conn,
 // Binds buffers TestingDataBuffer for StdRow type of data
 void BindStdColumns(std::shared_ptr<ODBCHandles> conn,
                     TestingDataBuffer* columns);
+
+std::string Utf16ToUtf8(std::wstring const& utf_16_str);
+
+std::wstring Utf8ToUtf16(std::string const& utf_8_str);
+
+std::string ConvertSQLWCHARToString(SQLWCHAR* in_str, SQLINTEGER in_str_len);
 
 }  // namespace google::cloud::odbc_tests
 

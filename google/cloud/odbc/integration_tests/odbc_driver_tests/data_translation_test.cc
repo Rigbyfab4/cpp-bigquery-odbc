@@ -407,6 +407,141 @@ TEST(DataTranslationTest, From_INT64_to_all) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+struct TimestampBasicTestStruct {
+  // The target C type SQLBindCol will convert SQL type to
+  SQLSMALLINT target_c_type;
+  // The value that should be returned by SQLBindCol if it succeeds
+  SQL_TIMESTAMP_STRUCT value;
+  // The status that should be returned by SQLBindCol for this C Type
+  SQLRETURN status;
+};
+
+std::vector<TimestampBasicTestStruct> const kConversionFromTimestampTestData{
+    {SQL_C_CHAR, {2024, 01, 20, 10, 20, 30, 123112}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {2024, 01, 20, 11, 2, 33, 1212}, SQL_SUCCESS},
+    {SQL_C_BINARY, {2024, 01, 20, 2, 20, 22, 123123}, SQL_SUCCESS},
+    {SQL_C_TYPE_DATE, {2024, 01, 20, 12, 22, 11, 32223}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIME, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIMESTAMP, {2024, 01, 20, 12, 21, 22, 000000}, SQL_SUCCESS},
+    {SQL_C_SLONG, {2024, 01, 20, 00, 00, 00, 000000}, SQL_ERROR},
+};
+
+void TestTranslationsFromTimestamp(std::shared_ptr<ODBCHandles> conn,
+                                   std::string query) {
+  SQLRETURN status;
+  SQLCHAR data[kBufferLength];
+  SQLLEN strlen_or_ind;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query.c_str());
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+
+  for (auto const& expected : kConversionFromTimestampTestData) {
+    status = SQLBindCol(conn->hstmt, 1, expected.target_c_type, data,
+                        kBufferLength, &strlen_or_ind);
+    CheckError(status, "SQLBindCol", conn);
+
+    status = SQLFetch(conn->hstmt);
+
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+
+    if (!SQL_SUCCEEDED(status)) {
+      EXPECT_EQ(SQL_ERROR, expected.status);
+      break;
+    }
+
+    switch (expected.target_c_type) {
+      case SQL_C_CHAR: {
+        std::string returned_val = reinterpret_cast<char*>(data);
+        std::string expected_val = FormatTimeStamp(expected.value);
+        EXPECT_EQ(returned_val, expected_val);
+        break;
+      }
+      case SQL_C_WCHAR: {
+        SQLINTEGER length = strlen_or_ind / sizeof(SQLWCHAR);
+
+        std::string returned_val =
+            ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(data), length);
+
+        std::string expected_val = FormatTimeStamp(expected.value);
+        EXPECT_STREQ(returned_val.data(), expected_val.data());
+        break;
+      }
+      case SQL_C_BINARY: {
+        SQL_TIMESTAMP_STRUCT* timestamp =
+            reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(data);
+        std::string expected_val = FormatBinaryTimeStamp(expected.value);
+        std::string returned_val = FormatTimeStamp(*timestamp);
+        EXPECT_EQ(returned_val, expected_val);
+        break;
+      }
+      case SQL_C_TYPE_DATE: {
+        SQL_DATE_STRUCT* date = reinterpret_cast<SQL_DATE_STRUCT*>(data);
+        EXPECT_EQ(date->year, expected.value.year);
+        EXPECT_EQ(date->month, expected.value.month);
+        EXPECT_EQ(date->day, expected.value.day);
+        break;
+      }
+      case SQL_C_TYPE_TIMESTAMP: {
+        SQL_TIMESTAMP_STRUCT* timestamp =
+            reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(data);
+        EXPECT_EQ(timestamp->year, expected.value.year);
+        EXPECT_EQ(timestamp->month, expected.value.month);
+        EXPECT_EQ(timestamp->day, expected.value.day);
+        EXPECT_EQ(timestamp->hour, expected.value.hour);
+        EXPECT_EQ(timestamp->minute, expected.value.minute);
+        EXPECT_EQ(timestamp->second, expected.value.second);
+        break;
+      }
+      case SQL_C_TYPE_TIME: {
+        SQL_TIME_STRUCT* time = reinterpret_cast<SQL_TIME_STRUCT*>(data);
+        EXPECT_EQ(time->hour, expected.value.hour);
+        EXPECT_EQ(time->minute, expected.value.minute);
+        EXPECT_EQ(time->second, expected.value.second);
+        break;
+      }
+      case SQL_C_SLONG: {
+        EXPECT_EQ(status, expected.status);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+}
+
+TEST(DataTranslationTest, From_SQL_Timestamp_to_all) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_INSERT_TEST_TIMESTAMP";
+  Table table(table_name);
+  table.CreateWithPrepare(conn, "(Id INT64, DOB timestamp)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::vector<SQL_TIMESTAMP_STRUCT> timestamp_data;
+  for (auto const& test_data : kConversionFromTimestampTestData) {
+    timestamp_data.push_back(test_data.value);
+  }
+  table.InsertTimestampData(conn, timestamp_data, true);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query = "SELECT DOB FROM " + table_name + " Order by Id";
+  TestTranslationsFromTimestamp(conn, query);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.DropWithPrepare(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 }  // namespace google::cloud::odbc_tests
