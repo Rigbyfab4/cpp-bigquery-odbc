@@ -49,7 +49,7 @@ std::string getSchemaStr(Schema schema) {
   return schema_str;
 }
 
-std::string getIntervalTypeStr(const SQLINTERVAL type) {
+std::string GetIntervalTypeStr(const SQLINTERVAL type) {
   std::string result;
   switch (type) {
     case SQL_IS_YEAR_TO_MONTH:
@@ -98,7 +98,7 @@ std::string getIntervalTypeStr(const SQLINTERVAL type) {
   return result;
 }
 
-std::string formatIntervalString(const SQL_INTERVAL_STRUCT interval) {
+std::string FormatIntervalString(const SQL_INTERVAL_STRUCT interval) {
   char buffer[80];
 
   switch (interval.interval_type) {
@@ -650,7 +650,7 @@ void Table::InsertIntervalData(std::shared_ptr<ODBCHandles> conn,
     std::string row_str = "( ";
     row_str.append(std::to_string(i + 1) + ", ");
     if (row.interval_type != NULL) {
-      auto kIntervalTypeToStr = getIntervalTypeStr(row.interval_type);
+      auto kIntervalTypeToStr = GetIntervalTypeStr(row.interval_type);
       std::string interval_str;
       switch (row.interval_type) {
         case SQL_IS_YEAR:

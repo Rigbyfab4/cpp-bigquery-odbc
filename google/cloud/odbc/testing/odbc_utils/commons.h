@@ -385,9 +385,11 @@ std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 
 std::string FormatTimetoString(const SQL_TIME_STRUCT& time);
 
-std::string getIntervalTypeStr(const SQLINTERVAL type);
+std::string FormatTimetoString(const SQL_TIME_STRUCT& time);
 
-std::string formatIntervalString(const SQL_INTERVAL_STRUCT interval);
+std::string GetIntervalTypeStr(const SQLINTERVAL type);
+
+std::string FormatIntervalString(const SQL_INTERVAL_STRUCT interval);
 
 std::string SQLNumericToString(const SQL_NUMERIC_STRUCT& numeric);
 

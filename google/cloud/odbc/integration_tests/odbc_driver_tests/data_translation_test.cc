@@ -379,7 +379,7 @@ void TestTranslationsFromString(std::shared_ptr<ODBCHandles> conn,
   EXPECT_EQ(row_count, kConversionFromStrTestData.size());
 }
 
-inline std::string formatIntervalSQLQuery(std::string table_name,
+inline std::string FormatIntervalSQLQuery(std::string table_name,
                                           IntervalBasicTestStruct const data) {
   std::string query;
   switch (data.interval_value.interval_type) {
@@ -439,7 +439,7 @@ void TestIntervalArithmeticConversion(std::shared_ptr<ODBCHandles> conn,
   char read_stmt[kBufferLength];
 
   for (auto const& expected : kConversionFromSinglePrecisionIntervalData) {
-    std::string select_query = formatIntervalSQLQuery(table_name, expected);
+    std::string select_query = FormatIntervalSQLQuery(table_name, expected);
     StrToChar(read_stmt, select_query.c_str());
 
     status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
@@ -565,7 +565,7 @@ void TestTranslationFromIntervalYearMonth(std::shared_ptr<ODBCHandles> conn,
       case SQL_C_CHAR: {
         std::string returned_val = reinterpret_cast<char*>(data_char);
         std::string expected_val =
-            formatIntervalString(expected.interval_value);
+            FormatIntervalString(expected.interval_value);
         EXPECT_EQ(expected_val, returned_val);
         break;
       }
@@ -594,7 +594,7 @@ void TestTranslationFromIntervalYearMonth(std::shared_ptr<ODBCHandles> conn,
         std::string returned_val = ConvertSQLWCHARToString(
             reinterpret_cast<SQLWCHAR*>(data_char), length);
         std::string expected_val =
-            formatIntervalString(expected.interval_value);
+            FormatIntervalString(expected.interval_value);
         EXPECT_STREQ(expected_val.data(), returned_val.data());
         break;
       }
@@ -659,7 +659,7 @@ void TestTranslationFromIntervalDaySecond(std::shared_ptr<ODBCHandles> conn,
       case SQL_C_CHAR: {
         std::string returned_val = reinterpret_cast<char*>(data_char);
         std::string expected_val =
-            formatIntervalString(expected.interval_value);
+            FormatIntervalString(expected.interval_value);
         EXPECT_EQ(expected_val, returned_val);
         break;
       }
@@ -668,7 +668,7 @@ void TestTranslationFromIntervalDaySecond(std::shared_ptr<ODBCHandles> conn,
         std::string returned_val = ConvertSQLWCHARToString(
             reinterpret_cast<SQLWCHAR*>(data_char), length);
         std::string expected_val =
-            formatIntervalString(expected.interval_value);
+            FormatIntervalString(expected.interval_value);
         EXPECT_EQ(expected_val, returned_val);
         break;
       }
