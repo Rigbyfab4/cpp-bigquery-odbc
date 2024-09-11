@@ -13,12 +13,15 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/data_translation.h"
+#include "google/cloud/odbc/testing/utils/status_matchers.h"
 #include <gtest/gtest.h>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
+using ::google::cloud::odbc_testing_utils::StatusRecIs;
+using ::testing::StrEq;
 
 TEST(CheckLimitsArithmetic, Basic) {
   StatusRecord status_record;
@@ -242,6 +245,162 @@ TEST(ConvertFromStringDSValue, To_SQL_C_USHORT) {
   FromStringToArithmeticTest<SQLUSMALLINT>("-17.1", 11111 /* doesn't matter */,
                                            SQL_C_USHORT, SQLStates::k_22003(),
                                            "Numeric value out of range");
+}
+TEST(ConvertFromDateDSValue, Unsupported_Conversion) {
+  SQL_DATE_STRUCT date;
+  date.year = 2020;
+  date.month = 10;
+  date.day = 10;
+  DSValue src_dsval;
+  DateToDSValue(date, src_dsval);
+  char dest_buf[11];
+  DataBuffer dest_data{SQL_C_ULONG, dest_buf, sizeof(dest_buf)};
+  auto status = ConvertFromDateDSValue(src_dsval, dest_data);
+  EXPECT_THAT(status, StatusRecIs(SQLStates::k_HY000(),
+                                  StrEq("Conversion is unsupported")));
+}
+
+TEST(ConvertFromDateDSValue, convertToDate) {
+  SQL_DATE_STRUCT date;
+  date.year = 2020;
+  date.month = 10;
+  date.day = 10;
+  DSValue src_dsval;
+  DateToDSValue(date, src_dsval);
+
+  alignas(SQL_DATE_STRUCT) char dest_buf[sizeof(SQL_DATE_STRUCT)];
+  DataBuffer dest_data = {SQL_C_TYPE_DATE, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromDateDSValue(src_dsval, dest_data);
+  SQL_DATE_STRUCT* data = reinterpret_cast<SQL_DATE_STRUCT*>(dest_data.buf);
+
+  EXPECT_EQ(data->year, date.year);
+  EXPECT_EQ(data->month, date.month);
+  EXPECT_EQ(data->day, date.day);
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(ConvertFromDateDSValue, convertToTimestamp) {
+  SQL_DATE_STRUCT date;
+  date.year = 2020;
+  date.month = 10;
+  date.day = 10;
+
+  DSValue src_dsval;
+  DateToDSValue(date, src_dsval);
+
+  char dest_buf[sizeof(SQL_TIMESTAMP_STRUCT)];
+  DataBuffer dest_data = {SQL_C_TYPE_TIMESTAMP, dest_buf, sizeof(dest_buf),
+                          nullptr};
+  auto status = ConvertFromDateDSValue(src_dsval, dest_data);
+  ASSERT_TRUE(status.ok());
+  SQL_TIMESTAMP_STRUCT* data =
+      reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(dest_buf);
+  EXPECT_EQ(data->year, date.year);
+  EXPECT_EQ(data->month, date.month);
+  EXPECT_EQ(data->day, date.day);
+}
+
+TEST(ConvertFromDateDSValue, convertToBinary_Success) {
+  SQL_DATE_STRUCT date;
+  date.year = 2020;
+  date.month = 10;
+  date.day = 10;
+
+  DSValue src_dsval;
+  DateToDSValue(date, src_dsval);
+  char dest_buf[20];
+  DataBuffer dest_data = {SQL_C_BINARY, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromDateDSValue(src_dsval, dest_data);
+  ASSERT_TRUE(status.ok());
+
+  SQL_DATE_STRUCT* data = reinterpret_cast<SQL_DATE_STRUCT*>(dest_buf);
+
+  EXPECT_EQ(data->year, date.year);
+  EXPECT_EQ(data->month, date.month);
+  EXPECT_EQ(data->day, date.day);
+}
+
+TEST(ConvertFromDateDSValue, convertToChar) {
+  SQL_DATE_STRUCT date;
+  date.year = 2020;
+  date.month = 10;
+  date.day = 10;
+  DSValue src_dsval;
+  DateToDSValue(date, src_dsval);
+  char dest_buf[11];
+  DataBuffer dest_data = {SQL_C_CHAR, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromDateDSValue(src_dsval, dest_data);
+  std::string expected_date = "2020-10-10";
+  std::string data(dest_buf);
+  EXPECT_EQ(data, expected_date);
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(ConvertFromDateDSValue, Failure_Incorrect_Conversion) {
+  SQL_DATE_STRUCT date;
+  date.year = 2020;
+  date.month = 10;
+  date.day = 10;
+  DSValue src_dsval;
+  DateToDSValue(date, src_dsval);
+  wchar_t dest_buf[11];
+  DataBuffer dest_data = {SQL_DATE, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromDateDSValue(src_dsval, dest_data);
+  EXPECT_THAT(status, StatusRecIs(SQLStates::k_HY000(),
+                                  StrEq("Conversion is unsupported")));
+}
+
+TEST(ConvertFromDateDSValue, convertToBinary_InsufficientBuffer) {
+  SQL_DATE_STRUCT date;
+  date.year = 2020;
+  date.month = 10;
+  date.day = 10;
+  DSValue src_dsval;
+  DateToDSValue(date, src_dsval);
+  char dest_buf[5];
+  DataBuffer dest_data = {SQL_C_BINARY, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromDateDSValue(src_dsval, dest_data);
+  EXPECT_THAT(status, StatusRecIs(SQLStates::k_01004(),
+                                  StrEq("Binary data, right truncated")));
+}
+
+TEST(ConvertFromDateDSValue, NullDestinationBuffer) {
+  SQL_DATE_STRUCT date_struct = {2024, 9, 10};
+  DSValue ds_value;
+  DateToDSValue(date_struct, ds_value);
+
+  DataBuffer dest_data = {SQL_C_TYPE_DATE, nullptr, 10, nullptr};
+
+  auto result = ConvertFromDateDSValue(ds_value, dest_data);
+  EXPECT_THAT(result, StatusRecIs(SQLStates::k_HY090(),
+                                  StrEq("Destination buffer is null")));
+}
+
+TEST(ConvertFromDateDSValue, NegativeBufferLength) {
+  SQL_DATE_STRUCT date_struct = {2024, 9, 10};
+  DSValue ds_value;
+  DateToDSValue(date_struct, ds_value);
+
+  char buffer[10];
+  DataBuffer dest_data = {SQL_C_CHAR, buffer, -1, nullptr};
+
+  auto result = ConvertFromDateDSValue(ds_value, dest_data);
+  EXPECT_THAT(result, StatusRecIs(SQLStates::k_HY090(),
+                                  StrEq("Buffer length is negative")));
+}
+
+TEST(ConvertFromDateDSValue, SmallBufferForStringOutput) {
+  SQL_DATE_STRUCT date_struct = {2024, 9, 10};
+  DSValue ds_value;
+  DateToDSValue(date_struct, ds_value);
+
+  char buffer[5];
+  DataBuffer dest_data = {SQL_C_CHAR, buffer, sizeof(buffer), nullptr};
+
+  auto result = ConvertFromDateDSValue(ds_value, dest_data);
+  EXPECT_THAT(result, StatusRecIs(SQLStates::k_01004(),
+                                  StrEq("String data, right truncated")));
+  EXPECT_STREQ(buffer, "YYYY");
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal

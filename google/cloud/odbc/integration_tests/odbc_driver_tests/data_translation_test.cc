@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "google/cloud/odbc/testing/odbc_utils/commons.h"
 #include "google/cloud/odbc/testing/odbc_utils/connection.h"
 #include "google/cloud/odbc/testing/odbc_utils/descriptor.h"
 #include "google/cloud/odbc/testing/odbc_utils/statement.h"
 
 namespace google::cloud::odbc_tests {
-
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
-
 struct StrBasicTestStruct {
   // The target C type SQLGetData will convert SQL type to
   SQLSMALLINT target_c_type;
@@ -543,5 +542,138 @@ TEST(DataTranslationTest, From_SQL_Timestamp_to_all) {
 }
 
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
+
+struct DateBasicTestStruct {
+  // The target C type SQLGetData will convert SQL type to
+  SQLSMALLINT target_c_type;
+  // The value that should be returned by SQLGetData if it succeeds
+  SQL_DATE_STRUCT value;
+  // The status that should be returned by SQLGetData for this C Type
+  SQLRETURN status;
+};
+
+std::vector<DateBasicTestStruct> const kConversionFromDateTestData{
+    {SQL_C_CHAR, {2024, 2, 20}, SQL_SUCCESS},
+    {SQL_C_TYPE_DATE, {2024, 3, 20}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIMESTAMP, {2024, 4, 20}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {2024, 7, 20}, SQL_SUCCESS},
+    {SQL_C_BINARY, {2024, 5, 20}, SQL_SUCCESS},
+    {SQL_C_USHORT, {2024, 6, 20}, SQL_ERROR},
+    {SQL_C_DOUBLE, {2024, 1, 20}, SQL_ERROR},
+};
+
+// TODO(b/365915498): Data translation Utilities
+void TestTranslationsFromDate(std::shared_ptr<ODBCHandles> conn,
+                              std::string query) {
+  SQLRETURN status;
+  SQLCHAR data[kBufferLength];
+  SQLLEN strlen_or_ind;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query.c_str());
+
+  int row_count = 0;
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+
+  for (auto const& expected : kConversionFromDateTestData) {
+    status = SQLBindCol(conn->hstmt, 1, expected.target_c_type, data,
+                        kBufferLength, &strlen_or_ind);
+
+    CheckError(status, "SQLBindCol", conn);
+
+    status = SQLFetch(conn->hstmt);
+
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+    if (!SQL_SUCCEEDED(status)) {
+      EXPECT_EQ(SQL_ERROR, expected.status);
+      break;
+    }
+    EXPECT_EQ(SQL_SUCCESS, expected.status);
+    std::string expected_val = FormatDate(expected.value);
+    std::string returned_val;
+    switch (expected.target_c_type) {
+      case SQL_C_CHAR: {
+        std::string returned_val = reinterpret_cast<char*>(data);
+        EXPECT_EQ(returned_val, expected_val);
+        break;
+      }
+      case SQL_C_WCHAR: {
+        std::wstring wstr = reinterpret_cast<wchar_t*>(data);
+        std::string returned_val_utf8 =
+            ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(data), 10);
+        EXPECT_STREQ(returned_val_utf8.data(), expected_val.data());
+        break;
+      }
+      case SQL_C_BINARY: {
+        if (strlen_or_ind == sizeof(SQL_DATE_STRUCT)) {
+          SQL_DATE_STRUCT* date = reinterpret_cast<SQL_DATE_STRUCT*>(data);
+          returned_val = FormatDate(*date);
+          EXPECT_EQ(returned_val, expected_val);
+        }
+        break;
+      }
+      case SQL_C_TYPE_DATE: {
+        SQL_DATE_STRUCT* date = reinterpret_cast<SQL_DATE_STRUCT*>(data);
+        EXPECT_EQ(date->year, expected.value.year);
+        EXPECT_EQ(date->month, expected.value.month);
+        EXPECT_EQ(date->day, expected.value.day);
+        break;
+      }
+
+      case SQL_C_TYPE_TIMESTAMP: {
+        SQL_TIMESTAMP_STRUCT* timestamp =
+            reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(data);
+        EXPECT_EQ(timestamp->year, expected.value.year);
+        EXPECT_EQ(timestamp->month, expected.value.month);
+        EXPECT_EQ(timestamp->day, expected.value.day);
+
+        break;
+      }
+      default:
+        break;
+    }
+    ++row_count;
+  }
+}
+
+// This test should follow translations according to
+// https://learn.microsoft.com/en-us/sql/odbc/reference/appendixes/sql-to-c-date?view=sql-server-ver16
+TEST(DataTranslationTest, From_SQL_Date_to_all) {
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_DATA_TRANSLATION_DATE";
+  Table table(table_name);
+
+  // Create Table
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.CreateWithPrepare(conn, "(index INTEGER, DateField DATE)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::vector<SQL_DATE_STRUCT> date_data;
+  for (auto const& test_case : kConversionFromDateTestData) {
+    date_data.push_back(test_case.value);
+  }
+  table.InsertDateData(conn, date_data, true);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query = "SELECT DateField FROM " + table_name + " Order by index";
+  TestTranslationsFromDate(conn, query);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.DropWithPrepare(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
 
 }  // namespace google::cloud::odbc_tests

@@ -17,6 +17,7 @@
 
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_type_utils.h"
+#include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/odbc/internal/odbc_includes.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 
@@ -334,6 +335,105 @@ inline odbc_internal::StatusRecord ConvertFromStringDSValue(
   return StatusRecord::Ok();
 }
 
+inline odbc_internal::StatusRecord ConvertFromDateDSValue(
+    DSValue const& src_dsval, DataBuffer& dest_data) {
+  using odbc_internal::SQLStates;
+  using odbc_internal::StatusRecord;
+  using odbc_internal::StatusRecordOr;
+
+  SQL_DATE_STRUCT conn_date;
+
+  SQLSMALLINT dest_type = dest_data.type;
+  SQLPOINTER dest_buf = dest_data.buf;
+  SQLLEN buffer_length = dest_data.buflen;
+
+  if (!dest_buf) {
+    return StatusRecord{SQLStates::k_HY090(), "Destination buffer is null"};
+  }
+  if (buffer_length < 0) {
+    return StatusRecord{SQLStates::k_HY090(), "Buffer length is negative"};
+  }
+
+  DSValueToDate(src_dsval, conn_date);
+
+  constexpr int kDateCharLength = SQL_DATE_LEN;
+  constexpr int kDateWcharLength = kDateCharLength;
+  constexpr int kDateBinaryLength = sizeof(SQL_DATE_STRUCT);
+
+  StatusRecord status_record = StatusRecord::Ok();
+
+  switch (dest_type) {
+    case SQL_C_TYPE_DATE: {
+      return DateToOutputBufferResponse(
+          conn_date, dest_buf, buffer_length,
+          reinterpret_cast<SQLLEN*>(dest_data.result_len));
+    }
+
+    case SQL_C_TYPE_TIMESTAMP: {
+      auto* timestamp = reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(dest_buf);
+      timestamp->year = conn_date.year;
+      timestamp->month = conn_date.month;
+      timestamp->day = conn_date.day;
+      timestamp->hour = 0;
+      timestamp->minute = 0;
+      timestamp->second = 0;
+      break;
+    }
+    case SQL_C_CHAR: {
+      auto* dest = reinterpret_cast<char*>(dest_buf);
+      if (buffer_length < kDateCharLength) {
+        strncpy(dest, "YYYY-MM-DD", buffer_length - 1);
+        dest[buffer_length - 1] = '\0';
+        status_record =
+            StatusRecord{SQLStates::k_01004(), "String data, right truncated"};
+      } else {
+        snprintf(dest, buffer_length, "%04d-%02d-%02d", conn_date.year,
+                 conn_date.month, conn_date.day);
+      }
+      break;
+    }
+
+    case SQL_C_BINARY: {
+      if (buffer_length < kDateBinaryLength) {
+        memcpy(dest_buf, &conn_date, buffer_length);
+        status_record =
+            StatusRecord{SQLStates::k_01004(), "Binary data, right truncated"};
+      } else {
+        memcpy(dest_buf, &conn_date, kDateBinaryLength);
+      }
+      break;
+    }
+    case SQL_C_WCHAR: {
+      auto* dest = reinterpret_cast<wchar_t*>(dest_buf);
+      if (buffer_length < kDateWcharLength * sizeof(wchar_t)) {
+        wcsncpy(dest, L"YYYY-MM-DD", (buffer_length / sizeof(wchar_t)) - 1);
+        dest[(buffer_length / sizeof(wchar_t)) - 1] = L'\0';
+        status_record =
+            StatusRecord{SQLStates::k_01004(), "String data, right truncated"};
+      } else {
+        char buffer[11];
+        snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", conn_date.year,
+                 conn_date.month, conn_date.day);
+        std::string formatted_date = buffer;
+        StatusRecordOr<std::wstring> wstr = Utf8ToUtf16(formatted_date);
+        if (!wstr) {
+          return StatusRecord{SQLStates::k_HY000(),
+                              "DSValueToWchar Conversion Failed"};
+          break;
+        }
+        std::vector<SQLWCHAR> wstr_data(wstr->begin(), wstr->end());
+        wstr_data.emplace_back(L'\0');
+        std::memcpy(dest_buf, wstr_data.data(),
+                    (wstr_data.size() + 1) * sizeof(SQLWCHAR));
+        break;
+      }
+    }
+    default:
+      return StatusRecord{SQLStates::k_HY000(), "Conversion is unsupported"};
+  }
+
+  return status_record;
+}
 }  // namespace google::cloud::odbc_bq_driver_internal
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_DATA_TRANSLATION_H
