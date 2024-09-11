@@ -693,7 +693,8 @@ std::vector<TimeBasicTestStruct> const kConversionFromTimeTestData{
     {SQL_C_BINARY, {04, 06, 07}, SQL_SUCCESS},
 
 };
-
+// TODO Remove assertions &
+// Move as  utility function to testing/odbc_utils
 void TestTranslationsFromTime(std::shared_ptr<ODBCHandles> conn,
                               std::string query) {
   SQLRETURN status;
@@ -732,7 +733,6 @@ void TestTranslationsFromTime(std::shared_ptr<ODBCHandles> conn,
       }
       case SQL_C_WCHAR: {
         SQLINTEGER length = strlen_or_ind / sizeof(SQLWCHAR);
-        std::cout << "length==" << length << std::endl;
         std::string returned_val =
             ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(data), length);
         std::string expected_val = FormatTimetoString(expected.value);

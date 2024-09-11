@@ -422,6 +422,19 @@ TEST(ConvertFromTimeDSValue, ToTime) {
   ASSERT_TRUE(status.ok());
 }
 
+TEST(ConvertFromTimeDSValue, ToTime_InsufficientBufferCase) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  char dest_buf[5];
+  DataBuffer dest_data = {SQL_C_TYPE_TIME, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  EXPECT_EQ(status.sql_state, odbc_internal::SQLStates::k_01004());
+}
+
 TEST(ConvertFromTimeDSValue, ToTimestamp) {
   SQL_TIME_STRUCT time;
   time.hour = 19;
@@ -507,6 +520,20 @@ TEST(ConvertFromTimeDSValue, InsufficientBufferCase) {
   DataBuffer dest_data = {SQL_C_BINARY, dest_buf, sizeof(dest_buf), nullptr};
   auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
   EXPECT_EQ(status.sql_state, odbc_internal::SQLStates::k_01004());
+}
+
+TEST(ConvertFromTimeDSValue, convertToInvalidType_Failed) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  char dest_buf[16];
+  DataBuffer dest_data = {SQL_C_SLONG, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  ASSERT_EQ(status.sql_state, odbc_internal::SQLStates::k_HY000());
+  ASSERT_FALSE(status.ok());
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
