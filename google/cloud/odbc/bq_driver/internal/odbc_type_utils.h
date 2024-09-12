@@ -139,6 +139,22 @@ inline odbc_internal::StatusRecord StringValueToOutputBufferResponse(
       src, dest_data.buf, dest_data.buflen, dest_data.result_len);
 }
 
+inline odbc_internal::StatusRecord DateToOutputBufferResponse(
+    const SQL_DATE_STRUCT& conn_date, SQLPOINTER dest_buf, SQLLEN buffer_length,
+    SQLLEN* result_len) {
+  auto* dest_date = reinterpret_cast<SQL_DATE_STRUCT*>(dest_buf);
+  auto status_record = odbc_internal::StatusRecord::Ok();
+  if (buffer_length >= sizeof(SQL_DATE_STRUCT)) {
+    *dest_date = conn_date;
+    if (result_len) {
+      *result_len = sizeof(SQL_DATE_STRUCT);
+    }
+    return status_record;
+  }
+  return odbc_internal::StatusRecord{odbc_internal::SQLStates::k_01004(),
+                                     "Date data, right truncated"};
+}
+
 // T usually can be SQLINTEGER, SQLSMALLINT, SQLLEN, and it's unsigned values
 // U usually can be SQLINTEGER and SQLSMALLINT
 template <typename T, typename U>

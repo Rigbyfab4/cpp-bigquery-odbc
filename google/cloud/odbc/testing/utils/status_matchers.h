@@ -43,6 +43,13 @@ MATCHER_P2(StatusRecordIs, sql_state, matcher, "") {
   return true;
 }
 
+MATCHER_P2(StatusRecIs, sql_state, matcher, "") {
+  EXPECT_EQ(arg.sql_state, sql_state)
+      << "Expected code to be: " << sql_state << ", but was: " << arg.sql_state;
+  EXPECT_THAT(arg.message, matcher);
+  return true;
+}
+
 }  // namespace google::cloud::odbc_testing_utils
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_UTILS_STATUS_MATCHERS_H

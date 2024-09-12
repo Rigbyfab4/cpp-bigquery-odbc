@@ -145,6 +145,17 @@ inline int64_t DSValueToInt(DSValue& ds_value) {
   return int_val;
 }
 
+inline void DateToDSValue(const SQL_DATE_STRUCT& date, DSValue& value) {
+  value.resize(sizeof(SQL_DATE_STRUCT));
+  std::memcpy(value.data(), &date, sizeof(SQL_DATE_STRUCT));
+}
+
+inline SQL_DATE_STRUCT DSValueToDate(DSValue const& value,
+                                     SQL_DATE_STRUCT& date_struct) {
+  std::memcpy(&date_struct, value.data(), sizeof(SQL_DATE_STRUCT));
+  return date_struct;
+}
+
 // This is the result populated by performing a bq query API.
 // For each call, onely one of PostQueryResults or GetQueryResults will be
 // populated with the following semantics:

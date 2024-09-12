@@ -17,6 +17,7 @@
 #endif  // _WIN32
 
 #include "google/cloud/odbc/testing/odbc_utils/commons.h"
+#include "google/cloud/status_or.h"
 
 namespace google::cloud::odbc_tests {
 
@@ -349,6 +350,55 @@ void Table::InsertTimestampData(std::shared_ptr<ODBCHandles> conn,
   status = SQLExecute(conn->hstmt);
   CheckError(status, "SQLExecute", conn);
 }
+std::string FormatDate(const SQL_DATE_STRUCT& date) {
+  char buffer[11];
+  snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", date.year, date.month,
+           date.day);
+  return buffer;
+}
+
+void Table::InsertDateData(std::shared_ptr<ODBCHandles> conn,
+                           std::vector<SQL_DATE_STRUCT> rows,
+                           bool insert_index) {
+  if (rows.empty()) {
+    return;
+  }
+
+  std::ostringstream insert_stmt;
+  insert_stmt << "INSERT INTO " << table_name_ << " VALUES ";
+
+  for (size_t i = 0; i < rows.size(); ++i) {
+    auto const& row = rows[i];
+    insert_stmt << "(";
+
+    if (insert_index) {
+      insert_stmt << i << ", ";
+    }
+
+    // Insert the date
+    if (row.year != 0) {
+      insert_stmt << "'" << row.year << "-" << (row.month < 10 ? "0" : "")
+                  << row.month << "-" << (row.day < 10 ? "0" : "") << row.day
+                  << "'";
+    } else {
+      insert_stmt << "NULL";
+    }
+
+    insert_stmt << ")";
+
+    if (i != rows.size() - 1) {
+      insert_stmt << ", ";
+    }
+  }
+
+  std::string insert_stmt_str = insert_stmt.str();
+  SQLRETURN status;
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt_str.c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+}
 
 void CreateTableDirect(std::shared_ptr<ODBCHandles> conn,
                        std::string create_table_schema, bool use_ansi) {
@@ -383,7 +433,6 @@ void DropTableWithPrepare(std::shared_ptr<ODBCHandles> conn,
                           std::string table_name) {
   char drop_table_stmt[kBufferLength];
   StrToChar(drop_table_stmt, "DROP TABLE IF EXISTS " + table_name);
-
   SQLRETURN status;
   status = SQLPrepare(conn->hstmt, (SQLCHAR*)drop_table_stmt,
                       strlen(drop_table_stmt));

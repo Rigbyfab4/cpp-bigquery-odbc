@@ -446,11 +446,27 @@ std::shared_ptr<Results> FetchResults(std::shared_ptr<ODBCHandles> conn,
         results[col_name].emplace_back(std::string());
         continue;
       }
-      std::string val = (char*)data;
+      std::string val;
+      switch (cols[i_c]->data_type) {
+        case SQL_TYPE_DATE: {
+          SQL_DATE_STRUCT* date = reinterpret_cast<SQL_DATE_STRUCT*>(data);
+          val = FormatDate(*date);
+          break;
+        }
+        case SQL_TYPE_TIMESTAMP: {
+          SQL_TIMESTAMP_STRUCT* timestamp =
+              reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(data);
+          val = FormatTimeStamp(*timestamp);
+          break;
+        }
+        default: {
+          val = std::string(reinterpret_cast<char*>(data), data_len);
+          break;
+        }
+      }
       results[col_name].push_back(val);
     }
   }
-
   // Clean up allocated memory
   for (int i = 0; i < num_cols; i++) {
     delete[] cols[i]->data;

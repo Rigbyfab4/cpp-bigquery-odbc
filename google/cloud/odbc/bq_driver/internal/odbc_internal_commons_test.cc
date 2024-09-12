@@ -709,4 +709,33 @@ TEST(GetSQLDataType, GetValidDataType) {
   EXPECT_EQ(SQL_TYPE_TIMESTAMP, *fourth_res);
   EXPECT_EQ(SQL_BIGINT, *fifth_res);
 }
+
+TEST(DateToDSValue, checkdate) {
+  SQL_DATE_STRUCT d;
+  d.year = 2020;
+  d.month = 10;
+  d.day = 10;
+
+  DSValue val;
+  DateToDSValue(d, val);
+
+  SQL_DATE_STRUCT returned = DSValueToDate(val, returned);
+  EXPECT_EQ(d.year, returned.year);
+  EXPECT_EQ(d.month, returned.month);
+  EXPECT_EQ(d.day, returned.day);
+}
+
+TEST(DSValueToDate, EmptyDateString) {
+  SQL_DATE_STRUCT d = {};
+  DSValue val;
+  DateToDSValue(d, val);
+
+  SQL_DATE_STRUCT returned = {};
+  DSValueToDate(val, returned);
+
+  EXPECT_EQ(returned.year, 0);
+  EXPECT_EQ(returned.month, 0);
+  EXPECT_EQ(returned.day, 0);
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal

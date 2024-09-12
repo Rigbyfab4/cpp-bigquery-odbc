@@ -320,6 +320,9 @@ class Table {
                            std::vector<SQL_TIMESTAMP_STRUCT> rows,
                            bool insert_index);
 
+  void InsertDateData(std::shared_ptr<ODBCHandles> conn,
+                      std::vector<SQL_DATE_STRUCT> rows, bool insert_index);
+
  private:
   std::string table_name_;
 };
@@ -327,6 +330,8 @@ class Table {
 std::string GetRandomString(int len);
 
 std::string getSchemaStr(Schema schema);
+
+std::string FormatDate(const SQL_DATE_STRUCT& date);
 
 std::string FormatTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 

@@ -32,6 +32,22 @@ using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecord;
 using ::google::cloud::odbc_internal::StatusRecordOr;
 
+SQL_DATE_STRUCT ConvertStringToDateStruct(std::string const& date_str) {
+  if (date_str.empty() || date_str.size() < SQL_DATE_LEN) {
+    throw std::invalid_argument(
+        "Invalid date string format: the string is either empty or too short.");
+  }
+  int year = std::stoi(date_str.substr(0, 4));
+  int month = std::stoi(date_str.substr(5, 2));
+  int day = std::stoi(date_str.substr(8, 2));
+
+  SQL_DATE_STRUCT date_struct;
+  date_struct.year = static_cast<SQLSMALLINT>(year);
+  date_struct.month = static_cast<SQLUSMALLINT>(month);
+  date_struct.day = static_cast<SQLUSMALLINT>(day);
+  return date_struct;
+}
+
 StatusRecordOr<ResultSet> ProcessResultSetRows(
     TableSchema const& schema, std::vector<RowData> const& rows) {
   ResultSet result_set;
@@ -72,6 +88,11 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
           case BQDataType::kFloat64: {
             SQLDOUBLE d_data = std::stod(data);
             ArithmeticToDSValue<SQLDOUBLE>(d_data, row_val);
+            break;
+          }
+          case BQDataType::kDate: {
+            SQL_DATE_STRUCT date_struct = ConvertStringToDateStruct(data);
+            DateToDSValue(date_struct, row_val);
             break;
           }
           default: {
