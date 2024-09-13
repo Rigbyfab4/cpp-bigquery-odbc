@@ -20,9 +20,7 @@ if (NOT COMMAND create_bazel_config)
     include(CreateOdbcBazelConfig)
 endif ()
 
-# BQ Driver Internal Library
-add_library(
-    google_cloud_odbc_bq_driver_internal # cmake-format: sort
+set(COMMON_SOURCES
     bq_driver/internal/data_translation.cc
     bq_driver/internal/data_translation.h
     bq_driver/internal/diagnostics.cc
@@ -74,13 +72,30 @@ add_library(
     bq_driver/internal/utils.cc
     bq_driver/internal/utils.h)
 
-target_link_libraries(
-    google_cloud_odbc_bq_driver_internal
+# Add Windows-specific source files if compiling on Windows
+if (WIN32)
+    list(APPEND COMMON_SOURCES bq_driver/internal/driver_form.cc
+         bq_driver/internal/driver_form.h)
+endif ()
+
+# Create the library target
+add_library(google_cloud_odbc_bq_driver_internal ${COMMON_SOURCES})
+
+set(COMMON_LIBS
     google-cloud-cpp::experimental-bigquery_rest # We need this dependency to
                                                  # use 'options' from client
                                                  # libraries
     odbc_bq_client_interface
     odbc_internal)
+
+# Add Windows-specific libraries only if compiling on Windows
+if (WIN32)
+    list(APPEND COMMON_LIBS user32 gdi32)
+endif ()
+
+# Link the collected libraries to the target
+target_link_libraries(google_cloud_odbc_bq_driver_internal ${COMMON_LIBS})
+
 target_include_directories(google_cloud_odbc_bq_driver_internal
                            PUBLIC ${CMAKE_SOURCE_DIR})
 target_include_directories(google_cloud_odbc_bq_driver_internal
@@ -145,11 +160,10 @@ function (bq_driver_define_unit_tests)
     endif ()
 
     enable_testing()
-
-    add_executable(
-        google_cloud_odbc_bq_driver_unit_tests
+    set(TEST_SOURCES
         bq_driver/internal/data_translation_test.cc
         bq_driver/internal/diagnostics_test.cc
+        bq_driver/internal/driver_form_test.cc
         bq_driver/internal/odbc_conn_attr_test.cc
         bq_driver/internal/odbc_conn_handle_test.cc
         bq_driver/internal/odbc_desc_attr_test.cc
@@ -182,6 +196,12 @@ function (bq_driver_define_unit_tests)
         bq_driver/odbc_sql_results_test.cc
         bq_driver/odbc_statement_test.cc
         bq_driver/odbc_utils_test.cc)
+
+    if (WIN32)
+        list(APPEND TEST_SOURCES bq_driver/internal/driver_form_test.cc)
+    endif ()
+
+    add_executable(google_cloud_odbc_bq_driver_unit_tests ${TEST_SOURCES})
 
     target_link_libraries(
         google_cloud_odbc_bq_driver_unit_tests google_cloud_odbc_testing_utils
