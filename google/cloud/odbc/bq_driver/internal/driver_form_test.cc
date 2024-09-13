@@ -69,7 +69,7 @@ TEST_F(DriverFormTest, TestButtonClickOK) {
   form->Show();
   ASSERT_NE(form->GetHwnd(), nullptr)
       << "Form window handle should not be null after showing the form.";
-  ClickButton(form->GetHwnd(), IDC_BUTTON_OK);
+  ClickButton(form->GetHwnd(), kIdcButtonOk);
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   MSG msg;
   while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -86,7 +86,7 @@ TEST_F(DriverFormTest, TestButtonClickCancel) {
   ASSERT_NE(form->GetHwnd(), nullptr)
       << "Form window handle should not be null after showing the form.";
 
-  ClickButton(form->GetHwnd(), IDC_BUTTON_CANCEL);
+  ClickButton(form->GetHwnd(), kIdcButtonCancel);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -100,7 +100,7 @@ TEST_F(DriverFormTest, TestButtonClickCancel) {
 }
 
 TEST_F(DriverFormTest, TestAuthDropdown) {
-  HWND hComboBox = GetDlgItem(form->GetHwnd(), IDC_COMBOBOX);
+  HWND hComboBox = GetDlgItem(form->GetHwnd(), kIdcComboBox);
   ASSERT_NE(hComboBox, nullptr) << "Auth dropdown should be created.";
 
   ASSERT_EQ(SendMessage(hComboBox, CB_GETCOUNT, 0, 0), 2)
@@ -116,7 +116,7 @@ TEST_F(DriverFormTest, TestAuthDropdown) {
 }
 
 TEST_F(DriverFormTest, TestCatalogDropdown) {
-  HWND hCatlogBox = GetDlgItem(form->GetHwnd(), IDC_Catlog_BOX);
+  HWND hCatlogBox = GetDlgItem(form->GetHwnd(), kIdcCatlogBOX);
   ASSERT_NE(hCatlogBox, nullptr) << "Catalog dropdown should be created.";
 
   ASSERT_EQ(SendMessage(hCatlogBox, CB_GETCOUNT, 0, 0), 2)
@@ -131,7 +131,7 @@ TEST_F(DriverFormTest, TestCatalogDropdown) {
 }
 
 TEST_F(DriverFormTest, TestDatasetDropdown) {
-  HWND hDatasetBox = GetDlgItem(form->GetHwnd(), IDC_Dataset_BOX);
+  HWND hDatasetBox = GetDlgItem(form->GetHwnd(), kIdcDatasetBOX);
   ASSERT_NE(hDatasetBox, nullptr) << "Dataset dropdown should be created.";
 
   ASSERT_EQ(SendMessage(hDatasetBox, CB_GETCOUNT, 0, 0), 2)
@@ -146,7 +146,7 @@ TEST_F(DriverFormTest, TestDatasetDropdown) {
 }
 
 TEST_F(DriverFormTest, TestEmailField) {
-  HWND hEmailEdit = GetDlgItem(form->GetHwnd(), IDC_EMAIL_EDIT);
+  HWND hEmailEdit = GetDlgItem(form->GetHwnd(), kIdcEmailEdit);
   ASSERT_NE(hEmailEdit, nullptr) << "Email edit control should be created.";
 
   char const* testEmail = "test@example.com";

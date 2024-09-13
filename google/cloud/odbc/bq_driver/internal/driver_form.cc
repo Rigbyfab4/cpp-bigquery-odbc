@@ -106,17 +106,17 @@ void DriverForm::Show() {
     HFONT hFont = CreateCustomFont(10);  // Font size 10
 
     // Create (Authentication header) before the dropdown
-    CreateWindowEx(
-        0, "STATIC",
-        "Authentication",                                  // Header text
-        WS_VISIBLE | WS_CHILD | SS_LEFT, 20, 90, 120, 20,  // Position and size
-        m_hwnd, (HMENU)IDC_HEADER_LABEL, GetModuleHandle(NULL), NULL);
+    CreateWindowEx(0, "STATIC",
+                   "Authentication",  // Header text
+                   WS_VISIBLE | WS_CHILD | SS_LEFT, 20, 90, 120,
+                   20,  // Position and size
+                   m_hwnd, (HMENU)kIdcHeaderLabel, GetModuleHandle(NULL), NULL);
 
     // Create (header) and dropdown on the same line
     HWND hAuthHead = CreateWindowEx(
         0, "STATIC", "OAuth Mechanism:", WS_VISIBLE | WS_CHILD | SS_LEFT,
         // labelX, 90, labelWidth, 20,  // Position and size of the text
-        20, 120, 120, 20, m_hwnd, (HMENU)IDC_LABEL, GetModuleHandle(NULL),
+        20, 120, 120, 20, m_hwnd, (HMENU)kIdcLabel, GetModuleHandle(NULL),
         NULL);
 
     // create dropdown
@@ -125,7 +125,7 @@ void DriverForm::Show() {
                        WS_TABSTOP | WS_VISIBLE | WS_CHILD |
                            CBS_DROPDOWN,  // Styles for a dropdown
                        // comboX, 90, comboWidth, 100,
-                       140, 120, 150, 100, m_hwnd, (HMENU)IDC_COMBOBOX,
+                       140, 120, 150, 100, m_hwnd, (HMENU)kIdcComboBox,
                        GetModuleHandle(NULL), NULL);
 
     // Create Email Label
@@ -136,7 +136,7 @@ void DriverForm::Show() {
     // Create Email Edit Control
     HWND hEmailEdit = CreateWindowEx(
         0, "EDIT", NULL, WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, 100, 160,
-        200, 20, m_hwnd, (HMENU)IDC_EMAIL_EDIT, GetModuleHandle(NULL), NULL);
+        200, 20, m_hwnd, (HMENU)kIdcEmailEdit, GetModuleHandle(NULL), NULL);
 
     // Create Key File Path Label
     HWND hPathAdd = CreateWindowEx(
@@ -146,18 +146,18 @@ void DriverForm::Show() {
     // Create Key File Path Edit Control
     HWND hKeyFileEdit = CreateWindowEx(
         0, "EDIT", NULL, WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT, 120, 200,
-        250, 20, m_hwnd, (HMENU)IDC_KEYFILE_EDIT, GetModuleHandle(NULL), NULL);
+        250, 20, m_hwnd, (HMENU)kIdcKeyfileEdit, GetModuleHandle(NULL), NULL);
 
     // Create Browse Button
     CreateWindowEx(0, "BUTTON", "Browse",
                    WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON, 150, 230,
-                   100, 20, m_hwnd, (HMENU)IDC_BROWSE_BUTTON,
+                   100, 20, m_hwnd, (HMENU)kIdcBrowseButton,
                    GetModuleHandle(NULL), NULL);
 
     HWND hCatalogText = CreateWindowEx(
         0, "STATIC", "Catalog (Project):", WS_VISIBLE | WS_CHILD | SS_LEFT,
         // labelX, 90, labelWidth, 20,  // Position and size of the text
-        20, 280, 110, 20, m_hwnd, (HMENU)IDC_Catalog_LABEL,
+        20, 280, 110, 20, m_hwnd, (HMENU)kIdcCatalogLabel,
         GetModuleHandle(NULL), NULL);
     // create dropdown
     HWND hCatlogBox =
@@ -165,21 +165,21 @@ void DriverForm::Show() {
                        WS_TABSTOP | WS_VISIBLE | WS_CHILD |
                            CBS_DROPDOWN,  // Styles for a dropdown
                        // comboX, 90, comboWidth, 100,
-                       160, 280, 230, 100, m_hwnd, (HMENU)IDC_Catlog_BOX,
+                       160, 280, 230, 100, m_hwnd, (HMENU)kIdcCatlogBOX,
                        GetModuleHandle(NULL), NULL);
 
     HWND hDatasetText = CreateWindowEx(
         0, "STATIC", "Dataset:", WS_VISIBLE | WS_CHILD | SS_LEFT,
         // labelX, 90, labelWidth, 20,  // Position and size of the text
-        20, 320, 50, 20, m_hwnd, (HMENU)IDC_Dataset_LABEL,
-        GetModuleHandle(NULL), NULL);
+        20, 320, 50, 20, m_hwnd, (HMENU)kIdcDatasetLabel, GetModuleHandle(NULL),
+        NULL);
     // create dropdown
     HWND hDatasetBox =
         CreateWindowEx(0, "COMBOBOX", NULL,
                        WS_TABSTOP | WS_VISIBLE | WS_CHILD |
                            CBS_DROPDOWN,  // Styles for a dropdown
                        // comboX, 90, comboWidth, 100,
-                       160, 320, 230, 100, m_hwnd, (HMENU)IDC_Dataset_BOX,
+                       160, 320, 230, 100, m_hwnd, (HMENU)kIdcDatasetBOX,
                        GetModuleHandle(NULL), NULL);
 
     // For OAuthMechanism dropdown values
@@ -206,8 +206,8 @@ void DriverForm::Show() {
     SendMessage(hKeyFileEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
     SendMessage(hCatalogText, WM_SETFONT, (WPARAM)hFont, TRUE);
     SendMessage(hDatasetText, WM_SETFONT, (WPARAM)hFont, TRUE);
-    SendMessage(GetDlgItem(m_hwnd, IDC_BROWSE_BUTTON), WM_SETFONT,
-                (WPARAM)hFont, TRUE);
+    SendMessage(GetDlgItem(m_hwnd, kIdcBrowseButton), WM_SETFONT, (WPARAM)hFont,
+                TRUE);
 
     // Create and position OK and Cancel buttons at the bottom
     RECT rcClient;
@@ -223,13 +223,13 @@ void DriverForm::Show() {
     CreateWindowEx(0, "BUTTON", "OK",
                    WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 20,
                    buttonY, buttonWidth, buttonHeight, m_hwnd,
-                   (HMENU)IDC_BUTTON_OK, GetModuleHandle(NULL), NULL);
+                   (HMENU)kIdcButtonOk, GetModuleHandle(NULL), NULL);
 
     // Create a Cancel button
     CreateWindowEx(0, "BUTTON", "Cancel",
                    WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
                    20 + buttonWidth + buttonSpacing, buttonY, buttonWidth,
-                   buttonHeight, m_hwnd, (HMENU)IDC_BUTTON_CANCEL,
+                   buttonHeight, m_hwnd, (HMENU)kIdcButtonCancel,
                    GetModuleHandle(NULL), NULL);
 
     ShowWindow(m_hwnd, SW_SHOW);
@@ -250,15 +250,15 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam,
 
     case WM_COMMAND:
       switch (LOWORD(wParam)) {
-        case IDC_BROWSE_BUTTON: {
-          HWND hEdit = GetDlgItem(hwnd, IDC_KEYFILE_EDIT);
+        case kIdcBrowseButton: {
+          HWND hEdit = GetDlgItem(hwnd, kIdcKeyfileEdit);
           OpenFileDialog(hwnd, hEdit);
         } break;
-        case IDC_BUTTON_OK:
+        case kIdcButtonOk:
 
           DestroyWindow(hwnd);  // Close the window
           break;
-        case IDC_BUTTON_CANCEL:
+        case kIdcButtonCancel:
           DestroyWindow(hwnd);  // Close the window
           break;
       }

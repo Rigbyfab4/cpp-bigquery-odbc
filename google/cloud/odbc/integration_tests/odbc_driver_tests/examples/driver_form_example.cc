@@ -20,9 +20,9 @@ namespace google::cloud::odbc_tests {
 
 namespace {
 using google::cloud::odbc_bq_driver_internal::DriverForm;
-using google::cloud::odbc_bq_driver_internal::IDC_BROWSE_BUTTON;
-using google::cloud::odbc_bq_driver_internal::IDC_BUTTON_OK;
-using google::cloud::odbc_bq_driver_internal::IDC_KEYFILE_EDIT;
+using google::cloud::odbc_bq_driver_internal::kIdcBrowseButton;
+using google::cloud::odbc_bq_driver_internal::kIdcButtonOk;
+using google::cloud::odbc_bq_driver_internal::kIdcKeyfileEdit;
 using google::cloud::odbc_bq_driver_internal::OpenFileDialog;
 
 #ifdef _WIN32
@@ -78,10 +78,10 @@ TEST_F(DriverFormTest, TestUIOpenAndClose) {
   ASSERT_TRUE(IsWindowVisible(form->GetHwnd()))
       << "Form window should be visible.";
 
-  HWND hOkButton = GetDlgItem(form->GetHwnd(), IDC_BUTTON_OK);
+  HWND hOkButton = GetDlgItem(form->GetHwnd(), kIdcButtonOk);
   ASSERT_NE(hOkButton, nullptr) << "OK button should be found.";
-  SendMessage(form->GetHwnd(), WM_COMMAND,
-              MAKEWPARAM(IDC_BUTTON_OK, BN_CLICKED), (LPARAM)hOkButton);
+  SendMessage(form->GetHwnd(), WM_COMMAND, MAKEWPARAM(kIdcButtonOk, BN_CLICKED),
+              (LPARAM)hOkButton);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -91,15 +91,15 @@ TEST_F(DriverFormTest, TestUIOpenAndClose) {
 }
 
 TEST_F(DriverFormTest, TestFileDialogButton) {
-  HWND hBrowseButton = GetDlgItem(form->GetHwnd(), IDC_BROWSE_BUTTON);
+  HWND hBrowseButton = GetDlgItem(form->GetHwnd(), kIdcBrowseButton);
   ASSERT_NE(hBrowseButton, nullptr) << "Browse button should be created.";
 
-  HWND hKeyFileEdit = GetDlgItem(form->GetHwnd(), IDC_KEYFILE_EDIT);
+  HWND hKeyFileEdit = GetDlgItem(form->GetHwnd(), kIdcKeyfileEdit);
   ASSERT_NE(hKeyFileEdit, nullptr) << "Key file path edit control should \
     be created.";
 
   SendMessage(form->GetHwnd(), WM_COMMAND,
-              MAKEWPARAM(IDC_BROWSE_BUTTON, BN_CLICKED), (LPARAM)hBrowseButton);
+              MAKEWPARAM(kIdcBrowseButton, BN_CLICKED), (LPARAM)hBrowseButton);
 
   char const* simulatedFilePath = "C:\\path\\to\\selected\\file.json";
   MockOpenFileDialog(form->GetHwnd(), hKeyFileEdit, simulatedFilePath);
