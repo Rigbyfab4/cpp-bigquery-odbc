@@ -20,7 +20,9 @@
 #include "google/cloud/odbc/bq_client_interface/storage.h"
 #include "google/cloud/odbc/bq_client_interface/tables.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
+#include "google/cloud/completion_queue.h"
 #include "google/cloud/credentials.h"
+#include "google/cloud/grpc_options.h"
 
 namespace google::cloud::odbc_bigquery_client_interface {
 
@@ -44,7 +46,7 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
   if (!credentials) {
     return credentials.GetStatusRecord();
   }
-  auto options =
+  Options options =
       google::cloud::Options{}.set<google::cloud::UnifiedCredentialsOption>(
           *credentials);
   DatasetClient dataset_client = DatasetClient(MakeDatasetConnection(options));
@@ -53,6 +55,11 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
   TableClient table_client = TableClient(MakeTableConnection(options));
   std::shared_ptr<::google::cloud::oauth2::AccessTokenGenerator> generator =
       ::google::cloud::oauth2::MakeAccessTokenGenerator(*(*credentials));
+
+  // Disable background threads for BQ Read Connection so we don't end up
+  // blocking the main thread with the shared driver library.
+  CompletionQueue cq;
+  options.set<GrpcCompletionQueueOption>(cq);
   BigQueryReadClient bigquery_read_client =
       BigQueryReadClient(MakeBigQueryReadConnection(options));
 
