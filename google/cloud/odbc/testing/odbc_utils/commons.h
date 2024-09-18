@@ -323,6 +323,9 @@ class Table {
   void InsertDateData(std::shared_ptr<ODBCHandles> conn,
                       std::vector<SQL_DATE_STRUCT> rows, bool insert_index);
 
+  void InsertTimeData(std::shared_ptr<ODBCHandles> conn,
+                      std::vector<SQL_TIME_STRUCT> rows, bool insert_index);
+
  private:
   std::string table_name_;
 };
@@ -336,6 +339,8 @@ std::string FormatDate(const SQL_DATE_STRUCT& date);
 std::string FormatTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 
 std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
+
+std::string FormatTimetoString(const SQL_TIME_STRUCT& time);
 
 void CreateTableDirect(std::shared_ptr<ODBCHandles> conn,
                        std::string create_table_schema, bool use_ansi = false);

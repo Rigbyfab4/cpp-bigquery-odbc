@@ -459,6 +459,11 @@ std::shared_ptr<Results> FetchResults(std::shared_ptr<ODBCHandles> conn,
           val = FormatTimeStamp(*timestamp);
           break;
         }
+        case SQL_TYPE_TIME: {
+          SQL_TIME_STRUCT* time = reinterpret_cast<SQL_TIME_STRUCT*>(data);
+          val = FormatTimetoString(*time);
+          break;
+        }
         default: {
           val = std::string(reinterpret_cast<char*>(data), data_len);
           break;

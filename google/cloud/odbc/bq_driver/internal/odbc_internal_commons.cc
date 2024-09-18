@@ -49,6 +49,18 @@ SQL_DATE_STRUCT ConvertStringToDateStruct(std::string const& date_str) {
   return date_struct;
 }
 
+SQL_TIME_STRUCT ConvertToTimeStruct(std::string const& time_str) {
+  int hr = std::stoi(time_str.substr(0, 2));
+  int min = std::stoi(time_str.substr(3, 2));
+  int sec = std::stoi(time_str.substr(6, 2));
+
+  SQL_TIME_STRUCT time;
+  time.hour = static_cast<SQLSMALLINT>(hr);
+  time.minute = static_cast<SQLUSMALLINT>(min);
+  time.second = static_cast<SQLUSMALLINT>(sec);
+  return time;
+}
+
 StatusRecordOr<ResultSet> ProcessResultSetRows(
     TableSchema const& schema, std::vector<RowData> const& rows) {
   ResultSet result_set;
@@ -94,6 +106,11 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
           case BQDataType::kDate: {
             SQL_DATE_STRUCT date_struct = ConvertStringToDateStruct(data);
             DateToDSValue(date_struct, row_val);
+            break;
+          }
+          case BQDataType::kTime: {
+            SQL_TIME_STRUCT t_data = ConvertToTimeStruct(data);
+            TimeToDSValue(t_data, row_val);
             break;
           }
           default: {

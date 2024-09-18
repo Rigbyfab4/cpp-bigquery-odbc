@@ -170,6 +170,51 @@ SQLRETURN IntValueToOutputBufferResponse(T val, SQLPOINTER buffer_ptr,
   return SQL_SUCCESS;
 }
 
+inline odbc_internal::StatusRecord TimeToOutputBufferResponse(
+    const SQL_TIME_STRUCT& conn_time, SQLPOINTER dest_buf, SQLLEN buffer_length,
+    SQLLEN* result_len) {
+  auto* dest_time = reinterpret_cast<SQL_TIME_STRUCT*>(dest_buf);
+  auto status_record = odbc_internal::StatusRecord::Ok();
+  if (buffer_length >= sizeof(SQL_TIME_STRUCT)) {
+    *dest_time = conn_time;
+    if (result_len) {
+      *result_len = sizeof(SQL_TIME_STRUCT);
+    }
+    return status_record;
+  }
+  status_record = odbc_internal::StatusRecord{
+      odbc_internal::SQLStates::k_01004(), "Date data, right truncated"};
+  return status_record;
+}
+
+inline odbc_internal::StatusRecord WStrToOutputBufferResponse(
+    std::wstring wstr, SQLPOINTER dest_buf, SQLLEN buffer_length,
+    SQLINTEGER src_len, SQLINTEGER supp_max_len, SQLLEN* res_len) {
+  auto status_record = odbc_internal::StatusRecord::Ok();
+  std::vector<SQLWCHAR> wstr_data(wstr.begin(), wstr.end());
+  wstr_data.emplace_back(L'\0');
+
+  auto* dest = static_cast<SQLWCHAR*>(dest_buf);
+  if (buffer_length > src_len) {
+    if (res_len) {
+      *res_len = src_len * sizeof(SQLWCHAR);
+    }
+    std::memcpy(dest, wstr_data.data(), (src_len) * sizeof(SQLWCHAR));
+  } else if (supp_max_len <= buffer_length && buffer_length <= src_len) {
+    if (res_len) {
+      *res_len = buffer_length * sizeof(SQLWCHAR);
+    }
+    std::memcpy(dest, wstr_data.data(), (buffer_length) * sizeof(SQLWCHAR));
+    status_record = odbc_internal::StatusRecord{
+        google::cloud::odbc_internal::SQLStates::k_01004(), "Data truncated"};
+  } else {
+    status_record = odbc_internal::StatusRecord{
+        google::cloud::odbc_internal::SQLStates::k_22003(),
+        "Buffer length is insufficient"};
+  }
+  return status_record;
+}
+
 SQLRETURN AddressToPointer(SQLPOINTER ptr, SQLPOINTER out_buf,
                            SQLINTEGER* str_len_ptr);
 

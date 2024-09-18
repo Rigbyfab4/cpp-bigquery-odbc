@@ -20,6 +20,7 @@ namespace google::cloud::odbc_bq_driver_internal {
 
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
+using google::cloud::odbc_internal::StatusRecordOr;
 using ::google::cloud::odbc_testing_utils::StatusRecIs;
 using ::testing::StrEq;
 
@@ -401,6 +402,138 @@ TEST(ConvertFromDateDSValue, SmallBufferForStringOutput) {
   EXPECT_THAT(result, StatusRecIs(SQLStates::k_01004(),
                                   StrEq("String data, right truncated")));
   EXPECT_STREQ(buffer, "YYYY");
+}
+
+TEST(ConvertFromTimeDSValue, ToTime) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  alignas(SQL_TIME_STRUCT) char dest_buf[sizeof(SQL_TIME_STRUCT)];
+  DataBuffer dest_data = {SQL_C_TYPE_TIME, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  SQL_TIME_STRUCT* data = reinterpret_cast<SQL_TIME_STRUCT*>(dest_data.buf);
+
+  EXPECT_EQ(data->hour, time.hour);
+  EXPECT_EQ(data->minute, time.minute);
+  EXPECT_EQ(data->second, time.second);
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(ConvertFromTimeDSValue, ToTime_InsufficientBufferCase) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  char dest_buf[5];
+  DataBuffer dest_data = {SQL_C_TYPE_TIME, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  EXPECT_EQ(status.sql_state, odbc_internal::SQLStates::k_01004());
+}
+
+TEST(ConvertFromTimeDSValue, ToTimestamp) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+
+  char dest_buf[sizeof(SQL_TIMESTAMP_STRUCT)];
+  DataBuffer dest_data = {SQL_C_TYPE_TIMESTAMP, dest_buf, sizeof(dest_buf),
+                          nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  ASSERT_TRUE(status.ok());
+  SQL_TIMESTAMP_STRUCT* data =
+      reinterpret_cast<SQL_TIMESTAMP_STRUCT*>(dest_buf);
+  EXPECT_EQ(data->hour, time.hour);
+  EXPECT_EQ(data->minute, time.minute);
+  EXPECT_EQ(data->second, time.second);
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(ConvertFromTimeDSValue, ToBinary) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  char dest_buf[20];
+  DataBuffer dest_data = {SQL_C_BINARY, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  ASSERT_TRUE(status.ok());
+  SQL_TIME_STRUCT* data = reinterpret_cast<SQL_TIME_STRUCT*>(dest_buf);
+
+  EXPECT_EQ(data->hour, time.hour);
+  EXPECT_EQ(data->minute, time.minute);
+  EXPECT_EQ(data->second, time.second);
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(ConvertFromTimeDSValue, ToWChar) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 07;
+  time.second = 20;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  SQLWCHAR dest_buf[32] = {0};
+  DataBuffer dest_data = {SQL_C_WCHAR, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  std::string expected_time = "19:07:20.000000";
+  StatusRecordOr<std::string> data = ConvertSQLWCHARToString(dest_buf, 15);
+  EXPECT_STREQ(data.GetValue().c_str(), expected_time.c_str());
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(ConvertFromTimeDSValue, ToChar) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  char dest_buf[16];
+  DataBuffer dest_data = {SQL_C_CHAR, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  std::string expected_time = "19:33:48.000000";
+  std::string data(dest_buf);
+  EXPECT_EQ(data, expected_time);
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(ConvertFromTimeDSValue, InsufficientBufferCase) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  char dest_buf[5];
+  DataBuffer dest_data = {SQL_C_BINARY, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  EXPECT_EQ(status.sql_state, odbc_internal::SQLStates::k_01004());
+}
+
+TEST(ConvertFromTimeDSValue, convertToInvalidType_Failed) {
+  SQL_TIME_STRUCT time;
+  time.hour = 19;
+  time.minute = 33;
+  time.second = 48;
+  DSValue src_dsval;
+  TimeToDSValue(time, src_dsval);
+  char dest_buf[16];
+  DataBuffer dest_data = {SQL_C_SLONG, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromTimeDSValue(src_dsval, dest_data);
+  ASSERT_EQ(status.sql_state, odbc_internal::SQLStates::k_HY000());
+  ASSERT_FALSE(status.ok());
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal

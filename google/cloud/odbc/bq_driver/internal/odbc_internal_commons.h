@@ -156,6 +156,23 @@ inline SQL_DATE_STRUCT DSValueToDate(DSValue const& value,
   return date_struct;
 }
 
+inline void TimeToDSValue(const SQL_TIME_STRUCT& time, DSValue& value) {
+  value.resize(sizeof(SQL_TIME_STRUCT));
+  std::memcpy(value.data(), &time, sizeof(SQL_TIME_STRUCT));
+}
+
+inline SQL_TIME_STRUCT DSValueToTime(DSValue const& value,
+                                     SQL_TIME_STRUCT& time_struct) {
+  std::memcpy(&time_struct, value.data(), sizeof(SQL_TIME_STRUCT));
+  return time_struct;
+}
+
+inline std::string FormatTimetoString(const SQL_TIME_STRUCT& time) {
+  char buffer[9];
+  snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", time.hour, time.minute,
+           time.second);
+  return buffer;
+}
 // This is the result populated by performing a bq query API.
 // For each call, onely one of PostQueryResults or GetQueryResults will be
 // populated with the following semantics:
