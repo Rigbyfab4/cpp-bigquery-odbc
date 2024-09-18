@@ -396,33 +396,17 @@ inline odbc_internal::StatusRecord ConvertFromTimeDSValue(
       std::string time_src_str;
       time_src_str = FormatTimetoString(dest_time);
       time_src_str.append(".000000");
-      int k_time_src_len = time_src_str.length();
+      SQLINTEGER k_time_src_len = time_src_str.length();
+      SQLINTEGER supp_max_len = 9;
       StatusRecordOr<std::wstring> wstr = Utf8ToUtf16(time_src_str);
       if (!wstr) {
         status_record = StatusRecord{SQLStates::k_HY000(),
                                      "DSValueToWchar Conversion Failed"};
         break;
       }
-      std::vector<SQLWCHAR> wstr_data(wstr->begin(), wstr->end());
-      wstr_data.emplace_back(L'\0');
-
-      auto* dest = static_cast<SQLWCHAR*>(dest_buf);
-      if (buffer_length > k_time_src_len) {
-        if (res_len) {
-          *res_len = k_time_src_len * sizeof(SQLWCHAR);
-        }
-        std::memcpy(dest, wstr_data.data(),
-                    (k_time_src_len) * sizeof(SQLWCHAR));
-      } else if (9 <= buffer_length && buffer_length <= k_time_src_len) {
-        if (res_len) {
-          *res_len = buffer_length * sizeof(SQLWCHAR);
-        }
-        std::memcpy(dest, wstr_data.data(), (buffer_length) * sizeof(SQLWCHAR));
-        status_record = StatusRecord{SQLStates::k_01004(), "Data truncated"};
-      } else {
-        status_record =
-            StatusRecord{SQLStates::k_22003(), "Buffer length is insufficient"};
-      }
+      return WStrToOutputBufferResponse(
+          wstr.GetValue(), dest_buf, buffer_length, k_time_src_len,
+          supp_max_len, reinterpret_cast<SQLLEN*>(dest_data.result_len));
       break;
     }
     case SQL_C_BINARY: {

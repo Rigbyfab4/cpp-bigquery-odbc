@@ -693,7 +693,8 @@ std::vector<TimeBasicTestStruct> const kConversionFromTimeTestData{
     {SQL_C_BINARY, {04, 06, 07}, SQL_SUCCESS},
 
 };
-// TODO Remove assertions &
+// TODO (b/365915498):
+// Remove assertions &
 // Move as  utility function to testing/odbc_utils
 void TestTranslationsFromTime(std::shared_ptr<ODBCHandles> conn,
                               std::string query) {

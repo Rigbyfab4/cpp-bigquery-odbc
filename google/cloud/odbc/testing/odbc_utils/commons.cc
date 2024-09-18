@@ -450,7 +450,6 @@ void Table::InsertTimeData(std::shared_ptr<ODBCHandles> conn,
     }
     insert_stmt.append(row_str);
   }
-  std::cout << "Insert statement=" << insert_stmt << std::endl;
   SQLRETURN status;
 
   status = SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt.c_str(),
