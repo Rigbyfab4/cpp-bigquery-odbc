@@ -123,6 +123,7 @@ std::vector<Int64BasicTestStruct> const kConversionFromInt64TestData{
     {SQL_C_BIT, 2, SQL_ERROR},
 };
 
+// TODO(b/368251064): Remove designated identifiers to support C++17.
 std::vector<IntervalBasicTestStruct> const kConversionYearMonthIntervalTestData{
     {SQL_C_CHAR, {SQL_IS_YEAR, 1, {.year_month = {3, 0}}}, SQL_SUCCESS},
     {SQL_C_INTERVAL_YEAR,
@@ -131,15 +132,17 @@ std::vector<IntervalBasicTestStruct> const kConversionYearMonthIntervalTestData{
     {SQL_C_INTERVAL_MONTH,
      {SQL_IS_MONTH, 1, {.year_month = {0, 8}}},
      SQL_SUCCESS},
+    {SQL_C_DOUBLE, {SQL_IS_YEAR, 1, {.year_month = {9, 0}}}, SQL_ERROR},
     {SQL_C_WCHAR,
      {SQL_IS_YEAR_TO_MONTH, 1, {.year_month = {2, 5}}},
      SQL_SUCCESS},
     {SQL_C_INTERVAL_YEAR_TO_MONTH,
      {SQL_IS_YEAR_TO_MONTH, 1, {.year_month = {1, 6}}},
      SQL_SUCCESS},
-    {SQL_C_BINARY, {SQL_IS_MONTH, 1, {.year_month = {0, 10}}}, SQL_SUCCESS},
+    {SQL_C_FLOAT, {SQL_IS_MONTH, 1, {.year_month = {0, 9}}}, SQL_ERROR},
 };
 
+// TODO(b/368251064): Remove designated identifiers to support C++17.
 std::vector<IntervalBasicTestStruct> const kConversionDaySecondIntervalTestData{
     {SQL_C_CHAR, {SQL_IS_DAY, 1, {.day_second = {5, 0, 0, 0, 0}}}, SQL_SUCCESS},
     {SQL_C_WCHAR,
@@ -151,6 +154,9 @@ std::vector<IntervalBasicTestStruct> const kConversionDaySecondIntervalTestData{
     {SQL_C_INTERVAL_DAY,
      {SQL_IS_DAY, 1, {.day_second = {15, 0, 0, 0, 0}}},
      SQL_SUCCESS},
+    {SQL_C_FLOAT,
+     {SQL_IS_MINUTE, 1, {.day_second = {0, 0, 45, 0, 0}}},
+     SQL_ERROR},
     {SQL_C_INTERVAL_HOUR,
      {SQL_IS_HOUR, 1, {.day_second = {0, 20, 0, 0, 0}}},
      SQL_SUCCESS},
@@ -160,6 +166,9 @@ std::vector<IntervalBasicTestStruct> const kConversionDaySecondIntervalTestData{
     {SQL_C_INTERVAL_SECOND,
      {SQL_IS_SECOND, 1, {.day_second = {0, 0, 0, 10, 0}}},
      SQL_SUCCESS},
+    {SQL_C_DOUBLE,
+     {SQL_IS_DAY_TO_HOUR, 1, {.day_second = {10, 14, 0, 0, 0}}},
+     SQL_ERROR},
     {SQL_C_INTERVAL_DAY_TO_HOUR,
      {SQL_IS_DAY_TO_HOUR, 1, {.day_second = {10, 14, 0, 0, 0}}},
      SQL_SUCCESS},
@@ -175,12 +184,16 @@ std::vector<IntervalBasicTestStruct> const kConversionDaySecondIntervalTestData{
     {SQL_C_INTERVAL_HOUR_TO_SECOND,
      {SQL_IS_HOUR_TO_SECOND, 1, {.day_second = {0, 11, 10, 25, 0}}},
      SQL_SUCCESS},
+    {SQL_C_BIT,
+     {SQL_IS_DAY_TO_SECOND, 1, {.day_second = {2, 1, 2, 20, 500}}},
+     SQL_ERROR},
     {SQL_C_INTERVAL_MINUTE_TO_SECOND,
      {SQL_IS_MINUTE_TO_SECOND, 1, {.day_second = {0, 0, 50, 10, 100}}},
      SQL_SUCCESS},
 
 };
 
+// TODO(b/368251064): Remove designated identifiers to support C++17.
 std::vector<IntervalBasicTestStruct> const
     kConversionFromSinglePrecisionIntervalData{
         {SQL_C_CHAR, {SQL_IS_YEAR, 1, {.year_month = {5, 0}}}, SQL_SUCCESS},
@@ -589,6 +602,10 @@ void TestTranslationFromIntervalYearMonth(std::shared_ptr<ODBCHandles> conn,
                   returned_val->intval.year_month.month);
         break;
       }
+      case SQL_C_DOUBLE: {
+        EXPECT_EQ(status, expected.status);
+        break;
+      }
       case SQL_C_WCHAR: {
         SQLINTEGER length = strlen_or_ind / sizeof(SQLWCHAR);
         std::string returned_val = ConvertSQLWCHARToString(
@@ -610,17 +627,10 @@ void TestTranslationFromIntervalYearMonth(std::shared_ptr<ODBCHandles> conn,
                   returned_val->intval.year_month.month);
         break;
       }
-
-        // TODO: Giving garbage value by simba
-        // case SQL_C_BINARY: {
-        //   SQL_INTERVAL_STRUCT* interval =
-        //   reinterpret_cast<SQL_INTERVAL_STRUCT*>(data_char); std::string
-        //   returned_val = FormatInterval(*interval); std::cout << "data-> "<<
-        //   returned_val<< std::endl;
-
-        //   break;
-        // }
-
+      case SQL_C_FLOAT: {
+        EXPECT_EQ(status, expected.status);
+        break;
+      }
       default:
         break;
     }
@@ -672,17 +682,6 @@ void TestTranslationFromIntervalDaySecond(std::shared_ptr<ODBCHandles> conn,
         EXPECT_EQ(expected_val, returned_val);
         break;
       }
-
-        // TODO: Giving garbage value by simba
-        // case SQL_C_BINARY: {
-        //   SQL_INTERVAL_STRUCT* interval =
-        //   reinterpret_cast<SQL_INTERVAL_STRUCT*>(data_char); std::string
-        //   returned_val = FormatInterval(*interval); std::cout << "data-> "<<
-        //   returned_val<< std::endl;
-
-        //   break;
-        // }
-
       case SQL_C_INTERVAL_DAY: {
         SQL_INTERVAL_STRUCT* returned_val =
             reinterpret_cast<SQL_INTERVAL_STRUCT*>(data_char);
@@ -691,6 +690,10 @@ void TestTranslationFromIntervalDaySecond(std::shared_ptr<ODBCHandles> conn,
                   returned_val->interval_type);
         EXPECT_EQ(expected.interval_value.intval.day_second.day,
                   returned_val->intval.day_second.day);
+        break;
+      }
+      case SQL_C_FLOAT: {
+        EXPECT_EQ(status, expected.status);
         break;
       }
       case SQL_C_INTERVAL_HOUR: {
@@ -721,6 +724,10 @@ void TestTranslationFromIntervalDaySecond(std::shared_ptr<ODBCHandles> conn,
                   returned_val->interval_type);
         EXPECT_EQ(expected_val.day_second.second,
                   returned_val->intval.day_second.second);
+        break;
+      }
+      case SQL_C_DOUBLE: {
+        EXPECT_EQ(status, expected.status);
         break;
       }
       case SQL_C_INTERVAL_DAY_TO_HOUR: {
@@ -790,6 +797,10 @@ void TestTranslationFromIntervalDaySecond(std::shared_ptr<ODBCHandles> conn,
                   returned_val->intval.day_second.minute);
         EXPECT_EQ(expected_val.day_second.second,
                   returned_val->intval.day_second.second);
+        break;
+      }
+      case SQL_C_BIT: {
+        EXPECT_EQ(status, expected.status);
         break;
       }
       case SQL_C_INTERVAL_MINUTE_TO_SECOND: {
@@ -1100,40 +1111,6 @@ TEST(DataTranslationTest, From_Interval_Year_Month) {
   table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
-// Disable this test case as simba returning null values
-// TEST(DataTranslationTest, From_Interval_Day_Second) {
-//   auto const table_name =
-//       kDatasetWithTablePrefix +
-//       "ODBC_DATA_TRANSLATION_SQL_INTERVAL_DAY_SECOND";
-//   Table table(table_name);
-//   auto conn = std::make_shared<ODBCHandles>();
-//   // Create Table
-//   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-//   table.CreateWithPrepare(conn, "(index INT64, IntervalField INTERVAL)");
-//   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-//   // Insert data to read
-//   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-//   std::vector<SQL_INTERVAL_STRUCT> interval_data;
-//   for (auto const& test_data : kConversionDaySecondIntervalTestData) {
-//     interval_data.push_back(test_data.interval_value);
-//   }
-//   table.InsertIntervalData(conn, interval_data);
-//   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-//   // Read data
-//   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-//   std::string qry =
-//       "SELECT IntervalField FROM " + table_name + " ORDER BY index;";
-//   TestTranslationFromIntervalDaySecond(conn, qry);
-//   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-//   // drop table
-//   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-//   table.DropWithPrepare(conn);
-//   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-// }
 
 TEST(DataTranslationTest, From_Interval_to_Arithmetic) {
   auto const table_name = kDatasetWithTablePrefix +
