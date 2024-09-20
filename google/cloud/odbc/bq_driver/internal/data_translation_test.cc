@@ -581,4 +581,16 @@ TEST(ConvertFromJsonDSValue, To_SQL_C_WCHAR_success) {
   EXPECT_STREQ(returned_val.GetValue().c_str(), expected_val.c_str());
 }
 
+TEST(ConvertFromJsonDSValue, convertToWchar_Failed) {
+  DSValue ds_value;
+  json src_val = nlohmann::json({{"age", 30}, {"name", "Shivam"}});
+  std::string expected_val = "{\"age\":30,\"name\":\"Shivam\"}";
+  JsonToDSValue(src_val, ds_value);
+  char dest_buf[10];
+  DataBuffer dest_data = {SQL_C_WCHAR, dest_buf, sizeof(dest_buf), nullptr};
+  auto status = ConvertFromJsonDSValue(ds_value, dest_data);
+  EXPECT_EQ(status.sql_state, odbc_internal::SQLStates::k_22003());
+  ASSERT_FALSE(status.ok());
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal
