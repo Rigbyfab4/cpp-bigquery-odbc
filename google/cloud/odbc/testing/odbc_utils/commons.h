@@ -463,6 +463,9 @@ std::wstring Utf8ToUtf16(std::string const& utf_8_str);
 
 std::string ConvertSQLWCHARToString(SQLWCHAR* in_str, SQLINTEGER in_str_len);
 
+SQLRETURN GetConvertedJsonData(std::shared_ptr<ODBCHandles> conn,
+                               std::string query, SQLSMALLINT target_c_type,
+                               SQLLEN* strlen_or_ind, SQLPOINTER* data);
 }  // namespace google::cloud::odbc_tests
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_ODBC_UTILS_COMMONS_H

@@ -1142,4 +1142,28 @@ std::string ConvertSQLWCHARToString(SQLWCHAR* in_str, SQLINTEGER in_str_len) {
   return Utf16ToUtf8(stmt_txt_wstr);
 }
 
+SQLRETURN GetConvertedJsonData(std::shared_ptr<ODBCHandles> conn,
+                               std::string query, SQLSMALLINT target_c_type,
+                               SQLLEN* strlen_or_ind, SQLPOINTER* data) {
+  SQLRETURN status;
+  // SQLPOINTER data[kBufferLength];
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query.c_str());
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+  status = SQLBindCol(conn->hstmt, 1, target_c_type, data, kBufferLength,
+                      strlen_or_ind);
+  CheckError(status, "SQLBindCol", conn);
+  status = SQLFetch(conn->hstmt);
+  if (SQL_SUCCEEDED(status)) {
+    CheckError(status, "SQLFetch", conn);
+  }
+  SQLFreeStmt(conn->hstmt, SQL_CLOSE);
+  return status;
+}
+
 }  // namespace google::cloud::odbc_tests

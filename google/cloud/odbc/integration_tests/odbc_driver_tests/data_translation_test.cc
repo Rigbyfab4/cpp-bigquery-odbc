@@ -1418,33 +1418,17 @@ std::vector<JsonBasicTestStruct> const kConversionFromJsonTestData{
 };
 
 void TestTranslationsFromJsonToALL(std::shared_ptr<ODBCHandles> conn,
-                                   std::string query) {
+                                   std::string table_name) {
   SQLRETURN status;
   SQLPOINTER data[kBufferLength];
   SQLLEN strlen_or_ind;
-  char read_stmt[kBufferLength];
-  StrToChar(read_stmt, query.c_str());
-
+  int id = 0;
   int row_count = 0;
-
-  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
-  CheckError(status, "SQLPrepare", conn);
-
-  status = SQLExecute(conn->hstmt);
-  CheckError(status, "SQLExecute", conn);
   for (auto const& expected : kConversionFromJsonTestData) {
-    status = SQLBindCol(conn->hstmt, 1, expected.target_c_type, data,
-                        kBufferLength, &strlen_or_ind);
-
-    CheckError(status, "SQLBindCol", conn);
-    status = SQLFetch(conn->hstmt);
-    if (status == SQL_NO_DATA) {
-      break;
-    }
-    if (SQL_SUCCEEDED(status)) {
-      CheckError(status, "SQLFetch", conn);
-    }
-
+    auto const query = "SELECT PersonDetails FROM " + table_name +
+                       " WHERE Id = " + std::to_string(id);
+    status = GetConvertedJsonData(conn, query, expected.target_c_type,
+                                  &strlen_or_ind, data);
     switch (expected.target_c_type) {
       case SQL_C_CHAR: {
         std::string returned_val = (char*)data;
@@ -1472,6 +1456,7 @@ void TestTranslationsFromJsonToALL(std::shared_ptr<ODBCHandles> conn,
         break;
       }
     }
+    id++;
     ++row_count;
   }
 }
@@ -1490,8 +1475,8 @@ TEST(DataTranslationTest, From_Json_to_ALL) {
     json_data_to_insert.push_back(elem.value);
   }
   table.InsertJsonData(conn, json_data_to_insert, true);
-  auto const query = "SELECT PersonDetails FROM " + table_name + " Order by Id";
-  TestTranslationsFromJsonToALL(conn, query);
+
+  TestTranslationsFromJsonToALL(conn, table_name);
   // Delete table
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
