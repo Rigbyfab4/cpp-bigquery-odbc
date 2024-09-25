@@ -105,8 +105,7 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
             break;
           }
           case BQDataType::kJson: {
-            nlohmann::json j_data = nlohmann::json::parse(data);
-            JsonToDSValue(j_data, row_val);
+            StringToDSValue(data, row_val);
             break;
           }
           case BQDataType::kDate: {

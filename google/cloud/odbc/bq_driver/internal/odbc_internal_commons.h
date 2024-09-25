@@ -173,14 +173,7 @@ inline std::string FormatTimetoString(const SQL_TIME_STRUCT& time) {
            time.second);
   return buffer;
 }
-inline void JsonToDSValue(nlohmann::json& json_src_val, DSValue& value) {
-  std::string str = json_src_val.dump();
-  StringToDSValue(str, value);
-}
 
-inline void JsonDSValueToString(DSValue const& value, std::string& str) {
-  DSValueToString(value, str);
-}
 // This is the result populated by performing a bq query API.
 // For each call, onely one of PostQueryResults or GetQueryResults will be
 // populated with the following semantics:

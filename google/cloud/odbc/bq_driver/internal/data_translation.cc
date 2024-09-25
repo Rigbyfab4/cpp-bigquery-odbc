@@ -23,8 +23,7 @@ namespace google::cloud::odbc_bq_driver_internal {
 StatusRecord ConvertFromJsonDSValue(DSValue const& src_dsval,
                                     DataBuffer& dest_data) {
   std::string src_str;
-  JsonDSValueToString(src_dsval, src_str);
-
+  DSValueToString(src_dsval, src_str);
   SQLSMALLINT dest_type = dest_data.type;
   SQLPOINTER dest_buf = dest_data.buf;
   SQLLEN buffer_length = dest_data.buflen;

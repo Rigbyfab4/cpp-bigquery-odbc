@@ -545,7 +545,8 @@ TEST(ConvertFromJsonDSValue, To_SQL_C_CHAR_success) {
   DSValue ds_value;
   json src_val = nlohmann::json({{"age", 30}, {"name", "Sita"}});
   std::string expected_val = "{\"age\":30,\"name\":\"Sita\"}";
-  JsonToDSValue(src_val, ds_value);
+  std::string str = src_val.dump();
+  StringToDSValue(str, ds_value);
   StatusRecord status_record = ConvertFromJsonDSValue(ds_value, data);
   std::string returned_val = (char*)data.buf;
   EXPECT_EQ(returned_val, expected_val);
@@ -558,7 +559,8 @@ TEST(ConvertFromJsonDSValue, To_SQL_C_CHAR_Failure) {
   DSValue ds_value;
   json src_val = nlohmann::json({{"age", 30}, {"name", "Suzan"}});
   std::string expected_val = "{\"age\":30,\"name\":\"Suzan\"}";
-  JsonToDSValue(src_val, ds_value);
+  std::string str = src_val.dump();
+  StringToDSValue(str, ds_value);
   StatusRecord status_record = ConvertFromJsonDSValue(ds_value, data);
   EXPECT_THAT(
       status_record,
@@ -573,7 +575,8 @@ TEST(ConvertFromJsonDSValue, To_SQL_C_WCHAR_success) {
   DSValue ds_value;
   json src_val = nlohmann::json({{"age", 30}, {"name", "Shivam"}});
   std::string expected_val = "{\"age\":30,\"name\":\"Shivam\"}";
-  JsonToDSValue(src_val, ds_value);
+  std::string str = src_val.dump();
+  StringToDSValue(str, ds_value);
   StatusRecord status_record = ConvertFromJsonDSValue(ds_value, data);
   SQLINTEGER length = data_len / sizeof(SQLWCHAR);
   StatusRecordOr<std::string> returned_val =
@@ -585,7 +588,8 @@ TEST(ConvertFromJsonDSValue, convertToWchar_Failed) {
   DSValue ds_value;
   json src_val = nlohmann::json({{"age", 30}, {"name", "Shivam"}});
   std::string expected_val = "{\"age\":30,\"name\":\"Shivam\"}";
-  JsonToDSValue(src_val, ds_value);
+  std::string str = src_val.dump();
+  StringToDSValue(str, ds_value);
   char dest_buf[10];
   DataBuffer dest_data = {SQL_C_WCHAR, dest_buf, sizeof(dest_buf), nullptr};
   auto status = ConvertFromJsonDSValue(ds_value, dest_data);
