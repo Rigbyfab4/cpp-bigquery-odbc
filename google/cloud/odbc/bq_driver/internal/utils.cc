@@ -225,7 +225,12 @@ StatusRecordOr<Section> ParseConnectionString(std::string& str) {
 
 std::string GetPathToOdbcIni() {
 #ifdef _WIN32
+  // 64-bit
   absl::optional<std::string> path = "SOFTWARE\\ODBC\\ODBC.INI";
+#ifndef _WIN64
+  // 32-bit
+  path = "SOFTWARE\\WOW6432Node\\ODBC\\ODBC.INI";
+#endif /* WIN64 */
   if (path) {
     return *path;
   }
