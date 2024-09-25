@@ -19,6 +19,7 @@
 #include "google/cloud/internal/backoff_policy.h"
 #include "google/cloud/internal/getenv.h"
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 // We need sorting functions
 #include <algorithm>
 #include <fstream>
@@ -369,6 +370,12 @@ class Table {
                           std::vector<SQL_INTERVAL_STRUCT> rows,
                           bool use_ansi = false);
 
+  // This is used to insert json darainto a table which only has a string
+  // column.
+  void InsertJsonData(std::shared_ptr<ODBCHandles> conn,
+                      std::vector<nlohmann::json> rows,
+                      bool insert_index = false);
+
  private:
   std::string table_name_;
 };
@@ -456,6 +463,9 @@ std::wstring Utf8ToUtf16(std::string const& utf_8_str);
 
 std::string ConvertSQLWCHARToString(SQLWCHAR* in_str, SQLINTEGER in_str_len);
 
+SQLRETURN GetConvertedJsonData(std::shared_ptr<ODBCHandles> conn,
+                               std::string query, SQLSMALLINT target_c_type,
+                               SQLLEN* strlen_or_ind, SQLPOINTER* data);
 }  // namespace google::cloud::odbc_tests
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_TESTING_ODBC_UTILS_COMMONS_H

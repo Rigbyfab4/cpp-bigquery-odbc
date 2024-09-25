@@ -173,6 +173,7 @@ inline std::string FormatTimetoString(const SQL_TIME_STRUCT& time) {
            time.second);
   return buffer;
 }
+
 // This is the result populated by performing a bq query API.
 // For each call, onely one of PostQueryResults or GetQueryResults will be
 // populated with the following semantics:

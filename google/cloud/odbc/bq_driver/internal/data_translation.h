@@ -23,6 +23,7 @@
 
 namespace google::cloud::odbc_bq_driver_internal {
 constexpr int kTimeCharLength = 8;
+using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
 // Checks if an arithmetic value can be converted to another accurately.
 template <typename SrcType, typename DestType>
@@ -525,6 +526,9 @@ inline odbc_internal::StatusRecord ConvertFromDateDSValue(
 
   return status_record;
 }
+
+StatusRecord ConvertFromJsonDSValue(DSValue const& src_dsval,
+                                    DataBuffer& dest_data);
 }  // namespace google::cloud::odbc_bq_driver_internal
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_DATA_TRANSLATION_H

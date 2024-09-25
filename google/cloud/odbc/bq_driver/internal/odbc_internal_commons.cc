@@ -32,6 +32,7 @@ using ::google::cloud::bigquery_v2_minimal_internal::TableSchema;
 using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecord;
 using ::google::cloud::odbc_internal::StatusRecordOr;
+using json = nlohmann::json;
 
 SQL_DATE_STRUCT ConvertStringToDateStruct(std::string const& date_str) {
   if (date_str.empty() || date_str.size() < SQL_DATE_LEN) {
@@ -101,6 +102,10 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
           case BQDataType::kFloat64: {
             SQLDOUBLE d_data = std::stod(data);
             ArithmeticToDSValue<SQLDOUBLE>(d_data, row_val);
+            break;
+          }
+          case BQDataType::kJson: {
+            StringToDSValue(data, row_val);
             break;
           }
           case BQDataType::kDate: {

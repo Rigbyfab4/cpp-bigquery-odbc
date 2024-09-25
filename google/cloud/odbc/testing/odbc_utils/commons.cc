@@ -778,6 +778,45 @@ void Table::InsertIntervalData(std::shared_ptr<ODBCHandles> conn,
   }
 }
 
+void Table::InsertJsonData(std::shared_ptr<ODBCHandles> conn,
+                           std::vector<nlohmann::json> rows,
+                           bool insert_index) {
+  auto insert_stmt = "INSERT INTO " + table_name_ + " VALUES ";
+  int num_rows = rows.size();
+  if (!num_rows) {
+    return;
+  }
+
+  for (int i = 0; i < num_rows; i++) {
+    nlohmann::json json_field = rows[i];
+    std::string row_str = "( ";
+    if (insert_index) {
+      row_str.append(std::to_string(i) + ", ");
+    }
+
+    if (json_field != NULL) {
+      row_str.append("JSON '");
+      row_str.append(to_string(json_field));
+      row_str.append("'");
+    }
+
+    row_str.append(")");
+    if (i != (num_rows - 1)) {
+      row_str.append(", ");
+    }
+    insert_stmt.append(row_str);
+  }
+
+  SQLRETURN status;
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt.c_str(),
+                      insert_stmt.size());
+
+  CheckError(status, "SQLPrepare", conn);
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+}
+
 void CreateTableDirect(std::shared_ptr<ODBCHandles> conn,
                        std::string create_table_schema, bool use_ansi) {
   char create_table_stmt[kBufferLength];
@@ -1101,6 +1140,30 @@ std::string ConvertSQLWCHARToString(SQLWCHAR* in_str, SQLINTEGER in_str_len) {
     stmt_txt_wstr.push_back(static_cast<wchar_t>(in_str[i]));
   }
   return Utf16ToUtf8(stmt_txt_wstr);
+}
+
+SQLRETURN GetConvertedJsonData(std::shared_ptr<ODBCHandles> conn,
+                               std::string query, SQLSMALLINT target_c_type,
+                               SQLLEN* strlen_or_ind, SQLPOINTER* data) {
+  SQLRETURN status;
+  // SQLPOINTER data[kBufferLength];
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query.c_str());
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+  status = SQLBindCol(conn->hstmt, 1, target_c_type, data, kBufferLength,
+                      strlen_or_ind);
+  CheckError(status, "SQLBindCol", conn);
+  status = SQLFetch(conn->hstmt);
+  if (SQL_SUCCEEDED(status)) {
+    CheckError(status, "SQLFetch", conn);
+  }
+  SQLFreeStmt(conn->hstmt, SQL_CLOSE);
+  return status;
 }
 
 }  // namespace google::cloud::odbc_tests
