@@ -224,18 +224,18 @@ StatusRecordOr<Section> ParseConnectionString(std::string& str) {
 }
 
 std::string GetPathToOdbcIni() {
-  absl::optional<std::string> path;
 #ifdef _WIN32
-#ifdef _WIN64
-  path = "SOFTWARE\\ODBC\\ODBC.INI";
-#else
+  // 64-bit
+  absl::optional<std::string> path = "SOFTWARE\\ODBC\\ODBC.INI";
+#ifndef _WIN64
+  // 32-bit
   path = "SOFTWARE\\WOW6432Node\\ODBC\\ODBC.INI";
 #endif /* WIN64 */
   if (path) {
     return *path;
   }
 #else
-  path = google::cloud::internal::GetEnv("ODBCINI");
+  absl::optional<std::string> path = google::cloud::internal::GetEnv("ODBCINI");
   if (path) {
     return *path;
   }
@@ -244,7 +244,7 @@ std::string GetPathToOdbcIni() {
     return *home + "/.odbc.ini";
   }
 #endif /* WIN32 */
-  return path.value_or("");
+  return "";
 }
 
 std::vector<std::string> SplitTableTypes(std::string const& table_types) {

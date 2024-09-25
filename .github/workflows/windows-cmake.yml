@@ -115,7 +115,7 @@ jobs:
         export MSVC_VERSION="${{ matrix.msvc }}"
         export CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX="windows_${MSVC_VERSION//[-:;.,?\/]/_}_${{ matrix.arch}}_$BUILD_SHARD"
         export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="C:\\a\\cpp-bigquery-odbc\\cpp-bigquery-odbc\\service_account_auth_keys.json"
-        if [ "${{ matrix.msvc }}" == "msvc-2022" ] && ([ "${{ matrix.arch }}" == "x86" ] || [ "${{ matrix.arch }}" == "x64" ]); then
+        if [ "${{ matrix.msvc }}" == "msvc-2022" ]; then
           ci/gha/builds/windows-cmake-integration.sh
         else
           ci/gha/builds/windows-cmake.sh
