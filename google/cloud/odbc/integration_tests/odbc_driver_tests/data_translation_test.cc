@@ -943,6 +943,8 @@ TEST(DataTranslationTest, From_INT64_to_all) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
+
 struct TimestampBasicTestStruct {
   // The target C type SQLBindCol will convert SQL type to
   SQLSMALLINT target_c_type;
@@ -1077,6 +1079,8 @@ TEST(DataTranslationTest, From_SQL_Timestamp_to_all) {
   table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
+#ifndef BQ_DRIVER_INTEGRATION_TESTS
 
 TEST(DataTranslationTest, From_Interval_Year_Month) {
   auto conn = std::make_shared<ODBCHandles>();
