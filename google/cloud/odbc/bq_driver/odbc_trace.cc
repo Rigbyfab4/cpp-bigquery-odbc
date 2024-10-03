@@ -1103,25 +1103,10 @@ void TraceFunctionEntry_SQLGetCursorNameW(SQLHSTMT statement_handle,
                                           SQLSMALLINT cur_name_buf_len,
                                           SQLSMALLINT* cur_name_str_len,
                                           TraceOptions& opts) {
-  StatusRecordOr<std::string> utf8_cur_name =
-      ConvertSQLWCHARToString(cur_name, *cur_name_str_len);
-  if (!utf8_cur_name) {
-    TracePrintInternal(opts, utf8_cur_name.GetStatusRecord().message);
-    return;
-  }
-  *cur_name_str_len = utf8_cur_name->length();
+  auto* cur_name_temp = reinterpret_cast<SQLCHAR*>(cur_name);
 
-  TraceFunctionEntry_SQLGetCursorName(statement_handle,
-                                      ToSqlChar(utf8_cur_name->data()),
+  TraceFunctionEntry_SQLGetCursorName(statement_handle, cur_name_temp,
                                       cur_name_buf_len, cur_name_str_len, opts);
-
-  StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
-  if (!utf16_cur_name) {
-    TracePrintInternal(opts, utf16_cur_name.GetStatusRecord().message);
-    return;
-  }
-  cur_name = ToSqlWChar(utf16_cur_name->data());
-  *cur_name_str_len = utf16_cur_name->length();
 }
 
 void TraceFunctionExit_SQLGetCursorNameW(SQLRETURN ret_code,
@@ -1164,23 +1149,17 @@ void TraceFunctionEntry_SQLSetCursorNameW(SQLHSTMT statement_handle,
                                           SQLWCHAR* cur_name,
                                           SQLSMALLINT cur_name_len,
                                           TraceOptions& opts) {
-  StatusRecordOr<std::string> utf8_cur_name =
-      ConvertSQLWCHARToString(cur_name, cur_name_len);
-  if (!utf8_cur_name) {
-    TracePrintInternal(opts, utf8_cur_name.GetStatusRecord().message);
-    return;
+  StatusRecordOr<std::string> utf8_cur_name;
+  if (cur_name_len > 0 || cur_name_len == SQL_NTS) {
+    utf8_cur_name = ConvertSQLWCHARToString(cur_name, cur_name_len);
+    if (!utf8_cur_name) {
+      TracePrintInternal(opts, utf8_cur_name.GetStatusRecord().message);
+      return;
+    }
+    cur_name_len = utf8_cur_name->length();
   }
-  cur_name_len = utf8_cur_name->length();
-
   TraceFunctionEntry_SQLSetCursorName(
       statement_handle, ToSqlChar(utf8_cur_name->data()), cur_name_len, opts);
-
-  StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
-  if (!utf16_cur_name) {
-    TracePrintInternal(opts, utf16_cur_name.GetStatusRecord().message);
-    return;
-  }
-  cur_name = ToSqlWChar(utf16_cur_name->data());
 }
 
 void TraceFunctionExit_SQLSetCursorNameW(SQLRETURN ret_code,

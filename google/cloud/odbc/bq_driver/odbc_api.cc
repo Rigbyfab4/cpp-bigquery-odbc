@@ -1742,17 +1742,29 @@ SQLRETURN SQL_API SQLSetDescFieldW(SQLHDESC descriptorHandle,
   SQLRETURN rc = SQL_SUCCESS;
   bool is_tracing_enabled = IsTracingEnabled("SQLSetDescFieldW");
 
+  SQLPOINTER updated_desc_val;
+  StatusRecordOr<std::string> updated_desc_status;
+  updated_desc_status =
+      ConvertSQLPointerToSQLChar(descValue, descValueBufferLen);
+  if (!updated_desc_status) {
+    TracePrintInternal(*(*kTraceOption),
+                       updated_desc_status.GetStatusRecord().message);
+    return updated_desc_status.GetCalculatedReturnCode();
+  }
+  updated_desc_val = (SQLPOINTER)ToSqlChar(updated_desc_status->data());
+
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionEntry_SQLSetDescFieldW(descriptorHandle, recNumber,
-                                        fieldIdentifier, descValue,
+                                        fieldIdentifier, updated_desc_val,
                                         descValueBufferLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
+
   // Call to common internal function for SQLSetDescField and SQLSetDescFieldW
   // in odbc_descriptor.h.
   rc = google::cloud::odbc_bq_driver::SQLSetDescFieldInternal(
-      descriptorHandle, recNumber, fieldIdentifier, descValue,
+      descriptorHandle, recNumber, fieldIdentifier, updated_desc_val,
       descValueBufferLen);
 
   // Handle Unicode conversion of output parameters.
@@ -1992,30 +2004,27 @@ SQLRETURN SQL_API SQLGetCursorNameW(SQLHSTMT statementHandle,
                                          cursorNameStringLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
-  StatusRecordOr<std::string> utf8_cur_name =
-      ConvertSQLWCHARToString(cursorName, *cursorNameStringLen);
-  if (!utf8_cur_name) {
-    TracePrintInternal(*(*kTraceOption),
-                       utf8_cur_name.GetStatusRecord().message);
-    return utf8_cur_name.GetCalculatedReturnCode();
-  }
-  *cursorNameStringLen = utf8_cur_name->length();
+  SQLCHAR cursor_name[kBufferLength] = {0};
+  SQLSMALLINT cursor_name_len = 0;
 
   // Call to common internal function for SQLGetCursorName and SQLGetCursorNameW
   // in odbc_sql_requests.h.
   rc = ::google::cloud::odbc_bq_driver::SQLGetCursorNameInternal(
-      statementHandle, ToSqlChar(utf8_cur_name->data()), cursorNameBufferLen,
-      cursorNameStringLen);
+      statementHandle, cursor_name, cursorNameBufferLen, &cursor_name_len);
 
   // Handle Unicode conversion of output parameters.
-  StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
+  StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16((char*)cursor_name);
   if (!utf16_cur_name) {
     TracePrintInternal(*(*kTraceOption),
                        utf16_cur_name.GetStatusRecord().message);
     return utf16_cur_name.GetCalculatedReturnCode();
   }
-  cursorName = ToSqlWChar(utf16_cur_name->data());
-  *cursorNameStringLen = utf16_cur_name->length();
+  std::vector<SQLWCHAR> sql_w_str(utf16_cur_name->begin(),
+                                  utf16_cur_name->end());
+  sql_w_str.emplace_back(L'\0');
+  std::memcpy(cursorName, sql_w_str.data(),
+              (sql_w_str.size() + 1) * sizeof(SQLWCHAR));
+  if (cursorNameStringLen) *cursorNameStringLen = cursor_name_len;
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (IsTracingEnabled)
@@ -2074,6 +2083,11 @@ SQLRETURN SQL_API SQLSetCursorNameW(SQLHSTMT statementHandle,
                                          cursorNameLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
+  if (cursorNameLen <= 0 && cursorNameLen != SQL_NTS) {
+    StatusRecord status_record = {SQLStates::k_HY090(),
+                                  "Invalid string length"};
+    return status_record.CalculateReturnCode();
+  }
   StatusRecordOr<std::string> utf8_cur_name =
       ConvertSQLWCHARToString(cursorName, cursorNameLen);
   if (!utf8_cur_name) {
@@ -2089,13 +2103,6 @@ SQLRETURN SQL_API SQLSetCursorNameW(SQLHSTMT statementHandle,
       statementHandle, ToSqlChar(utf8_cur_name->data()), cursorNameLen);
 
   // Handle Unicode conversion of output parameters.
-  StatusRecordOr<std::wstring> utf16_cur_name = Utf8ToUtf16(*utf8_cur_name);
-  if (!utf16_cur_name) {
-    TracePrintInternal(*(*kTraceOption),
-                       utf16_cur_name.GetStatusRecord().message);
-    return utf16_cur_name.GetCalculatedReturnCode();
-  }
-  cursorName = ToSqlWChar(utf16_cur_name->data());
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (IsTracingEnabled)
