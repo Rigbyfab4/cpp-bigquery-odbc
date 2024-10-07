@@ -27,6 +27,21 @@ using ::google::cloud::odbc_internal::StatusRecordOr;
 using google::cloud::odbc_testing_utils::StatusRecordIs;
 using ::testing::HasSubstr;
 
+#ifdef _WIN32
+Section const kDsnSection{{"Description", "ODBC Driver for Google BigQuery 1"},
+                          {"Driver", "Simba ODBC Driver for Google BigQuery"},
+
+                          {"SQLDialect", "1"},
+                          {"AllowLargeResults", "0"},
+                          {"Catalog", "bigquery-devtools-drivers"},
+                          {"LargeResultsTempTableExpirationTime", "3600000"},
+                          {"OAuthMechanism", "0"}};
+
+Sections const kSampleIniSections{
+    {"SampleDSN", kDsnSection},
+};
+
+#else
 Section const kDsnSection{
     {"Description", "Google BigQuery ODBC Connector"},
     {"Driver",
@@ -45,6 +60,8 @@ Sections const kSampleIniSections{{"SampleDSN", kDsnSection},
 Sections const kCommentedIniSections{
     {"SampleDSN", kCommentedDsnSection},
 };
+
+#endif
 
 TEST(StringUtils, Split_Basic) {
   std::string s = "SOFTWARE\\ODBC\\ODBC.INI";
@@ -98,12 +115,22 @@ TEST(StringUtils, Join_StartIndOutOfRange) {
   EXPECT_EQ(s_expected, s);
 }
 
-#ifndef _WIN32
 TEST(Parsing, ParseConfig) {
+#ifdef _WIN32
+
+#ifdef _WIN64
+  auto sections_status = ParseConfig("SOFTWARE\\ODBC\\ODBC.INI");
+#else
+  auto sections_status = ParseConfig("SOFTWARE\\WOW6432Node\\ODBC\\ODBC.INI");
+#endif
+
+#else
   std::string test_data_path =
       google::cloud::internal::GetEnv("CPP_BIGQUERY_ODBC_DRIVER_TEST_DATA_PATH")
           .value_or("");
   auto sections_status = ParseConfig(test_data_path + "/sample.ini");
+#endif
+
   ASSERT_STATUS_RECORD_OK(sections_status);
 
   auto sections = *sections_status;
@@ -120,6 +147,7 @@ TEST(Parsing, ParseConfig) {
   }
 
   // Test if the commented sections are not defined
+#ifndef _WIN32
   for (auto const& it_outer : kCommentedIniSections) {
     std::string section_name = it_outer.first;
     Section commented_ini_section = it_outer.second;
@@ -128,15 +156,36 @@ TEST(Parsing, ParseConfig) {
       EXPECT_EQ((*(sections))[section_name][property], "");
     }
   }
+#endif
 }
 
 TEST(Parsing, ParseConfig_IncorrectPath) {
+#ifdef _WIN32
+#ifdef _WIN64
+  auto sections = ParseConfig("SOFTWARE\\ODBC\\ODBC1.INI");
+#else
+  auto sections = ParseConfig("SOFTWARE\\WOW6432Node\\ODBC\\ODBC1.INI");
+#endif
+  EXPECT_THAT(sections,
+              StatusRecordIs(SQLStates::k_HY000(),
+                             HasSubstr("Can't open registry key with path")));
+#else
   auto sections = ParseConfig("/invalid_file_name.ini");
   EXPECT_THAT(sections, StatusRecordIs(SQLStates::k_HY000(),
                                        HasSubstr("Can't open file")));
+#endif
 }
 
 TEST(GetPathToOdbcIni, GetPath_EnvVar) {
+#ifdef _WIN32
+  std::string expected = "SampleDSN";
+  google::cloud::odbc_bigquery_client_interface::SetEnv("ODBC_TESTS_DSN",
+                                                        expected);
+  std::string actual =
+      ::google::cloud::internal::GetEnv("ODBC_TESTS_DSN").value_or("");
+  EXPECT_EQ(actual, expected);
+  google::cloud::odbc_bigquery_client_interface::UnsetEnv("ODBC_TESTS_DSN");
+#else
   std::string expected = "my_path";
   google::cloud::odbc_bigquery_client_interface::SetEnv("ODBCINI", expected);
 
@@ -144,16 +193,28 @@ TEST(GetPathToOdbcIni, GetPath_EnvVar) {
 
   EXPECT_EQ(actual, expected);
   google::cloud::odbc_bigquery_client_interface::UnsetEnv("ODBCINI");
+#endif
 }
 
 TEST(GetPathToOdbcIni, GetPath_HomeVar) {
+#ifdef _WIN32
+  ASSERT_TRUE(::google::cloud::internal::GetEnv("ODBC_TESTS_DSN"));
+#else
   ASSERT_TRUE(::google::cloud::internal::GetEnv("HOME"));
-
+#endif
   std::string actual = GetPathToOdbcIni();
-
+#ifdef _WIN32
+#ifdef _WIN64
+  EXPECT_THAT(actual, HasSubstr("SOFTWARE\\ODBC\\"));
+#else
+  EXPECT_THAT(actual, HasSubstr("WOW6432Node\\ODBC"));
+#endif
+#else
   EXPECT_THAT(actual, HasSubstr("/.odbc.ini"));
+#endif
 }
 
+#ifndef _WIN32
 TEST(GetPathToOdbcIni, GetEmptyPath) {
   auto home = ::google::cloud::internal::GetEnv("HOME");
   google::cloud::odbc_bigquery_client_interface::UnsetEnv("HOME");

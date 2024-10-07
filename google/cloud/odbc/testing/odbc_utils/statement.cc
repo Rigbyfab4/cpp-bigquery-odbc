@@ -614,14 +614,15 @@ std::shared_ptr<Results> FetchResultsWithSqlGetData(
       CheckError(status, "SQLFetch", conn);
     }
     for (int i_c = 0; i_c < num_cols; i_c++) {
-      SQLSMALLINT resp_status, resp_status_len;
+      SQLSMALLINT resp_status = 0, resp_status_len = 0;
       while (1) {
         status = SQLGetData(conn->hstmt, i_c + 1, SQL_CHAR, data, kBufferLength,
                             &strlen_or_ind);
         CheckError(status, "SQLGetData", conn);
         if (SQL_SUCCEEDED(status)) {
-          status = SQLGetDiagField(SQL_HANDLE_STMT, conn->hstmt, 1, i_c + 1,
-                                   &resp_status, SQL_INTEGER, &resp_status_len);
+          status = SQLGetDiagField(SQL_HANDLE_STMT, conn->hstmt, 1,
+                                   SQL_DIAG_SQLSTATE, &resp_status, 0,
+                                   &resp_status_len);
           if (status == SQL_NO_DATA) {
             break;
           }
