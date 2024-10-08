@@ -20,6 +20,7 @@
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 #include "google/cloud/odbc/testing/odbc_utils/connection.h"
 #include "google/cloud/odbc/testing/odbc_utils/descriptor.h"
+#include "absl/strings/match.h"
 #include <gmock/gmock.h>
 
 namespace google::cloud::odbc_tests {
@@ -146,7 +147,7 @@ void ExecDirectWithFetchTest(std::string const in_table_name, bool is_async,
   // TODO(b/357795885):Handle SQLDescribeCol Api Invalid Output WRT SIMBA(WIN).
   auto results = *FetchDirect(conn, query, 1, is_async, use_ansi);
   VerifyColumnWiseResults(kSampleData, results, std::vector<std::string>());
-#endif /* _WIN32 */
+#endif  // _WIN32
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Delete table
@@ -414,7 +415,7 @@ void FetchDataTest(bool use_bind_col, bool use_ansi = false) {
 // SIMBA(WIN) during FetchResults
 #ifndef _WIN32
 TEST(StatementTest, SQLFetch) { FetchDataTest(true); }
-#endif /* _WIN32 */
+#endif  // _WIN32
 
 TEST(StatementTest, SQLFetch_Ansi) { FetchDataTest(true, true); }
 
@@ -543,7 +544,7 @@ TEST(StatementTest, SQLGetData) {
   table_ansi.Drop(conn, true);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-#endif /* _WIN32 */
+#endif  // _WIN32
 
 // This test is temporarily disabled till we are able to debug this with help
 // from the vendor
@@ -738,7 +739,7 @@ TEST(StatementTest, RollBackTransaction) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-#endif /* _WIN32 */
+#endif  // _WIN32
 
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
@@ -1436,7 +1437,7 @@ TEST(SQLPrepare, ValidateIpdDescForParameterQuery) {
   status = SQLGetDescField(conn->ipd, 1, SQL_DESC_NAME, &out_param_name, 0, 0);
   CheckError(status, "SQLGetDescField(SQL_DESC_NAME)", conn);
   EXPECT_EQ(0, out_param_name);
-#endif /* _WIN32 */
+#endif  // _WIN32
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
@@ -1773,9 +1774,345 @@ TEST(SQLCloseCursor, CloseCursorWhileEndingTransaction) {
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-#endif /* _WIN32 */
+#endif  // _WIN32
 
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
+// Integration tests for SQLCancel.
+// TODO(b/308656772): Move this to common area once SQLCancel and SQLCancel
+// APIs are implemented for BQ Driver.
+
+/////////////////////////////////////////////////////////
+// 1. Tests for cancelling Asynchronous processing or
+// asynchronous operations that are still executing.
+/////////////////////////////////////////////////////////
+TEST(SQLCancel, ExecDirect_CancelAsync_StillExecuting) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  auto status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_ASYNC_ENABLE,
+                               (SQLPOINTER)SQL_ASYNC_ENABLE_ON, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  std::string query = "Select 1";
+  status = SQLExecDirect(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+  if (SQL_SUCCEEDED(status)) {
+    // We can't cancel an operation that is not in the process of executing.
+    CheckError(status, "SQLExecDirect", conn);
+  } else if (status == SQL_STILL_EXECUTING) {
+    char read_stmt[kBufferLength];
+    StrToChar(read_stmt, query);
+    // Cancel the operation
+    status = SQLCancel(conn->hstmt);
+    CheckError(status, "SQLCancel", conn);
+
+    // Call ExecDirect till completion
+    ExponentialBackoffPolicy backoff(std::chrono::milliseconds(10),
+                                     std::chrono::milliseconds(100), 2);
+    status = PollODBC(SQLExecDirect, backoff, conn->hstmt, (SQLCHAR*)read_stmt,
+                      strlen(read_stmt));
+
+    if (SQL_SUCCEEDED(status)) {
+      // Operation could not be cancelled. This is not an error as there could
+      // be a race condition where execute completed before cancel could cancel
+      // the operation.
+      CheckError(status, "SQLExecDirect", conn);
+    } else {
+      // Per spec, Make sure SQLState is HY008 and Message is 'Operation
+      // canceled'.
+      std::string error;
+      ASSERT_EQ(SQL_SUCCESS,
+                GetCancelErrorDetails("SQLExecDirect", conn->hstmt, error));
+      ASSERT_TRUE(absl::StrContains(error, "HY008"))
+          << "SQLExecDirect failed with unexpected error: " << error;
+      ASSERT_TRUE(absl::StrContains(error, "Operation canceled"))
+          << "SQLExecDirect failed with unexpected error: " << error;
+    }
+  }
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLCancel, Prepare_CancelAsync_StillExecuting) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  ExponentialBackoffPolicy backoff(std::chrono::milliseconds(10),
+                                   std::chrono::milliseconds(100), 2);
+
+  auto status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_ASYNC_ENABLE,
+                               (SQLPOINTER)SQL_ASYNC_ENABLE_ON, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  std::string query = "Select 1";
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+
+  if (SQL_SUCCEEDED(status)) {
+    // We can't cancel an operation that is not in the process of executing.
+    CheckError(status, "SQLPrepare", conn);
+  } else if (status == SQL_STILL_EXECUTING) {
+    // Cancel the operation
+    status = SQLCancel(conn->hstmt);
+    CheckError(status, "SQLCancel", conn);
+    // Call SQLPrepare till completion
+    status = PollODBC(SQLPrepare, backoff, conn->hstmt, (SQLCHAR*)query.c_str(),
+                      SQL_NTS);
+    if (SQL_SUCCEEDED(status)) {
+      // Operation could not be cancelled. This is not an error as there could
+      // be a race condition where execute completed before cancel could cancel
+      // the operation.
+      CheckError(status, "SQLPrepare", conn);
+    } else {
+      // Per spec, Make sure SQLState is HY008 and Message is 'Operation
+      // canceled'.
+      std::string error;
+      ASSERT_EQ(SQL_SUCCESS,
+                GetCancelErrorDetails("SQLPrepare", conn->hstmt, error));
+      ASSERT_TRUE(absl::StrContains(error, "HY008"))
+          << "SQLPrepare failed with unexpected error: " << error;
+      ASSERT_TRUE(absl::StrContains(error, "Operation canceled"))
+          << "SQLPrepare failed with unexpected error: " << error;
+    }
+  }
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLCancel, Execute_CancelAsync_StillExecuting) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  ExponentialBackoffPolicy backoff(std::chrono::milliseconds(10),
+                                   std::chrono::milliseconds(100), 2);
+
+  auto status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_ASYNC_ENABLE,
+                               (SQLPOINTER)SQL_ASYNC_ENABLE_ON, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  std::string query = "Select 1";
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+
+  if (SQL_SUCCEEDED(status)) {
+    // We can't cancel an operation that is not in the process of executing.
+    CheckError(status, "SQLPrepare", conn);
+    EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  } else if (status == SQL_STILL_EXECUTING) {
+    // Cancel the operation
+    status = SQLCancel(conn->hstmt);
+    CheckError(status, "SQLCancel", conn);
+    // Call SQLExecute till completion
+    status = PollODBC(SQLExecute, backoff, conn->hstmt);
+    if (SQL_SUCCEEDED(status)) {
+      // Operation could not be cancelled. This is not an error as there could
+      // be a race condition where execute completed before cancel could cancel
+      // the operation.
+      CheckError(status, "SQLExecute", conn);
+      EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+    } else {
+      // Per spec, Make sure SQLState is HY008 and Message is 'Operation
+      // canceled'.
+      std::string error;
+      ASSERT_EQ(SQL_SUCCESS,
+                GetCancelErrorDetails("SQLExecute", conn->hstmt, error));
+// On Windows ththe SQLExecute api gives a Function Sequence error with SQLState
+// as (HY010) and no other operation is allowed after that.
+#ifndef _WIN32
+      ASSERT_TRUE(absl::StrContains(error, "HY008"))
+          << "SQLExecute failed with unexpected error: " << error;
+      ASSERT_TRUE(absl::StrContains(error, "Operation canceled"))
+          << "SQLExecute failed with unexpected error: " << error;
+      EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+#endif  // _WIN32
+    }
+  }
+}
+
+/////////////////////////////////////////////////////////
+// 2. Tests for cancelling operations that need more data
+// at execution.
+/////////////////////////////////////////////////////////
+TEST(SQLCancel, ExecDirect_Cancel_NeedData) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  // Create Table
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_EXEC_DIRECT_CANCEL_TEST";
+  Table table(table_name);
+  table.Create(conn, "(string_field STRING)", false);
+  // Insert statement with bound values.
+  std::string const string_field = "Test String 1";
+  char insert_stmt_with_bnd_values[kBufferLength];
+  sprintf(insert_stmt_with_bnd_values, "INSERT INTO %s VALUES ('%s')",
+          table_name.c_str(), string_field.c_str());
+  SQLULEN len_string_field = string_field.length();
+  SQLLEN len_data_at_exec = SQL_LEN_DATA_AT_EXEC(len_string_field);
+  // Insert statement without bound values.
+  char insert_stmt_wo_bnd_vals[kBufferLength];
+  sprintf(insert_stmt_wo_bnd_vals, "INSERT INTO %s VALUES (?)",
+          table_name.c_str());
+  // Indicate data-at-exec params.
+  auto status = SQLBindParameter(
+      conn->hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, len_string_field,
+      0, (SQLPOINTER)SQL_DATA_AT_EXEC, len_string_field, &len_data_at_exec);
+  CheckError(status, "SQLBindParameter", conn);
+  // Call Execute with unbound params so we can get back a SQL_NEED_DATA status.
+  status =
+      SQLExecDirect(conn->hstmt, (SQLCHAR*)insert_stmt_wo_bnd_vals, SQL_NTS);
+  if (SQL_SUCCEEDED(status)) {
+    // We can't cancel an operation that is not in the process of executing.
+    CheckError(status, "SQLExecDirect", conn);
+  } else if (status == SQL_NEED_DATA) {
+    // Cancel the operation
+    status = SQLCancel(conn->hstmt);
+    CheckError(status, "SQLCancel", conn);
+    // Call Execute again with bound parameters.
+    status = SQLExecDirect(conn->hstmt, (SQLCHAR*)insert_stmt_with_bnd_values,
+                           SQL_NTS);
+    if (SQL_SUCCEEDED(status)) {
+      // Operation could not be cancelled. Per spec, this is not an error as
+      // execute can complete with success and the operation wasn't cancelled.
+      CheckError(status, "SQLExecDirect", conn);
+    } else {
+      // Per spec, make sure SQLState is HY008 and Message is 'Operation
+      // canceled'.
+      std::string error;
+      ASSERT_EQ(SQL_SUCCESS,
+                GetCancelErrorDetails("SQLExecDirect", conn->hstmt, error));
+      ASSERT_TRUE(absl::StrContains(error, "HY008"))
+          << "SQLExecDirect failed with unexpected error: " << error;
+      ASSERT_TRUE(absl::StrContains(error, "Operation canceled"))
+          << "SQLExecDirect failed with unexpected error: " << error;
+    }
+  } else {
+    // Any other error is a failure.
+    CheckError(status, "SQLExecDirect", conn);
+  }
+
+  // Drop Table
+  table.Drop(conn, false);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLCancel, Execute_Cancel_NeedData) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  // Create Table
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_PREPARE_EXECUTE_CANCEL_TEST";
+  Table table(table_name);
+  table.Create(conn, "(string_field STRING)", false);
+  // Insert statement with bound values.
+  std::string const string_field = "Test String 1";
+  char insert_stmt_with_bnd_values[kBufferLength];
+  sprintf(insert_stmt_with_bnd_values, "INSERT INTO %s VALUES ('%s')",
+          table_name.c_str(), string_field.c_str());
+  SQLULEN len_string_field = string_field.length();
+  SQLLEN len_data_at_exec = SQL_LEN_DATA_AT_EXEC(len_string_field);
+  // Insert statement without bound values.
+  char insert_stmt_wo_bnd_vals[kBufferLength];
+  sprintf(insert_stmt_wo_bnd_vals, "INSERT INTO %s VALUES (?)",
+          table_name.c_str());
+  // Call Prepare without bound values.
+  auto status =
+      SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt_wo_bnd_vals, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+  // Indicate data-at-exec params.
+  status = SQLBindParameter(
+      conn->hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, len_string_field,
+      0, (SQLPOINTER)SQL_DATA_AT_EXEC, len_string_field, &len_data_at_exec);
+  CheckError(status, "SQLBindParameter", conn);
+  // Call Execute so we can get back a SQL_NEED_DATA status.
+  status = SQLExecute(conn->hstmt);
+  if (SQL_SUCCEEDED(status)) {
+    // We can't cancel an operation that is not in the process of executing.
+    CheckError(status, "SQLExecute", conn);
+  } else if (status == SQL_NEED_DATA) {
+    // Cancel the operation
+    status = SQLCancel(conn->hstmt);
+    CheckError(status, "SQLCancel", conn);
+    // Call Prepare again this time, with bound parameters.
+    status =
+        SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt_with_bnd_values, SQL_NTS);
+    CheckError(status, "SQLPrepare", conn);
+    // Call Execute again so it either succeeds or reports cancelled operation.
+    status = SQLExecute(conn->hstmt);
+    if (SQL_SUCCEEDED(status)) {
+      // Operation could not be cancelled. Per spec, this is not an error as
+      // execute can complete with success and the operation wasn't cancelled.
+      CheckError(status, "SQLExecute", conn);
+    } else {
+      // Per spec, make sure SQLState is HY008 and Message is 'Operation
+      // canceled'.
+      std::string error;
+      ASSERT_EQ(SQL_SUCCESS,
+                GetCancelErrorDetails("SQLExecute", conn->hstmt, error));
+      ASSERT_TRUE(absl::StrContains(error, "HY008"))
+          << "SQLExecute failed with unexpected error: " << error;
+      ASSERT_TRUE(absl::StrContains(error, "Operation canceled"))
+          << "SQLExecute failed with unexpected error: " << error;
+    }
+  } else {
+    // Any other error is a failure.
+    CheckError(status, "SQLExecute", conn);
+  }
+
+  // Drop Table
+  table.Drop(conn, false);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+///////////////////////////////////////
+// Tests when Cancel results in NoOp
+///////////////////////////////////////
+TEST(SQLCancel, CancelNoOp_NoPreviousProcessing) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  auto status = SQLCancel(conn->hstmt);
+  CheckError(status, "SQLCancel", conn);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLCancel, ExecDirect_CancelNoOp) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string query = "Select 1";
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+  CheckError(status, "SQLExecDirect", conn);
+
+  // Cancel the operation
+  status = SQLCancel(conn->hstmt);
+  CheckError(status, "SQLCancel", conn);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLCancel, Prepare_Execute_CancelNoOp) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string query = "Select 1";
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+
+  // Cancel the operation
+  status = SQLCancel(conn->hstmt);
+  CheckError(status, "SQLCancel", conn);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 // TODO(b/358002035) Remove BQ_DRIVER_INTEGRATION_TESTS flag
 TEST(SQLCloseCursor, CloseCursorAfterUsingExecDirect) {
   auto conn = std::make_shared<ODBCHandles>();
@@ -1793,6 +2130,7 @@ TEST(SQLCloseCursor, CloseCursorAfterUsingExecDirect) {
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 }  // namespace google::cloud::odbc_tests
