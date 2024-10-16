@@ -45,7 +45,7 @@ Sections const kConfigSections7{{"Driver", kDriverSection7}};
 Section const kWINDriverSection1{{"LogLevel", "1"},
                                  {"LogPath", "C:\\b\\trace.log"}};
 Sections const kWINConfigSections1{{"Driver", kWINDriverSection1}};
-#endif
+#endif  // _WIN32
 
 std::shared_ptr<TraceOptions> test_opts_console =
     *(TraceOptions::CreateTraceOptionsConsole(true, 0));
@@ -610,7 +610,7 @@ TEST(TraceLoggingFile, WINTraceOptionsFromConfigTraceEnabled) {
   auto sections_status = ParseConfig(
       "SOFTWARE\\WOW6432Node\\Google\\ODBC Driver for Google "
       "BigQuery");
-#endif
+#endif  // _WIN64
 #else
 #ifdef _WIN64
   auto sections_status =
@@ -619,8 +619,8 @@ TEST(TraceLoggingFile, WINTraceOptionsFromConfigTraceEnabled) {
   auto sections_status = ParseConfig(
       "SOFTWARE\\WOW6432Node\\Simba\\Simba ODBC Driver for Google "
       "BigQuery");
-#endif
-#endif
+#endif  // _WIN64
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
   ASSERT_STATUS_RECORD_OK(sections_status);
   auto sections = *sections_status;
 
@@ -634,6 +634,6 @@ TEST(TraceLoggingFile, WINTraceOptionsFromConfigTraceEnabled) {
     }
   }
 }
-#endif /* WIN32 */
+#endif  // _WIN32
 
 }  // namespace google::cloud::odbc_bq_driver_internal

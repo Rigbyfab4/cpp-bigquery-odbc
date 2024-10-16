@@ -317,7 +317,7 @@ TEST(DataTranslationTest, From_SQL_CHAR_to_all) {
   // For Windows, SQLGetDiagField API for SQL_DIAG_RETURNCODE not returning
   // values.
   TestTranslationsFromString(conn, query);
-#endif /* WIN32 */
+#endif  // _WIN32
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Delete table
@@ -358,7 +358,7 @@ TEST(DataTranslationTest, From_NUMERIC_to_all) {
   // values.
   TestTranslationsFromArithmetic<NumericBasicTestStruct>(
       conn, query, kConversionFromNumericTestData);
-#endif /* WIN32 */
+#endif  // _WIN32
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Delete table
@@ -398,7 +398,7 @@ TEST(DataTranslationTest, From_INT64_to_all) {
   // values..
   TestTranslationsFromArithmetic<Int64BasicTestStruct>(
       conn, query, kConversionFromInt64TestData);
-#endif /* WIN32 */
+#endif  // _WIN32
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Delete table

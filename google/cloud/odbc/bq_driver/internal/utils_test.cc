@@ -61,7 +61,7 @@ Sections const kCommentedIniSections{
     {"SampleDSN", kCommentedDsnSection},
 };
 
-#endif
+#endif  // _WIN32
 
 TEST(StringUtils, Split_Basic) {
   std::string s = "SOFTWARE\\ODBC\\ODBC.INI";
@@ -122,14 +122,14 @@ TEST(Parsing, ParseConfig) {
   auto sections_status = ParseConfig("SOFTWARE\\ODBC\\ODBC.INI");
 #else
   auto sections_status = ParseConfig("SOFTWARE\\WOW6432Node\\ODBC\\ODBC.INI");
-#endif
+#endif  // _WIN64
 
 #else
   std::string test_data_path =
       google::cloud::internal::GetEnv("CPP_BIGQUERY_ODBC_DRIVER_TEST_DATA_PATH")
           .value_or("");
   auto sections_status = ParseConfig(test_data_path + "/sample.ini");
-#endif
+#endif  // _WIN32
 
   ASSERT_STATUS_RECORD_OK(sections_status);
 
@@ -173,7 +173,7 @@ TEST(Parsing, ParseConfig_IncorrectPath) {
   auto sections = ParseConfig("/invalid_file_name.ini");
   EXPECT_THAT(sections, StatusRecordIs(SQLStates::k_HY000(),
                                        HasSubstr("Can't open file")));
-#endif
+#endif  // _WIN32
 }
 
 TEST(GetPathToOdbcIni, GetPath_EnvVar) {
@@ -193,7 +193,7 @@ TEST(GetPathToOdbcIni, GetPath_EnvVar) {
 
   EXPECT_EQ(actual, expected);
   google::cloud::odbc_bigquery_client_interface::UnsetEnv("ODBCINI");
-#endif
+#endif  //_WIN32
 }
 
 TEST(GetPathToOdbcIni, GetPath_HomeVar) {
@@ -201,7 +201,7 @@ TEST(GetPathToOdbcIni, GetPath_HomeVar) {
   ASSERT_TRUE(::google::cloud::internal::GetEnv("ODBC_TESTS_DSN"));
 #else
   ASSERT_TRUE(::google::cloud::internal::GetEnv("HOME"));
-#endif
+#endif  // _WIN32
   std::string actual = GetPathToOdbcIni();
 #ifdef _WIN32
 #ifdef _WIN64
@@ -211,7 +211,7 @@ TEST(GetPathToOdbcIni, GetPath_HomeVar) {
 #endif
 #else
   EXPECT_THAT(actual, HasSubstr("/.odbc.ini"));
-#endif
+#endif  // _WIN32
 }
 
 #ifndef _WIN32
@@ -224,7 +224,7 @@ TEST(GetPathToOdbcIni, GetEmptyPath) {
   EXPECT_EQ(actual, "");
   google::cloud::odbc_bigquery_client_interface::SetEnv("HOME", home);
 }
-#endif /* WIN32 */
+#endif  // _WIN32
 
 TEST(Parsing, ParseConnectionString) {
   Section testing_section = kDsnSection;
