@@ -410,9 +410,6 @@ void FetchDataTest(bool use_bind_col, bool use_ansi = false) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-// TODO(b/357794952): Handle SQLGetDiagField API Invalid Return Value WRT
-// SIMBA(WIN) during FetchResults
-
 TEST(StatementTest, SQLFetch) { FetchDataTest(true); }
 
 TEST(StatementTest, SQLFetch_Ansi) { FetchDataTest(true, true); }
@@ -674,8 +671,6 @@ TEST(StatementTest, FetchDirectRowWise) {
   table.Drop(conn, false);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
-// TODO(b/357794952): Issues with FetchResults need to be fixed for windows
 
 TEST(StatementTest, RollBackTransaction) {
   std::string const table_name =
