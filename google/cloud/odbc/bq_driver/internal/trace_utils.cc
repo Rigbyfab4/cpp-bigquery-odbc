@@ -77,11 +77,6 @@ TraceOptions::CreateTraceOptionsFile(
     } else if (s.first == "LogFile") {
       log_file = s.second;
     }
-#ifdef _WIN32
-    else if (s.first == "LogPath") {
-      log_file = s.second;
-    }
-#endif
   }
 
   std::lock_guard<std::mutex> lk(mu_);
