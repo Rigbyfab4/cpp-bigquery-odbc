@@ -467,8 +467,8 @@ TEST(SQLSetDescFieldW, Field_SQL_DESC_NAME) {
   std::wstring wstr = L"test";
   std::vector<SQLWCHAR> buf(wstr.begin(), wstr.end());
   buf.emplace_back(L'\0');
-  status =
-      SQLSetDescFieldW(conn->ipd, 1, SQL_DESC_NAME, (SQLPOINTER)buf.data(), 10);
+  status = SQLSetDescFieldW(conn->ipd, 1, SQL_DESC_NAME, (SQLPOINTER)buf.data(),
+                            kBufferLength);
   CheckError(status, "SQLSetDescFieldW(SQL_DESC_NAME)", conn);
 
   // Getting fields
@@ -479,7 +479,6 @@ TEST(SQLSetDescFieldW, Field_SQL_DESC_NAME) {
   CheckError(status, "SQLGetDescFieldW(SQL_DESC_NAME)", conn);
 
   std::string str = ConvertSQLWCHARToString(new_buf, NULL);
-  std::cout << "str " << str << std::endl;
   EXPECT_STREQ(expected.data(), str.data());
 
   status = SQLFreeHandle(SQL_HANDLE_DESC, conn->ard);

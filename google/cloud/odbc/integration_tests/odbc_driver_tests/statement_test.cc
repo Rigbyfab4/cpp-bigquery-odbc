@@ -105,7 +105,7 @@ void VerifyColumnWiseUnicodeResults(StdUnicodeRows input_data,
     }
     col_names = all_col_names;
   }
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+
   for (auto col_name : col_names) {
     auto ret_col_values = col_wise_data[col_name];
     // We have to sort inserted and returned values because we haven't specified
@@ -114,12 +114,12 @@ void VerifyColumnWiseUnicodeResults(StdUnicodeRows input_data,
     std::vector<std::string> input_col_values;
     if (col_name.compare("Hindi")) {
       for (auto data : input_data) {
-        std::string dataStr = converter.to_bytes(data.str_field2);
+        std::string dataStr = Utf16ToUtf8(data.str_field2);
         input_col_values.emplace_back(dataStr);
       }
     } else if (col_name.compare("Chinese")) {
       for (auto data : input_data) {
-        std::string dataStr = converter.to_bytes(data.str_field1);
+        std::string dataStr = Utf16ToUtf8(data.str_field1);
         input_col_values.emplace_back(dataStr);
       }
     }
@@ -128,7 +128,7 @@ void VerifyColumnWiseUnicodeResults(StdUnicodeRows input_data,
     // Check if the sorted inserted and returned vectors have same values
     EXPECT_EQ(ret_col_values.size(), input_col_values.size());
     for (int i = 0; i < ret_col_values.size(); i++) {
-      EXPECT_EQ(ret_col_values[i], input_col_values[i]);
+      EXPECT_STREQ(ret_col_values[i].c_str(), input_col_values[i].c_str());
     }
   }
 }
