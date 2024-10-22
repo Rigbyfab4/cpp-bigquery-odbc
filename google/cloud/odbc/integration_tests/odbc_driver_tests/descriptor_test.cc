@@ -365,7 +365,7 @@ TEST(SQLGetDescFieldW, Field_SQL_DESC_ALLOC_TYPE) {
   status =
       SQLGetDescFieldW(conn->ard, 0, SQL_DESC_ALLOC_TYPE, &alloc_type, 0, NULL);
   CheckError(status, "SQLGetDescFieldW(SQL_DESC_ALLOC_TYPE)", conn);
-  EXPECT_EQ(0, alloc_type);
+  EXPECT_EQ(SQL_DESC_ALLOC_USER, alloc_type);
 
   status = SQLFreeHandle(SQL_HANDLE_DESC, conn->ard);
   CheckError(status, "SQLFreeHandle(SQL_HANDLE_DESC)", conn);

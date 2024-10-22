@@ -1540,17 +1540,22 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
       outDescValueBufferLen, &out_desc_val_buffer_len);
 
   // Handle Unicode conversion of output parameters.
-  if (out_desc_val_buffer_len > 0 && IsFieldIdentifierString(fieldId)) {
-    StatusRecordOr<std::wstring> utf16_out_desc_val =
-        Utf8ToUtf16((char*)out_desc_val_buffer);
-    if (!utf16_out_desc_val) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf16_out_desc_val.GetStatusRecord().message);
-      return utf16_out_desc_val.GetCalculatedReturnCode();
+  if (out_desc_val_buffer_len > 0) {
+    if (IsFieldIdentifierString(fieldId)) {
+      StatusRecordOr<std::wstring> utf16_out_desc_val =
+          Utf8ToUtf16((char*)out_desc_val_buffer);
+      if (!utf16_out_desc_val) {
+        TracePrintInternal(*(*kTraceOption),
+                           utf16_out_desc_val.GetStatusRecord().message);
+        return utf16_out_desc_val.GetCalculatedReturnCode();
+      }
+      std::memcpy(outDescValue,
+                  (SQLPOINTER)ToSqlWChar(utf16_out_desc_val->data()),
+                  out_desc_val_buffer_len);
+    } else {
+      std::memcpy(outDescValue, (SQLPOINTER)out_desc_val_buffer,
+                  out_desc_val_buffer_len);
     }
-    std::memcpy(outDescValue,
-                (SQLPOINTER)ToSqlWChar(utf16_out_desc_val->data()),
-                out_desc_val_buffer_len);
     if (outDescValueStringLen) *outDescValueStringLen = out_desc_val_buffer_len;
   }
 
@@ -2587,8 +2592,13 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
         characterAttribute,
         (SQLPOINTER)ToSqlWChar(updated_out_character_attr_status->data()),
         characterAttributeBufferLen);
-    *characterAttributeStringLen = updated_out_character_attr_status->length();
+
+  } else {
+    std::memcpy(characterAttribute, (SQLPOINTER)updated_character_attrib_val,
+                characterAttributeBufferLen);
   }
+  if (characterAttributeStringLen)
+    *characterAttributeStringLen = updated_out_character_attr_status->length();
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLColAttributeW(rc, *(*kTraceOption));
