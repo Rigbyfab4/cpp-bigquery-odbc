@@ -206,6 +206,7 @@ using google::cloud::odbc_bq_driver_internal::ConnectionAttr;
 using google::cloud::odbc_bq_driver_internal::ConnectionValueType;
 using google::cloud::odbc_bq_driver_internal::ConvertSQLWCHARToString;
 using google::cloud::odbc_bq_driver_internal::IsFieldIdentifierString;
+using google::cloud::odbc_bq_driver_internal::IsInfoTypeString;
 using ::google::cloud::odbc_bq_driver_internal::kTraceOption;
 using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
 using google::cloud::odbc_internal::StatusRecord;
@@ -921,18 +922,22 @@ SQLRETURN SQL_API SQLGetInfoW(SQLHDBC connectionHandle, SQLUSMALLINT infoType,
 
   // Handle Unicode conversion of output parameters.
   if (info_val_buffer_len > 0) {
-    StatusRecordOr<std::wstring> utf16_info_val =
-        Utf8ToUtf16((char*)info_val_buffer);
-    if (!utf16_info_val) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf16_info_val.GetStatusRecord().message);
-      return utf16_info_val.GetCalculatedReturnCode();
-    }
+    if (IsInfoTypeString(infoType)) {
+      StatusRecordOr<std::wstring> utf16_info_val =
+          Utf8ToUtf16((char*)info_val_buffer);
+      if (!utf16_info_val) {
+        TracePrintInternal(*(*kTraceOption),
+                           utf16_info_val.GetStatusRecord().message);
+        return utf16_info_val.GetCalculatedReturnCode();
+      }
 
-    std::vector<SQLWCHAR> sql_w_str(utf16_info_val->begin(),
-                                    utf16_info_val->end());
-    sql_w_str.emplace_back(L'\0');
-    std::memcpy(infoValue, sql_w_str.data(), infoValueBufferLen);
+      std::vector<SQLWCHAR> sql_w_str(utf16_info_val->begin(),
+                                      utf16_info_val->end());
+      sql_w_str.emplace_back(L'\0');
+      std::memcpy(infoValue, sql_w_str.data(), infoValueBufferLen);
+    } else {
+      std::memcpy(infoValue, info_val_buffer, infoValueBufferLen);
+    }
 
     if (infoValueStringLen)
       *infoValueStringLen = info_val_buffer_len * sizeof(SQLWCHAR);

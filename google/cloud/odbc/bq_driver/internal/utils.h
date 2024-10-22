@@ -95,6 +95,8 @@ odbc_internal::StatusRecordOr<std::string> ConvertSQLWCHARToString(
 
 bool IsFieldIdentifierString(SQLSMALLINT FieldIdentifier);
 
+bool IsInfoTypeString(SQLUSMALLINT InfoType);
+
 #ifdef _WIN32
 
 constexpr int kMaxKeyLength = 4096;
