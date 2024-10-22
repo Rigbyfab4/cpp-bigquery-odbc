@@ -214,7 +214,6 @@ using google::cloud::odbc_bq_driver_internal::IsFieldIdentifierString;
 using google::cloud::odbc_bq_driver_internal::IsInfoTypeString;
 using ::google::cloud::odbc_bq_driver_internal::kTraceOption;
 using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
-using google::cloud::odbc_bq_driver_internal::IsFieldIdentifierString;
 using google::cloud::odbc_internal::StatusRecord;
 
 using ::google::cloud::odbc_bq_driver::AcquireHandleMutex;
@@ -1578,19 +1577,20 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
   // Handle Unicode conversion of output parameters.
   if (out_desc_val_string_len > 0) {
     if (IsFieldIdentifierString(fieldId)) {
-      StatusRecordOr<std::wstring> utf16_out_desc_val =
-          Utf8ToUtf16((char*)out_desc_val);
-      if (!utf16_out_desc_val) {
-        TracePrintInternal(*(*kTraceOption),
-                           utf16_out_desc_val.GetStatusRecord().message);
-        return utf16_out_desc_val.GetCalculatedReturnCode();
-      }
-      std::memcpy(outDescValue,
-                  (SQLPOINTER)ToSqlWChar(utf16_out_desc_val->data()),
-                  out_desc_val_string_len);
-    } else {
-      std::memcpy(outDescValue, (SQLPOINTER)out_desc_val,
-                  out_desc_val_string_len);
+    StatusRecordOr<std::wstring> utf16_out_desc_val =
+        Utf8ToUtf16((char*)out_desc_val_buffer);
+    if (!utf16_out_desc_val) {
+      TracePrintInternal(*(*kTraceOption),
+                         utf16_out_desc_val.GetStatusRecord().message);
+      return utf16_out_desc_val.GetCalculatedReturnCode();
+    }
+    std::vector<SQLWCHAR> sql_w_str(utf16_out_desc_val->begin(),
+                                    utf16_out_desc_val->end());
+    sql_w_str.emplace_back(L'\0');
+    std::memcpy(outDescValue, sql_w_str.data(), outDescValueBufferLen);}
+    else{
+      std::memcpy(outDescValue, (SQLPOINTER)out_desc_val_buffer,
+                  out_desc_val_buffer_len);
     }
   }
   if (outDescValueStringLen) *outDescValueStringLen = out_desc_val_string_len;
@@ -1745,15 +1745,14 @@ SQLRETURN SQL_API SQLSetDescFieldW(SQLHDESC descriptorHandle,
 
   SQLPOINTER updated_desc_val = descValue;
   StatusRecordOr<std::string> updated_desc_status;
-  if(IsFieldIdentifierString(fieldIdentifier))
-  {
+  if (IsFieldIdentifierString(fieldIdentifier)) {
     updated_desc_status = ConvertSQLPointerToSQLChar(descValue, NULL);
-  if (!updated_desc_status) {
-    TracePrintInternal(*(*kTraceOption),
-                       updated_desc_status.GetStatusRecord().message);
-    return updated_desc_status.GetCalculatedReturnCode();
-  }
-  updated_desc_val = (SQLPOINTER)ToSqlChar(updated_desc_status->data());
+    if (!updated_desc_status) {
+      TracePrintInternal(*(*kTraceOption),
+                         updated_desc_status.GetStatusRecord().message);
+      return updated_desc_status.GetCalculatedReturnCode();
+    }
+    updated_desc_val = (SQLPOINTER)ToSqlChar(updated_desc_status->data());
   }
 
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
