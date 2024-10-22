@@ -214,6 +214,7 @@ using google::cloud::odbc_bq_driver_internal::IsFieldIdentifierString;
 using google::cloud::odbc_bq_driver_internal::IsInfoTypeString;
 using ::google::cloud::odbc_bq_driver_internal::kTraceOption;
 using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
+using google::cloud::odbc_bq_driver_internal::IsFieldIdentifierString;
 using google::cloud::odbc_internal::StatusRecord;
 
 using ::google::cloud::odbc_bq_driver::AcquireHandleMutex;
@@ -1742,15 +1743,18 @@ SQLRETURN SQL_API SQLSetDescFieldW(SQLHDESC descriptorHandle,
   SQLRETURN rc = SQL_SUCCESS;
   bool is_tracing_enabled = IsTracingEnabled("SQLSetDescFieldW");
 
-  SQLPOINTER updated_desc_val;
+  SQLPOINTER updated_desc_val = descValue;
   StatusRecordOr<std::string> updated_desc_status;
-  updated_desc_status = ConvertSQLPointerToSQLChar(descValue, NULL);
+  if(IsFieldIdentifierString(fieldIdentifier))
+  {
+    updated_desc_status = ConvertSQLPointerToSQLChar(descValue, NULL);
   if (!updated_desc_status) {
     TracePrintInternal(*(*kTraceOption),
                        updated_desc_status.GetStatusRecord().message);
     return updated_desc_status.GetCalculatedReturnCode();
   }
   updated_desc_val = (SQLPOINTER)ToSqlChar(updated_desc_status->data());
+  }
 
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
