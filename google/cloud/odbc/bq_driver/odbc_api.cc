@@ -205,6 +205,7 @@ using ::google::cloud::odbc_bq_driver::TraceOptions;
 using google::cloud::odbc_bq_driver_internal::ConnectionAttr;
 using google::cloud::odbc_bq_driver_internal::ConnectionValueType;
 using google::cloud::odbc_bq_driver_internal::ConvertSQLWCHARToString;
+using google::cloud::odbc_bq_driver_internal::IsFieldIdentifierString;
 using ::google::cloud::odbc_bq_driver_internal::kTraceOption;
 using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
 using google::cloud::odbc_internal::StatusRecord;
@@ -1539,7 +1540,7 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
       outDescValueBufferLen, &out_desc_val_buffer_len);
 
   // Handle Unicode conversion of output parameters.
-  if (out_desc_val_buffer_len > 0) {
+  if (out_desc_val_buffer_len > 0 && IsFieldIdentifierString(fieldId)) {
     StatusRecordOr<std::wstring> utf16_out_desc_val =
         Utf8ToUtf16((char*)out_desc_val_buffer);
     if (!utf16_out_desc_val) {
@@ -1550,9 +1551,8 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
     std::memcpy(outDescValue,
                 (SQLPOINTER)ToSqlWChar(utf16_out_desc_val->data()),
                 out_desc_val_buffer_len);
+    if (outDescValueStringLen) *outDescValueStringLen = out_desc_val_buffer_len;
   }
-
-  if (outDescValueStringLen) *outDescValueStringLen = out_desc_val_buffer_len;
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -2574,19 +2574,21 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
       updated_character_attrib_val, characterAttributeBufferLen,
       characterAttributeStringLen, numericAttribute);
   // Handle Unicode conversion of output parameters.
-  updated_out_character_attr_status = ConvertSQLPointerToSQLWChar(
-      updated_character_attrib_val, characterAttributeBufferLen);
-  if (!updated_out_character_attr_status) {
-    TracePrintInternal(
-        *(*kTraceOption),
-        updated_out_character_attr_status.GetStatusRecord().message);
-    return updated_out_character_attr_status.GetCalculatedReturnCode();
+  if (IsFieldIdentifierString(fieldIdentifier)) {
+    updated_out_character_attr_status = ConvertSQLPointerToSQLWChar(
+        updated_character_attrib_val, characterAttributeBufferLen);
+    if (!updated_out_character_attr_status) {
+      TracePrintInternal(
+          *(*kTraceOption),
+          updated_out_character_attr_status.GetStatusRecord().message);
+      return updated_out_character_attr_status.GetCalculatedReturnCode();
+    }
+    std::memcpy(
+        characterAttribute,
+        (SQLPOINTER)ToSqlWChar(updated_out_character_attr_status->data()),
+        characterAttributeBufferLen);
+    *characterAttributeStringLen = updated_out_character_attr_status->length();
   }
-  std::memcpy(characterAttribute,
-              (SQLPOINTER)ToSqlWChar(updated_out_character_attr_status->data()),
-              characterAttributeBufferLen);
-  // value = (SQLPOINTER)ToSqlWChar(updated_out_attr_status->data());
-  *characterAttributeStringLen = updated_out_character_attr_status->length();
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLColAttributeW(rc, *(*kTraceOption));
