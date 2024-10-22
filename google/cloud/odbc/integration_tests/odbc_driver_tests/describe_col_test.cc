@@ -85,7 +85,7 @@ TEST(SQLDescribeColumn, DescribeAllColumns) {
 TEST(SQLDescribeColumnW, DescribeAllColumns) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn, true), SQL_SUCCESS);
-  auto table_name = kDatasetWithTablePrefix + "ODBC_DESCRIBE_COLUMNS_TEST";
+  auto table_name = kDatasetWithTablePrefix + "ODBC_DESCRIBE_COLUMNS_WIDE_TEST";
   Table table(table_name);
   table.CreateWithPrepare(conn, getSchemaStr(kFullSchema));
 
