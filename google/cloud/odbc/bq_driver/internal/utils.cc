@@ -398,6 +398,24 @@ StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR* in_str,
   return Utf16ToUtf8(stmt_txt_wstr);
 }
 
+bool IsDiagIdentifierString(SQLSMALLINT DiagIdentifier) {
+  switch (DiagIdentifier) {
+    case SQL_DIAG_DYNAMIC_FUNCTION:
+    case SQL_DIAG_CLASS_ORIGIN:
+    case SQL_DIAG_CONNECTION_NAME:
+    case SQL_DIAG_MESSAGE_TEXT:
+    case SQL_DIAG_SERVER_NAME:
+    case SQL_DIAG_SQLSTATE:
+    case SQL_DIAG_SUBCLASS_ORIGIN:
+      return true;
+      break;
+
+    default:
+      return false;
+      break;
+  }
+}
+
 bool IsFieldIdentifierString(SQLSMALLINT FieldIdentifier) {
   switch (FieldIdentifier) {
     case SQL_DESC_BASE_COLUMN_NAME:
