@@ -3076,8 +3076,7 @@ SQLRETURN SQL_API SQLGetDiagFieldW(SQLSMALLINT handleType, SQLHANDLE handle,
         *diagInfoStringLen = updated_out_diag_info_status->length();
     } else {
       std::memcpy(diagInfo, updated_diag_info, diagInfoBufferLen);
-      if(diagInfoStringLen)
-      *diagInfoStringLen = diag_info_str_len;
+      if (diagInfoStringLen) *diagInfoStringLen = diag_info_str_len;
     }
   }
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
