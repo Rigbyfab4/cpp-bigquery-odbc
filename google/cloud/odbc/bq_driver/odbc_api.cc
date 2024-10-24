@@ -1523,8 +1523,8 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
   SQLRETURN rc = SQL_SUCCESS;
   bool is_tracing_enabled = IsTracingEnabled("SQLGetDescFieldW");
 
-  SQLCHAR out_desc_val_buffer[kBufferLength] = {0};
-  SQLINTEGER out_desc_val_buffer_len = 0;
+  SQLCHAR out_desc_val[kBufferLength] = {0};
+  SQLINTEGER out_desc_val_string_len = 0;
 
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -1536,14 +1536,14 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
   // Call to common internal function for SQLGetDescField and SQLGetDescFieldW
   // in odbc_descriptor.h.
   rc = google::cloud::odbc_bq_driver::SQLGetDescFieldInternal(
-      descriptorHandle, recNumber, fieldId, (SQLPOINTER)out_desc_val_buffer,
-      outDescValueBufferLen, &out_desc_val_buffer_len);
+      descriptorHandle, recNumber, fieldId, (SQLPOINTER)out_desc_val,
+      outDescValueBufferLen, &out_desc_val_string_len);
 
   // Handle Unicode conversion of output parameters.
-  if (out_desc_val_buffer_len > 0) {
+  if (out_desc_val_string_len > 0) {
     if (IsFieldIdentifierString(fieldId)) {
       StatusRecordOr<std::wstring> utf16_out_desc_val =
-          Utf8ToUtf16((char*)out_desc_val_buffer);
+          Utf8ToUtf16((char*)out_desc_val);
       if (!utf16_out_desc_val) {
         TracePrintInternal(*(*kTraceOption),
                            utf16_out_desc_val.GetStatusRecord().message);
@@ -1551,13 +1551,13 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
       }
       std::memcpy(outDescValue,
                   (SQLPOINTER)ToSqlWChar(utf16_out_desc_val->data()),
-                  out_desc_val_buffer_len);
+                  out_desc_val_string_len);
     } else {
-      std::memcpy(outDescValue, (SQLPOINTER)out_desc_val_buffer,
-                  out_desc_val_buffer_len);
+      std::memcpy(outDescValue, (SQLPOINTER)out_desc_val,
+                  out_desc_val_string_len);
     }
-    if (outDescValueStringLen) *outDescValueStringLen = out_desc_val_buffer_len;
   }
+  if (outDescValueStringLen) *outDescValueStringLen = out_desc_val_string_len;
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -1621,7 +1621,7 @@ SQLRETURN SQL_API SQLGetDescRecW(
   SQLRETURN rc = SQL_SUCCESS;
   bool is_tracing_enabled = IsTracingEnabled("SQLGetDescRecW");
   SQLCHAR name_buffer[kBufferLength];
-  SQLSMALLINT name_buffer_len = 0;
+  SQLSMALLINT name_string_len = 0;
 
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -1634,20 +1634,20 @@ SQLRETURN SQL_API SQLGetDescRecW(
   // Call to common internal function for SQLGetDescRec and SQLGetDescRecW
   // in odbc_descriptor.h.
   rc = google::cloud::odbc_bq_driver::SQLGetDescRecInternal(
-      descriptorHandle, recNumber, name_buffer, nameBufferLen, &name_buffer_len,
+      descriptorHandle, recNumber, name_buffer, nameBufferLen, &name_string_len,
       descType, descSubType, descOctetLen, descPrecision, descScale, nullable);
 
   // Handle Unicode conversion of output parameters.
-  if (name_buffer_len > 0) {
+  if (name_string_len > 0) {
     StatusRecordOr<std::wstring> utf16_name = Utf8ToUtf16((char*)name_buffer);
     if (!utf16_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf16_name.GetStatusRecord().message);
       return utf16_name.GetCalculatedReturnCode();
     }
-    std::memcpy(name, ToSqlWChar(utf16_name->data()), name_buffer_len);
+    std::memcpy(name, ToSqlWChar(utf16_name->data()), name_string_len);
   }
-  *nameStringLen = name_buffer_len;
+  if (nameStringLen) *nameStringLen = name_string_len;
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -2732,7 +2732,7 @@ SQLRETURN SQL_API SQLDescribeColW(
   SQLRETURN rc = SQL_SUCCESS;
   bool is_tracing_enabled = IsTracingEnabled("SQLDescribeColW");
   SQLCHAR column_name_buffer[kBufferLength] = {0};
-  SQLSMALLINT column_name_buffer_len = 0;
+  SQLSMALLINT column_name_string_len = 0;
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionEntry_SQLDescribeColW(
@@ -2746,11 +2746,11 @@ SQLRETURN SQL_API SQLDescribeColW(
   // in odbc_sql_results.h.
   rc = ::google::cloud::odbc_bq_driver::SQLDescribeColInternal(
       statementHandle, columnNumber, column_name_buffer, columnNameBufferLen,
-      &column_name_buffer_len, columnSQLdataType, columnSize, decimalDigits,
+      &column_name_string_len, columnSQLdataType, columnSize, decimalDigits,
       columnNullable);
 
   // Handle Unicode conversion of output parameters.
-  if (column_name_buffer_len > 0) {
+  if (column_name_string_len > 0) {
     StatusRecordOr<std::wstring> utf16_col_name =
         Utf8ToUtf16((char*)column_name_buffer);
     if (!utf16_col_name) {
@@ -2762,10 +2762,10 @@ SQLRETURN SQL_API SQLDescribeColW(
                                     utf16_col_name->end());
     sql_w_str.emplace_back(L'\0');
     std::memcpy(columnName, sql_w_str.data(),
-                column_name_buffer_len * sizeof(SQLWCHAR));
+                column_name_string_len * sizeof(SQLWCHAR));
   }
 
-  *columnNameLen = column_name_buffer_len;
+  *columnNameLen = column_name_string_len;
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
