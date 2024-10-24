@@ -41,10 +41,17 @@ Sections const kConfigSections5{{"Driver", kDriverSection5}};
 Sections const kConfigSections6{{"Driver", kDriverSection6}};
 Sections const kConfigSections7{{"Driver", kDriverSection7}};
 
+#ifdef _WIN32
+Section const kWINDriverSection1{{"LogLevel", "1"},
+                                 {"LogFile", "C:\\b\\trace.log"}};
+Sections const kWINConfigSections1{{"Driver", kWINDriverSection1}};
+#endif  // _WIN32
+
 std::shared_ptr<TraceOptions> test_opts_console =
     *(TraceOptions::CreateTraceOptionsConsole(true, 0));
 
 #ifndef _WIN32
+
 TEST(TraceLoggingFile, TraceOptionsFromConfigTraceEnabled) {
   auto config_sections = std::make_shared<Sections>(kConfigSections1);
   StatusRecordOr<std::shared_ptr<TraceOptions>> test_opts_file =
@@ -126,7 +133,7 @@ TEST(TraceLoggingFile, TraceOptionsFromConfigTraceLogFileIsNotEmpty) {
   file.close();
 }
 
-#endif /* WIN32 */
+#endif
 
 TEST(TraceLoggingFile, TraceOptionsFromConfigTraceDisabled) {
   auto config_sections = std::make_shared<Sections>(kConfigSections2);
@@ -593,6 +600,30 @@ TEST(TraceLoggingConsole, WindowHandles) {
             CollectAndPrintArgs("TestWindowHandles", *test_opts_console, 2,
                                 fmt1.c_str(), fmt2.c_str()));
 }
-#endif /* WIN32 */
+
+// TODO(b/375112496) enable this function after trace registry work is done
+// TEST(TraceLoggingFile, WINTraceOptionsFromConfigTraceEnabled) {
+// #ifdef _WIN64
+//   auto sections_status =
+//       ParseConfig("SOFTWARE\\Google\\ODBC Driver for Google BigQuery");
+// #else
+//   auto sections_status = ParseConfig(
+//       "SOFTWARE\\WOW6432Node\\Google\\ODBC Driver for Google "
+//       "BigQuery");
+// #endif  // _WIN64
+//   ASSERT_STATUS_RECORD_OK(sections_status);
+//   auto sections = *sections_status;
+
+//   for (auto const& it_outer : kWINConfigSections1) {
+//     std::string section_name = it_outer.first;
+//     Section sample_ini_section = it_outer.second;
+//     for (auto& it_inner : sample_ini_section) {
+//       std::string property = it_inner.first;
+//       EXPECT_EQ(sample_ini_section[property],
+//                 (*(sections))[section_name][property]);
+//     }
+//   }
+// }
+#endif  // _WIN32
 
 }  // namespace google::cloud::odbc_bq_driver_internal
