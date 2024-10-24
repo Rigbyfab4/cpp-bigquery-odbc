@@ -434,20 +434,20 @@ SQLRETURN SQL_API SQLDriverConnectW(
         outConnectionStringBufferLen, outConnectionStringLen, driverCompletion,
         *(*kTraceOption));
   // Handle Unicode conversion of input parameters.
+  StatusRecordOr<std::string> utf8_in_connection_str;
   std::wstring in_Connection_wstr(
       reinterpret_cast<wchar_t const*>(inConnectionString));
-  auto in_Connection_wstr_len = in_Connection_wstr.length();
-  if (sizeof(SQLWCHAR) == 2) {
-    in_Connection_wstr_len *= sizeof(SQLWCHAR);
+  auto in_Connection_wstr_len = wcslen(in_Connection_wstr.data());
+  if (in_Connection_wstr_len > 0) {
+    utf8_in_connection_str =
+        ConvertSQLWCHARToString(inConnectionString, inConnectionStringLen);
+    if (!utf8_in_connection_str) {
+      TracePrintInternal(*(*kTraceOption),
+                         utf8_in_connection_str.GetStatusRecord().message);
+      return utf8_in_connection_str.GetCalculatedReturnCode();
+    }
+    inConnectionStringLen = utf8_in_connection_str->length();
   }
-  StatusRecordOr<std::string> utf8_in_connection_str =
-      ConvertSQLWCHARToString(inConnectionString, in_Connection_wstr_len);
-  if (!utf8_in_connection_str) {
-    TracePrintInternal(*(*kTraceOption),
-                       utf8_in_connection_str.GetStatusRecord().message);
-    return utf8_in_connection_str.GetCalculatedReturnCode();
-  }
-  inConnectionStringLen = utf8_in_connection_str->length();
   // outConnectionString is an output value that is not populated by the user.
   // This should not be unicode converted if it is empty. Instead we send a
   // SQLCHAR empty value directly to the internal function.

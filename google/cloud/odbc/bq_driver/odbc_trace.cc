@@ -122,13 +122,10 @@ void TraceFunctionEntry_SQLDriverConnectW(
   StatusRecordOr<std::string> utf8_in_connection_str;
   std::wstring in_connection_wstr(
       reinterpret_cast<wchar_t const*>(in_connection_str));
-  auto in_connection_wstr_len = in_connection_wstr.length();
-  if (sizeof(SQLWCHAR) == 2) {
-    in_connection_wstr_len *= sizeof(SQLWCHAR);
-  }
+  auto in_connection_wstr_len = wcslen(in_connection_wstr.data());
   if (in_connection_wstr_len > 0) {
     utf8_in_connection_str =
-        ConvertSQLWCHARToString(in_connection_str, in_connection_wstr_len);
+        ConvertSQLWCHARToString(in_connection_str, in_connection_str_len);
     if (!utf8_in_connection_str) {
       TracePrintInternal(opts,
                          utf8_in_connection_str.GetStatusRecord().message);
