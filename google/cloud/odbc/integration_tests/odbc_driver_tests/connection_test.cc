@@ -513,7 +513,7 @@ TEST(ConnectionTest, SQLDriverConnect) {
 TEST(ConnectionTest, SQLDriverConnectW) {
   auto conn = std::make_shared<ODBCHandles>();
   std::wstring defaultConnectionWstring = Utf8ToUtf16(kDefaultConnectionString);
-  EXPECT_EQ(DriverConnectW(defaultConnectionWstring, conn), SQL_SUCCESS);
+  EXPECT_EQ(Connect(defaultConnectionWstring, conn, 30, true), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
@@ -825,7 +825,7 @@ TEST(ConnectionTest, SQLConnect_WithDSN) {
 TEST(ConnectionTest, SQLConnectW_WithDSN) {
   auto conn = std::make_shared<ODBCHandles>();
   std::wstring defaultConnectionWstring = Utf8ToUtf16(kDefaultDataSource);
-  EXPECT_EQ(ConnectW(defaultConnectionWstring, conn), SQL_SUCCESS);
+  EXPECT_EQ(Connect(defaultConnectionWstring, conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

@@ -43,6 +43,9 @@ SQLRETURN
 Connect(std::string conn_str, std::shared_ptr<ODBCHandles> conn,
         int timeout = 30, bool use_ansi = false);
 
+SQLRETURN Connect(std::wstring dsn, std::shared_ptr<ODBCHandles> conn,
+                  int timeout = 30, bool is_driver_connect = false);
+
 // Connect using a datasource name directly and populate the ODBCHandles
 SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ODBCHandles> conn,
                      int timeout = 30, bool use_ansi = false);
@@ -59,12 +62,6 @@ SQLRETURN GetEnvInfo(std::shared_ptr<ODBCHandles> conn);
 
 SQLRETURN PrintDriverVerName(std::shared_ptr<ODBCHandles> conn,
                              bool use_ansi = false);
-
-SQLRETURN DriverConnectW(std::wstring conn_str,
-                         std::shared_ptr<ODBCHandles> conn, int timeout = 30);
-
-SQLRETURN ConnectW(std::wstring dsn, std::shared_ptr<ODBCHandles> conn,
-                   int timeout = 30);
 
 }  // namespace google::cloud::odbc_tests
 
