@@ -578,8 +578,8 @@ SQLRETURN SQL_API SQLBrowseConnectW(SQLHDBC connectionHandle,
                                     SQLSMALLINT* outConnectionStringLen) {
   SQLRETURN rc = SQL_SUCCESS;
   SQLRETURN status;
-  SQLCHAR out_connection_buffer[kBufferLength] = {0};
-  SQLSMALLINT out_connection_buffer_len = 0;
+  SQLCHAR out_connection_string[kBufferLength] = {0};
+  SQLSMALLINT out_connection_string_len = 0;
   bool is_tracing_enabled = IsTracingEnabled("SQLBrowseConnectW");
   // Call to Acquire mutex for connection handle in odbc_lock.h.
   status = AcquireHandleMutex(connectionHandle, SQL_HANDLE_DBC);
@@ -607,19 +607,21 @@ SQLRETURN SQL_API SQLBrowseConnectW(SQLHDBC connectionHandle,
   }
   // Call to internal common function for SQLBrowseConnect and SQLBrowseConnectW
   // in odbc_connection.h.
+  // TODO: Internal call should be made with out_connection_string and
+  // out_connection_string_len as the output parameters
   // Handle Unicode conversion of output parameters.
-  if (out_connection_buffer_len > 0) {
+  if (out_connection_string_len > 0) {
     StatusRecordOr<std::wstring> utf16_out_conn_str =
-        Utf8ToUtf16((char*)out_connection_buffer);
+        Utf8ToUtf16((char*)out_connection_string);
     if (!utf16_out_conn_str) {
       TracePrintInternal(*(*kTraceOption),
                          utf16_out_conn_str.GetStatusRecord().message);
       return utf16_out_conn_str.GetCalculatedReturnCode();
     }
     outConnectionString = ToSqlWChar(utf16_out_conn_str->data());
-    if (outConnectionStringLen)
-      *outConnectionStringLen = out_connection_buffer_len;
   }
+  if (outConnectionStringLen)
+    *outConnectionStringLen = out_connection_string_len;
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLBrowseConnectW(rc, *(*kTraceOption));
@@ -2306,7 +2308,7 @@ SQLRETURN SQL_API SQLNativeSqlW(SQLHDBC connectionHandle,
                                 SQLINTEGER* outStatementTextLen) {
   SQLRETURN rc = SQL_SUCCESS;
   SQLRETURN status;
-  SQLCHAR sql_text_buffer[kBufferLength] = {0};
+  SQLCHAR out_statement_text[kBufferLength] = {0};
   bool is_tracing_enabled = IsTracingEnabled("SQLNativeSqlW");
 
   // Call to Acquire mutex for connection handle in odbc_lock.h.
@@ -2332,10 +2334,12 @@ SQLRETURN SQL_API SQLNativeSqlW(SQLHDBC connectionHandle,
 
   // Call to common internal function for SQLNativeSql and SQLNativeSqlW
   // in odbc_sql_requests.h.
+  // TODO: Internal call should be made with out_statement_text as the output
+  // parameter.
   // Handle Unicode conversion of output parameters.
 
   StatusRecordOr<std::wstring> utf16_out_stmt_txt =
-      Utf8ToUtf16((char*)sql_text_buffer);
+      Utf8ToUtf16((char*)out_statement_text);
   if (!utf16_out_stmt_txt) {
     TracePrintInternal(*(*kTraceOption),
                        utf16_out_stmt_txt.GetStatusRecord().message);
@@ -2750,9 +2754,9 @@ SQLRETURN SQL_API SQLColAttributesW(SQLHSTMT statementHandle,
     std::memcpy(characterAttribute,
                 (SQLPOINTER)ToSqlWChar(utf16_character_attribute->data()),
                 character_attribute_buffer_len);
-    if (characterAttributeStringLen)
-      *characterAttributeStringLen = character_attribute_buffer_len;
   }
+  if (characterAttributeStringLen)
+    *characterAttributeStringLen = character_attribute_buffer_len;
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLColAttributesW(rc, *(*kTraceOption));
@@ -3072,13 +3076,12 @@ SQLRETURN SQL_API SQLGetDiagFieldW(SQLSMALLINT handleType, SQLHANDLE handle,
       std::memcpy(diagInfo,
                   (SQLPOINTER)ToSqlWChar(updated_out_diag_info_status->data()),
                   diagInfoBufferLen);
-      if (diagInfoStringLen)
-        *diagInfoStringLen = updated_out_diag_info_status->length();
+      diag_info_str_len = updated_out_diag_info_status->length();
     } else {
       std::memcpy(diagInfo, updated_diag_info, diagInfoBufferLen);
-      if (diagInfoStringLen) *diagInfoStringLen = diag_info_str_len;
     }
   }
+  if (diagInfoStringLen) *diagInfoStringLen = diag_info_str_len;
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLGetDiagFieldW(rc, *(*kTraceOption));
@@ -3198,8 +3201,8 @@ SQLRETURN SQL_API SQLGetDiagRecW(SQLSMALLINT handleType, SQLHANDLE handle,
     }
     std::memcpy(messageText, (SQLPOINTER)ToSqlWChar(utf16_msg_txt->data()),
                 message_text_buffer_len);
-    if (messageTextLen) *messageTextLen = message_text_buffer_len;
   }
+  if (messageTextLen) *messageTextLen = message_text_buffer_len;
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLGetDiagRec(rc, *(*kTraceOption));

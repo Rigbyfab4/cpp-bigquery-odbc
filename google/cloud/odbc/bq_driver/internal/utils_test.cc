@@ -406,6 +406,16 @@ TEST(UnicodeConversion, EmptyData_Utf16ToUtf8) {
                                          HasSubstr("string is empty/Null")));
 }
 
+TEST(DiagIdentifierString, IsDiagIdentifierString_true) {
+  EXPECT_TRUE(IsDiagIdentifierString(SQL_DIAG_DYNAMIC_FUNCTION));
+  EXPECT_TRUE(IsDiagIdentifierString(SQL_DIAG_CONNECTION_NAME));
+  EXPECT_TRUE(IsDiagIdentifierString(SQL_DIAG_SERVER_NAME));
+}
+
+TEST(DiagIdentifierString, IsDiagIdentifierString_false) {
+  EXPECT_FALSE(IsDiagIdentifierString(SQL_DIAG_DYNAMIC_FUNCTION_CODE));
+}
+
 TEST(IsSearchPatternArgument, SearchPattern_Percent) {
   EXPECT_TRUE(IsSearchPatternArgument("%"));
 }
