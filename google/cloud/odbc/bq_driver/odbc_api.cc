@@ -1577,20 +1577,20 @@ SQLRETURN SQL_API SQLGetDescFieldW(SQLHDESC descriptorHandle,
   // Handle Unicode conversion of output parameters.
   if (out_desc_val_string_len > 0) {
     if (IsFieldIdentifierString(fieldId)) {
-    StatusRecordOr<std::wstring> utf16_out_desc_val =
-        Utf8ToUtf16((char*)out_desc_val_buffer);
-    if (!utf16_out_desc_val) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf16_out_desc_val.GetStatusRecord().message);
-      return utf16_out_desc_val.GetCalculatedReturnCode();
-    }
-    std::vector<SQLWCHAR> sql_w_str(utf16_out_desc_val->begin(),
-                                    utf16_out_desc_val->end());
-    sql_w_str.emplace_back(L'\0');
-    std::memcpy(outDescValue, sql_w_str.data(), outDescValueBufferLen);}
-    else{
-      std::memcpy(outDescValue, (SQLPOINTER)out_desc_val_buffer,
-                  out_desc_val_buffer_len);
+      StatusRecordOr<std::wstring> utf16_out_desc_val =
+          Utf8ToUtf16((char*)out_desc_val);
+      if (!utf16_out_desc_val) {
+        TracePrintInternal(*(*kTraceOption),
+                           utf16_out_desc_val.GetStatusRecord().message);
+        return utf16_out_desc_val.GetCalculatedReturnCode();
+      }
+      std::vector<SQLWCHAR> sql_w_str(utf16_out_desc_val->begin(),
+                                      utf16_out_desc_val->end());
+      sql_w_str.emplace_back(L'\0');
+      std::memcpy(outDescValue, sql_w_str.data(), outDescValueBufferLen);
+    } else {
+      std::memcpy(outDescValue, (SQLPOINTER)out_desc_val,
+                  out_desc_val_string_len);
     }
   }
   if (outDescValueStringLen) *outDescValueStringLen = out_desc_val_string_len;
