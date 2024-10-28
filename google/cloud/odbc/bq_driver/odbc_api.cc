@@ -2628,8 +2628,7 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
                                    SQLSMALLINT* characterAttributeStringLen,
                                    SQLLEN* numericAttribute) {
   SQLRETURN rc = SQL_SUCCESS;
-  SQLCHAR character_attribute_buffer[kBufferLength] = {0};
-  SQLSMALLINT character_attribute_buffer_len = 0;
+  SQLSMALLINT character_attribute_string_len = 0;
   bool is_tracing_enabled = IsTracingEnabled("SQLColAttributeW");
 
   SQLPOINTER updated_character_attrib_val;
@@ -2650,28 +2649,32 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
   rc = ::google::cloud::odbc_bq_driver::SQLColAttributeInternal(
       statementHandle, columnNumber, fieldIdentifier,
       updated_character_attrib_val, characterAttributeBufferLen,
-      characterAttributeStringLen, numericAttribute);
+      &character_attribute_string_len, numericAttribute);
   // Handle Unicode conversion of output parameters.
-  if (IsFieldIdentifierString(fieldIdentifier)) {
-    updated_out_character_attr_status = ConvertSQLPointerToSQLWChar(
-        updated_character_attrib_val, characterAttributeBufferLen);
-    if (!updated_out_character_attr_status) {
-      TracePrintInternal(
-          *(*kTraceOption),
-          updated_out_character_attr_status.GetStatusRecord().message);
-      return updated_out_character_attr_status.GetCalculatedReturnCode();
-    }
-    std::memcpy(
-        characterAttribute,
-        (SQLPOINTER)ToSqlWChar(updated_out_character_attr_status->data()),
-        characterAttributeBufferLen);
+  if (character_attribute_string_len > 0) {
+    if (IsFieldIdentifierString(fieldIdentifier)) {
+      updated_out_character_attr_status = ConvertSQLPointerToSQLWChar(
+          updated_character_attrib_val, characterAttributeBufferLen);
+      if (!updated_out_character_attr_status) {
+        TracePrintInternal(
+            *(*kTraceOption),
+            updated_out_character_attr_status.GetStatusRecord().message);
+        return updated_out_character_attr_status.GetCalculatedReturnCode();
+      }
+      std::memcpy(
+          characterAttribute,
+          (SQLPOINTER)ToSqlWChar(updated_out_character_attr_status->data()),
+          characterAttributeBufferLen);
+      character_attribute_string_len =
+          updated_out_character_attr_status->length();
 
-  } else {
-    std::memcpy(characterAttribute, (SQLPOINTER)updated_character_attrib_val,
-                characterAttributeBufferLen);
+    } else {
+      std::memcpy(characterAttribute, (SQLPOINTER)updated_character_attrib_val,
+                  characterAttributeBufferLen);
+    }
   }
   if (characterAttributeStringLen)
-    *characterAttributeStringLen = updated_out_character_attr_status->length();
+    *characterAttributeStringLen = character_attribute_string_len;
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLColAttributeW(rc, *(*kTraceOption));
