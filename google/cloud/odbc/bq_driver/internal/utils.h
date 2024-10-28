@@ -182,6 +182,18 @@ inline void SanitizeIdentifierArgument(std::string& id_arg) {
     std::transform(id_arg.begin(), id_arg.end(), id_arg.begin(), ::toupper);
   }
 }
+#ifdef _WIN32
+std::string ConvertLPCSTRToString(LPCSTR lpsz_attributes);
+odbc_internal::StatusRecord AddDSNToRegistry(std::string const& dsn_name,
+                                             std::string const& driver,
+                                             Section const& section);
+
+odbc_internal::StatusRecord EditDSNInRegistry(std::string const& dsn_name,
+                                              Section const& section);
+
+odbc_internal::StatusRecord RemoveDSNFromRegistry(std::string const& dsn_name);
+
+#endif  // _WIN32
 
 inline int GetWholeDigitCount(std::string& src_str) {
   int digit_count = 0;

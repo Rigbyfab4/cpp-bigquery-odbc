@@ -21,6 +21,14 @@
 #include "google/cloud/odbc/testing/bq_driver_utils/handles.h"
 #include <gtest/gtest.h>
 
+#ifdef _WIN32
+#include "google/cloud/odbc/bq_driver/internal/driver_form.h"
+#endif  // _WIN32
+
+#ifdef _WIN32
+#include "google/cloud/odbc/bq_driver/internal/driver_form.h"
+#endif  // _WIN32
+
 namespace google::cloud::odbc_bq_driver {
 
 using google::cloud::odbc_bq_driver_internal::ConnectionHandle;
@@ -30,6 +38,14 @@ using google::cloud::odbc_bq_driver_internal::EnvironmentHandle;
 using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using google::cloud::odbc_testing_bq_driver_utils::CreateConnectionHandle;
 using google::cloud::odbc_testing_bq_driver_utils::CreateStatementHandle;
+
+#ifdef _WIN32
+using google::cloud::odbc_bq_driver_internal::DriverForm;
+#endif  // _WIN32
+
+#ifdef _WIN32
+using google::cloud::odbc_bq_driver_internal::DriverForm;
+#endif  // _WIN32
 
 TEST(SQLFreeHandleInternal, InvalidType) {
   int val = 10;
@@ -133,5 +149,39 @@ TEST(SQLFreeHandleInternal, DissociateDescriptorHandle) {
                 .GetAllocType());
   EXPECT_TRUE(conn_handle.GetDescriptorHandles().empty());
 }
+#ifdef _WIN32
+
+TEST(ConfigDSNInternal, NullDriverDetails) {
+  HWND hwndParent = NULL;
+  WORD fRequest = ODBC_ADD_DSN;
+  LPCSTR lpszDriver = NULL;
+  LPCSTR lpszAttributes =
+      "DSN=Personnel Data\0UID=Smith\0PWD=Sesame\0DATABASE=Personnel\0\0";
+  auto status =
+      ConfigDSNInternal(hwndParent, fRequest, lpszDriver, lpszAttributes);
+  EXPECT_EQ(status, false);
+}
+
+TEST(ConfigDSNInternal, NullAttributes) {
+  HWND hwndParent = NULL;
+  WORD fRequest = ODBC_ADD_DSN;
+  LPCSTR lpszDriver = NULL;
+  LPCSTR lpszAttributes = NULL;
+  auto status =
+      ConfigDSNInternal(hwndParent, fRequest, lpszDriver, lpszAttributes);
+  EXPECT_EQ(status, false);
+}
+
+TEST(ConfigDSNInternal, NullRequest) {
+  HWND hwndParent = NULL;
+  WORD fRequest = NULL;
+  LPCSTR lpszDriver = "SQL Server";
+  LPCSTR lpszAttributes =
+      "DSN=Personnel Data\0UID=Smith\0PWD=Sesame\0DATABASE=Personnel\0\0";
+  auto status =
+      ConfigDSNInternal(hwndParent, fRequest, lpszDriver, lpszAttributes);
+  EXPECT_EQ(status, false);
+}
+#endif  // _WIN32
 
 }  // namespace google::cloud::odbc_bq_driver

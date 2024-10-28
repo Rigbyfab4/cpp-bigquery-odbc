@@ -30,6 +30,10 @@ using google::cloud::odbc_bq_driver_internal::FormatSqlUSmallInt;
 using google::cloud::odbc_bq_driver_internal::FormatString;
 using google::cloud::odbc_bq_driver_internal::ToCStr;
 using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
+#ifdef _WIN32
+using google::cloud::odbc_bq_driver_internal::FormatHWND;
+using google::cloud::odbc_bq_driver_internal::FormatRequest;
+#endif  // _WIN32
 using ::google::cloud::odbc_internal::StatusRecordOr;
 
 constexpr int kAuthBufSize = 2048;
@@ -3388,5 +3392,33 @@ void TraceFunctionExit_SQLBulkOperations(SQLRETURN ret_code,
                                          TraceOptions& opts) {
   ExitInternal("SQLBulkOperations_Exit", ret_code, opts);
 }
+#ifdef _WIN32
+void TraceFunctionEntry_ConfigDSN(HWND hwndParent, WORD fRequest,
+                                  LPCSTR lpszDriver, LPCSTR lpszAttributes,
+                                  TraceOptions& opts) {
+  if (opts.logging_enabled) {
+    if (opts.is_file_closed) {
+      opts.trace_file.open(opts.log_file,
+                           std::ofstream::out | std::ofstream::app);
+      opts.is_file_closed = false;
+    }
+    if (opts.trace_file.is_open()) {
+      CollectAndPrintArgsFile("SQLConfigDataSource_Entry", opts, 4,
+                              ToCStr(FormatHWND(hwndParent)),
+                              ToCStr(FormatRequest(fRequest)),
+                              ToCStr(lpszDriver), ToCStr(lpszAttributes));
+    } else {
+      CollectAndPrintArgs("SQLConfigDataSource_Entry", opts, 4,
+                          ToCStr(FormatHWND(hwndParent)),
+                          ToCStr(FormatRequest(fRequest)), ToCStr(lpszDriver),
+                          ToCStr(lpszAttributes));
+    }
+  }
+}
+
+void TraceFunctionExit_ConfigDSN(SQLRETURN ret_code, TraceOptions& opts) {
+  ExitInternal("SQLConfigDataSource_Exit", ret_code, opts);
+}
+#endif  // _WIN32
 
 }  // namespace google::cloud::odbc_bq_driver
