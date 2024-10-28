@@ -386,6 +386,8 @@ StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR* in_str,
   std::wstring wstr(reinterpret_cast<wchar_t const*>(in_str));
   if (in_str_len == SQL_NTS || in_str_len == NULL) {
     in_str_len = wstr.size();
+    // Calculating length based on SQLWCHAR size in different plateform and
+    // compiler.
     if (sizeof(SQLWCHAR) == 2) {
       in_str_len = in_str_len * sizeof(SQLWCHAR);
     }
