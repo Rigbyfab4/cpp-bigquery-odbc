@@ -394,6 +394,28 @@ StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR* in_str,
   return Utf16ToUtf8(stmt_txt_wstr);
 }
 
+bool IsFieldIdentifierString(SQLSMALLINT FieldIdentifier) {
+  switch (FieldIdentifier) {
+    case SQL_DESC_BASE_COLUMN_NAME:
+    case SQL_DESC_BASE_TABLE_NAME:
+    case SQL_DESC_CATALOG_NAME:
+    case SQL_DESC_LABEL:
+    case SQL_DESC_LITERAL_PREFIX:
+    case SQL_DESC_LITERAL_SUFFIX:
+    case SQL_DESC_LOCAL_TYPE_NAME:
+    case SQL_DESC_NAME:
+    case SQL_DESC_SCHEMA_NAME:
+    case SQL_DESC_TABLE_NAME:
+    case SQL_DESC_TYPE_NAME:
+      return true;
+      break;
+
+    default:
+      return false;
+      break;
+  }
+}
+
 std::regex BuildRegex(std::string filter_pattern, SQLULEN metadata_id) {
   if (metadata_id == SQL_TRUE) {
     RTrim(filter_pattern);

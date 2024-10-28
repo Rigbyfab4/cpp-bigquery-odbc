@@ -846,24 +846,10 @@ void TraceFunctionEntry_SQLGetDescRecW(
     SQLSMALLINT name_buf_len, SQLSMALLINT* name_str_len, SQLSMALLINT* desc_type,
     SQLSMALLINT* desc_sub_type, SQLLEN* desc_oct_len, SQLSMALLINT* desc_prec,
     SQLSMALLINT* desc_sc, SQLSMALLINT* nullable, TraceOptions& opts) {
-  StatusRecordOr<std::string> utf8_name =
-      ConvertSQLWCHARToString(name, *name_str_len);
-  if (!utf8_name) {
-    TracePrintInternal(opts, utf8_name.GetStatusRecord().message);
-    return;
-  }
-  *name_str_len = utf8_name->length();
+  auto* name_temp = reinterpret_cast<SQLCHAR*>(name);
   TraceFunctionEntry_SQLGetDescRec(
-      desc_handle, rec_no, ToSqlChar(utf8_name->data()), name_buf_len,
-      name_str_len, desc_type, desc_sub_type, desc_oct_len, desc_prec, desc_sc,
-      nullable, opts);
-  StatusRecordOr<std::wstring> utf16_name = Utf8ToUtf16(*utf8_name);
-  if (!utf16_name) {
-    TracePrintInternal(opts, utf16_name.GetStatusRecord().message);
-    return;
-  }
-  name = ToSqlWChar(utf16_name->data());
-  *name_str_len = utf16_name->length();
+      desc_handle, rec_no, name_temp, name_buf_len, name_str_len, desc_type,
+      desc_sub_type, desc_oct_len, desc_prec, desc_sc, nullable, opts);
 }
 
 void TraceFunctionExit_SQLGetDescRecW(SQLRETURN ret_code, TraceOptions& opts) {
@@ -1778,26 +1764,10 @@ void TraceFunctionEntry_SQLDescribeColW(
     SQLSMALLINT col_name_buf_len, SQLSMALLINT* col_name_len,
     SQLSMALLINT* col_sql_data_type, SQLULEN* col_sz, SQLSMALLINT* dec_digits,
     SQLSMALLINT* col_nullable, TraceOptions& opts) {
-  StatusRecordOr<std::string> utf8_col_name =
-      ConvertSQLWCHARToString(col_name, *col_name_len);
-  if (!utf8_col_name) {
-    TracePrintInternal(opts, utf8_col_name.GetStatusRecord().message);
-    return;
-  }
-  *col_name_len = utf8_col_name->length();
-
+  auto* col_name_temp = reinterpret_cast<SQLCHAR*>(col_name);
   TraceFunctionEntry_SQLDescribeCol(
-      statement_handle, col_num, ToSqlChar(utf8_col_name->data()),
-      col_name_buf_len, col_name_len, col_sql_data_type, col_sz, dec_digits,
-      col_nullable, opts);
-
-  StatusRecordOr<std::wstring> utf16_col_name = Utf8ToUtf16(*utf8_col_name);
-  if (!utf16_col_name) {
-    TracePrintInternal(opts, utf16_col_name.GetStatusRecord().message);
-    return;
-  }
-  col_name = ToSqlWChar(utf16_col_name->data());
-  *col_name_len = utf16_col_name->length();
+      statement_handle, col_num, col_name_temp, col_name_buf_len, col_name_len,
+      col_sql_data_type, col_sz, dec_digits, col_nullable, opts);
 }
 
 void TraceFunctionExit_SQLDescribeColW(SQLRETURN ret_code, TraceOptions& opts) {
