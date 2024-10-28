@@ -379,13 +379,18 @@ StatusRecordOr<std::wstring> Utf8ToUtf16(std::string const& utf_8_str) {
 
 StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR* in_str,
                                                     SQLINTEGER in_str_len) {
-  if (((in_str != nullptr) && (in_str[0] == '\0'))) {
+  if (((in_str == nullptr) || (in_str[0] == '\0'))) {
     return StatusRecord{SQLStates::k_HY000(), "in_str string is empty/Null"};
   }
   std::wstring stmt_txt_wstr;
   std::wstring wstr(reinterpret_cast<wchar_t const*>(in_str));
   if (in_str_len == SQL_NTS || in_str_len == NULL) {
     in_str_len = wstr.size();
+    // Calculating length based on SQLWCHAR size in different plateform and
+    // compiler.
+    if (sizeof(SQLWCHAR) == 2) {
+      in_str_len = in_str_len * sizeof(SQLWCHAR);
+    }
   }
   stmt_txt_wstr.reserve(in_str_len);
   for (SQLINTEGER i = 0; i < in_str_len; ++i) {
@@ -407,6 +412,54 @@ bool IsFieldIdentifierString(SQLSMALLINT FieldIdentifier) {
     case SQL_DESC_SCHEMA_NAME:
     case SQL_DESC_TABLE_NAME:
     case SQL_DESC_TYPE_NAME:
+      return true;
+      break;
+
+    default:
+      return false;
+      break;
+  }
+}
+
+bool IsInfoTypeString(SQLUSMALLINT InfoType) {
+  switch (InfoType) {
+      /* info_type that returns a string */
+    case SQL_ACCESSIBLE_PROCEDURES:
+    case SQL_ACCESSIBLE_TABLES:
+    case SQL_CATALOG_NAME:
+    case SQL_CATALOG_NAME_SEPARATOR:
+    case SQL_CATALOG_TERM:
+    case SQL_COLLATION_SEQ:
+    case SQL_COLUMN_ALIAS:
+    case SQL_DATA_SOURCE_NAME:
+    case SQL_DATA_SOURCE_READ_ONLY:
+    case SQL_DATABASE_NAME:
+    case SQL_DBMS_NAME:
+    case SQL_DBMS_VER:
+    case SQL_DESCRIBE_PARAMETER:
+    case SQL_DRIVER_NAME:
+    case SQL_DRIVER_ODBC_VER:
+    case SQL_DRIVER_VER:
+    case SQL_EXPRESSIONS_IN_ORDERBY:
+    case SQL_IDENTIFIER_QUOTE_CHAR:
+    case SQL_INTEGRITY:
+    case SQL_KEYWORDS:
+    case SQL_LIKE_ESCAPE_CLAUSE:
+    case SQL_MAX_ROW_SIZE_INCLUDES_LONG:
+    case SQL_MULT_RESULT_SETS:
+    case SQL_MULTIPLE_ACTIVE_TXN:
+    case SQL_NEED_LONG_DATA_LEN:
+    case SQL_ORDER_BY_COLUMNS_IN_SELECT:
+    case SQL_PROCEDURE_TERM:
+    case SQL_PROCEDURES:
+    case SQL_ROW_UPDATES:
+    case SQL_SCHEMA_TERM:
+    case SQL_SEARCH_PATTERN_ESCAPE:
+    case SQL_SERVER_NAME:
+    case SQL_SPECIAL_CHARACTERS:
+    case SQL_TABLE_TERM:
+    case SQL_USER_NAME:
+    case SQL_XOPEN_CLI_YEAR:
       return true;
       break;
 

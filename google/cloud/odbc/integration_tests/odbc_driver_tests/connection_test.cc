@@ -68,6 +68,28 @@ TEST(SQLGetInfo, CheckPositionalUpdate) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(SQLGetInfoW, CheckDriverName_Wide) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  SQLWCHAR sqlWCharBuf[kBufferLength];
+  std::string expected_info_val = "Google ODBC Driver For BigQuery";
+  SQLSMALLINT out_len;
+  SQLRETURN status = SQLGetInfoW(conn->hdbc, SQL_DRIVER_NAME,
+                                 reinterpret_cast<SQLPOINTER>(sqlWCharBuf),
+                                 kBufferLength, &out_len);
+  ASSERT_TRUE(SQL_SUCCEEDED(status));
+  std::string str_out =
+      ConvertSQLWCHARToString(sqlWCharBuf, out_len / sizeof(SQLWCHAR));
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+  EXPECT_STREQ(str_out.data(), "Google ODBC Driver For BigQuery");
+#else
+  EXPECT_STREQ(str_out.data(), "Simba ODBC Driver for Google BigQuery");
+#endif
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 #ifdef BQ_DRIVER_INTEGRATION_TESTS
 namespace {
 // Constants for GetBQDriverInfo
@@ -488,6 +510,13 @@ TEST(ConnectionTest, SQLDriverConnect) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(ConnectionTest, SQLDriverConnectW) {
+  auto conn = std::make_shared<ODBCHandles>();
+  std::wstring defaultConnectionWstring = Utf8ToUtf16(kDefaultConnectionString);
+  EXPECT_EQ(Connect(defaultConnectionWstring, conn, 30, true), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 // Duplicate DSNs are not functioning properly(WIN).
 #ifndef _WIN32
 TEST(ConnectionTest, SQLDriverConnect_DuplicateDsn) {
@@ -634,6 +663,34 @@ TEST(ConnectionTest, SQLSetConnectAttrA_UpdateString) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(ConnectionTest, SQLSetConnectAttrW_UpdateString) {
+  std::wstring wstr = L"test";
+  std::vector<SQLWCHAR> buf(wstr.begin(), wstr.end());
+  buf.emplace_back(L'\0');
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  auto status = SQLSetConnectAttrW(conn->hdbc, SQL_ATTR_CURRENT_CATALOG,
+                                   (SQLPOINTER)buf.data(), 4);
+  CheckError(status, "SQLSetConnectAttrW", conn);
+
+  std::string expected = "te";
+
+  buf[0] = '0';
+  std::string buffer =
+      ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(buf.data()), NULL);
+  EXPECT_STREQ("0est", buffer.data());
+
+  SQLWCHAR output[256];
+  SQLINTEGER length = 0;
+  status = SQLGetConnectAttrW(conn->hdbc, SQL_ATTR_CURRENT_CATALOG,
+                              (SQLPOINTER)output, 256, &length);
+  CheckError(status, "SQLGetConnectAttrW", conn);
+  std::string str_out = ConvertSQLWCHARToString(output, SQL_NTS);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 TEST(ConnectionTest, SQLSetConnectAttr_DeleteString) {
   auto conn = std::make_shared<ODBCHandles>();
 
@@ -762,6 +819,13 @@ TEST(ConnectionTest, GetDefaultValueForAutocommit) {
 TEST(ConnectionTest, SQLConnect_WithDSN) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(ConnectDsn(kDefaultDataSource, conn), SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(ConnectionTest, SQLConnectW_WithDSN) {
+  auto conn = std::make_shared<ODBCHandles>();
+  std::wstring defaultConnectionWstring = Utf8ToUtf16(kDefaultDataSource);
+  EXPECT_EQ(Connect(defaultConnectionWstring, conn), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

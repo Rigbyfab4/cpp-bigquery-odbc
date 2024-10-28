@@ -136,6 +136,39 @@ SQLRETURN ConnectDsn(std::string dsn, std::shared_ptr<ODBCHandles> conn,
   return status;
 }
 
+SQLRETURN Connect(std::wstring dsn, std::shared_ptr<ODBCHandles> conn,
+                  int timeout, bool is_driver_connect) {
+  SQLSMALLINT buflen;
+  SQLSMALLINT out_len;
+  SQLRETURN status;
+
+  SetAttributes(conn, timeout);
+  std::vector<SQLWCHAR> sqlWStr(dsn.begin(), dsn.end());
+  sqlWStr.emplace_back(L'\0');
+
+  if (is_driver_connect == true) {
+    status = SQLDriverConnectW(
+        conn->hdbc, 0, sqlWStr.data(), SQL_NTS, (SQLWCHAR*)conn->outdsn,
+        NumSqlChar(conn->outdsn), &buflen, SQL_DRIVER_COMPLETE);
+
+    CheckError(status, "SQLDriverConnectW", conn);
+  } else {
+    status =
+        SQLConnectW(conn->hdbc, sqlWStr.data(), SQL_NTS,
+                    (SQLWCHAR*)conn->outdsn, NumSqlChar(conn->outdsn), NULL, 0);
+
+    CheckError(status, "SQLConnectW", conn);
+  }
+  conn->connected = true;
+
+  PrintDriverVerName(conn);
+
+  // Allocate statement handle
+  status = SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &conn->hstmt);
+  CheckError(status, "SQLAllocHandle", conn);
+  return status;
+}
+
 // Disconnect from the database
 SQLRETURN Disconnect(std::shared_ptr<ODBCHandles> conn) {
   SQLRETURN status;
