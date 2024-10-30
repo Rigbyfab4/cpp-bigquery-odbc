@@ -182,7 +182,7 @@ TEST(ConfigDSNInternal, NullhandleSuccess) {
   auto result =
       ConfigDSNInternal(hwndParent, fRequest, lpszDriver, lpszAttributes);
   EXPECT_EQ(result, true);
-  auto status = GetSectionWin("SOFTWARE\\ODBC\\ODBC.INI\\Personnel Data" );
+  auto status = GetSectionWin("SOFTWARE\\ODBC\\ODBC.INI\\Personnel Data");
   std::shared_ptr<Section> section2 = status.GetValue();
   ASSERT_TRUE(section2);
 

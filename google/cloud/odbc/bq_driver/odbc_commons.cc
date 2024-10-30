@@ -137,11 +137,15 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
   std::string dsn_value =
       section.count("DSN") > 0 ? section.at("DSN") : "Default DSN";
   std::string dsn_name;
-  std::string email =section.count("Email") > 0 ? section.at("Email") : "";
-  std::string key_file_path =section.count("KeyFilePath") > 0 ? section.at("KeyFilePath") : "";
-  std::string oAuth_mechanism =section.count("OAuthMechanism") > 0 ? section.at("OAuthMechanism") : "" ;
-  std::string catalog=section.count("Catalog") > 0 ? section.at("Catalog") : "";
-  std::string dataset_name=section.count("Dataset") > 0 ? section.at("Dataset") : "";
+  std::string email = section.count("Email") > 0 ? section.at("Email") : "";
+  std::string key_file_path =
+      section.count("KeyFilePath") > 0 ? section.at("KeyFilePath") : "";
+  std::string oAuth_mechanism =
+      section.count("OAuthMechanism") > 0 ? section.at("OAuthMechanism") : "";
+  std::string catalog =
+      section.count("Catalog") > 0 ? section.at("Catalog") : "";
+  std::string dataset_name =
+      section.count("Dataset") > 0 ? section.at("Dataset") : "";
 
   DriverForm form;
   switch (f_request) {
