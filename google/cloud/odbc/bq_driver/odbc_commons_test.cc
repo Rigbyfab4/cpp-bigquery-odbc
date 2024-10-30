@@ -17,17 +17,10 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_desc_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_env_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
+#include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/odbc/internal/odbc_includes.h"
 #include "google/cloud/odbc/testing/bq_driver_utils/handles.h"
 #include <gtest/gtest.h>
-
-#ifdef _WIN32
-#include "google/cloud/odbc/bq_driver/internal/driver_form.h"
-#endif  // _WIN32
-
-#ifdef _WIN32
-#include "google/cloud/odbc/bq_driver/internal/driver_form.h"
-#endif  // _WIN32
 
 namespace google::cloud::odbc_bq_driver {
 
@@ -40,12 +33,9 @@ using google::cloud::odbc_testing_bq_driver_utils::CreateConnectionHandle;
 using google::cloud::odbc_testing_bq_driver_utils::CreateStatementHandle;
 
 #ifdef _WIN32
-using google::cloud::odbc_bq_driver_internal::DriverForm;
-#endif  // _WIN32
-
-#ifdef _WIN32
-using google::cloud::odbc_bq_driver_internal::DriverForm;
-#endif  // _WIN32
+using google::cloud::odbc_bq_driver_internal::GetSectionWin;
+using google::cloud::odbc_bq_driver_internal::Section;
+#endif
 
 TEST(SQLFreeHandleInternal, InvalidType) {
   int val = 10;
@@ -182,6 +172,22 @@ TEST(ConfigDSNInternal, NullRequest) {
       ConfigDSNInternal(hwndParent, fRequest, lpszDriver, lpszAttributes);
   EXPECT_EQ(status, false);
 }
+
+TEST(ConfigDSNInternal, NullhandleSuccess) {
+  HWND hwndParent = NULL;
+  WORD fRequest = ODBC_ADD_DSN;
+  LPCSTR lpszDriver = "ODBC Driver For Google Bigquery";
+  LPCSTR lpszAttributes =
+      "DSN=Personnel Data\0Email=Smith.Sesame@gmail.com\0Dataset=Personnel\0\0";
+  auto result =
+      ConfigDSNInternal(hwndParent, fRequest, lpszDriver, lpszAttributes);
+  EXPECT_EQ(result, true);
+
+  result = ConfigDSNInternal(hwndParent, ODBC_REMOVE_DSN, lpszDriver,
+                             lpszAttributes);
+  EXPECT_EQ(result, true);
+}
+
 #endif  // _WIN32
 
 }  // namespace google::cloud::odbc_bq_driver
