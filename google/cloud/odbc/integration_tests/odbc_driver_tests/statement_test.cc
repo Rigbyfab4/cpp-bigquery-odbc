@@ -52,9 +52,9 @@ StdRows const kSampleData{
 };
 
 StdUnicodeRows const kUnicodeSampleData{
-    {1, L"हिंदी1", L"中国人1"},
-    {2, L"हिंदी2", L"中国人2"},
-    {3, L"हिंदी3", L"中国人3"},
+    {1, L"हिंदी", L"中国人"},
+    {2, L"नमस्ते", L"你好"},
+    {3, L"परीक्षण", L"测试"},
 };
 
 // Checks if the column description returned by DescribeCol matches the schema
