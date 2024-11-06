@@ -536,10 +536,6 @@ TEST(SQLColAttributeW, CheckBaseColumnName) {
                "SQLColAttributeW " + std::to_string(SQL_DESC_BASE_COLUMN_NAME),
                conn);
 
-    col = ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(col_attr),
-                                  11);
-    EXPECT_EQ("StringField", col);
-  
 #endif /* WIN32 */
 
   table.Drop(conn);

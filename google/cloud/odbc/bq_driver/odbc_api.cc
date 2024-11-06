@@ -2605,9 +2605,8 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
       statementHandle, columnNumber, fieldIdentifier,
       updated_character_attrib_val, characterAttributeBufferLen,
       &character_attribute_string_len, numericAttribute);
+      
   // Handle Unicode conversion of output parameters.
-  std::cout<<"size "<<character_attribute_string_len<<std::endl;
-   std::cout<<"here "<<(char*)updated_character_attrib_val<<std::endl;
   if (character_attribute_string_len > 0) {
     if (IsFieldIdentifierString(fieldIdentifier)) {
       updated_out_character_attr_status = ConvertSQLPointerToSQLWChar(
