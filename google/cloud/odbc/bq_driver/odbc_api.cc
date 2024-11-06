@@ -1132,38 +1132,19 @@ SQLRETURN SQL_API SQLSetConnectAttrW(SQLHDBC connectionHandle,
   if (status != SQL_SUCCESS) {
     return status;
   }
-  // If the Attribute value is a character string then we need to do the unicode
-  // conversion on the input parameters.
-  SQLPOINTER updated_attrib_val;
-  SQLINTEGER updated_value_string_len;
-  StatusRecordOr<std::string> updated_attrib_status;
-  ConnectionAttr conn_attr;
-  if (conn_attr.GetAttributeValueType(attribute) ==
-      ConnectionValueType::kSqlChr) {
-    updated_attrib_status = ConvertSQLPointerToSQLChar(value, valueStringLen);
-    if (!updated_attrib_status) {
-      TracePrintInternal(*(*kTraceOption),
-                         updated_attrib_status.GetStatusRecord().message);
-      return updated_attrib_status.GetCalculatedReturnCode();
-    }
-    updated_attrib_val = (SQLPOINTER)ToSqlChar(updated_attrib_status->data());
-    updated_value_string_len = strlen(updated_attrib_status->c_str());
-  } else {
-    // If we are not dealing with strings no conversions needed.
-    updated_attrib_val = value;
-    updated_value_string_len = valueStringLen;
-  }
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionEntry_SQLSetConnectAttrW(
-        connectionHandle, attribute, updated_attrib_val,
-        updated_value_string_len, *(*kTraceOption));
+        connectionHandle, attribute, value,
+        valueStringLen, *(*kTraceOption));
   // Handle Unicode conversion of input parameters.
+
   // Call to internal common function for SQLSetConnectAttr and
   // SQLSetConnectAttrW in odbc_connection.h.
   rc = ::google::cloud::odbc_bq_driver::SQLSetConnectAttrInternal(
-      connectionHandle, attribute, updated_attrib_val,
-      updated_value_string_len);
+      connectionHandle, attribute, value,
+      valueStringLen);
+
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLSetConnectAttrW(rc, *(*kTraceOption));
@@ -1429,48 +1410,22 @@ SQLRETURN SQL_API SQLGetStmtAttrW(SQLHSTMT statementHandle,
   SQLRETURN rc = SQL_SUCCESS;
   bool is_tracing_enabled = IsTracingEnabled("SQLGetStmtAttrW");
 
-  // For character strings SQLPOINTER may point to a WCHAR output value.
-  // They need to be handled separately.
-  ConnectionAttr conn_attr;
-  SQLPOINTER updated_attrib_val;
-  SQLCHAR attrib_val[kBufferLength] = "Not Set";
-  StatusRecordOr<std::wstring> updated_out_attr_status;
-  if (conn_attr.GetAttributeValueType(attribute) ==
-      ConnectionValueType::kSqlChr) {
-    updated_attrib_val = (SQLPOINTER)attrib_val;
-  } else {
-    updated_attrib_val = value;
-  }
-
+  
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionEntry_SQLGetStmtAttrW(statementHandle, attribute,
-                                       updated_attrib_val, valueBufferLen,
+                                       value, valueBufferLen,
                                        valueStringLen, *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
   // Call to internal common function for SQLGetStmtAttr and SQLGetStmtAttrW
   // in odbc_statement.h.
   rc = ::google::cloud::odbc_bq_driver::SQLGetStmtAttrInternal(
-      statementHandle, attribute, updated_attrib_val, valueBufferLen,
+      statementHandle, attribute, value, valueBufferLen,
       valueStringLen);
 
   // Handle Unicode conversion of output parameters.
-  if (conn_attr.GetAttributeValueType(attribute) ==
-      ConnectionValueType::kSqlChr) {
-    updated_out_attr_status =
-        ConvertSQLPointerToSQLWChar(updated_attrib_val, valueBufferLen);
-    if (!updated_out_attr_status) {
-      TracePrintInternal(*(*kTraceOption),
-                         updated_out_attr_status.GetStatusRecord().message);
-      return updated_out_attr_status.GetCalculatedReturnCode();
-    }
-    std::memcpy(value, (SQLPOINTER)ToSqlWChar(updated_out_attr_status->data()),
-                valueBufferLen);
-    // value = (SQLPOINTER)ToSqlWChar(updated_out_attr_status->data());
-    *valueStringLen = updated_out_attr_status->length();
-  }
-
+ 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLGetStmtAttrW(rc, *(*kTraceOption));
@@ -2651,6 +2606,8 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
       updated_character_attrib_val, characterAttributeBufferLen,
       &character_attribute_string_len, numericAttribute);
   // Handle Unicode conversion of output parameters.
+  std::cout<<"size "<<character_attribute_string_len<<std::endl;
+   std::cout<<"here "<<(char*)updated_character_attrib_val<<std::endl;
   if (character_attribute_string_len > 0) {
     if (IsFieldIdentifierString(fieldIdentifier)) {
       updated_out_character_attr_status = ConvertSQLPointerToSQLWChar(
@@ -3066,6 +3023,7 @@ SQLRETURN SQL_API SQLGetDiagFieldW(SQLSMALLINT handleType, SQLHANDLE handle,
       diagInfoBufferLen, &diag_info_str_len);
 
   // Handle Unicode conversion of output parameters.
+  std::cout<<"here "<<diag_info_str_len<<std::endl;
   if (diag_info_str_len > 0) {
     if (IsDiagIdentifierString(diagIdentifier)) {
       updated_out_diag_info_status =
