@@ -1132,18 +1132,39 @@ SQLRETURN SQL_API SQLSetConnectAttrW(SQLHDBC connectionHandle,
   if (status != SQL_SUCCESS) {
     return status;
   }
+  // If the Attribute value is a character string then we need to do the unicode
+  // conversion on the input parameters.
+  SQLPOINTER updated_attrib_val;
+  SQLINTEGER updated_value_string_len;
+  StatusRecordOr<std::string> updated_attrib_status;
+  ConnectionAttr conn_attr;
+  if (conn_attr.GetAttributeValueType(attribute) ==
+      ConnectionValueType::kSqlChr) {
+    updated_attrib_status = ConvertSQLPointerToSQLChar(value, valueStringLen);
+    if (!updated_attrib_status) {
+      TracePrintInternal(*(*kTraceOption),
+                         updated_attrib_status.GetStatusRecord().message);
+      return updated_attrib_status.GetCalculatedReturnCode();
+    }
+    updated_attrib_val = (SQLPOINTER)ToSqlChar(updated_attrib_status->data());
+    updated_value_string_len = strlen(updated_attrib_status->c_str());
+  } else {
+    // If we are not dealing with strings no conversions needed.
+    updated_attrib_val = value;
+    updated_value_string_len = valueStringLen;
+  }
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionEntry_SQLSetConnectAttrW(
-        connectionHandle, attribute, value,
-        valueStringLen, *(*kTraceOption));
+        connectionHandle, attribute, updated_attrib_val,
+        updated_value_string_len, *(*kTraceOption));
   // Handle Unicode conversion of input parameters.
 
   // Call to internal common function for SQLSetConnectAttr and
   // SQLSetConnectAttrW in odbc_connection.h.
   rc = ::google::cloud::odbc_bq_driver::SQLSetConnectAttrInternal(
-      connectionHandle, attribute, value,
-      valueStringLen);
+      connectionHandle, attribute, updated_attrib_val,
+      updated_value_string_len);
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
@@ -1320,38 +1341,17 @@ SQLRETURN SQL_API SQLSetStmtAttrW(SQLHSTMT statementHandle,
   bool is_tracing_enabled = IsTracingEnabled("SQLSetStmtAttrW");
 
   // Handle Unicode conversion of input parameters.
-  // If the Attribute value is a character string then we need to do the unicode
-  // conversion on the input parameters.
-  SQLPOINTER updated_attrib_val;
-  SQLINTEGER updated_value_string_len;
-  StatusRecordOr<std::string> updated_attrib_status;
-  ConnectionAttr conn_attr;
-  if (conn_attr.GetAttributeValueType(attribute) ==
-      ConnectionValueType::kSqlChr) {
-    updated_attrib_status = ConvertSQLPointerToSQLChar(value, valueStringLen);
-    if (!updated_attrib_status) {
-      TracePrintInternal(*(*kTraceOption),
-                         updated_attrib_status.GetStatusRecord().message);
-      return updated_attrib_status.GetCalculatedReturnCode();
-    }
-    updated_attrib_val = (SQLPOINTER)ToSqlChar(updated_attrib_status->data());
-    updated_value_string_len = updated_attrib_status->length();
-  } else {
-    // If we are not dealing with strings no conversions needed.
-    updated_attrib_val = value;
-    updated_value_string_len = valueStringLen;
-  }
-
+ 
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionEntry_SQLSetStmtAttrW(
-        statementHandle, attribute, updated_attrib_val,
-        updated_value_string_len, *(*kTraceOption));
+        statementHandle, attribute, value,
+        valueStringLen, *(*kTraceOption));
 
   // Call to internal common function for SQLSetStmtAttr and SQLSetStmtAttrW
   // in odbc_statement.h.
   rc = ::google::cloud::odbc_bq_driver::SQLSetStmtAttrInternal(
-      statementHandle, attribute, updated_attrib_val, updated_value_string_len);
+      statementHandle, attribute, value, valueStringLen);
 
   // Handle Unicode conversion of output parameters.
 
@@ -2605,7 +2605,7 @@ SQLRETURN SQL_API SQLColAttributeW(SQLHSTMT statementHandle,
       statementHandle, columnNumber, fieldIdentifier,
       updated_character_attrib_val, characterAttributeBufferLen,
       &character_attribute_string_len, numericAttribute);
-      
+
   // Handle Unicode conversion of output parameters.
   if (character_attribute_string_len > 0) {
     if (IsFieldIdentifierString(fieldIdentifier)) {
