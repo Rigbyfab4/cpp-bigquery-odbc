@@ -1027,7 +1027,8 @@ TEST_P(StatementParameterizedTest, SetAndGetStatementDescriptorAttributes) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST_P(StatementParameterizedTest, SetAndGetStatementDescriptorAttributes_Wide) {
+TEST_P(StatementParameterizedTest,
+       SetAndGetStatementDescriptorAttributes_Wide) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn, true), SQL_SUCCESS);
   SQLRETURN status;
@@ -1035,19 +1036,20 @@ TEST_P(StatementParameterizedTest, SetAndGetStatementDescriptorAttributes_Wide) 
   // Set attribute using statement handle
   SQLULEN arr_size = 5;
   status = SQLSetStmtAttrW(conn->hstmt, SQL_ATTR_ROW_ARRAY_SIZE,
-                          (SQLPOINTER)arr_size, 0);
+                           (SQLPOINTER)arr_size, 0);
   CheckError(status, "SQLSetStmtAttrW(SQL_ATTR_ROW_ARRAY_SIZE)", conn);
 
   // Get attribute using statement handle
   SQLULEN arr_size_stmt_handle = 0;
   status = SQLGetStmtAttrW(conn->hstmt, SQL_ATTR_ROW_ARRAY_SIZE,
-                       &arr_size_stmt_handle, 0, NULL);
+                           &arr_size_stmt_handle, 0, NULL);
   CheckError(status, "SQLGetStmtAttrW(SQL_ATTR_ROW_ARRAY_SIZE)", conn);
 
   EXPECT_EQ(arr_size, arr_size_stmt_handle);
 
   // Get descriptor using statement handle
-  status = SQLGetStmtAttrW(conn->hstmt, SQL_ATTR_APP_ROW_DESC, &conn->ard, 0, NULL);
+  status =
+      SQLGetStmtAttrW(conn->hstmt, SQL_ATTR_APP_ROW_DESC, &conn->ard, 0, NULL);
   CheckError(status, "SQLGetStmtAttrW(SQL_ATTR_APP_ROW_DESC)", conn);
 
   // Get attribute using descriptor handle

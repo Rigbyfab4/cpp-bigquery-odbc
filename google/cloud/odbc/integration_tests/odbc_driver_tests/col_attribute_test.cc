@@ -516,8 +516,7 @@ TEST(SQLColAttributeW, CheckBaseColumnName) {
   EXPECT_EQ(Connect(kDefaultConnectionString, conn, true), SQL_SUCCESS);
   std::string qualified_table_name_wide = kDatasetName + "." + kTableNameWide;
   Table table(qualified_table_name_wide);
-  table.CreateWithPrepare(
-      conn, "(StringField STRING)");
+  table.CreateWithPrepare(conn, "(StringField STRING)");
 
   std::string select_stmt = "SELECT * FROM " + qualified_table_name_wide;
   auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)select_stmt.c_str(),
@@ -525,16 +524,16 @@ TEST(SQLColAttributeW, CheckBaseColumnName) {
   CheckError(status, "SQLPrepare", conn);
 
 #ifndef _WIN32
-    // TODO(b/357794946): Handle SQLColAttribute Api Null Values WRT SIMBA(WIN).
-    std::string col;
+  // TODO(b/357794946): Handle SQLColAttribute Api Null Values WRT SIMBA(WIN).
+  std::string col;
 
-    // Checking string attributes
-    SQLWCHAR col_attr[kBufferLength] = {0};
-    status = SQLColAttributeW(conn->hstmt, 1, SQL_DESC_BASE_COLUMN_NAME,
-                              (SQLPOINTER)col_attr, kBufferLength, NULL, NULL);
-    CheckError(status,
-               "SQLColAttributeW " + std::to_string(SQL_DESC_BASE_COLUMN_NAME),
-               conn);
+  // Checking string attributes
+  SQLWCHAR col_attr[kBufferLength] = {0};
+  status = SQLColAttributeW(conn->hstmt, 1, SQL_DESC_BASE_COLUMN_NAME,
+                            (SQLPOINTER)col_attr, kBufferLength, NULL, NULL);
+  CheckError(status,
+             "SQLColAttributeW " + std::to_string(SQL_DESC_BASE_COLUMN_NAME),
+             conn);
 
 #endif /* WIN32 */
 

@@ -1341,12 +1341,11 @@ SQLRETURN SQL_API SQLSetStmtAttrW(SQLHSTMT statementHandle,
   bool is_tracing_enabled = IsTracingEnabled("SQLSetStmtAttrW");
 
   // Handle Unicode conversion of input parameters.
- 
+
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
-    TraceFunctionEntry_SQLSetStmtAttrW(
-        statementHandle, attribute, value,
-        valueStringLen, *(*kTraceOption));
+    TraceFunctionEntry_SQLSetStmtAttrW(statementHandle, attribute, value,
+                                       valueStringLen, *(*kTraceOption));
 
   // Call to internal common function for SQLSetStmtAttr and SQLSetStmtAttrW
   // in odbc_statement.h.
@@ -1410,22 +1409,20 @@ SQLRETURN SQL_API SQLGetStmtAttrW(SQLHSTMT statementHandle,
   SQLRETURN rc = SQL_SUCCESS;
   bool is_tracing_enabled = IsTracingEnabled("SQLGetStmtAttrW");
 
-  
   // Call to Trace Unicode function entry in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
-    TraceFunctionEntry_SQLGetStmtAttrW(statementHandle, attribute,
-                                       value, valueBufferLen,
-                                       valueStringLen, *(*kTraceOption));
+    TraceFunctionEntry_SQLGetStmtAttrW(statementHandle, attribute, value,
+                                       valueBufferLen, valueStringLen,
+                                       *(*kTraceOption));
 
   // Handle Unicode conversion of input parameters.
   // Call to internal common function for SQLGetStmtAttr and SQLGetStmtAttrW
   // in odbc_statement.h.
   rc = ::google::cloud::odbc_bq_driver::SQLGetStmtAttrInternal(
-      statementHandle, attribute, value, valueBufferLen,
-      valueStringLen);
+      statementHandle, attribute, value, valueBufferLen, valueStringLen);
 
   // Handle Unicode conversion of output parameters.
- 
+
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLGetStmtAttrW(rc, *(*kTraceOption));
@@ -3022,7 +3019,6 @@ SQLRETURN SQL_API SQLGetDiagFieldW(SQLSMALLINT handleType, SQLHANDLE handle,
       diagInfoBufferLen, &diag_info_str_len);
 
   // Handle Unicode conversion of output parameters.
-  std::cout<<"here "<<diag_info_str_len<<std::endl;
   if (diag_info_str_len > 0) {
     if (IsDiagIdentifierString(diagIdentifier)) {
       updated_out_diag_info_status =
