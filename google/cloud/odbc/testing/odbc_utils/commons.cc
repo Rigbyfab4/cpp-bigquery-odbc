@@ -425,6 +425,60 @@ void Table::InsertData(std::shared_ptr<ODBCHandles> conn, StdRows rows,
   }
 }
 
+void Table::InsertUnicodeData(std::shared_ptr<ODBCHandles> conn,
+                              StdUnicodeRows rows) {
+  std::wstring wTableName = Utf8ToUtf16(table_name_);
+  std::wstring wstrTable = wTableName.c_str();
+  SQLRETURN status;
+  std::wstring insert_stmt = L"INSERT INTO " + wstrTable + L" VALUES ";
+  std::wcout << "insert_stmt here " << insert_stmt << std::endl;
+  int num_rows = rows.size();
+  if (!num_rows) {
+    return;
+  }
+
+  for (int i = 0; i < num_rows; i++) {
+    auto row = rows[i];
+    std::wstring row_str = L"( ";
+
+    auto int_field = row.int_field;
+    if (int_field != NULL) {
+      row_str.append(std::to_wstring(int_field) + L", ");
+    } else {
+      row_str += L'\0';
+    }
+
+    auto str_field1 = row.str_field1;
+    if (!str_field1.empty()) {
+      row_str.append(L"'" + str_field1 + L"', ");
+    } else {
+      row_str += L'\0';
+    }
+
+    auto str_field2 = row.str_field2;
+    if (!str_field2.empty()) {
+      row_str.append(L"'" + str_field2 + L"'");
+    } else {
+      row_str += L'\0';
+    }
+
+    row_str.append(L")");
+    if (i != (num_rows - 1)) {
+      row_str.append(L", ");
+    } else {
+      row_str += L'\0';
+    }
+    insert_stmt.append(row_str);
+  }
+
+  std::vector<SQLWCHAR> sqlWStr(insert_stmt.begin(), insert_stmt.end());
+  sqlWStr.emplace_back(L'\0');
+  status = SQLPrepareW(conn->hstmt, sqlWStr.data(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+}
+
 void Table::InsertStrData(std::shared_ptr<ODBCHandles> conn,
                           std::vector<std::string> rows, bool insert_index) {
   auto insert_stmt = "INSERT INTO " + table_name_ + " VALUES ";
@@ -1044,15 +1098,18 @@ std::string Utf16ToUtf8(std::wstring const& utf_16_str) {
   }
 #ifdef _WIN32
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
-  int utf8Length = WideCharToMultiByte(CP_UTF8, 0, utf_16_str.c_str(), -1, NULL,
+  int utf8Length = WideCharToMultiByte(CP_ACP, 0, utf_16_str.c_str(), -1, NULL,
                                        0, NULL, NULL);
   if (utf8Length == 0) {
     throw std::runtime_error(
         "Error determining buffer size while converting wstring to string");
   }
+  if (sizeof(SQLWCHAR) == 2) {
+    utf8Length = utf8Length * sizeof(SQLWCHAR);
+  }
   std::string utf8Str(utf8Length, 0);
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
-  int result = WideCharToMultiByte(CP_UTF8, 0, utf_16_str.c_str(), -1,
+  int result = WideCharToMultiByte(CP_ACP, 0, utf_16_str.c_str(), -1,
                                    &utf8Str[0], utf8Length, NULL, NULL);
   if (result == 0) {
     throw std::runtime_error("Error while converting wstring to string");
@@ -1099,14 +1156,14 @@ std::wstring Utf8ToUtf16(std::string const& utf_8_str) {
 #ifdef _WIN32
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
   int utf16Length =
-      MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1, NULL, 0);
+      MultiByteToWideChar(CP_ACP, 0, utf_8_str.c_str(), -1, NULL, 0);
   if (utf16Length == 0) {
     throw std::runtime_error(
         "Error determining buffer size while converting string to wstring");
   }
   std::wstring utf16Str(utf16Length, 0);
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
-  int result = MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1,
+  int result = MultiByteToWideChar(CP_ACP, 0, utf_8_str.c_str(), -1,
                                    &utf16Str[0], utf16Length);
   if (result == 0) {
     throw std::runtime_error("Error while converting string to wstring");

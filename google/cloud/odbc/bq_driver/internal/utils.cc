@@ -271,6 +271,9 @@ StatusRecordOr<std::string> Utf16ToUtf8(std::wstring const& utf_16_str) {
         SQLStates::k_HY000(),
         "Error determining buffer size while converting wstring to string"};
   }
+  if (sizeof(SQLWCHAR) == 2) {
+    utf8Length = utf8Length * sizeof(SQLWCHAR);
+  }
   std::string utf8Str(utf8Length, 0);
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
   int result = WideCharToMultiByte(CP_ACP, 0, utf_16_str.c_str(), -1,
