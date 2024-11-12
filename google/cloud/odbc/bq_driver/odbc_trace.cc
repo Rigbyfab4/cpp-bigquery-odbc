@@ -29,7 +29,6 @@ using google::cloud::odbc_bq_driver_internal::FormatSqlULen;
 using google::cloud::odbc_bq_driver_internal::FormatSqlUSmallInt;
 using google::cloud::odbc_bq_driver_internal::FormatString;
 using google::cloud::odbc_bq_driver_internal::ToCStr;
-using google::cloud::odbc_bq_driver_internal::Utf8ToUtf16;
 #ifdef _WIN32
 using google::cloud::odbc_bq_driver_internal::FormatHWND;
 using google::cloud::odbc_bq_driver_internal::FormatRequest;
@@ -124,6 +123,7 @@ void TraceFunctionEntry_SQLDriverConnectW(
     SQLSMALLINT* out_conn_str_len, SQLUSMALLINT driver_completion,
     TraceOptions& opts) {
   StatusRecordOr<std::string> utf8_in_connection_str;
+  auto* out_conn_str_temp = reinterpret_cast<SQLCHAR*>(out_conn_str);
   std::wstring in_connection_wstr(
       reinterpret_cast<wchar_t const*>(in_connection_str));
   auto in_connection_wstr_len = wcslen(in_connection_wstr.data());
@@ -137,48 +137,11 @@ void TraceFunctionEntry_SQLDriverConnectW(
     }
   }
 
-  std::wstring wstr(reinterpret_cast<wchar_t const*>(out_conn_str));
-  auto out_len = wstr.length();
-  StatusRecordOr<std::string> utf8_out_conn_str;
-  if (out_len > 0) {
-    utf8_out_conn_str = ConvertSQLWCHARToString(out_conn_str, out_len);
-    if (!utf8_out_conn_str) {
-      TracePrintInternal(opts, utf8_out_conn_str.GetStatusRecord().message);
-      return;
-    }
-    *out_conn_str_len = utf8_out_conn_str->length();
-
-    TraceFunctionEntry_SQLDriverConnect(
-        connection_handle, window_handle,
-        ToSqlChar(utf8_in_connection_str->data()), in_connection_str_len,
-        ToSqlChar(utf8_out_conn_str->data()), out_conn_str_buf_len,
-        out_conn_str_len, driver_completion, opts);
-  } else {
-    TraceFunctionEntry_SQLDriverConnect(
-        connection_handle, window_handle,
-        ToSqlChar(utf8_in_connection_str->data()), in_connection_str_len,
-        ToSqlChar(""), out_conn_str_buf_len, out_conn_str_len,
-        driver_completion, opts);
-  }
-
-  StatusRecordOr<std::wstring> utf16_in_connection_str =
-      Utf8ToUtf16(*utf8_in_connection_str);
-  if (!utf16_in_connection_str) {
-    TracePrintInternal(opts, utf16_in_connection_str.GetStatusRecord().message);
-    return;
-  }
-  in_connection_str = ToSqlWChar(utf16_in_connection_str->data());
-  in_connection_str_len = utf16_in_connection_str->length();
-  StatusRecordOr<std::wstring> utf16_out_conn_str;
-  if (out_len > 0) {
-    utf16_out_conn_str = Utf8ToUtf16(*utf8_out_conn_str);
-    if (!utf16_out_conn_str) {
-      TracePrintInternal(opts, utf16_out_conn_str.GetStatusRecord().message);
-      return;
-    }
-    out_conn_str = ToSqlWChar(utf16_out_conn_str->data());
-    *out_conn_str_len = utf16_out_conn_str->length();
-  }
+  TraceFunctionEntry_SQLDriverConnect(connection_handle, window_handle,
+                                      ToSqlChar(utf8_in_connection_str->data()),
+                                      in_connection_str_len, out_conn_str_temp,
+                                      out_conn_str_buf_len, out_conn_str_len,
+                                      driver_completion, opts);
 }
 
 void TraceFunctionExit_SQLDriverConnectW(SQLRETURN ret_code,
@@ -233,6 +196,7 @@ void TraceFunctionEntry_SQLBrowseConnectW(SQLHDBC connection_handle,
                                           SQLSMALLINT out_conn_str_buf_len,
                                           SQLSMALLINT* out_conn_str_len,
                                           TraceOptions& opts) {
+  auto* out_conn_str_temp = reinterpret_cast<SQLCHAR*>(out_conn_str);
   StatusRecordOr<std::string> utf8_in_connection_str =
       ConvertSQLWCHARToString(in_conn_str, in_conn_str_len);
   if (!utf8_in_connection_str) {
@@ -240,18 +204,11 @@ void TraceFunctionEntry_SQLBrowseConnectW(SQLHDBC connection_handle,
     return;
   }
   in_conn_str_len = utf8_in_connection_str->length();
-  StatusRecordOr<std::string> utf8_out_conn_str =
-      ConvertSQLWCHARToString(out_conn_str, *out_conn_str_len);
-  if (!utf8_out_conn_str) {
-    TracePrintInternal(opts, utf8_out_conn_str.GetStatusRecord().message);
-    return;
-  }
-  *out_conn_str_len = utf8_out_conn_str->length();
 
   TraceFunctionEntry_SQLBrowseConnect(
       connection_handle, ToSqlChar(utf8_in_connection_str->data()),
-      in_conn_str_len, ToSqlChar(""), out_conn_str_buf_len, out_conn_str_len,
-      opts);
+      in_conn_str_len, out_conn_str_temp, out_conn_str_buf_len,
+      out_conn_str_len, opts);
 }
 
 void TraceFunctionExit_SQLBrowseConnectW(SQLRETURN ret_code,
