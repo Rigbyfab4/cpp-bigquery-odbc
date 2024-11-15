@@ -468,7 +468,7 @@ SQLRETURN SQL_API SQLDriverConnectW(
       &out_conn_str_len, driverCompletion);
 
   // Handle Unicode conversion of output parameters.
-  if (!SQL_SUCCEEDED(rc)) {
+  if (SQL_SUCCEEDED(rc)) {
     if (outConnectionString) {
       StatusRecordOr<std::wstring> utf16_out_conn_str;
       if (out_conn_str_len > 0) {
