@@ -63,6 +63,13 @@ SQLRETURN Connect(std::string conn_str, std::shared_ptr<ODBCHandles> conn,
                                (SQLCHAR*)conn->outdsn, sizeof(conn->outdsn),
                                &buflen, SQL_DRIVER_COMPLETE);
   } else {
+    status = SQLDriverConnect(conn->hdbc, NULL, (SQLCHAR*)data_source, SQL_NTS,
+                              NULL, 0, NULL, SQL_DRIVER_COMPLETE);
+
+    CheckError(status, "SQLDriverConnectW", conn);
+
+    status = SQLDisconnect(conn->hdbc);
+    CheckError(status, "SQLDisconnect", conn);
     status = SQLDriverConnect(conn->hdbc, 0, (SQLCHAR*)data_source, SQL_NTS,
                               (SQLCHAR*)conn->outdsn, sizeof(conn->outdsn),
                               &buflen, SQL_DRIVER_COMPLETE);

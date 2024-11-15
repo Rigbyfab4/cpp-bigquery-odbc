@@ -468,22 +468,24 @@ SQLRETURN SQL_API SQLDriverConnectW(
       &out_conn_str_len, driverCompletion);
 
   // Handle Unicode conversion of output parameters.
-  if (outConnectionString) {
-    StatusRecordOr<std::wstring> utf16_out_conn_str;
-    if (out_conn_str_len > 0) {
-      utf16_out_conn_str = Utf8ToUtf16((char*)out_conn_str);
-    } else {
-      std::string val(ToCharStr(out_conn_str));
-      utf16_out_conn_str = Utf8ToUtf16(val);
+  if (!SQL_SUCCEEDED(rc)) {
+    if (outConnectionString) {
+      StatusRecordOr<std::wstring> utf16_out_conn_str;
+      if (out_conn_str_len > 0) {
+        utf16_out_conn_str = Utf8ToUtf16((char*)out_conn_str);
+      } else {
+        std::string val(ToCharStr(out_conn_str));
+        utf16_out_conn_str = Utf8ToUtf16(val);
+      }
+      if (!utf16_out_conn_str) {
+        TracePrintInternal(*(*kTraceOption),
+                           utf16_out_conn_str.GetStatusRecord().message);
+        return utf16_out_conn_str.GetCalculatedReturnCode();
+      }
+      outConnectionString = ToSqlWChar(utf16_out_conn_str->data());
     }
-    if (!utf16_out_conn_str) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf16_out_conn_str.GetStatusRecord().message);
-      return utf16_out_conn_str.GetCalculatedReturnCode();
-    }
-    outConnectionString = ToSqlWChar(utf16_out_conn_str->data());
+    if (outConnectionStringLen) *outConnectionStringLen = out_conn_str_len;
   }
-  if (outConnectionStringLen) *outConnectionStringLen = out_conn_str_len;
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLDriverConnectW(rc, *(*kTraceOption));
@@ -2789,7 +2791,8 @@ SQLRETURN SQL_API SQLDescribeColW(
                 column_name_string_len * sizeof(SQLWCHAR));
   }
 
-  *columnNameLen = column_name_string_len;
+    *columnNameLen = column_name_string_len;
+  }
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
