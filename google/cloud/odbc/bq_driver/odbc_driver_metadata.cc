@@ -36,6 +36,7 @@ using google::cloud::odbc_bq_driver_internal::GetResultSetForProjects;
 using google::cloud::odbc_bq_driver_internal::GetResultSetForTables;
 using google::cloud::odbc_bq_driver_internal::IsFunctionIdOdbc2;
 using google::cloud::odbc_bq_driver_internal::IsFunctionIdOdbc3;
+using google::cloud::odbc_bq_driver_internal::kDriverOdbcVer;
 using google::cloud::odbc_bq_driver_internal::kMatchAll;
 using google::cloud::odbc_bq_driver_internal::kSqlApiAllFuncsSize;
 using google::cloud::odbc_bq_driver_internal::kTraceOption;
@@ -74,13 +75,12 @@ StatusRecord InvalidType(char const* mesg, SQLUSMALLINT info_type) {
   return StatusRecord{SQLStates::k_HY096(), message};
 }
 
-SQLRETURN HandleConnectionInformationTypes(SQLHDBC connection_handle,
-                                           SQLUSMALLINT info_type,
-                                           SQLPOINTER info_value_ptr,
-                                           SQLSMALLINT in_buffer_len,
-                                           SQLSMALLINT* str_len_ptr) {
+SQLRETURN HandleConnectionInformationTypes(
+    SQLHDBC connection_handle, SQLUSMALLINT info_type,
+    SQLPOINTER info_value_ptr, SQLSMALLINT in_buffer_len,
+    SQLSMALLINT* str_len_ptr, bool check_is_connection_done = true) {
   StatusRecordOr<ConnectionHandle*> handle_result =
-      ValidateConnectionHandle(connection_handle);
+      ValidateConnectionHandle(connection_handle, check_is_connection_done);
   if (!handle_result) {
     TracePrintInternal(opts, handle_result.GetStatusRecord().message);
     return handle_result.GetCalculatedReturnCode();
@@ -97,6 +97,10 @@ SQLRETURN HandleConnectionInformationTypes(SQLHDBC connection_handle,
     }
     case SQL_DATABASE_NAME: {
       info_type_value = handle->GetDsn().catalog;
+      break;
+    }
+    case SQL_DRIVER_ODBC_VER: {
+      info_type_value = kDriverOdbcVer;
       break;
     }
     default: {
@@ -174,8 +178,11 @@ SQLRETURN SQLGetInfoInternal(SQLHDBC connection_handle, SQLUSMALLINT info_type,
                              SQLPOINTER info_value_ptr,
                              SQLSMALLINT in_buffer_len,
                              SQLSMALLINT* str_len_ptr) {
-  StatusRecordOr<ConnectionHandle*> handle_result =
-      ValidateConnectionHandle(connection_handle);
+  // for SQL_DRIVER_ODBC_VER should go through even when connection is not
+  // established
+  StatusRecordOr<ConnectionHandle*> handle_result = ValidateConnectionHandle(
+      connection_handle, info_type != SQL_DRIVER_ODBC_VER);
+
   if (!handle_result) {
     TracePrintInternal(opts, handle_result.GetStatusRecord().message);
     return handle_result.GetCalculatedReturnCode();
@@ -189,10 +196,12 @@ SQLRETURN SQLGetInfoInternal(SQLHDBC connection_handle, SQLUSMALLINT info_type,
   }
 
   // Handle information types dependent on connection handle.
-  if (info_type == SQL_DATA_SOURCE_NAME || info_type == SQL_DATABASE_NAME) {
-    return HandleConnectionInformationTypes(connection_handle, info_type,
-                                            info_value_ptr, in_buffer_len,
-                                            str_len_ptr);
+  // SQL_DRIVER_ODBC_VER should be returned when connection is not even made
+  if (info_type == SQL_DATA_SOURCE_NAME || info_type == SQL_DATABASE_NAME ||
+      info_type == SQL_DRIVER_ODBC_VER) {
+    return HandleConnectionInformationTypes(
+        connection_handle, info_type, info_value_ptr, in_buffer_len,
+        str_len_ptr, info_type != SQL_DRIVER_ODBC_VER);
   }
   // Handle rest of the information types not dependent on the connection
   // handle.

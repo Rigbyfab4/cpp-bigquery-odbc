@@ -46,6 +46,7 @@ std::string const kDsnDescription = "test-dsn";
 std::string const kDsnCatalog = "bigquery-test";
 std::string const kDsnDriver = "test-driver";
 std::string const kDsnName = "SampleDSN";
+std::string const kDriverVersion = "03.80";
 
 std::string const kCatalog = "test-catalog";
 std::string const kDataset = "test-schema";
@@ -981,6 +982,23 @@ TEST(SQLColumnsInternal, Failure_InvalidConnectionHandle_NotConnected) {
   StatusRecord status_record = GetLastStatusRecord(handle);
   EXPECT_EQ(status_record.sql_state, SQLStates::k_08S01());
   EXPECT_EQ(status_record.message, "Connection to the data source is broken");
+}
+
+TEST(SQLGetInfoInternal, NotConnectedSQL_ODBC_VER) {
+  SQLCHAR dest[10];
+  SQLSMALLINT in_buffer_len = 10;
+  SQLSMALLINT str_len_ptr;
+  CreateDisconnectedHandle();
+  ASSERT_TRUE(connection_handle != nullptr);
+
+  ASSERT_EQ(SQL_SUCCESS,
+            SQLGetInfoInternal(connection_handle, SQL_DRIVER_ODBC_VER, dest,
+                               in_buffer_len, &str_len_ptr));
+
+  std::string actual = reinterpret_cast<char*>(dest);
+  EXPECT_EQ(kDriverVersion, actual);
+  EXPECT_EQ(str_len_ptr, 5);
+  FreeHandles();
 }
 
 }  // namespace google::cloud::odbc_bq_driver
