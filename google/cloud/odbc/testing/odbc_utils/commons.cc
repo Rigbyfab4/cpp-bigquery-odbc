@@ -18,6 +18,7 @@
 
 #include "google/cloud/odbc/testing/odbc_utils/commons.h"
 #include "google/cloud/status_or.h"
+#include <regex>
 
 namespace google::cloud::odbc_tests {
 
@@ -1069,6 +1070,29 @@ void BindStdColumns(std::shared_ptr<ODBCHandles> conn,
                       columns[2].target_value, columns[2].buffer_length,
                       &(columns[2].str_len));
   CheckError(status, "SQLBindCol", conn);
+}
+
+void CheckDiagnosticRecord(SQLHDBC hdbc, std::string const& expected_sql_state,
+                           int expected_error_code,
+                           std::string const& expected_message_regex) {
+  SQLCHAR sql_state[6];
+  SQLCHAR buf[kBufferLength];
+  SQLINTEGER native_error;
+  SQLSMALLINT string_length_ptr;
+
+  SQLRETURN diag_status =
+      SQLGetDiagRec(SQL_HANDLE_DBC, hdbc, 1, sql_state, &native_error, buf,
+                    kBufferLength, &string_length_ptr);
+
+  ASSERT_EQ(diag_status, SQL_SUCCESS);
+  EXPECT_STREQ(reinterpret_cast<char*>(sql_state), expected_sql_state.c_str());
+  EXPECT_EQ(native_error, expected_error_code);
+
+  std::string actual_message(reinterpret_cast<char*>(buf));
+  std::regex regex_pattern(expected_message_regex);
+
+  ASSERT_TRUE(std::regex_search(actual_message, regex_pattern));
+  EXPECT_EQ(actual_message.size(), string_length_ptr);
 }
 
 std::string FormatTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp) {
