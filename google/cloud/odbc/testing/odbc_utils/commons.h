@@ -163,6 +163,77 @@ StdTimestampRows const kConversionFromTimestampTestData{
     {SQL_C_SLONG, {2024, 01, 20, 00, 00, 00, 000000}, SQL_ERROR},
 };
 
+struct BasicTestStruct {
+  // The value that should be returned by SQLGetData if it succeeds
+  std::string str_field;
+  SQLBIGINT int_field;
+  SQLDOUBLE float_field;
+  SQL_TIMESTAMP_STRUCT timestamp;
+  SQL_DATE_STRUCT date;
+  SQL_TIME_STRUCT time;
+};
+
+using StdAllTypesRows = std::vector<BasicTestStruct>;
+
+StdAllTypesRows const kConversionFromDifferentTestData{
+    {
+        "Test String 1",
+        1,
+        1.1,
+        {2024, 01, 20, 10, 20, 30, 123112},
+        {2024, 2, 20},
+        {11, 9, 20},
+    },
+    {
+        "Test String 2",
+        237,
+        2.22,
+        {2024, 01, 20, 11, 2, 33, 1212},
+        {2024, 3, 12},
+        {22, 45, 54},
+    },
+    {
+        "Test String 3",
+        12,
+        3.333,
+        {2024, 01, 20, 2, 20, 22, 123123},
+        {2024, 4, 20},
+        {2, 36, 29},
+    },
+    {
+        "Test String 4",
+        49,
+        2.0,
+        {2024, 01, 20, 12, 22, 11, 32223},
+        {2024, 4, 29},
+        {9, 07, 20},
+    },
+    {
+        "Test String 5",
+        53,
+        5,
+        {2024, 01, 20, 00, 00, 00, 000000},
+        {2024, 12, 11},
+        {04, 06, 07},
+    },
+    {
+        "Test String 6",
+        698,
+        0.31,
+        {2024, 01, 20, 12, 21, 22, 000000},
+        {2024, 9, 9},
+        {10, 06, 57},
+    },
+    {
+        "Test String 7",
+        12,
+        71.6,
+        {2024, 01, 20, 00, 00, 00, 000000},
+        {2024, 4, 4},
+        {11, 45, 45},
+    },
+};
+
 struct StdOdbcRow {
   SQLCHAR str_field[3 * kBufferLength];
   SQLLEN len_status_ind_str;
@@ -317,6 +388,12 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
     case SQL_TYPE_TIMESTAMP:
       col_ptr->data_type = SQL_C_TYPE_TIMESTAMP;
       break;
+    case SQL_TYPE_TIME:
+      col_ptr->data_type = SQL_C_TYPE_TIME;
+      break;
+    case SQL_TYPE_DATE:
+      col_ptr->data_type = SQL_C_TYPE_DATE;
+      break;
     case SQL_INTERVAL_YEAR:
       col_ptr->data_type = SQL_C_INTERVAL_YEAR;
       break;
@@ -364,6 +441,9 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
 
 std::string GetInsertionString(std::string table_name, StdRows rows);
 
+std::string GetAllTypeInsertionString(std::string table_name,
+                                      StdAllTypesRows rows);
+
 class Table {
  public:
   Table() = default;
@@ -398,6 +478,8 @@ class Table {
 
   void InsertUnicodeData(std::shared_ptr<ODBCHandles> conn,
                          StdUnicodeRows rows);
+
+  void InsertAllData(std::shared_ptr<ODBCHandles> conn, StdAllTypesRows rows);
 
   // This is used to insert strings into a table which only has a string column.
   // If `insert_index` is set to true, an additional column `index` will be
