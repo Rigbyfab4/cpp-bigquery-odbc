@@ -15,11 +15,11 @@
 #ifndef _WIN32
 #include <iconv.h>
 #endif  // LINUX
+
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/internal/getenv.h"
 
 namespace google::cloud::odbc_bq_driver_internal {
-
 using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecord;
 using ::google::cloud::odbc_internal::StatusRecordOr;
@@ -586,8 +586,18 @@ StatusRecord AddDSNToRegistry(std::string const& dsn_name,
   }
 
   StatusRecord status = SetRegValues(h_key, section);
+  if (!status.ok()) {
+    RegCloseKey(h_key);
+    return status;
+  }
+  if (RegSetValueExA(h_key, "Driver", 0, REG_SZ,
+                     reinterpret_cast<const BYTE*>(driver.c_str()),
+                     static_cast<DWORD>(driver.size() + 1)) != ERROR_SUCCESS) {
+    RegCloseKey(h_key);
+    return StatusRecord{SQLStates::k_HY000(),
+                        "Failed to set Driver field in DSN registry"};
+  }
   RegCloseKey(h_key);
-  if (!status.ok()) return status;
 
   if (RegCreateKeyExA(registry_root, odbc_path.c_str(), 0, NULL, 0, KEY_WRITE,
                       NULL, &h_key, NULL) != ERROR_SUCCESS) {
