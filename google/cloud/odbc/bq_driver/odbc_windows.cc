@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/odbc_windows.h"
+#include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
 #include "google/cloud/odbc/bq_driver/internal/driver_form.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver {
+using ::google::cloud::odbc_bigquery_client_interface::OauthMechanism;
 using google::cloud::odbc_bq_driver_internal::AddDSNToRegistry;
 using google::cloud::odbc_bq_driver_internal::ConvertLPCSTRToString;
 using google::cloud::odbc_bq_driver_internal::DriverForm;
@@ -28,6 +30,18 @@ using google::cloud::odbc_bq_driver_internal::RemoveDSNFromRegistry;
 using google::cloud::odbc_bq_driver_internal::Section;
 using google::cloud::odbc_internal::StatusRecordOr;
 
+std::string ConvertOAuthMechanism(std::string o_auth_mechanism) {
+  std::string o_auth_value;
+  if (o_auth_mechanism == "Service Authentication") {
+    o_auth_value =
+        std::to_string(static_cast<int>(OauthMechanism::kServiceAccount));
+  } else if (o_auth_mechanism == "Application Default Credentials") {
+    o_auth_value =
+        std::to_string(static_cast<int>(OauthMechanism::kApplicationDefault));
+  } else
+    o_auth_value = "";
+  return o_auth_value;
+}
 bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
                        LPCSTR lpsz_attributes) {
   if (!lpsz_driver) {
@@ -42,8 +56,8 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
   std::string email = section.count("Email") > 0 ? section.at("Email") : "";
   std::string key_file_path =
       section.count("KeyFilePath") > 0 ? section.at("KeyFilePath") : "";
-  std::string o_auth_mechanism =
-      section.count("OAuthMechanism") > 0 ? section.at("OAuthMechanism") : "";
+  std::string o_auth_mechanism = ConvertOAuthMechanism(
+      section.count("OAuthMechanism") > 0 ? section.at("OAuthMechanism") : "");
   std::string catalog =
       section.count("Catalog") > 0 ? section.at("Catalog") : "";
   std::string dataset_name =
@@ -72,7 +86,7 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
       dsn_name = form.GetDSN();
       email = form.GetEmail();
       key_file_path = form.GetKeyFilePath();
-      o_auth_mechanism = form.GetOAuthMechanism();
+      o_auth_mechanism = ConvertOAuthMechanism(form.GetOAuthMechanism());
       catalog = form.GetCatalogName();
       dataset_name = form.GetDatasetName();
       Section section = {{"Email", email},
@@ -108,7 +122,7 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
 
       email = form.GetEmail();
       key_file_path = form.GetKeyFilePath();
-      o_auth_mechanism = form.GetOAuthMechanism();
+      o_auth_mechanism = ConvertOAuthMechanism(form.GetOAuthMechanism());
       catalog = form.GetCatalogName();
       dataset_name = form.GetDatasetName();
       Section section2 = {{"Email", email},
