@@ -79,6 +79,39 @@ SQLRETURN Connect(std::string conn_str, std::shared_ptr<ODBCHandles> conn,
   return status;
 }
 
+SQLRETURN ConnectWithNull(std::string conn_str, std::wstring dsn,
+                          std::shared_ptr<ODBCHandles> conn, bool use_wide) {
+  SQLSMALLINT buflen;
+  SQLCHAR data_source[kBufferLength];
+  SQLSMALLINT out_len;
+  SQLRETURN status;
+  int timeout = 30;
+
+  SetAttributes(conn, timeout, false);
+
+  StrToChar((char*)data_source, conn_str);
+  if (use_wide) {
+    std::vector<SQLWCHAR> sqlWStr(dsn.begin(), dsn.end());
+    sqlWStr.emplace_back(L'\0');
+    status = SQLDriverConnectW(conn->hdbc, NULL, sqlWStr.data(), SQL_NTS, NULL,
+                               0, NULL, SQL_DRIVER_COMPLETE);
+    CheckError(status, "SQLDriverConnectW", conn);
+  } else {
+    status = SQLDriverConnect(conn->hdbc, NULL, (SQLCHAR*)data_source, SQL_NTS,
+                              NULL, 0, NULL, SQL_DRIVER_COMPLETE);
+    CheckError(status, "SQLDriverConnect", conn);
+  }
+
+  conn->connected = true;
+
+  PrintDriverVerName(conn);
+
+  // Allocate statement handle
+  status = SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &conn->hstmt);
+  CheckError(status, "SQLAllocHandle", conn);
+  return status;
+}
+
 SQLRETURN ConnectWithPromptWindows(std::string conn_str,
                                    std::shared_ptr<ODBCHandles> conn,
                                    SQLHWND window_handle,
