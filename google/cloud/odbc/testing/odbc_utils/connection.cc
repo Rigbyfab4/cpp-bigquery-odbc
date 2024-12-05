@@ -91,9 +91,9 @@ SQLRETURN ConnectWithNull(std::string conn_str, std::wstring dsn,
 
   StrToChar((char*)data_source, conn_str);
   if (use_wide) {
-    std::vector<SQLWCHAR> sqlWStr(dsn.begin(), dsn.end());
-    sqlWStr.emplace_back(L'\0');
-    status = SQLDriverConnectW(conn->hdbc, NULL, sqlWStr.data(), SQL_NTS, NULL,
+    std::vector<SQLWCHAR> sql_wstr(dsn.begin(), dsn.end());
+    sql_wstr.emplace_back(L'\0');
+    status = SQLDriverConnectW(conn->hdbc, NULL, sql_wstr.data(), SQL_NTS, NULL,
                                0, NULL, SQL_DRIVER_COMPLETE);
     CheckError(status, "SQLDriverConnectW", conn);
   } else {
