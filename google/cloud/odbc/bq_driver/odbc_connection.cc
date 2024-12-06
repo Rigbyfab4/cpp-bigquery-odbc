@@ -22,6 +22,9 @@
 #include "google/cloud/odbc/internal/diagnostic_records.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "google/cloud/internal/getenv.h"
+#ifdef _WIN32
+#include "google/cloud/odbc/bq_driver/internal/driver_form.h"
+#endif  // WIN32
 
 // NOLINTBEGIN(misc-unused-parameters, readability-non-const-parameter)
 namespace google::cloud::odbc_bq_driver {
@@ -35,6 +38,7 @@ using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
 using google::cloud::odbc_bq_driver_internal::EnvironmentHandle;
 using google::cloud::odbc_bq_driver_internal::kTraceOption;
 using google::cloud::odbc_bq_driver_internal::LogAndReturnCode;
+using google::cloud::odbc_bq_driver_internal::PopulateOutputConnectionString;
 using google::cloud::odbc_bq_driver_internal::Section;
 using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using ::google::cloud::odbc_bq_driver_internal::TraceOptions;
@@ -42,6 +46,12 @@ using ::google::cloud::odbc_bq_driver_internal::TracePrintInternal;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
+
+#ifdef _WIN32
+using google::cloud::odbc_bq_driver_internal::DriverForm;
+using google::cloud::odbc_bq_driver_internal::GetPathToOdbcIni;
+using google::cloud::odbc_bq_driver_internal::GetSectionWin;
+#endif  // WIN32
 
 /////////////////////////////
 // Internal Helper Functions
@@ -81,6 +91,65 @@ StatusRecord OverrideDsnSectionFromEnv(Section& dsn_section,
   return StatusRecord::Ok();
 }
 
+#ifdef _WIN32
+SQLRETURN HandleDriverPrompt(std::string& conn_string, SQLHWND window_handle,
+                             SQLCHAR* out_conn_str,
+                             SQLSMALLINT out_conn_str_buflen,
+                             SQLSMALLINT* out_conn_str_len,
+                             ConnectionHandle* handle_ref) {
+  if (!window_handle) {
+    return LogAndReturnCode(
+        *handle_ref, StatusRecord{SQLStates::k_IM008(), "Dialog failed"});
+  }
+
+  auto connection_params_status =
+      google::cloud::odbc_bq_driver_internal::ParseConnectionString(
+          conn_string);
+  if (!connection_params_status) {
+    return LogAndReturnCode(*handle_ref, connection_params_status);
+  }
+
+  auto connection_params = *connection_params_status;
+  DriverForm form(window_handle);
+
+  std::string dsn_name = connection_params["DSN"];
+  std::string registry_key = GetPathToOdbcIni() + "\\" + dsn_name;
+  auto section = GetSectionWin(registry_key).GetValue();
+  (*section)["DSN"] = dsn_name;
+  form.SetValues(*section);
+
+  form.Show();
+
+  // Event loop to handle form.
+  MSG msg = {};
+  while (GetMessage(&msg, NULL, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+
+  // Retrieve user inputs and configure the connection.
+  Section dsn_section = {{"DSN", form.GetDSN()},
+                         {"Email", form.GetEmail()},
+                         {"KeyFilePath", form.GetKeyFilePath()},
+                         {"OAuthMechanism", form.GetOAuthMechanism()},
+                         {"Catalog", form.GetCatalogName()},
+                         {"Dataset", form.GetDatasetName()}};
+
+  handle_ref->SetUp(dsn_section, form.GetDSN());
+  Authentication auth = CreateAuth(dsn_section);
+  auto status = handle_ref->Connect(auth);
+
+  if (status.ok() && out_conn_str != nullptr) {
+    auto status_record = PopulateOutputConnectionString(
+        out_conn_str, out_conn_str_buflen, out_conn_str_len, conn_string);
+    if (!status_record.ok()) {
+      return LogAndReturnCode(*handle_ref, status_record);
+    }
+  }
+  return LogAndReturnCode(*handle_ref, status);
+}
+#endif  //_WIN32
+
 //////////////////////
 // Public Functions
 //////////////////////
@@ -116,43 +185,55 @@ SQLRETURN SQLDriverConnectInternal(SQLHDBC conn_handle, SQLHWND window_handle,
     return handle_result.GetCalculatedReturnCode();
   }
   auto* handle_ref = *handle_result;
-
   std::string conn_string = reinterpret_cast<char*>(in_conn_str);
+
+  switch (driver_completion) {
+#ifdef _WIN32
+    case SQL_DRIVER_PROMPT: {
+      return HandleDriverPrompt(conn_string, window_handle, out_conn_str,
+                                out_conn_str_buflen, out_conn_str_len,
+                                handle_ref);
+    }
+#endif  // _WIN32
+    case SQL_DRIVER_COMPLETE:
+    case SQL_DRIVER_COMPLETE_REQUIRED: {
+      if (conn_string.empty() && !window_handle) {
+        return LogAndReturnCode(
+            *handle_ref, StatusRecord{SQLStates::k_IM008(), "Dialog failed"});
+      }
+      break;
+    }
+    default:
+      break;
+  }
   StatusRecordOr<Section> connection_params_resp_status =
       google::cloud::odbc_bq_driver_internal::ParseConnectionString(
           conn_string);
+
   if (!connection_params_resp_status) {
     return LogAndReturnCode(*handle_ref, connection_params_resp_status);
   }
-
-  auto connection_params_resp = *connection_params_resp_status;
-  Section dsn_section;
-  for (auto const& it : connection_params_resp) {
-    std::string property = it.first;
-    std::string value = it.second;
-    dsn_section[property] = value;
-  }
-
+  auto dsn_section = *connection_params_resp_status;
   // Any parameters defined in the env should
   //  override the DSN section properties.
-  std::string dsn_name = connection_params_resp["DSN"];
+  std::string dsn_name = dsn_section["DSN"];
   if (!dsn_name.empty()) {
     OverrideDsnSectionFromEnv(dsn_section, dsn_name);
   }
-
   // Populate the DSN info inside the handle.
   // This wasn't being called before.
   handle_ref->SetUp(dsn_section, dsn_name);
 
   Authentication auth = CreateAuth(dsn_section);
   StatusRecord status = handle_ref->Connect(auth);
+
   if (status.ok() && out_conn_str != nullptr) {
     // Populate the output parameters as per the spec.
-    std::string out_tmp_str(ToCharStr(in_conn_str));
-    out_tmp_str.append(";");
-    strncpy(reinterpret_cast<char*>(out_conn_str), out_tmp_str.c_str(),
-            out_tmp_str.length());
-    *out_conn_str_len = out_tmp_str.length();
+    auto status_record = PopulateOutputConnectionString(
+        out_conn_str, out_conn_str_buflen, out_conn_str_len, conn_string);
+    if (!status_record.ok()) {
+      return LogAndReturnCode(*handle_ref, status_record);
+    }
   }
   return LogAndReturnCode(*handle_ref, status);
 }

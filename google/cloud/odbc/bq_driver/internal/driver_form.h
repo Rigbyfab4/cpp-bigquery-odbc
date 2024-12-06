@@ -38,7 +38,7 @@ static int const kIdcButtonTest = 115;
 
 class DriverForm {
  public:
-  DriverForm();
+  DriverForm(HWND parent_hwnd = NULL);
   ~DriverForm();
   void Show();
   HWND GetHwnd() const;
@@ -71,6 +71,7 @@ class DriverForm {
   static LRESULT CALLBACK WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
                                      LPARAM l_param);
   HWND m_hwnd;
+  HWND m_parent_hwnd;
   static char const CLASS_NAME[];
 };
 

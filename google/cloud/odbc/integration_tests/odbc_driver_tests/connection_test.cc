@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/testing/odbc_utils/connection.h"
+#include <gmock/gmock.h>
 
 namespace google::cloud::odbc_tests {
 
@@ -504,6 +505,16 @@ void SetAttr(std::shared_ptr<ODBCHandles> conn, bool use_ansi = false) {
   EXPECT_EQ(4, length);
 }
 
+// Sets the window handle for SQLDriverConnect (Windows: desktop handle, others:
+// nullptr).
+void GetWindowHandle(SQLHWND& window_handle) {
+#ifdef _WIN32
+  window_handle = GetDesktopWindow();
+#else
+  window_handle = nullptr;
+#endif  // _WIN32
+}
+
 TEST(ConnectionTest, SQLDriverConnect) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -549,6 +560,61 @@ TEST(ConnectionTest, SQLDriverConnectA) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn, true), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(ConnectionTest, SQLDriverConnect_SQL_DRIVER_COMPLETE) {
+  auto conn = std::make_shared<ODBCHandles>();
+  SQLHWND window_handle;
+  GetWindowHandle(window_handle);
+
+  EXPECT_EQ(ConnectWithPromptWindows(kDefaultConnectionString, conn,
+                                     window_handle, SQL_DRIVER_COMPLETE, true),
+            SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(ConnectionTest, SQLDriverConnect_SQL_DRIVER_COMPLETE_REQUIRED) {
+  auto conn = std::make_shared<ODBCHandles>();
+  SQLHWND window_handle;
+  GetWindowHandle(window_handle);
+
+  EXPECT_EQ(
+      ConnectWithPromptWindows(kDefaultConnectionString, conn, window_handle,
+                               SQL_DRIVER_COMPLETE_REQUIRED, true),
+      SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(ConnectionTest, SQLDriverConnect_SQL_DRIVER_NOPROMPT) {
+  auto conn = std::make_shared<ODBCHandles>();
+  SQLHWND window_handle;
+  GetWindowHandle(window_handle);
+
+  EXPECT_EQ(ConnectWithPromptWindows(kDefaultConnectionString, conn,
+                                     window_handle, SQL_DRIVER_NOPROMPT, true),
+            SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(ConnectionTest, SQLDriverConnect_StringDataRightTruncated) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  std::string conn_str = "DSN=SampleDSN";
+  SQLCHAR in_conn_str[kBufferLength];
+  SQLCHAR out_conn_str[10] = {0};
+  SQLSMALLINT out_conn_str_len;
+
+  StrToChar((char*)in_conn_str, conn_str);
+  google::cloud::odbc_tests::SetAttributes(conn, 30, true);
+
+  auto status =
+      SQLDriverConnect(conn->hdbc, nullptr, (SQLCHAR*)in_conn_str, SQL_NTS,
+                       (SQLCHAR*)out_conn_str, sizeof(out_conn_str),
+                       &out_conn_str_len, SQL_DRIVER_COMPLETE);
+
+  PrintDriverVerName(conn);
+  EXPECT_EQ(status, SQL_SUCCESS_WITH_INFO);
+  EXPECT_NE(out_conn_str_len, sizeof(out_conn_str));
 }
 
 TEST(ConnectionTest, SQLSetConnectAttr_StringWithNullTermInMiddle) {

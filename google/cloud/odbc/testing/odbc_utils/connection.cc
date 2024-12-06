@@ -17,7 +17,7 @@
 namespace google::cloud::odbc_tests {
 
 void SetAttributes(std::shared_ptr<ODBCHandles> conn, int timeout,
-                   bool use_ansi = false) {
+                   bool use_ansi) {
   auto status = SQLAllocHandle(SQL_HANDLE_ENV, NULL, &conn->henv);
   CheckError(status, "SQLAllocHandle", conn);
 
@@ -76,6 +76,38 @@ SQLRETURN Connect(std::string conn_str, std::shared_ptr<ODBCHandles> conn,
   // Allocate statement handle
   status = SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &conn->hstmt);
   CheckError(status, "SQLAllocHandle", conn);
+  return status;
+}
+
+SQLRETURN ConnectWithPromptWindows(std::string conn_str,
+                                   std::shared_ptr<ODBCHandles> conn,
+                                   SQLHWND window_handle,
+                                   SQLUSMALLINT driver_completion, int timeout,
+                                   bool use_ansi) {
+  SQLSMALLINT buflen = 0;
+  SQLCHAR data_source[kBufferLength];
+  SQLSMALLINT out_len;
+  SQLRETURN status;
+
+  SetAttributes(conn, timeout, use_ansi);
+
+  StrToChar((char*)data_source, conn_str);
+
+  if (use_ansi) {
+    status =
+        SQLDriverConnectA(conn->hdbc, window_handle, (SQLCHAR*)data_source,
+                          SQL_NTS, (SQLCHAR*)conn->outdsn, sizeof(conn->outdsn),
+                          &buflen, driver_completion);
+  } else {
+    status = SQLDriverConnect(conn->hdbc, window_handle, (SQLCHAR*)data_source,
+                              SQL_NTS, (SQLCHAR*)conn->outdsn,
+                              sizeof(conn->outdsn), &buflen, driver_completion);
+  }
+  CheckError(status, "SQLDriverConnect", conn, use_ansi);
+
+  conn->connected = true;
+
+  PrintDriverVerName(conn, use_ansi);
   return status;
 }
 
