@@ -458,7 +458,7 @@ SQLRETURN SQL_API SQLDriverConnectW(
   // outConnectionString is an output value that is not populated by the user.
   // This should not be unicode converted if it is empty. Instead we send a
   // SQLCHAR empty value directly to the internal function.
-  SQLCHAR out_conn_str[kBufferLength];
+  SQLCHAR* out_conn_str = reinterpret_cast<SQLCHAR*>(outConnectionString);
   SQLSMALLINT out_conn_str_len = 0;
   // Call to internal common function for SQLDriverConnect and
   // SQLDriverConnectW in odbc_connection.h.
