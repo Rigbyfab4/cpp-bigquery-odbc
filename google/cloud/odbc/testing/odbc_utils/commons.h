@@ -422,10 +422,6 @@ void CreateTableWithPrepare(std::shared_ptr<ODBCHandles> conn,
 void DropTableWithPrepare(std::shared_ptr<ODBCHandles> conn,
                           std::string table_name);
 
-void CheckDiagnosticRecord(SQLHDBC hdbc, std::string const& expected_sql_state,
-                           int expected_error_code,
-                           std::string const& expected_message_regex);
-
 // If SQL_ASYNC_ENABLE_ON, this function can be used to run a ODBC API till the
 // status is not SQL_STILL_EXECUTING
 template <typename Func, typename... Args>

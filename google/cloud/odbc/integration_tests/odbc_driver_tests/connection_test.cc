@@ -911,7 +911,30 @@ TEST(ConnectionTest, SQLConnectA_WithDSN) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+// TODO(b/383015448): Remove BQ_DRIVER_INTEGRATION_TESTS Flag once
+// SQLBrowseConnect Implemented
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
+void CheckDiagnosticRecord(SQLHDBC hdbc, std::string const& expected_sqlstate,
+                           int expected_error_code,
+                           std::string const& expected_message_regex) {
+  SQLCHAR sqlstate[6];
+  SQLCHAR buf[kBufferLength];
+  SQLINTEGER native_error;
+  SQLSMALLINT string_length_ptr;
+
+  SQLRETURN diag_status =
+      SQLGetDiagRec(SQL_HANDLE_DBC, hdbc, 1, sqlstate, &native_error, buf,
+                    kBufferLength, &string_length_ptr);
+
+  ASSERT_EQ(diag_status, SQL_SUCCESS);
+  EXPECT_STREQ(reinterpret_cast<char*>(sqlstate), expected_sqlstate.c_str());
+  EXPECT_EQ(native_error, expected_error_code);
+
+  std::string actual_message(reinterpret_cast<char*>(buf));
+  EXPECT_THAT(actual_message, ::testing::ContainsRegex(expected_message_regex));
+  EXPECT_EQ(actual_message.size(), string_length_ptr);
+}
+
 TEST(ConnectionTest, SQLBrowseConnect_WithDsn) {
   auto conn = std::make_shared<ODBCHandles>();
 
