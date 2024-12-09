@@ -365,8 +365,8 @@ std::string GetInsertionString(std::string table_name, StdRows rows) {
   return insert_stmt;
 }
 
-std::string GetAllTypeInsertionString(std::string table_name,
-                                      StdAllTypesRows rows) {
+std::string GetAllTypeInsertionString(std::string const& table_name,
+                                      StdAllTypesRows const& rows) {
   std::ostringstream row_str;
   row_str << "INSERT INTO " << table_name << " VALUES ";
   int num_rows = rows.size();
@@ -593,7 +593,7 @@ void Table::InsertUnicodeData(std::shared_ptr<ODBCHandles> conn,
 }
 
 void Table::InsertAllData(std::shared_ptr<ODBCHandles> conn,
-                          StdAllTypesRows rows) {
+                          StdAllTypesRows const& rows) {
   SQLRETURN status;
   std::string insert_stmt = GetAllTypeInsertionString(table_name_, rows);
   if (insert_stmt.empty()) {

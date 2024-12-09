@@ -441,8 +441,8 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
 
 std::string GetInsertionString(std::string table_name, StdRows rows);
 
-std::string GetAllTypeInsertionString(std::string table_name,
-                                      StdAllTypesRows rows);
+std::string GetAllTypeInsertionString(std::string const& table_name,
+                                      StdAllTypesRows const& rows);
 
 class Table {
  public:
@@ -479,7 +479,8 @@ class Table {
   void InsertUnicodeData(std::shared_ptr<ODBCHandles> conn,
                          StdUnicodeRows rows);
 
-  void InsertAllData(std::shared_ptr<ODBCHandles> conn, StdAllTypesRows rows);
+  void InsertAllData(std::shared_ptr<ODBCHandles> conn,
+                     StdAllTypesRows const& rows);
 
   // This is used to insert strings into a table which only has a string column.
   // If `insert_index` is set to true, an additional column `index` will be
