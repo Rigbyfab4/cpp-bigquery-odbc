@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 
 namespace google::cloud::odbc_tests {
+using google::cloud::odbc_tests::SetAttributes;
 using ::testing::HasSubstr;
 
 // TODO(b/380186523): Need to fix the Driver Name for both Windows & Linux
@@ -943,7 +944,7 @@ TEST(ConnectionTest, SQLBrowseConnect_WithDsn) {
   SQLCHAR out_conn_str[kBufferLength] = {0};
 
   StrToChar((char*)in_conn_str, kDefaultConnectionString);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -968,7 +969,7 @@ TEST(ConnectionTest, SQLBrowseConnect_OverrideDSNWithConnStrValues) {
   SQLCHAR out_conn_str[kBufferLength] = {0};
 
   StrToChar((char*)in_conn_str, conn_str);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -1001,7 +1002,7 @@ TEST(ConnectionTest, SQLBrowseConnect_WithDriver) {
   SQLCHAR out_conn_str[kBufferLength] = {0};
 
   StrToChar((char*)in_conn_str, conn_str);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -1018,6 +1019,7 @@ TEST(ConnectionTest, SQLBrowseConnect_WithDriver) {
 
   EXPECT_EQ(res_out_conn_str, expected_out_conn_str);
   EXPECT_EQ(sizeof(res_out_conn_str), sizeof(expected_out_conn_str));
+  EXPECT_EQ(out_conn_str_len, expected_out_conn_str.size());
 }
 
 TEST(ConnectionTest, SQLBrowseConnect_SQL_NEED_DATA) {
@@ -1030,7 +1032,7 @@ TEST(ConnectionTest, SQLBrowseConnect_SQL_NEED_DATA) {
   SQLCHAR out_conn_str[1024] = {0};
 
   StrToChar((char*)in_conn_str, conn_str);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -1054,7 +1056,7 @@ TEST(ConnectionTest, SQLBrowseConnect_StringDataRightTruncated) {
   SQLCHAR out_conn_str[10] = {0};
 
   StrToChar((char*)in_conn_str, kDefaultConnectionString);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -1067,7 +1069,9 @@ TEST(ConnectionTest, SQLBrowseConnect_StringDataRightTruncated) {
 // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
 #ifdef _WIN32
   std::string res_out_conn_str(reinterpret_cast<char const*>(out_conn_str));
+
   EXPECT_EQ(res_out_conn_str, expected_conn_out_str);
+  EXPECT_NE(out_conn_str_len, expected_conn_out_str.size());
   EXPECT_EQ(res_out_conn_str.size(), expected_conn_out_str.size());
 #endif  // _WIN32
 }
@@ -1083,7 +1087,7 @@ TEST(ConnectionTest, SQLBrowseConnect_InvalidConnectionAttribute) {
   SQLCHAR out_conn_str[kBufferLength] = {0};
 
   StrToChar((char*)in_conn_str, conn_str);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -1093,6 +1097,7 @@ TEST(ConnectionTest, SQLBrowseConnect_InvalidConnectionAttribute) {
 // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
 #ifdef _WIN32
   std::string res_out_conn_str(reinterpret_cast<char const*>(out_conn_str));
+  EXPECT_GT(out_conn_str_len, res_out_conn_str.size());
   EXPECT_THAT(res_out_conn_str,
               HasSubstr("Catalog:Catalog=?;OAuthMechanism:OAuthMechanism=?"));
 #endif  // _WIN32
@@ -1108,7 +1113,7 @@ TEST(ConnectionTest, SQLBrowseConnect_InvalidConnectionString) {
   SQLSMALLINT out_conn_str_len;
 
   StrToChar((char*)in_conn_str, conn_str);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -1119,6 +1124,7 @@ TEST(ConnectionTest, SQLBrowseConnect_InvalidConnectionString) {
 // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
 #ifdef _WIN32
   std::string res_out_conn_str(reinterpret_cast<char const*>(out_conn_str));
+  EXPECT_GT(out_conn_str_len, res_out_conn_str.size());
   EXPECT_THAT(res_out_conn_str,
               HasSubstr("Catalog:Catalog=?;OAuthMechanism:OAuthMechanism=?"));
 #endif  // _WIN32
@@ -1133,6 +1139,7 @@ TEST(ConnectionTest, SQLBrowseConnect_InvalidConnectionString) {
 
 // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
 #ifdef _WIN32
+  EXPECT_GT(out_conn_str_len, res_out_conn_str.size());
   EXPECT_THAT(res_out_conn_str,
               HasSubstr("Catalog:Catalog=?;OAuthMechanism:OAuthMechanism=?"));
 #endif  // _WIN32
@@ -1153,7 +1160,7 @@ TEST(ConnectionTest, SQLBrowseConnect_NonRequestedConnAttribute) {
   SQLSMALLINT out_conn_str_len;
 
   StrToChar((char*)in_conn_str, conn_str);
-  google::cloud::odbc_tests::SetAttributes(conn, 30);
+  SetAttributes(conn, 30);
 
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
@@ -1164,6 +1171,8 @@ TEST(ConnectionTest, SQLBrowseConnect_NonRequestedConnAttribute) {
 // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
 #ifdef _WIN32
   std::string res_out_conn_str(reinterpret_cast<char const*>(out_conn_str));
+
+  EXPECT_GT(out_conn_str_len, res_out_conn_str.size());
   EXPECT_THAT(res_out_conn_str,
               HasSubstr("Catalog:Catalog=?;OAuthMechanism:OAuthMechanism=?"));
 #endif  // _WIN32
@@ -1180,6 +1189,7 @@ TEST(ConnectionTest, SQLBrowseConnect_NonRequestedConnAttribute) {
 
 // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
 #ifdef _WIN32
+  EXPECT_GT(out_conn_str_len, res_out_conn_str.size());
   EXPECT_THAT(res_out_conn_str, HasSubstr("Catalog:Catalog=?"));
 #endif  // _WIN32
   CheckDiagnosticRecord(conn->hdbc, "HY000", 11600,
