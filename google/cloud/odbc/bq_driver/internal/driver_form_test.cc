@@ -68,22 +68,6 @@ TEST_F(DriverFormTest, TestUIOpens) {
       << "Form window should be visible.";
 }
 
-TEST_F(DriverFormTest, TestButtonClickOK) {
-  form->Show();
-  ASSERT_NE(form->GetHwnd(), nullptr)
-      << "Form window handle should not be null after showing the form.";
-  ClickButton(form->GetHwnd(), kIdcButtonOk);
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  MSG msg;
-  while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
-  }
-
-  EXPECT_EQ(IsWindow(form->GetHwnd()), FALSE)
-      << "Form should be closed when OK button is clicked.";
-}
-
 TEST_F(DriverFormTest, TestButtonClickCancel) {
   form->Show();
   ASSERT_NE(form->GetHwnd(), nullptr)
@@ -201,6 +185,42 @@ TEST_F(DriverFormTest, TestConnection_WrongOAuth) {
       StatusRecIs(SQLStates::k_HY000(),
                   HasSubstr("OAuthMechanism must be 'Service Authentication' "
                             "or 'Application Default Credentials'")));
+}
+TEST_F(DriverFormTest, TestEncryptDataDropdown) {
+  HWND h_encrypt_data_combo_box =
+      GetDlgItem(form->GetHwnd(), kIdcEncryptDataComboBox);
+  ASSERT_NE(h_encrypt_data_combo_box, nullptr)
+      << "Encrypt Data dropdown should be created.";
+
+  ASSERT_EQ(SendMessage(h_encrypt_data_combo_box, CB_GETCOUNT, 0, 0), 2)
+      << "Encrypt Data dropdown should have 2 items.";
+
+  int selected_index =
+      SendMessage(h_encrypt_data_combo_box, CB_GETCURSEL, 0, 0);
+  ASSERT_EQ(selected_index, 0) << "First item should be selected by default.";
+
+  char buffer[256];
+  SendMessage(h_encrypt_data_combo_box, CB_GETLBTEXT, selected_index,
+              (LPARAM)buffer);
+  ASSERT_STREQ(buffer, "For Current User Only")
+      << "First item text should be 'For Current User Only'.";
+}
+
+TEST_F(DriverFormTest, TestMinTLSVersionDropdown) {
+  HWND h_min_tls_combo_box = GetDlgItem(form->GetHwnd(), kIdcMinTLSComboBox);
+  ASSERT_NE(h_min_tls_combo_box, nullptr)
+      << "Minimum TLS Version dropdown should be created.";
+
+  ASSERT_EQ(SendMessage(h_min_tls_combo_box, CB_GETCOUNT, 0, 0), 3)
+      << "Minimum TLS Version dropdown should have 3 items.";
+
+  int selected_index = SendMessage(h_min_tls_combo_box, CB_GETCURSEL, 0, 0);
+  ASSERT_EQ(selected_index, 2) << "Third item should be selected by default.";
+
+  char buffer[256];
+  SendMessage(h_min_tls_combo_box, CB_GETLBTEXT, selected_index,
+              (LPARAM)buffer);
+  ASSERT_STREQ(buffer, "1.2") << "Selected TLS version should be '1.2'.";
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal

@@ -35,6 +35,14 @@ static int const kIdcCatlogBOX = 112;
 static int const kIdcDatasetBOX = 113;
 static int const kIdcDSNEdit = 114;
 static int const kIdcButtonTest = 115;
+static int const kIdcMinTLSComboBox = 119;
+static int const kIdcTrustedCertEdit = 121;
+static int const kIdcTrustedCertBrowseButton = 122;
+static int const kIdcDescriptionEdit = 123;
+static int const kIdcEncryptDataComboBox = 124;
+static int const kIdcLoggingBtn = 125;
+static int const kIdcProxyOptionsButton = 126;
+static int const kIdcAdvanceOptBtn = 127;
 
 class DriverForm {
  public:
@@ -57,7 +65,10 @@ class DriverForm {
   inline std::string const& GetDatasetName() const { return dataset_; }
 
   inline std::string const& GetCatalogName() const { return catalog_; }
-
+  inline std::string const& GetEncryptData() const { return encrypt_data_; }
+  inline std::string const& GetTrustedCerts() const { return trusted_cert_; }
+  inline std::string const& GetMinTls() const { return min_tls_version_; }
+  inline std::string const& GetDescription() const { return description_; }
   static odbc_internal::StatusRecord TestODBCConnection(
       std::shared_ptr<odbc_bq_driver_internal::Section> const& section);
 
@@ -68,6 +79,10 @@ class DriverForm {
   static std::string o_auth_mechanism_;
   static std::string dataset_;
   static std::string catalog_;
+  static std::string encrypt_data_;
+  static std::string min_tls_version_;
+  static std::string trusted_cert_;
+  static std::string description_;
   static LRESULT CALLBACK WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
                                      LPARAM l_param);
   HWND m_hwnd;

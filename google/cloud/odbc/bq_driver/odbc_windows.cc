@@ -62,75 +62,81 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
       section.count("Catalog") > 0 ? section.at("Catalog") : "";
   std::string dataset_name =
       section.count("Dataset") > 0 ? section.at("Dataset") : "";
-
+  std::string encrypt_data =
+      section.count("EncryptData") > 0 ? section.at("EncryptData") : "";
+  std::string trusted_certs =
+      section.count("TrustedCerts") > 0 ? section.at("TrustedCerts") : "";
+  std::string min_tls_version =
+      section.count("Min_TLS") > 0 ? section.at("Min_TLS") : "";
+  std::string description =
+      section.count("Description") > 0 ? section.at("Description") : "";
   DriverForm form;
+  auto CreateSectionFromForm = [&]() -> Section {
+    return {{"Email", email},
+            {"KeyFilePath", key_file_path},
+            {"OAuthMechanism", o_auth_mechanism},
+            {"Catalog", catalog},
+            {"Dataset", dataset_name},
+            {"EncryptData", encrypt_data},
+            {"TrustedCerts", trusted_certs},
+            {"Min_TLS", min_tls_version},
+            {"Description", description}};
+  };
+
+  auto ShowFormAndReturnValues = [&]() -> std::string {
+    form.Show();
+    form.GetHwnd();
+    MSG msg = {};
+    while (GetMessage(&msg, NULL, 0, 0)) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+
+    dsn_name = form.GetDSN();
+    email = form.GetEmail();
+    key_file_path = form.GetKeyFilePath();
+    o_auth_mechanism = ConvertOAuthMechanism(form.GetOAuthMechanism());
+    catalog = form.GetCatalogName();
+    dataset_name = form.GetDatasetName();
+    encrypt_data = form.GetEncryptData();
+    trusted_certs = form.GetTrustedCerts();
+    min_tls_version = form.GetMinTls();
+    description = form.GetDescription();
+
+    return dsn_name;
+  };
+
   switch (f_request) {
     case ODBC_ADD_DSN: {
       if (hwnd_parent == NULL) {
-        Section section = {{"Email", email},
-                           {"KeyFilePath", key_file_path},
-                           {"OAuthMechanism", o_auth_mechanism},
-                           {"Catalog", catalog},
-                           {"Dataset", dataset_name}};
+        Section section = CreateSectionFromForm();
         AddDSNToRegistry(dsn_value, lpsz_driver, section);
         return true;
       }
-      form.Show();
-      form.GetHwnd();
-      MSG msg = {};
-      while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-      }
 
-      dsn_name = form.GetDSN();
-      email = form.GetEmail();
-      key_file_path = form.GetKeyFilePath();
-      o_auth_mechanism = ConvertOAuthMechanism(form.GetOAuthMechanism());
-      catalog = form.GetCatalogName();
-      dataset_name = form.GetDatasetName();
-      Section section = {{"Email", email},
-                         {"KeyFilePath", key_file_path},
-                         {"OAuthMechanism", o_auth_mechanism},
-                         {"Catalog", catalog},
-                         {"Dataset", dataset_name}};
+      dsn_name = ShowFormAndReturnValues();
+      Section section = CreateSectionFromForm();
       AddDSNToRegistry(dsn_name, lpsz_driver, section);
       return TRUE;
     }
+
     case ODBC_CONFIG_DSN: {
       if (hwnd_parent == NULL) {
-        Section section2 = {{"Email", email},
-                            {"KeyFilePath", key_file_path},
-                            {"OAuthMechanism", o_auth_mechanism},
-                            {"Catalog", catalog},
-                            {"Dataset", dataset_name}};
-        EditDSNInRegistry(dsn_value, section2);
+        Section section_config = CreateSectionFromForm();
+        EditDSNInRegistry(dsn_value, section_config);
         return true;
       }
+
       std::string registry_key = GetPathToOdbcIni() + "\\" + dsn_value;
       auto res = GetSectionWin(registry_key);
       auto section = res.GetValue();
       (*section)["DSN"] = dsn_value;
-      form.SetValues(*section);
-      form.Show();
-      form.GetHwnd();
-      MSG msg = {};
-      while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-      }
 
-      email = form.GetEmail();
-      key_file_path = form.GetKeyFilePath();
-      o_auth_mechanism = ConvertOAuthMechanism(form.GetOAuthMechanism());
-      catalog = form.GetCatalogName();
-      dataset_name = form.GetDatasetName();
-      Section section2 = {{"Email", email},
-                          {"KeyFilePath", key_file_path},
-                          {"OAuthMechanism", o_auth_mechanism},
-                          {"Catalog", catalog},
-                          {"Dataset", dataset_name}};
-      EditDSNInRegistry(dsn_value, section2);
+      form.SetValues(*section);
+      dsn_name = ShowFormAndReturnValues();
+
+      Section section_config = CreateSectionFromForm();
+      EditDSNInRegistry(dsn_value, section_config);
       return TRUE;
     }
     case ODBC_REMOVE_DSN:
