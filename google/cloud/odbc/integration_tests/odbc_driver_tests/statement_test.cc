@@ -187,37 +187,6 @@ void VerifyColumnWiseResults(StdRows input_data, Results col_wise_data,
     sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
 
     std::vector<std::string> input_col_values;
-    for (auto data : input_data) {
-      input_col_values.emplace_back(data.str_field);
-    }
-    sort(input_col_values.begin(), input_col_values.end(), str_comparison);
-
-    // Check if the sorted inserted and returned vectors have same values
-    EXPECT_EQ(ret_col_values.size(), input_col_values.size());
-    for (int i = 0; i < ret_col_values.size(); i++) {
-      EXPECT_EQ(ret_col_values[i], input_col_values[i]) << " at index: " << i;
-    }
-  }
-}
-
-void VerifyColumnWiseResultsForDifferentTypes(
-    StdAllTypesRows input_data, Results col_wise_data,
-    std::vector<std::string> col_names) {
-  if (!col_names.size()) {
-    std::vector<std::string> all_col_names;
-    for (auto it = col_wise_data.begin(); it != col_wise_data.end(); it++) {
-      all_col_names.emplace_back(it->first);
-    }
-    col_names = all_col_names;
-  }
-  for (auto col_name : col_names) {
-    auto ret_col_values = col_wise_data[col_name];
-    std::cout << "col_name " << col_name << std::endl;
-    // We have to sort inserted and returned values because we haven't specified
-    // the ordering
-    sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
-
-    std::vector<std::string> input_col_values;
     if (!col_name.compare("StringField")) {
       for (auto data : input_data) {
         input_col_values.emplace_back(data.str_field);
@@ -225,116 +194,34 @@ void VerifyColumnWiseResultsForDifferentTypes(
 
     } else if (!col_name.compare("IntegerField")) {
       for (auto data : input_data) {
-        input_col_values.emplace_back(std::to_string(data.int_field));
+        if (data.int_field != NULL)
+          input_col_values.emplace_back(std::to_string(data.int_field));
+        else
+          input_col_values.emplace_back("");
       }
 
     } else if (!col_name.compare("FloatField")) {
       for (auto data : input_data) {
-        input_col_values.emplace_back(std::to_string(data.float_field));
-      }
-
-    } else if (!col_name.compare("TimestampField")) {
-      for (auto data : input_data) {
-        std::string expected_val = FormatTimeStamp(data.timestamp);
-        input_col_values.emplace_back(expected_val);
-      }
-
-    } else if (!col_name.compare("DateField")) {
-      for (auto data : input_data) {
-        std::string expected_val = FormatDate(data.date);
-        input_col_values.emplace_back(expected_val);
-      }
-
-    } else if (!col_name.compare("TimeField")) {
-      for (auto data : input_data) {
-        std::string expected_val = FormatTimetoString(data.time);
-        expected_val.append(".000000");
-        input_col_values.emplace_back(expected_val);
+        if (data.float_field != NULL)
+          input_col_values.emplace_back(std::to_string(data.float_field));
+        else
+          input_col_values.emplace_back("");
       }
     }
-
     sort(input_col_values.begin(), input_col_values.end(), str_comparison);
 
     // Check if the sorted inserted and returned vectors have same values
     EXPECT_EQ(ret_col_values.size(), input_col_values.size());
     if ((!col_name.compare("FloatField"))) {
       for (int i = 0; i < ret_col_values.size(); i++) {
-        EXPECT_EQ(stod(ret_col_values[i]), stod(input_col_values[i]))
-            << " at index: " << i;
+        if (ret_col_values[i].compare("") != 0)
+          EXPECT_EQ(stod(ret_col_values[i]), stod(input_col_values[i]))
+              << " at index: " << i;
       }
     } else {
       for (int i = 0; i < ret_col_values.size(); i++) {
         EXPECT_EQ(ret_col_values[i], input_col_values[i]) << " at index: " << i;
       }
-    }
-  }
-}
-
-void VerifyColumnWiseResultsInt(StdRows input_data, Results col_wise_data,
-                                std::vector<std::string> col_names) {
-  if (!col_names.size()) {
-    std::vector<std::string> all_col_names;
-    for (auto it = col_wise_data.begin(); it != col_wise_data.end(); it++) {
-      all_col_names.emplace_back(it->first);
-    }
-    col_names = all_col_names;
-  }
-  for (auto col_name : col_names) {
-    auto ret_col_values = col_wise_data[col_name];
-
-    // We have to sort inserted and returned values because we haven't specified
-    // the ordering
-    sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
-
-    std::vector<std::string> input_col_values;
-    for (auto data : input_data) {
-      if (data.int_field)
-        input_col_values.emplace_back(std::to_string(data.int_field));
-      else
-        input_col_values.emplace_back("");
-    }
-    sort(input_col_values.begin(), input_col_values.end(), str_comparison);
-
-    // Check if the sorted inserted and returned vectors have same values
-    EXPECT_EQ(ret_col_values.size(), input_col_values.size());
-    for (int i = 0; i < ret_col_values.size(); i++) {
-      EXPECT_EQ(ret_col_values[i], input_col_values[i]) << " at index: " << i;
-    }
-  }
-}
-
-void VerifyColumnWiseResultsFloat(StdRows input_data, Results col_wise_data,
-                                  std::vector<std::string> col_names) {
-  if (!col_names.size()) {
-    std::vector<std::string> all_col_names;
-    for (auto it = col_wise_data.begin(); it != col_wise_data.end(); it++) {
-      all_col_names.emplace_back(it->first);
-    }
-    col_names = all_col_names;
-  }
-  for (auto col_name : col_names) {
-    auto ret_col_values = col_wise_data[col_name];
-
-    // We have to sort inserted and returned values because we haven't specified
-    // the ordering
-    sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
-
-    std::vector<std::string> input_col_values;
-    for (auto data : input_data) {
-      if (data.float_field)
-        input_col_values.emplace_back(std::to_string(data.float_field));
-      else
-        input_col_values.emplace_back("");
-    }
-    sort(input_col_values.begin(), input_col_values.end(), str_comparison);
-
-    // Check if the sorted inserted and returned vectors have same values
-    EXPECT_EQ(ret_col_values.size(), input_col_values.size());
-    for (int i = 0; i < ret_col_values.size(); i++) {
-      if (ret_col_values[i].compare("") < 0)
-        EXPECT_EQ((SQLDOUBLE*)(ret_col_values[i].data()),
-                  (SQLDOUBLE*)(input_col_values[i].data()))
-            << " at index: " << i;
     }
   }
 }
@@ -714,41 +601,6 @@ TEST(StatementTest, SQLFetchScroll) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(StatementTest, SQLGetData_AllTypes) {
-  auto const table_name =
-      kDatasetWithTablePrefix + "ODBC_SQL_GET_DATA_TEST_All";
-  Table table(table_name);
-
-  // Create Table
-  auto conn = std::make_shared<ODBCHandles>();
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  table.CreateWithPrepare(
-      conn,
-      "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64, "
-      "TimestampField TIMESTAMP, DateField DATE, TimeField TIME )");
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-  // Insert data to read
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  table.InsertAllData(conn, kConversionFromDifferentTestData);
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  std::string query = "SELECT * FROM " + table_name;
-
-  auto results = *FetchResultsWithSqlGetData(conn, query);
-
-  VerifyColumnWiseResultsForDifferentTypes(kConversionFromDifferentTestData,
-                                           results, std::vector<std::string>());
-
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-  // Delete table
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  table.Drop(conn);
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-}
-
 TEST(StatementTest, SQLGetData) {
   auto const table_name = kDatasetWithTablePrefix + "ODBC_GET_DATA_TEST";
   Table table(table_name);
@@ -768,33 +620,12 @@ TEST(StatementTest, SQLGetData) {
   // Execute a read query and check whether the results returned are as expected
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
 
-  std::string query = "SELECT StringField FROM " + table_name;
+  std::string query =
+      "SELECT StringField, IntegerField, FloatField FROM " + table_name;
 
   auto results = *FetchResultsWithSqlGetData(conn, query);
 
   VerifyColumnWiseResults(kSampleData, results, std::vector<std::string>());
-
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-
-  std::string queryInt = "SELECT IntegerField FROM " + table_name;
-
-  auto resultsInt = *FetchResultsWithSqlGetData(conn, queryInt);
-
-  VerifyColumnWiseResultsInt(kSampleData, resultsInt,
-                             std::vector<std::string>());
-
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-
-  std::string queryFloat = "SELECT FloatField FROM " + table_name;
-
-  auto resultsFloat = *FetchResultsWithSqlGetData(conn, queryFloat);
-
-  VerifyColumnWiseResultsFloat(kSampleData, resultsFloat,
-                               std::vector<std::string>());
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 

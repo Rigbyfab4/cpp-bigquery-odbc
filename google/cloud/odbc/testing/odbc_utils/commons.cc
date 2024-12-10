@@ -378,71 +378,13 @@ std::string GetAllTypeInsertionString(std::string const& table_name,
     auto row = rows[i];
     row_str << "( ";
 
-    auto str_field = row.str_field;
-    if (!str_field.empty()) {
-      row_str << "'" << str_field << "', ";
-    } else {
-      row_str << "NULL, ";
-    }
-
-    auto int_field = row.int_field;
-    if (int_field != NULL) {
-      row_str << int_field << ", ";
-    } else {
-      row_str << "NULL, ";
-    }
-
-    auto float_field = row.float_field;
-    if (float_field != NULL) {
-      row_str << float_field << ", ";
-    } else {
-      row_str << "NULL, ";
-    }
-
-    auto timestamp_field = row.timestamp;
-    if (timestamp_field.year != 0) {
-      row_str << "'" << timestamp_field.year << "-"
-              << (timestamp_field.month < 10 ? "0" : "")
-              << timestamp_field.month << "-"
-              << (timestamp_field.day < 10 ? "0" : "") << timestamp_field.day
-              << " " << (timestamp_field.hour < 10 ? "0" : "")
-              << timestamp_field.hour << ":"
-              << (timestamp_field.minute < 10 ? "0" : "")
-              << timestamp_field.minute << ":"
-              << (timestamp_field.second < 10 ? "0" : "")
-              << timestamp_field.second << "." << timestamp_field.fraction
-              << "', ";
-    } else {
-      row_str << "NULL, ";
-    }
-
-    auto date_field = row.date;
-    if (date_field.year != 0) {
-      row_str << "'" << date_field.year << "-"
-              << (date_field.month < 10 ? "0" : "") << date_field.month << "-"
-              << (date_field.day < 10 ? "0" : "") << date_field.day << "', ";
-    } else {
-      row_str << "NULL, ";
-    }
-
-    auto time_field = row.time;
-    row_str << "\"";
-    if ((time_field.hour >= 0) && (time_field.hour <= 24)) {
-      row_str << time_field.hour << ":";
-    } else {
-      row_str << ":";
-    }
-    if ((time_field.minute >= 0) && (time_field.minute <= 59)) {
-      row_str << time_field.minute << ":";
-    } else {
-      row_str << ":";
-    }
-    if ((time_field.second >= 0) && (time_field.second <= 59)) {
-      row_str << time_field.second;
-    } else {
-      row_str << "";
-    }
-    row_str << "\"";
+    row_str << ToBQInsertionStr(row.str_field) << ", ";
+    row_str << ToBQInsertionStr(row.int_field) << ", ";
+    row_str << ToBQInsertionStr(row.float_field) << ", ";
+    row_str << ToBQInsertionStr(row.timestamp) << ", ";
+    row_str << ToBQInsertionStr(row.date) << ", ";
+    row_str << ToBQInsertionStr(row.time) << ", ";
+    row_str << ToBQInsertionStr(row.json_field);
 
     row_str << ")";
     if (i != (num_rows - 1)) {

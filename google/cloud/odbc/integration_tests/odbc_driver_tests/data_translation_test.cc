@@ -115,6 +115,75 @@ std::vector<Int64BasicTestStruct> const kConversionFromInt64TestData{
     {SQL_C_BIT, 2, SQL_ERROR},
 };
 
+struct TimestampBasicTestStruct {
+  // The target C type SQLBindCol will convert SQL type to
+  SQLSMALLINT target_c_type;
+  // The value that should be returned by SQLBindCol if it succeeds
+  SQL_TIMESTAMP_STRUCT value;
+  // The status that should be returned by SQLBindCol for this C Type
+  SQLRETURN status;
+};
+
+using StdTimestampRows = std::vector<TimestampBasicTestStruct>;
+
+StdTimestampRows const kConversionFromTimestampTestData{
+    {SQL_C_CHAR, {2024, 01, 20, 10, 20, 30, 123112}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {2024, 01, 20, 11, 2, 33, 1212}, SQL_SUCCESS},
+    {SQL_C_BINARY, {2024, 01, 20, 2, 20, 22, 123123}, SQL_SUCCESS},
+    {SQL_C_TYPE_DATE, {2024, 01, 20, 12, 22, 11, 32223}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIME, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIMESTAMP, {2024, 01, 20, 12, 21, 22, 000000}, SQL_SUCCESS},
+    {SQL_C_SLONG, {2024, 01, 20, 00, 00, 00, 000000}, SQL_ERROR},
+};
+
+StdAllTypesRows const kConversionFromDifferentTestData{
+    {
+        "",
+        1,
+        1.1,
+        {2024, 01, 20, 10, 20, 30, 123112},
+        {2024, 2, 20},
+        {11, 9, 20},
+        {{"age", 30}, {"name", "Sita"}},
+    },
+    {
+        "Test String 2",
+        NULL,
+        2.22,
+        {2024, 01, 20, 11, 2, 33, 1212},
+        {2024, 3, 12},
+        {22, 45, 54},
+        {{"age", 30}, {"name", "Alice"}},
+    },
+    {
+        "Test String 3",
+        12,
+        NULL,
+        {2024, 01, 20, 2, 20, 22, 123123},
+        {2024, 4, 20},
+        {2, 36, 29},
+        {{"age", 90}, {"name", "Ram"}},
+    },
+    {
+        "Test String 4",
+        49,
+        2.0,
+        {00, 00, 00, 00, 00, 00, 00},
+        {2024, 4, 29},
+        {9, 07, 20},
+        {{"age", 26}, {"name", "Bob"}},
+    },
+    {
+        "Test String 5",
+        53,
+        5,
+        {2024, 01, 20, 00, 00, 00, 000000},
+        {00, 00, 00},
+        {04, 06, 07},
+        {{"age", 32}, {"name", "Kapoor"}},
+    },
+};
+
 template <typename TestStruct>
 void TestTranslationsFromArithmetic(std::shared_ptr<ODBCHandles> conn,
                                     std::string query,
@@ -1464,6 +1533,136 @@ TEST(DataTranslationTest, From_Interval_Year_Month) {
   IntervalTestRunner(table_name, interval_data,
                      TestTranslationFromIntervalYearMonth);
 }
+#ifndef BQ_DRIVER_INTEGRATION_TESTS
+
+std::vector<std::string> GetInputValuesToString(std::string column_name,
+                                                StdAllTypesRows input_data) {
+  std::vector<std::string> input_values;
+
+  if (!column_name.compare("StringField")) {
+    for (auto data : input_data) {
+      input_values.emplace_back(data.str_field);
+    }
+
+  } else if (!column_name.compare("IntegerField")) {
+    for (auto data : input_data) {
+      if (data.int_field != NULL)
+        input_values.emplace_back(std::to_string(data.int_field));
+      else
+        input_values.emplace_back("");
+    }
+
+  } else if (!column_name.compare("FloatField")) {
+    for (auto data : input_data) {
+      if (data.float_field != NULL)
+        input_values.emplace_back(std::to_string(data.float_field));
+      else
+        input_values.emplace_back("");
+    }
+
+  } else if (!column_name.compare("TimestampField")) {
+    for (auto data : input_data) {
+      if (data.timestamp.year != 0) {
+        std::string expected_val = FormatTimeStamp(data.timestamp);
+        input_values.emplace_back(expected_val);
+      } else
+        input_values.emplace_back("");
+    }
+
+  } else if (!column_name.compare("DateField")) {
+    for (auto data : input_data) {
+      if (data.date.year != 0) {
+        std::string expected_val = FormatDate(data.date);
+        input_values.emplace_back(expected_val);
+      } else
+        input_values.emplace_back("");
+    }
+
+  } else if (!column_name.compare("TimeField")) {
+    for (auto data : input_data) {
+      std::string expected_val = FormatTimetoString(data.time);
+      expected_val.append(".000000");
+      input_values.emplace_back(expected_val);
+    }
+  } else if (!column_name.compare("JsonField")) {
+    for (auto data : input_data) {
+      std::string expected_val = to_string(data.json_field);
+      input_values.emplace_back(expected_val);
+    }
+  }
+  return input_values;
+}
+
+void VerifyColumnWiseResultsForDifferentTypes(StdAllTypesRows input_data,
+                                              Results col_wise_data) {
+  std::vector<std::string> all_col_names;
+  for (auto it = col_wise_data.begin(); it != col_wise_data.end(); it++) {
+    all_col_names.emplace_back(it->first);
+  }
+
+  for (auto col_name : all_col_names) {
+    auto ret_col_values = col_wise_data[col_name];
+    // We have to sort inserted and returned values because we haven't specified
+    // the ordering
+    sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
+
+    std::vector<std::string> input_col_values =
+        GetInputValuesToString(col_name, input_data);
+
+    sort(input_col_values.begin(), input_col_values.end(), str_comparison);
+
+    // Check if the sorted inserted and returned vectors have same values
+    EXPECT_EQ(ret_col_values.size(), input_col_values.size());
+    if ((!col_name.compare("FloatField"))) {
+      for (int i = 0; i < ret_col_values.size(); i++) {
+        if (ret_col_values[i].compare("") != 0)
+          EXPECT_EQ(stod(ret_col_values[i]), stod(input_col_values[i]))
+              << " at index: " << i;
+      }
+    } else {
+      for (int i = 0; i < ret_col_values.size(); i++) {
+        EXPECT_EQ(ret_col_values[i], input_col_values[i]) << " at index: " << i;
+      }
+    }
+  }
+}
+
+TEST(StatementTest, SQLGetData_AllTypes) {
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_SQL_GET_DATA_TEST_All";
+  Table table(table_name);
+
+  // Create Table
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.CreateWithPrepare(
+      conn,
+      "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64, "
+      "TimestampField TIMESTAMP, DateField DATE, TimeField TIME, JsonField "
+      "JSON)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.InsertAllData(conn, kConversionFromDifferentTestData);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query = "SELECT * FROM " + table_name;
+
+  auto results = *FetchResultsWithSqlGetData(conn, query);
+
+  VerifyColumnWiseResultsForDifferentTypes(kConversionFromDifferentTestData,
+                                           results);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.Drop(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+#endif /* BQ_DRIVER_INTEGRATION_TESTS */
 
 #ifdef BQ_DRIVER_INTEGRATION_TESTS
 // Disable this test case as simba returning null values
