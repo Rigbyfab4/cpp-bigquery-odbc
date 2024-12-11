@@ -19,6 +19,26 @@
 #include <nlohmann/json.hpp>
 
 namespace google::cloud::odbc_tests {
+struct TimestampBasicTestStruct {
+  // The target C type SQLBindCol will convert SQL type to
+  SQLSMALLINT target_c_type;
+  // The value that should be returned by SQLBindCol if it succeeds
+  SQL_TIMESTAMP_STRUCT value;
+  // The status that should be returned by SQLBindCol for this C Type
+  SQLRETURN status;
+};
+
+using StdTimestampRows = std::vector<TimestampBasicTestStruct>;
+
+StdTimestampRows const kConversionFromTimestampTestData{
+    {SQL_C_CHAR, {2024, 01, 20, 10, 20, 30, 123112}, SQL_SUCCESS},
+    {SQL_C_WCHAR, {2024, 01, 20, 11, 2, 33, 1212}, SQL_SUCCESS},
+    {SQL_C_BINARY, {2024, 01, 20, 2, 20, 22, 123123}, SQL_SUCCESS},
+    {SQL_C_TYPE_DATE, {2024, 01, 20, 12, 22, 11, 32223}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIME, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
+    {SQL_C_TYPE_TIMESTAMP, {2024, 01, 20, 12, 21, 22, 000000}, SQL_SUCCESS},
+    {SQL_C_SLONG, {2024, 01, 20, 00, 00, 00, 000000}, SQL_ERROR},
+};
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
 struct StrBasicTestStruct {
   // The target C type SQLGetData will convert SQL type to
@@ -113,27 +133,6 @@ std::vector<Int64BasicTestStruct> const kConversionFromInt64TestData{
     {SQL_C_BIT, 0, SQL_SUCCESS},
     {SQL_C_BIT, 1, SQL_SUCCESS},
     {SQL_C_BIT, 2, SQL_ERROR},
-};
-
-struct TimestampBasicTestStruct {
-  // The target C type SQLBindCol will convert SQL type to
-  SQLSMALLINT target_c_type;
-  // The value that should be returned by SQLBindCol if it succeeds
-  SQL_TIMESTAMP_STRUCT value;
-  // The status that should be returned by SQLBindCol for this C Type
-  SQLRETURN status;
-};
-
-using StdTimestampRows = std::vector<TimestampBasicTestStruct>;
-
-StdTimestampRows const kConversionFromTimestampTestData{
-    {SQL_C_CHAR, {2024, 01, 20, 10, 20, 30, 123112}, SQL_SUCCESS},
-    {SQL_C_WCHAR, {2024, 01, 20, 11, 2, 33, 1212}, SQL_SUCCESS},
-    {SQL_C_BINARY, {2024, 01, 20, 2, 20, 22, 123123}, SQL_SUCCESS},
-    {SQL_C_TYPE_DATE, {2024, 01, 20, 12, 22, 11, 32223}, SQL_SUCCESS},
-    {SQL_C_TYPE_TIME, {2024, 01, 20, 00, 00, 00, 000000}, SQL_SUCCESS},
-    {SQL_C_TYPE_TIMESTAMP, {2024, 01, 20, 12, 21, 22, 000000}, SQL_SUCCESS},
-    {SQL_C_SLONG, {2024, 01, 20, 00, 00, 00, 000000}, SQL_ERROR},
 };
 
 StdAllTypesRows const kConversionFromDifferentTestData{
