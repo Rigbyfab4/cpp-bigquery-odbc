@@ -1627,7 +1627,7 @@ void VerifyColumnWiseResultsForDifferentTypes(StdAllTypesRows input_data,
   }
 }
 
-TEST(StatementTest, SQLGetData_AllTypes) {
+TEST(DataTranslationTest, SQLGetData_AllTypes) {
   auto const table_name =
       kDatasetWithTablePrefix + "ODBC_SQL_GET_DATA_TEST_All";
   Table table(table_name);
@@ -1662,6 +1662,100 @@ TEST(StatementTest, SQLGetData_AllTypes) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
+void TestPartialDataFromSQLGetData(std::shared_ptr<ODBCHandles> conn,
+                                   std::string query,
+                                   std::vector<std::string> input_values) {
+  SQLRETURN status;
+  SQLCHAR data[kBufferLength];
+  SQLLEN strlen_or_ind;
+  SQLSMALLINT buffer_len = 3;
+  std::vector<std::string> ret_values;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+
+  Results results;
+  // Read all the rows using SQLFetch
+  while (1) {
+    status = SQLFetch(conn->hstmt);
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+    if (!SQL_SUCCEEDED(status)) {
+      CheckError(status, "SQLFetch", conn);
+    }
+
+    SQLSMALLINT resp_status, resp_status_len;
+    std::string returned_value;
+    while (1) {
+      status = SQLGetData(conn->hstmt, 1, SQL_CHAR, data, buffer_len,
+                          &strlen_or_ind);
+      CheckError(status, "SQLGetData", conn);
+      if (status == SQL_SUCCESS_WITH_INFO) {
+        returned_value.append((char*)data);
+      }
+      if (SQL_SUCCEEDED(status)) {
+        status =
+            SQLGetDiagField(SQL_HANDLE_STMT, conn->hstmt, 1, SQL_DIAG_SQLSTATE,
+                            &resp_status, 0, &resp_status_len);
+        if (status == SQL_NO_DATA) {
+          returned_value.append((char*)data);
+          ret_values.emplace_back(returned_value);
+          break;
+        }
+        CheckError(status, "SQLGetDiagField", conn);
+      } else {
+        break;
+      }
+    }
+  }
+
+  for (int i = 0; i < ret_values.size(); i++) {
+    EXPECT_EQ(ret_values[i], input_values[i]) << " at index: " << i;
+  }
+}
+
+TEST(DataTranslationTest, SQLGetData_PartialData) {
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_GET_PARTIAL_DATA_TEST";
+  Table table(table_name);
+
+  // Create Table
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.Create(conn, "(index INT64, StringField STRING)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::vector<std::string> string_data_to_insert;
+  for (int i = 0; i < 5; i++) {
+    string_data_to_insert.emplace_back(GetRandomString(10));
+  }
+  table.InsertStrData(conn, string_data_to_insert, true);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Execute a read query and check whether the results returned are as expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query =
+      "SELECT StringField FROM " + table_name + " ORDER BY index";
+
+  TestPartialDataFromSQLGetData(conn, query, string_data_to_insert);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.Drop(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 #endif /* BQ_DRIVER_INTEGRATION_TESTS */
 
 #ifdef BQ_DRIVER_INTEGRATION_TESTS
