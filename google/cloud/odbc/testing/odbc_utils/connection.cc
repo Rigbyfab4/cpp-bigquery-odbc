@@ -79,8 +79,9 @@ SQLRETURN Connect(std::string conn_str, std::shared_ptr<ODBCHandles> conn,
   return status;
 }
 
-SQLRETURN ConnectWithNull(std::string conn_str, std::wstring dsn,
-                          std::shared_ptr<ODBCHandles> conn, bool use_wide) {
+SQLRETURN ConnectWithNullOutputParams(std::string conn_str, std::wstring dsn,
+                                      std::shared_ptr<ODBCHandles> conn,
+                                      bool use_wide) {
   SQLSMALLINT buflen;
   SQLCHAR data_source[kBufferLength];
   SQLSMALLINT out_len;
@@ -212,9 +213,9 @@ SQLRETURN Connect(std::wstring dsn, std::shared_ptr<ODBCHandles> conn,
   sqlWStr.emplace_back(L'\0');
 
   if (is_driver_connect == true) {
-    status = SQLDriverConnectW(
-        conn->hdbc, 0, sqlWStr.data(), SQL_NTS, (SQLWCHAR*)conn->outdsn,
-        NumSqlChar(conn->outdsn), &buflen, SQL_DRIVER_COMPLETE);
+    status = SQLDriverConnectW(conn->hdbc, 0, sqlWStr.data(), SQL_NTS,
+                               (SQLWCHAR*)conn->outdsn, sizeof(conn->outdsn),
+                               &buflen, SQL_DRIVER_COMPLETE);
 
     CheckError(status, "SQLDriverConnectW", conn);
   } else {
