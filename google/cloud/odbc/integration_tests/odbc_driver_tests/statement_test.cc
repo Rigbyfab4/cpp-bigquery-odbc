@@ -187,19 +187,47 @@ void VerifyColumnWiseResults(StdRows input_data, Results col_wise_data,
     sort(ret_col_values.begin(), ret_col_values.end(), str_comparison);
 
     std::vector<std::string> input_col_values;
-    for (auto data : input_data) {
-      input_col_values.emplace_back(data.str_field);
+    if (!col_name.compare("StringField")) {
+      for (auto data : input_data) {
+        input_col_values.emplace_back(data.str_field);
+      }
+
+    } else if (!col_name.compare("IntegerField")) {
+      for (auto data : input_data) {
+        if (data.int_field != NULL)
+          input_col_values.emplace_back(std::to_string(data.int_field));
+        else
+          input_col_values.emplace_back("");
+      }
+
+    } else if (!col_name.compare("FloatField")) {
+      for (auto data : input_data) {
+        if (data.float_field != NULL)
+          input_col_values.emplace_back(std::to_string(data.float_field));
+        else
+          input_col_values.emplace_back("");
+      }
     }
     sort(input_col_values.begin(), input_col_values.end(), str_comparison);
 
     // Check if the sorted inserted and returned vectors have same values
     EXPECT_EQ(ret_col_values.size(), input_col_values.size());
-    for (int i = 0; i < ret_col_values.size(); i++) {
-      EXPECT_EQ(ret_col_values[i], input_col_values[i]) << " at index: " << i;
+    if ((!col_name.compare("FloatField"))) {
+      for (int i = 0; i < ret_col_values.size(); i++) {
+        if (ret_col_values[i].compare("") != 0)
+          EXPECT_EQ(stod(ret_col_values[i]), stod(input_col_values[i]))
+              << " at index: " << i;
+      }
+    } else {
+      for (int i = 0; i < ret_col_values.size(); i++) {
+        EXPECT_EQ(ret_col_values[i], input_col_values[i]) << " at index: " << i;
+      }
     }
   }
 }
 
+// This preprocessor flag is used to disable tests for unimplemented bq_driver
+// ODBC APIs
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
 
 void ExecDirectWithFetchTest(std::string const in_table_name, bool is_async,
@@ -580,19 +608,20 @@ TEST(StatementTest, SQLGetData) {
   // Create Table
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  table.Create(
+  table.CreateWithPrepare(
       conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Insert data to read
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  table.InsertData(conn, kSampleData);
+  table.InsertData(conn, kSampleData, false, true);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Execute a read query and check whether the results returned are as expected
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-  // TODO(#14): Add integer and floating point fields too
-  std::string query = "SELECT StringField FROM " + table_name;
+
+  std::string query =
+      "SELECT StringField, IntegerField, FloatField FROM " + table_name;
 
   auto results = *FetchResultsWithSqlGetData(conn, query);
 

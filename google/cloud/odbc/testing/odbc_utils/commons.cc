@@ -365,6 +365,38 @@ std::string GetInsertionString(std::string table_name, StdRows rows) {
   return insert_stmt;
 }
 
+std::string GetAllTypeInsertionString(std::string const& table_name,
+                                      StdAllTypesRows const& rows) {
+  std::ostringstream row_str;
+  row_str << "INSERT INTO " << table_name << " VALUES ";
+  int num_rows = rows.size();
+  if (!num_rows) {
+    return "";
+  }
+
+  for (int i = 0; i < num_rows; i++) {
+    auto row = rows[i];
+    row_str << "( ";
+
+    row_str << ToBQInsertionStr(row.str_field) << ", ";
+    row_str << ToBQInsertionStr(row.int_field) << ", ";
+    row_str << ToBQInsertionStr(row.float_field) << ", ";
+    row_str << ToBQInsertionStr(row.timestamp) << ", ";
+    row_str << ToBQInsertionStr(row.date) << ", ";
+    row_str << ToBQInsertionStr(row.time) << ", ";
+    row_str << ToBQInsertionStr(row.json_field);
+
+    row_str << ")";
+    if (i != (num_rows - 1)) {
+      row_str << ", ";
+    } else {
+      row_str << "\0";
+    }
+  }
+  std::string insert_stmt = row_str.str();
+  return insert_stmt;
+}
+
 void Table::Create(std::shared_ptr<ODBCHandles> conn, std::string schema_str,
                    bool use_ansi) {
   char create_table_stmt[kBufferLength];
@@ -497,6 +529,21 @@ void Table::InsertUnicodeData(std::shared_ptr<ODBCHandles> conn,
 
   std::vector<SQLWCHAR> sqlWStr(insert_stmt.begin(), insert_stmt.end());
   status = SQLPrepareW(conn->hstmt, sqlWStr.data(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+}
+
+void Table::InsertAllData(std::shared_ptr<ODBCHandles> conn,
+                          StdAllTypesRows const& rows) {
+  SQLRETURN status;
+  std::string insert_stmt = GetAllTypeInsertionString(table_name_, rows);
+  if (insert_stmt.empty()) {
+    return;
+  }
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)insert_stmt.c_str(),
+                      insert_stmt.size());
   CheckError(status, "SQLPrepare", conn);
   status = SQLExecute(conn->hstmt);
   CheckError(status, "SQLExecute", conn);

@@ -142,6 +142,19 @@ using StdRows = std::vector<StdRow>;
 
 using StdUnicodeRows = std::vector<StdUnicodeRow>;
 
+struct BasicTestStruct {
+  // The value that should be returned by SQLGetData if it succeeds
+  std::string str_field;
+  SQLBIGINT int_field;
+  SQLDOUBLE float_field;
+  SQL_TIMESTAMP_STRUCT timestamp;
+  SQL_DATE_STRUCT date;
+  SQL_TIME_STRUCT time;
+  nlohmann::json json_field;
+};
+
+using StdAllTypesRows = std::vector<BasicTestStruct>;
+
 struct StdOdbcRow {
   SQLCHAR str_field[3 * kBufferLength];
   SQLLEN len_status_ind_str;
@@ -296,6 +309,12 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
     case SQL_TYPE_TIMESTAMP:
       col_ptr->data_type = SQL_C_TYPE_TIMESTAMP;
       break;
+    case SQL_TYPE_TIME:
+      col_ptr->data_type = SQL_C_TYPE_TIME;
+      break;
+    case SQL_TYPE_DATE:
+      col_ptr->data_type = SQL_C_TYPE_DATE;
+      break;
     case SQL_INTERVAL_YEAR:
       col_ptr->data_type = SQL_C_INTERVAL_YEAR;
       break;
@@ -343,6 +362,9 @@ inline void SqlToCdataTypes(std::shared_ptr<Column> col_ptr) {
 
 std::string GetInsertionString(std::string table_name, StdRows rows);
 
+std::string GetAllTypeInsertionString(std::string const& table_name,
+                                      StdAllTypesRows const& rows);
+
 class Table {
  public:
   Table() = default;
@@ -377,6 +399,9 @@ class Table {
 
   void InsertUnicodeData(std::shared_ptr<ODBCHandles> conn,
                          StdUnicodeRows rows);
+
+  void InsertAllData(std::shared_ptr<ODBCHandles> conn,
+                     StdAllTypesRows const& rows);
 
   // This is used to insert strings into a table which only has a string column.
   // If `insert_index` is set to true, an additional column `index` will be
