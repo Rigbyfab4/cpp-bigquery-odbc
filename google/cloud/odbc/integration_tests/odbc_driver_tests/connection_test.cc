@@ -539,6 +539,24 @@ TEST(ConnectionTest, SQLDriverConnectW) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(ConnectionTest, SQLDriverConnect_NULLOutput) {
+  auto conn = std::make_shared<ODBCHandles>();
+  std::wstring defaultConnectionWstring = Utf8ToUtf16(kDefaultConnectionString);
+  EXPECT_EQ(ConnectWithNullOutputParams(kDefaultConnectionString,
+                                        defaultConnectionWstring, conn),
+            SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(ConnectionTest, SQLDriverConnectW_NULLOutput) {
+  auto conn = std::make_shared<ODBCHandles>();
+  std::wstring defaultConnectionWstring = Utf8ToUtf16(kDefaultConnectionString);
+  EXPECT_EQ(ConnectWithNullOutputParams(kDefaultConnectionString,
+                                        defaultConnectionWstring, conn, true),
+            SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 // Duplicate DSNs are not functioning properly(WIN).
 #ifndef _WIN32
 TEST(ConnectionTest, SQLDriverConnect_DuplicateDsn) {

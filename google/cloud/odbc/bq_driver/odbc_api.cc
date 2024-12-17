@@ -458,60 +458,33 @@ SQLRETURN SQL_API SQLDriverConnectW(
   // outConnectionString is an output value that is not populated by the user.
   // This should not be unicode converted if it is empty. Instead we send a
   // SQLCHAR empty value directly to the internal function.
-  SQLCHAR out_conn_str[kBufferLength];
-  StatusRecordOr<std::string> utf8_out_conn_str;
+  SQLCHAR* out_conn_str = reinterpret_cast<SQLCHAR*>(outConnectionString);
+  SQLSMALLINT out_conn_str_len = 0;
+  // Call to internal common function for SQLDriverConnect and
+  // SQLDriverConnectW in odbc_connection.h.
+  rc = google::cloud::odbc_bq_driver::SQLDriverConnectInternal(
+      connectionHandle, windowHandle, ToSqlChar(utf8_in_connection_str->data()),
+      inConnectionStringLen, out_conn_str, outConnectionStringBufferLen,
+      &out_conn_str_len, driverCompletion);
 
-  std::wstring wstr(reinterpret_cast<wchar_t const*>(outConnectionString));
-  auto out_len = wstr.length();
-  if (out_len > 0) {
-    utf8_out_conn_str = ConvertSQLWCHARToString(outConnectionString, out_len);
-    if (!utf8_out_conn_str) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf8_out_conn_str.GetStatusRecord().message);
-      return utf8_out_conn_str.GetCalculatedReturnCode();
-    }
-    *outConnectionStringLen = utf8_out_conn_str->length();
-    // Call to internal common function for SQLDriverConnect and
-    // SQLDriverConnectW in odbc_connection.h.
-    rc = google::cloud::odbc_bq_driver::SQLDriverConnectInternal(
-        connectionHandle, windowHandle,
-        ToSqlChar(utf8_in_connection_str->data()), inConnectionStringLen,
-        ToSqlChar(utf8_out_conn_str->data()), outConnectionStringBufferLen,
-        outConnectionStringLen, driverCompletion);
-  } else {
-    // Call to internal common function for SQLDriverConnect and
-    // SQLDriverConnectW in odbc_connection.h.
-    rc = google::cloud::odbc_bq_driver::SQLDriverConnectInternal(
-        connectionHandle, windowHandle,
-        ToSqlChar(utf8_in_connection_str->data()), inConnectionStringLen,
-        out_conn_str, outConnectionStringBufferLen, outConnectionStringLen,
-        driverCompletion);
-  }
   // Handle Unicode conversion of output parameters.
-  StatusRecordOr<std::wstring> utf16_in_connection_str =
-      Utf8ToUtf16(*utf8_in_connection_str);
-  if (!utf16_in_connection_str) {
-    TracePrintInternal(*(*kTraceOption),
-                       utf16_in_connection_str.GetStatusRecord().message);
-    return utf16_in_connection_str.GetCalculatedReturnCode();
+  if (SQL_SUCCEEDED(rc) && outConnectionString) {
+    StatusRecordOr<std::wstring> utf16_out_conn_str;
+    if (out_conn_str_len > 0) {
+      utf16_out_conn_str = Utf8ToUtf16((char*)out_conn_str);
+    } else {
+      std::string val(ToCharStr(out_conn_str));
+      utf16_out_conn_str = Utf8ToUtf16(val);
+    }
+    if (!utf16_out_conn_str) {
+      TracePrintInternal(*(*kTraceOption),
+                         utf16_out_conn_str.GetStatusRecord().message);
+      return utf16_out_conn_str.GetCalculatedReturnCode();
+    }
+    outConnectionString = ToSqlWChar(utf16_out_conn_str->data());
   }
-  inConnectionString = ToSqlWChar(utf16_in_connection_str->data());
-  inConnectionStringLen = utf16_in_connection_str->length();
+  if (outConnectionStringLen) *outConnectionStringLen = out_conn_str_len;
 
-  StatusRecordOr<std::wstring> utf16_out_conn_str;
-  if (out_len > 0) {
-    utf16_out_conn_str = Utf8ToUtf16(*utf8_out_conn_str);
-  } else {
-    std::string val(ToCharStr(out_conn_str));
-    utf16_out_conn_str = Utf8ToUtf16(val);
-  }
-  if (!utf16_out_conn_str) {
-    TracePrintInternal(*(*kTraceOption),
-                       utf16_out_conn_str.GetStatusRecord().message);
-    return utf16_out_conn_str.GetCalculatedReturnCode();
-  }
-  outConnectionString = ToSqlWChar(utf16_out_conn_str->data());
-  *outConnectionStringLen = utf16_out_conn_str->length();
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLDriverConnectW(rc, *(*kTraceOption));
@@ -793,42 +766,38 @@ SQLRETURN SQL_API SQLConnectW(SQLHDBC connectionHandle, SQLWCHAR* serverName,
   }
 
   // Handle Unicode conversion of output parameters.
-  if (SQL_SUCCEEDED(rc)) {
-    StatusRecordOr<std::wstring> utf16_server_name =
-        Utf8ToUtf16(*utf8_server_name);
-    if (!utf16_server_name) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf16_server_name.GetStatusRecord().message);
-      return utf16_server_name.GetCalculatedReturnCode();
-    }
-    serverNameLen = utf16_server_name->length();
-    std::memcpy(serverName, ToSqlWChar(utf16_server_name->data()),
-                serverNameLen);
-
-    if (w_user_name_len > 0) {
-      StatusRecordOr<std::wstring> utf16_user_name =
-          Utf8ToUtf16(*utf8_user_name);
-      if (!utf16_user_name) {
-        TracePrintInternal(*(*kTraceOption),
-                           utf16_user_name.GetStatusRecord().message);
-        return utf16_user_name.GetCalculatedReturnCode();
-      }
-      userNameLen = utf16_user_name->length();
-      std::memcpy(userName, ToSqlWChar(utf16_user_name->data()), userNameLen);
-    }
-
-    if (w_auth_str_len > 0) {
-      StatusRecordOr<std::wstring> utf16_auth_str = Utf8ToUtf16(*utf8_auth_str);
-      if (!utf16_auth_str) {
-        TracePrintInternal(*(*kTraceOption),
-                           utf16_auth_str.GetStatusRecord().message);
-        return utf16_auth_str.GetCalculatedReturnCode();
-      }
-      authStringLen = utf16_auth_str->length();
-      std::memcpy(authString, ToSqlWChar(utf16_auth_str->data()),
-                  authStringLen);
-    }
+  StatusRecordOr<std::wstring> utf16_server_name =
+      Utf8ToUtf16(*utf8_server_name);
+  if (!utf16_server_name) {
+    TracePrintInternal(*(*kTraceOption),
+                       utf16_server_name.GetStatusRecord().message);
+    return utf16_server_name.GetCalculatedReturnCode();
   }
+  serverNameLen = utf16_server_name->length();
+  std::memcpy(serverName, ToSqlWChar(utf16_server_name->data()), serverNameLen);
+
+  if (w_user_name_len > 0) {
+    StatusRecordOr<std::wstring> utf16_user_name = Utf8ToUtf16(*utf8_user_name);
+    if (!utf16_user_name) {
+      TracePrintInternal(*(*kTraceOption),
+                         utf16_user_name.GetStatusRecord().message);
+      return utf16_user_name.GetCalculatedReturnCode();
+    }
+    userNameLen = utf16_user_name->length();
+    std::memcpy(userName, ToSqlWChar(utf16_user_name->data()), userNameLen);
+  }
+
+  if (w_auth_str_len > 0) {
+    StatusRecordOr<std::wstring> utf16_auth_str = Utf8ToUtf16(*utf8_auth_str);
+    if (!utf16_auth_str) {
+      TracePrintInternal(*(*kTraceOption),
+                         utf16_auth_str.GetStatusRecord().message);
+      return utf16_auth_str.GetCalculatedReturnCode();
+    }
+    authStringLen = utf16_auth_str->length();
+    std::memcpy(authString, ToSqlWChar(utf16_auth_str->data()), authStringLen);
+  }
+
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLConnectW(rc, *(*kTraceOption));
   // Call to Release mutex for connection handle in odbc_lock.h.
@@ -2293,18 +2262,16 @@ SQLRETURN SQL_API SQLNativeSqlW(SQLHDBC connectionHandle,
   // TODO: Internal call should be made with out_statement_text as the output
   // parameter.
   // Handle Unicode conversion of output parameters.
-  if (SQL_SUCCEEDED(rc)) {
-    StatusRecordOr<std::wstring> utf16_out_stmt_txt =
-        Utf8ToUtf16((char*)out_statement_text);
-    if (!utf16_out_stmt_txt) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf16_out_stmt_txt.GetStatusRecord().message);
-      return utf16_out_stmt_txt.GetCalculatedReturnCode();
-    }
-    outStatementText = ToSqlWChar(utf16_out_stmt_txt->data());
-    if (outStatementTextLen)
-      *outStatementTextLen = utf16_out_stmt_txt->length();
+
+  StatusRecordOr<std::wstring> utf16_out_stmt_txt =
+      Utf8ToUtf16((char*)out_statement_text);
+  if (!utf16_out_stmt_txt) {
+    TracePrintInternal(*(*kTraceOption),
+                       utf16_out_stmt_txt.GetStatusRecord().message);
+    return utf16_out_stmt_txt.GetCalculatedReturnCode();
   }
+  outStatementText = ToSqlWChar(utf16_out_stmt_txt->data());
+  if (outStatementTextLen) *outStatementTextLen = utf16_out_stmt_txt->length();
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLNativeSqlW(rc, *(*kTraceOption));
@@ -3147,29 +3114,28 @@ SQLRETURN SQL_API SQLGetDiagRecW(SQLSMALLINT handleType, SQLHANDLE handle,
       message_text_buffer, messageTextBufferLen, &message_text_buffer_len);
 
   // Handle Unicode conversion of output parameters.
-  if (SQL_SUCCEEDED(rc)) {
-    StatusRecordOr<std::wstring> utf16_sql_state =
-        Utf8ToUtf16((char*)sql_state_buffer);
-    if (!utf16_sql_state) {
-      TracePrintInternal(*(*kTraceOption),
-                         utf16_sql_state.GetStatusRecord().message);
-      return utf16_sql_state.GetCalculatedReturnCode();
-    }
-    sqlState = ToSqlWChar(utf16_sql_state->data());
-
-    if (message_text_buffer_len > 0) {
-      StatusRecordOr<std::wstring> utf16_msg_txt =
-          Utf8ToUtf16((char*)message_text_buffer);
-      if (!utf16_msg_txt) {
-        TracePrintInternal(*(*kTraceOption),
-                           utf16_msg_txt.GetStatusRecord().message);
-        return utf16_msg_txt.GetCalculatedReturnCode();
-      }
-      std::memcpy(messageText, (SQLPOINTER)ToSqlWChar(utf16_msg_txt->data()),
-                  message_text_buffer_len);
-    }
-    if (messageTextLen) *messageTextLen = message_text_buffer_len;
+  StatusRecordOr<std::wstring> utf16_sql_state =
+      Utf8ToUtf16((char*)sql_state_buffer);
+  if (!utf16_sql_state) {
+    TracePrintInternal(*(*kTraceOption),
+                       utf16_sql_state.GetStatusRecord().message);
+    return utf16_sql_state.GetCalculatedReturnCode();
   }
+  sqlState = ToSqlWChar(utf16_sql_state->data());
+
+  if (message_text_buffer_len > 0) {
+    StatusRecordOr<std::wstring> utf16_msg_txt =
+        Utf8ToUtf16((char*)message_text_buffer);
+    if (!utf16_msg_txt) {
+      TracePrintInternal(*(*kTraceOption),
+                         utf16_msg_txt.GetStatusRecord().message);
+      return utf16_msg_txt.GetCalculatedReturnCode();
+    }
+    std::memcpy(messageText, (SQLPOINTER)ToSqlWChar(utf16_msg_txt->data()),
+                message_text_buffer_len);
+  }
+  if (messageTextLen) *messageTextLen = message_text_buffer_len;
+
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLGetDiagRec(rc, *(*kTraceOption));
   // Call to Release mutex in odbc_lock.h as applicable for the handle type.
