@@ -2487,32 +2487,58 @@ TEST(MultiStatementTest, ProcedureWithInOutParams) {
 
 class SQLRowCountTest : public ::testing::TestWithParam<bool> {
  protected:
-  std::shared_ptr<ODBCHandles> conn;
-  std::string table_name;
+  std::shared_ptr<ODBCHandles> conn_;
+  std::string table_name_;
 
   void SetUp() override {
-    conn = std::make_shared<ODBCHandles>();
-    EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-    table_name =
+    conn_ = std::make_shared<ODBCHandles>();
+    EXPECT_EQ(Connect(kDefaultConnectionString, conn_), SQL_SUCCESS);
+    table_name_ =
         kDatasetWithTablePrefix +
         (GetParam() ? "ROWCOUNT_TEST_TABLE_DIRECT" : "ROWCOUNT_TEST_TABLE");
+    CreateTable(table_name_);
   }
 
-  void TearDown() override { EXPECT_EQ(Disconnect(conn), SQL_SUCCESS); }
+  void TearDown() override {
+    DropTable(table_name_);
+    EXPECT_EQ(Disconnect(conn_), SQL_SUCCESS);
+  }
+
+  void CreateTable(std::string const& table_name) {
+    Table table(table_name);
+    if (GetParam()) {
+      table.Create(
+          conn_,
+          "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+    } else {
+      table.CreateWithPrepare(
+          conn_,
+          "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+    }
+  }
+
+  void DropTable(std::string const& table_name) {
+    Table table(table_name);
+    if (GetParam()) {
+      table.Drop(conn_);
+    } else {
+      table.DropWithPrepare(conn_);
+    }
+  }
 
   void ExecuteAndValidate(std::string const& query, SQLLEN expected_row_count,
                           std::string const& step) {
     SQLRETURN status;
     if (GetParam()) {
-      status = SQLExecDirect(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+      status = SQLExecDirect(conn_->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
     } else {
-      status = ExecWithPrepare(conn, query);
+      status = ExecWithPrepare(conn_, query);
     }
-    CheckError(status, step, conn);
+    CheckError(status, step, conn_);
 
     SQLLEN row_count;
-    status = SQLRowCount(conn->hstmt, &row_count);
-    CheckError(status, "SQLRowCount (" + step + ")", conn);
+    status = SQLRowCount(conn_->hstmt, &row_count);
+    CheckError(status, "SQLRowCount (" + step + ")", conn_);
     EXPECT_EQ(row_count, expected_row_count);
   }
 };
@@ -2521,51 +2547,33 @@ INSTANTIATE_TEST_SUITE_P(WithOrWithoutExecDirect, SQLRowCountTest,
                          testing::Values(false, true));
 
 TEST_P(SQLRowCountTest, AllValidations) {
-  Table table(table_name);
-
-  if (GetParam()) {
-    table.Create(
-        conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
-  } else {
-    table.CreateWithPrepare(
-        conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
-  }
-
   SQLLEN row_count;
-  auto status = SQLRowCount(conn->hstmt, &row_count);
-  CheckError(status, "SQLRowCount (Create)", conn);
+  auto status = SQLRowCount(conn_->hstmt, &row_count);
+  CheckError(status, "SQLRowCount (Create)", conn_);
   EXPECT_EQ(row_count, -1);
 
-  table.InsertData(conn, kRowCountSampleData);
+  Table table(table_name_);
+  table.InsertData(conn_, kRowCountSampleData);
 
-  status = SQLRowCount(conn->hstmt, &row_count);
-  CheckError(status, "SQLRowCount (Insert)", conn);
+  status = SQLRowCount(conn_->hstmt, &row_count);
+  CheckError(status, "SQLRowCount (Insert)", conn_);
   EXPECT_EQ(row_count, 3);
 
   ExecuteAndValidate(
-      "UPDATE " + table_name +
+      "UPDATE " + table_name_ +
           " SET StringField = \"Updated Row\" WHERE IntegerField <= 3;",
       3, "Update");
 
-  status = SQLPrepare(
-      conn->hstmt, (SQLCHAR*)("SELECT * FROM " + table_name).c_str(), SQL_NTS);
-  CheckError(status, "SQLPrepare (Select)", conn);
+  status =
+      SQLPrepare(conn_->hstmt,
+                 (SQLCHAR*)("SELECT * FROM " + table_name_).c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare (Select)", conn_);
 
-  status = SQLRowCount(conn->hstmt, &row_count);
+  status = SQLRowCount(conn_->hstmt, &row_count);
   EXPECT_EQ(status, -1);
 
-  ExecuteAndValidate("DELETE FROM " + table_name + " WHERE IntegerField < 3;",
+  ExecuteAndValidate("DELETE FROM " + table_name_ + " WHERE IntegerField < 3;",
                      2, "Delete");
-
-  if (GetParam()) {
-    table.Drop(conn);
-  } else {
-    table.DropWithPrepare(conn);
-  }
-
-  status = SQLRowCount(conn->hstmt, &row_count);
-  CheckError(status, "SQLRowCount (Drop)", conn);
-  EXPECT_EQ(row_count, -1);
 }
 
 TEST(SQLRowCount, SameValueUpdate) {
