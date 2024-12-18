@@ -43,6 +43,7 @@ static int const kIdcEncryptDataComboBox = 124;
 static int const kIdcLoggingBtn = 125;
 static int const kIdcProxyOptionsButton = 126;
 static int const kIdcAdvanceOptBtn = 127;
+static int const kIdcGcpFolder = 128;
 
 class DriverForm {
  public:

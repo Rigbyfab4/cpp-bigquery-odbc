@@ -290,7 +290,7 @@ void DriverForm::InitControls() {
   HWND h_encrypt_data_combo_box =
       CreateComboBox(m_hwnd, 180, 100, 220, 20, kIdcEncryptDataComboBox);
 
-  HWND h_auth_header = CreateLabel(m_hwnd, "OAuth Mechanism:", 20, 140, 120, 20,
+  HWND h_auth_header = CreateLabel(m_hwnd, "OAuth Mechanism:", 20, 140, 180, 20,
                                    WS_VISIBLE | SS_LEFT);
   HWND h_auth_combo_box =
       CreateComboBox(m_hwnd, 180, 140, 220, 20, kIdcAuthBox);
@@ -332,19 +332,24 @@ void DriverForm::InitControls() {
   HWND h_dataset_box =
       CreateComboBox(m_hwnd, 180, 420, 220, 20, kIdcDatasetBOX);
 
+  HWND h_gcp_parent_folder_header = CreateLabel(
+      m_hwnd, "GCP Parent Folder:", 20, 460, 180, 20, WS_VISIBLE | SS_LEFT);
+  HWND h_gcp_parent_folder_text =
+      CreateEditBox(m_hwnd, 180, 460, 220, 20, kIdcGcpFolder);
+
   HWND h_proxy_options_button = CreateButton(
-      m_hwnd, "Proxy Options...", 20, 460, 150, 30, kIdcProxyOptionsButton);
-  HWND h_login_button = CreateButton(m_hwnd, "Logging Options...", 190, 460,
+      m_hwnd, "Proxy Options...", 20, 500, 150, 30, kIdcProxyOptionsButton);
+  HWND h_login_button = CreateButton(m_hwnd, "Logging Options...", 190, 500,
                                      150, 30, kIdcLoggingBtn);
   HWND h_advance_opt_button = CreateButton(m_hwnd, "Advance Options...", 360,
-                                           460, 130, 30, kIdcAdvanceOptBtn);
+                                           500, 130, 30, kIdcAdvanceOptBtn);
   HWND h_test_button =
-      CreateButton(m_hwnd, "Test...", 190, 520, 80, 30, kIdcButtonTest);
+      CreateButton(m_hwnd, "Test...", 190, 560, 80, 30, kIdcButtonTest);
   EnableWindow(h_test_button, FALSE);
-  HWND h_ok_button = CreateButton(m_hwnd, "OK", 280, 520, 80, 30, kIdcButtonOk);
+  HWND h_ok_button = CreateButton(m_hwnd, "OK", 280, 560, 80, 30, kIdcButtonOk);
   EnableWindow(h_ok_button, FALSE);
   HWND h_cancel_button =
-      CreateButton(m_hwnd, "Cancel", 370, 520, 80, 30, kIdcButtonCancel);
+      CreateButton(m_hwnd, "Cancel", 370, 560, 80, 30, kIdcButtonCancel);
 
   SendMessage(h_encrypt_data_combo_box, CB_ADDSTRING, 0,
               (LPARAM) "For Current User Only");
