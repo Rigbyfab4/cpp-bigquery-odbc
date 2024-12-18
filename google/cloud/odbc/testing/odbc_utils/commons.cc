@@ -1321,4 +1321,16 @@ SQLRETURN GetConvertedJsonData(std::shared_ptr<ODBCHandles> conn,
   return status;
 }
 
+SQLRETURN ExecWithPrepare(std::shared_ptr<ODBCHandles> conn,
+                          std::string const& query) {
+  SQLRETURN ret = SQLPrepare(
+      conn->hstmt, reinterpret_cast<SQLCHAR*>(const_cast<char*>(query.c_str())),
+      SQL_NTS);
+  if (!SQL_SUCCEEDED(ret)) {
+    return ret;
+  }
+  ret = SQLExecute(conn->hstmt);
+  return ret;
+}
+
 }  // namespace google::cloud::odbc_tests
