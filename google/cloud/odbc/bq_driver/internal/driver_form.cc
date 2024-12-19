@@ -39,6 +39,16 @@ std::string DriverForm::encrypt_data_;
 std::string DriverForm::min_tls_version_;
 std::string DriverForm::trusted_cert_;
 std::string DriverForm::description_;
+std::string const kDsnName = "DSN";
+std::string const kEmail = "Email";
+std::string const kOAuthMechanism = "OAuthMechanism";
+std::string const kKeyFilePath = "KeyFilePath";
+std::string const kCatalog = "Catalog";
+std::string const kDataset = "Dataset";
+std::string const kEncryptData = "EncryptData";
+std::string const kDescription = "Description";
+std::string const kMinTlsVersion = "Min_TLS";
+std::string const kTrustedCerts = "TrustedCerts";
 
 SQLRETURN ConnectUsingRegistryDsn(Authentication auth) {
   Oauth o_auth;
@@ -62,13 +72,13 @@ Authentication CreateAuthentication(Section& dsn_section) {
   Authentication auth;
   int auth_int;
   try {
-    auth_int = stoi(dsn_section["OAuthMechanism"]);
+    auth_int = stoi(dsn_section[kOAuthMechanism]);
   } catch (std::exception const& ex) {
     auth_int = 0;
   }
   auth.auth_mechanism = static_cast<OauthMechanism>(auth_int);
   auth.email = dsn_section["Email"];
-  auth.key_file_path = dsn_section["KeyFilePath"];
+  auth.key_file_path = dsn_section[kKeyFilePath];
   auth.refresh_token = dsn_section["RefreshToken"];
   return auth;
 }
@@ -79,19 +89,19 @@ StatusRecord DriverForm::TestODBCConnection(
     return StatusRecord{SQLStates::k_HY000(), "The provided section is null."};
   }
 
-  if (section->find("KeyFilePath") == section->end() ||
-      (*section)["KeyFilePath"].empty()) {
+  if (section->find(kKeyFilePath) == section->end() ||
+      (*section)[kKeyFilePath].empty()) {
     return StatusRecord{SQLStates::k_HY000(),
                         "KeyFilePath is missing or empty."};
   }
 
-  if (section->find("OAuthMechanism") == section->end() ||
-      (*section)["OAuthMechanism"].empty()) {
+  if (section->find(kOAuthMechanism) == section->end() ||
+      (*section)[kOAuthMechanism].empty()) {
     return StatusRecord{SQLStates::k_HY000(),
                         "OAuthMechanism is missing or empty."};
   }
 
-  std::string oauth_mechanism = (*section)["OAuthMechanism"];
+  std::string oauth_mechanism = (*section)[kOAuthMechanism];
   std::string oauth_value;
   if (oauth_mechanism == "Service Authentication") {
     oauth_value =
@@ -105,9 +115,9 @@ StatusRecord DriverForm::TestODBCConnection(
                         "'Application Default Credentials'."};
   }
 
-  (*section)["OAuthMechanism"] = oauth_value;
+  (*section)[kOAuthMechanism] = oauth_value;
 
-  std::string key_file_path = (*section)["KeyFilePath"];
+  std::string key_file_path = (*section)[kKeyFilePath];
   std::string key_file_path_up;
   for (char ch : key_file_path) {
     if (ch == '\\') {
@@ -185,37 +195,43 @@ void OpenFileDialog(HWND hwnd, HWND h_edit,
 }
 
 void DriverForm::SetValues(Section const& attributes_map) {
-  dsn_name_ = attributes_map.count("DSN") > 0 ? attributes_map.at("DSN") : "";
-  email_ = attributes_map.count("Email") > 0 ? attributes_map.at("Email") : "";
-  if (attributes_map.count("OAuthMechanism") > 0) {
-    if (attributes_map.at("OAuthMechanism") ==
+  dsn_name_ =
+      attributes_map.count(kDsnName) > 0 ? attributes_map.at(kDsnName) : "";
+  email_ = attributes_map.count(kEmail) > 0 ? attributes_map.at(kEmail) : "";
+
+  if (attributes_map.count(kOAuthMechanism) > 0) {
+    std::string const& oauth_value = attributes_map.at(kOAuthMechanism);
+    if (oauth_value ==
         std::to_string(static_cast<int>(OauthMechanism::kServiceAccount))) {
       o_auth_mechanism_ = "Service Authentication";
-    } else if (attributes_map.at("OAuthMechanism") ==
-               std::to_string(
-                   static_cast<int>(OauthMechanism::kApplicationDefault))) {
+    } else if (oauth_value == std::to_string(static_cast<int>(
+                                  OauthMechanism::kApplicationDefault))) {
       o_auth_mechanism_ = "Application Default Credentials";
-    } else
+    } else {
       o_auth_mechanism_ = "";
-  } else
+    }
+  } else {
     o_auth_mechanism_ = "";
-  key_file_path_ = attributes_map.count("KeyFilePath") > 0
-                       ? attributes_map.at("KeyFilePath")
+  }
+
+  key_file_path_ = attributes_map.count(kKeyFilePath) > 0
+                       ? attributes_map.at(kKeyFilePath)
                        : "";
   catalog_ =
-      attributes_map.count("Catalog") > 0 ? attributes_map.at("Catalog") : "";
+      attributes_map.count(kCatalog) > 0 ? attributes_map.at(kCatalog) : "";
   dataset_ =
-      attributes_map.count("Dataset") > 0 ? attributes_map.at("Dataset") : "";
-  encrypt_data_ = attributes_map.count("EncryptData") > 0
-                      ? attributes_map.at("EncryptData")
+      attributes_map.count(kDataset) > 0 ? attributes_map.at(kDataset) : "";
+  encrypt_data_ = attributes_map.count(kEncryptData) > 0
+                      ? attributes_map.at(kEncryptData)
                       : "";
-  description_ = attributes_map.count("Description") > 0
-                     ? attributes_map.at("Description")
+  description_ = attributes_map.count(kDescription) > 0
+                     ? attributes_map.at(kDescription)
                      : "";
-  min_tls_version_ =
-      attributes_map.count("Min_TLS") > 0 ? attributes_map.at("Min_TLS") : "";
-  trusted_cert_ = attributes_map.count("TrustedCerts") > 0
-                      ? attributes_map.at("TrustedCerts")
+  min_tls_version_ = attributes_map.count(kMinTlsVersion) > 0
+                         ? attributes_map.at(kMinTlsVersion)
+                         : "";
+  trusted_cert_ = attributes_map.count(kTrustedCerts) > 0
+                      ? attributes_map.at(kTrustedCerts)
                       : "";
 }
 
@@ -323,8 +339,8 @@ void DriverForm::InitControls() {
   HWND h_trusted_cert_browse_button = CreateButton(
       m_hwnd, "Browse", 420, 340, 80, 20, kIdcTrustedCertBrowseButton);
 
-  HWND h_catalog_header = CreateLabel(m_hwnd, "Catalog (Project):", 20, 380,
-                                      150, 20, WS_VISIBLE | SS_LEFT);
+  HWND h_catalog_header =
+      CreateLabel(m_hwnd, "Catalog:", 20, 380, 150, 20, WS_VISIBLE | SS_LEFT);
   HWND h_catalog_box = CreateComboBox(m_hwnd, 180, 380, 220, 20, kIdcCatlogBOX);
 
   HWND h_dataset_header =
@@ -533,6 +549,12 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           char min_tls_buffer[256];
           GetWindowText(h_min_tls_box, min_tls_buffer, sizeof(min_tls_buffer));
           min_tls_version_ = min_tls_buffer;
+          if (min_tls_version_ != "1.2") {
+            MessageBox(hwnd, "Invalid MIN TLS Version!", "Error",
+                       MB_OK | MB_ICONERROR);
+            min_tls_version_ = "";
+            return 0;
+          }
 
           HWND h_trusted_cert_box = GetDlgItem(hwnd, kIdcTrustedCertEdit);
           char trusted_cert_buffer[256];
@@ -563,11 +585,11 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           GetWindowText(h_auth_box, auth_buffer, sizeof(auth_buffer));
 
           Section attributes_map;
-          attributes_map["DSN"] = dsn_buffer;
-          attributes_map["Email"] = email_;
-          attributes_map["KeyFilePath"] = key_buffer;
-          attributes_map["OAuthMechanism"] = auth_buffer;
-          attributes_map["Dataset"] = dataset_;
+          attributes_map[kDsnName] = dsn_buffer;
+          attributes_map[kEmail] = email_;
+          attributes_map[kKeyFilePath] = key_buffer;
+          attributes_map[kOAuthMechanism] = auth_buffer;
+          attributes_map[kDataset] = dataset_;
 
           auto status =
               TestODBCConnection(std::make_shared<Section>(attributes_map));

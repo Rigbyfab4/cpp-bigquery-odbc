@@ -20,7 +20,7 @@
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver_internal {
-
+// NEXTID:125
 static int const kIdcAuthBox = 102;
 static int const kIdcButtonOk = 103;
 static int const kIdcHeaderLabel = 104;
@@ -35,15 +35,15 @@ static int const kIdcCatlogBOX = 112;
 static int const kIdcDatasetBOX = 113;
 static int const kIdcDSNEdit = 114;
 static int const kIdcButtonTest = 115;
-static int const kIdcMinTLSComboBox = 119;
-static int const kIdcTrustedCertEdit = 121;
-static int const kIdcTrustedCertBrowseButton = 122;
-static int const kIdcDescriptionEdit = 123;
-static int const kIdcEncryptDataComboBox = 124;
-static int const kIdcLoggingBtn = 125;
-static int const kIdcProxyOptionsButton = 126;
-static int const kIdcAdvanceOptBtn = 127;
-static int const kIdcGcpFolder = 128;
+static int const kIdcMinTLSComboBox = 116;
+static int const kIdcTrustedCertEdit = 117;
+static int const kIdcTrustedCertBrowseButton = 118;
+static int const kIdcDescriptionEdit = 119;
+static int const kIdcEncryptDataComboBox = 120;
+static int const kIdcLoggingBtn = 121;
+static int const kIdcProxyOptionsButton = 122;
+static int const kIdcAdvanceOptBtn = 123;
+static int const kIdcGcpFolder = 124;
 
 class DriverForm {
  public:

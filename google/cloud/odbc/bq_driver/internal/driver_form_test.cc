@@ -186,6 +186,7 @@ TEST_F(DriverFormTest, TestConnection_WrongOAuth) {
                   HasSubstr("OAuthMechanism must be 'Service Authentication' "
                             "or 'Application Default Credentials'")));
 }
+
 TEST_F(DriverFormTest, TestEncryptDataDropdown) {
   HWND h_encrypt_data_combo_box =
       GetDlgItem(form->GetHwnd(), kIdcEncryptDataComboBox);
@@ -221,6 +222,63 @@ TEST_F(DriverFormTest, TestMinTLSVersionDropdown) {
   SendMessage(h_min_tls_combo_box, CB_GETLBTEXT, selected_index,
               (LPARAM)buffer);
   ASSERT_STREQ(buffer, "1.2") << "Selected TLS version should be '1.2'.";
+}
+
+TEST_F(DriverFormTest, TestProxyOptionsButton) {
+  HWND h_proxy_button = GetDlgItem(form->GetHwnd(), kIdcProxyOptionsButton);
+  ASSERT_NE(h_proxy_button, nullptr)
+      << "Proxy Options button should be created.";
+
+  char buffer[256];
+  GetWindowText(h_proxy_button, buffer, sizeof(buffer));
+  ASSERT_STREQ(buffer, "Proxy Options...")
+      << "Proxy Options button text should be 'Proxy Options...'.";
+}
+
+TEST_F(DriverFormTest, TestTestButtonDisabled) {
+  HWND h_test_button = GetDlgItem(form->GetHwnd(), kIdcButtonTest);
+  ASSERT_NE(h_test_button, nullptr) << "Test button should be created.";
+
+  ASSERT_FALSE(IsWindowEnabled(h_test_button))
+      << "Test button should be disabled by default.";
+}
+
+TEST_F(DriverFormTest, TestOKButtonDisabled) {
+  HWND h_ok_button = GetDlgItem(form->GetHwnd(), kIdcButtonOk);
+  ASSERT_NE(h_ok_button, nullptr) << "OK button should be created.";
+
+  ASSERT_FALSE(IsWindowEnabled(h_ok_button))
+      << "OK button should be disabled by default.";
+}
+TEST_F(DriverFormTest, TestAdvanceOptionsButton) {
+  HWND h_advance_opt_button = GetDlgItem(form->GetHwnd(), kIdcAdvanceOptBtn);
+  ASSERT_NE(h_advance_opt_button, nullptr)
+      << "Advance Options button should be created.";
+
+  ASSERT_TRUE(IsWindowVisible(h_advance_opt_button))
+      << "Advance Options button should be visible.";
+  ASSERT_TRUE(IsWindowEnabled(h_advance_opt_button))
+      << "Advance Options button should be enabled.";
+
+  char buffer[256];
+  GetWindowText(h_advance_opt_button, buffer, sizeof(buffer));
+  ASSERT_STREQ(buffer, "Advance Options...")
+      << "Advance Options button text should be 'Advance Options...'.";
+}
+TEST_F(DriverFormTest, TestLoggingOptionsButton) {
+  HWND h_logging_button = GetDlgItem(form->GetHwnd(), kIdcLoggingBtn);
+  ASSERT_NE(h_logging_button, nullptr)
+      << "Logging Options button should be created.";
+
+  ASSERT_TRUE(IsWindowVisible(h_logging_button))
+      << "Logging Options button should be visible.";
+  ASSERT_TRUE(IsWindowEnabled(h_logging_button))
+      << "Logging Options button should be enabled.";
+
+  char buffer[256];
+  GetWindowText(h_logging_button, buffer, sizeof(buffer));
+  ASSERT_STREQ(buffer, "Logging Options...")
+      << "Logging Options button text should be 'Logging Options...'.";
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
