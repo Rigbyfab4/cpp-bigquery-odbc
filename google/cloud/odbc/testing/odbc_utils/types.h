@@ -24,6 +24,7 @@
 #endif
 
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <map>
 #include <sql.h>
 #include <sqlext.h>
@@ -518,6 +519,94 @@ inline std::string SanitizeBQColType(std::string col_type) {
 inline bool AreSqlAndBqTypesSame(SQLSMALLINT sql_type, std::string bq_type) {
   return kSqlToBqDataTypes.count(sql_type) &&
          kSqlToBqDataTypes.at(sql_type).count(bq_type);
+}
+
+// Helper function to handle NULL values
+template <typename T>
+inline std::string ToBQInsertionStr(T value) {
+  std::ostringstream stream;
+  if (value != NULL) {
+    stream << value;
+  } else {
+    stream << "NULL";
+  }
+  return stream.str();
+}
+
+// Overload for std::string to add quotes
+inline std::string ToBQInsertionStr(std::string const& value) {
+  std::ostringstream stream;
+  if (!value.empty()) {
+    stream << "'" << value << "'";
+  } else {
+    stream << "NULL";
+  }
+  return stream.str();
+}
+
+// Overload for SQL_TIMESTAMP_STRUCT
+inline std::string ToBQInsertionStr(SQL_TIMESTAMP_STRUCT const& timestamp) {
+  std::ostringstream stream;
+  if (timestamp.year != 0) {
+    stream << "'" << timestamp.year << "-" << (timestamp.month < 10 ? "0" : "")
+           << timestamp.month << "-" << (timestamp.day < 10 ? "0" : "")
+           << timestamp.day << " " << (timestamp.hour < 10 ? "0" : "")
+           << timestamp.hour << ":" << (timestamp.minute < 10 ? "0" : "")
+           << timestamp.minute << ":" << (timestamp.second < 10 ? "0" : "")
+           << timestamp.second << "." << timestamp.fraction << "'";
+  } else {
+    stream << "NULL";
+  }
+  return stream.str();
+}
+
+// Overload for SQL_DATE_STRUCT
+inline std::string ToBQInsertionStr(SQL_DATE_STRUCT const& date) {
+  std::ostringstream stream;
+  if (date.year != 0) {
+    stream << "'" << date.year << "-" << (date.month < 10 ? "0" : "")
+           << date.month << "-" << (date.day < 10 ? "0" : "") << date.day
+           << "'";
+  } else {
+    stream << "NULL";
+  }
+  return stream.str();
+}
+
+// Overload for SQL_TIME_STRUCT
+inline std::string ToBQInsertionStr(SQL_TIME_STRUCT const& time) {
+  std::ostringstream stream;
+  stream << "\"";
+  if ((time.hour >= 0) && (time.hour <= 24)) {
+    stream << time.hour << ":";
+  } else {
+    stream << ":";
+  }
+  if ((time.minute >= 0) && (time.minute <= 59)) {
+    stream << time.minute << ":";
+  } else {
+    stream << ":";
+  }
+  if ((time.second >= 0) && (time.second <= 59)) {
+    stream << time.second;
+  } else {
+    stream << "";
+  }
+  stream << "\"";
+  return stream.str();
+}
+
+// Overload for Snlohmann::json
+inline std::string ToBQInsertionStr(nlohmann::json const& json_field) {
+  std::ostringstream stream;
+  if (json_field != NULL) {
+    stream << "JSON '";
+    stream << to_string(json_field);
+    stream << "'";
+  } else {
+    stream << "NULL";
+  }
+  return stream.str();
 }
 
 }  // namespace google::cloud::odbc_tests

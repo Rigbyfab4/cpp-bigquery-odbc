@@ -20,7 +20,8 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_env_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
 #include "google/cloud/odbc/internal/odbc_includes.h"
-#include <iostream>
+
+namespace google::cloud::odbc_bq_driver {
 
 ///////////////////////////////////////////////////////////
 // Defines the following internal APIs related to
@@ -30,11 +31,34 @@
 // ReleaseMutex (based on handle type)
 ///////////////////////////////////////////////////////////
 
-namespace google::cloud::odbc_bq_driver {
+SQLRETURN AcquireHandleMutex(SQLHANDLE handle, SQLSMALLINT handle_type,
+                             bool is_global = false);
+SQLRETURN ReleaseHandleMutex(SQLHANDLE handle, SQLSMALLINT handle_type,
+                             bool is_global = false);
+SQLRETURN GetParentHandles(SQLHANDLE& handle, SQLSMALLINT& handle_type,
+                           bool& is_global);
 
-SQLRETURN AcquireHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType);
+class HandleLock {
+ public:
+  HandleLock(SQLHANDLE handle, SQLSMALLINT handle_type,
+             bool lock_parent = false);
+  ~HandleLock();
 
-SQLRETURN ReleaseHandleMutex(SQLHANDLE handle, SQLSMALLINT handleType);
+  [[nodiscard]] bool isLocked() const { return locked_; }
+
+  // Prevent copying
+  HandleLock(HandleLock const&) = delete;
+  HandleLock& operator=(HandleLock const&) = delete;
+
+ private:
+  void Acquire(bool lock_parent);
+  void Release();
+
+  SQLHANDLE handle_;
+  SQLSMALLINT handle_type_;
+  bool is_global_{false};
+  bool locked_{false};
+};
 
 }  // namespace google::cloud::odbc_bq_driver
 

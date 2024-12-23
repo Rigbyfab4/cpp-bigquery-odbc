@@ -20,7 +20,10 @@
 
 namespace google::cloud::odbc_bq_driver {
 
+using google::cloud::odbc_bq_driver_internal::ConnectionHandle;
+using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
 using google::cloud::odbc_bq_driver_internal::EnvironmentHandle;
+using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using ::google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
@@ -56,4 +59,115 @@ TEST(OdbcHandleLock, NULL_SQLHandle_Release_Lock) {
   EXPECT_EQ(status, SQL_NULL_HANDLE);
 }
 
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+TEST(OdbcHandleLock, HandleLock_RAII) {
+  SQLHENV env_handle = SQL_NULL_HANDLE;
+  SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env_handle);
+  {
+    HandleLock lock(env_handle, SQL_HANDLE_ENV, false);
+    // The mutex should be locked here
+    EXPECT_TRUE(AcquireHandleMutex(env_handle, SQL_HANDLE_ENV, false) ==
+                SQL_INVALID_HANDLE);
+  }
+  // The mutex should be unlocked here
+  EXPECT_TRUE(AcquireHandleMutex(env_handle, SQL_HANDLE_ENV, false) ==
+              SQL_SUCCESS);
+  ReleaseHandleMutex(env_handle, SQL_HANDLE_ENV, false);
+  SQLFreeHandle(SQL_HANDLE_ENV, env_handle);
+}
+
+TEST(OdbcHandleLock, HandleLock_RAII_WithParentLock) {
+  SQLHENV env_handle = SQL_NULL_HANDLE;
+  SQLHDBC dbc_handle = SQL_NULL_HANDLE;
+  SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env_handle);
+  SQLAllocHandle(SQL_HANDLE_DBC, env_handle, &dbc_handle);
+  {
+    HandleLock lock(dbc_handle, SQL_HANDLE_DBC, true);
+    // Parent environment mutex should be locked
+    EXPECT_TRUE(AcquireHandleMutex(env_handle, SQL_HANDLE_ENV, false) ==
+                SQL_INVALID_HANDLE);
+  }
+  // Parent environment mutex should be unlocked here
+  EXPECT_TRUE(AcquireHandleMutex(env_handle, SQL_HANDLE_ENV, false) ==
+              SQL_SUCCESS);
+  ReleaseHandleMutex(env_handle, SQL_HANDLE_ENV, false);
+  SQLFreeHandle(SQL_HANDLE_DBC, dbc_handle);
+  SQLFreeHandle(SQL_HANDLE_ENV, env_handle);
+}
+
+TEST(OdbcHandleLock, GetParentHandles_Connection) {
+  SQLHENV env_handle = SQL_NULL_HANDLE;
+  SQLHDBC dbc_handle = SQL_NULL_HANDLE;
+  SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env_handle);
+  SQLAllocHandle(SQL_HANDLE_DBC, env_handle, &dbc_handle);
+
+  SQLHANDLE handle = dbc_handle;
+  SQLSMALLINT handle_type = SQL_HANDLE_DBC;
+  bool is_global = false;
+
+  SQLRETURN result = GetParentHandles(handle, handle_type, is_global);
+  EXPECT_EQ(result, SQL_SUCCESS);
+  EXPECT_EQ(handle, env_handle);
+  EXPECT_EQ(handle_type, SQL_HANDLE_ENV);
+  EXPECT_TRUE(is_global);
+
+  SQLFreeHandle(SQL_HANDLE_DBC, dbc_handle);
+  SQLFreeHandle(SQL_HANDLE_ENV, env_handle);
+}
+
+TEST(OdbcHandleLock, GetParentHandles_Statement) {
+  SQLHENV env_handle = SQL_NULL_HANDLE;
+  SQLHDBC dbc_handle = SQL_NULL_HANDLE;
+  SQLHSTMT stmt_handle = SQL_NULL_HANDLE;
+  SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env_handle);
+  SQLAllocHandle(SQL_HANDLE_DBC, env_handle, &dbc_handle);
+  SQLAllocHandle(SQL_HANDLE_STMT, dbc_handle, &stmt_handle);
+
+  SQLHANDLE handle = stmt_handle;
+  SQLSMALLINT handle_type = SQL_HANDLE_STMT;
+  bool is_global = false;
+
+  SQLRETURN result = GetParentHandles(handle, handle_type, is_global);
+  EXPECT_EQ(result, SQL_SUCCESS);
+  EXPECT_EQ(handle, dbc_handle);
+  EXPECT_EQ(handle_type, SQL_HANDLE_DBC);
+  EXPECT_FALSE(is_global);
+
+  SQLFreeHandle(SQL_HANDLE_STMT, stmt_handle);
+  SQLFreeHandle(SQL_HANDLE_DBC, dbc_handle);
+  SQLFreeHandle(SQL_HANDLE_ENV, env_handle);
+}
+
+TEST(OdbcHandleLock, GetParentHandles_Descriptor) {
+  SQLHENV env_handle = SQL_NULL_HANDLE;
+  SQLHDBC dbc_handle = SQL_NULL_HANDLE;
+  SQLHDESC desc_handle = SQL_NULL_HANDLE;
+  SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env_handle);
+  SQLAllocHandle(SQL_HANDLE_DBC, env_handle, &dbc_handle);
+  SQLAllocHandle(SQL_HANDLE_DESC, dbc_handle, &desc_handle);
+
+  SQLHANDLE handle = desc_handle;
+  SQLSMALLINT handle_type = SQL_HANDLE_DESC;
+  bool is_global = false;
+
+  SQLRETURN result = GetParentHandles(handle, handle_type, is_global);
+  EXPECT_EQ(result, SQL_SUCCESS);
+  EXPECT_EQ(handle, dbc_handle);
+  EXPECT_EQ(handle_type, SQL_HANDLE_DBC);
+  EXPECT_FALSE(is_global);
+
+  SQLFreeHandle(SQL_HANDLE_DESC, desc_handle);
+  SQLFreeHandle(SQL_HANDLE_DBC, dbc_handle);
+  SQLFreeHandle(SQL_HANDLE_ENV, env_handle);
+}
+
+TEST(OdbcHandleLock, GetParentHandles_InvalidHandle) {
+  SQLHANDLE handle = reinterpret_cast<SQLHANDLE>(0xDEADBEEF);
+  SQLSMALLINT handle_type = SQL_HANDLE_DBC;
+  bool is_global = false;
+
+  SQLRETURN result = GetParentHandles(handle, handle_type, is_global);
+  EXPECT_EQ(result, SQL_INVALID_HANDLE);
+}
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
 }  // namespace google::cloud::odbc_bq_driver

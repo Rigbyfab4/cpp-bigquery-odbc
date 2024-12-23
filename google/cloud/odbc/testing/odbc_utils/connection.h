@@ -45,6 +45,13 @@ SQLRETURN
 Connect(std::string conn_str, std::shared_ptr<ODBCHandles> conn,
         int timeout = 30, bool use_ansi = false);
 
+// To validate SQLDriverConnect and SQLDriverConnectW with NULL output
+// parameters.
+SQLRETURN
+ConnectWithNullOutputParams(std::string conn_str, std::wstring dsn,
+                            std::shared_ptr<ODBCHandles> conn,
+                            bool use_wide = false);
+
 SQLRETURN Connect(std::wstring dsn, std::shared_ptr<ODBCHandles> conn,
                   int timeout = 30, bool is_driver_connect = false);
 
