@@ -445,6 +445,27 @@ class Table {
   std::wstring wtable_name_;
 };
 
+class Procedure {
+ public:
+  Procedure() = default;
+  Procedure(std::string procedure_name) {
+    procedure_name_ = procedure_name;
+    wprocedure_name_ = ToWStr(procedure_name_);
+  };
+
+  Procedure(std::wstring wprocedure_name) {
+    procedure_name_ = WStrToStr(wprocedure_name);
+    wprocedure_name_ = wprocedure_name;
+  };
+  void Drop(std::shared_ptr<ODBCHandles> conn, bool use_ansi = false);
+
+  void DropWithPrepare(std::shared_ptr<ODBCHandles> conn);
+
+ private:
+  std::string procedure_name_;
+  std::wstring wprocedure_name_;
+};
+
 std::string GetRandomString(int len);
 
 std::string getSchemaStr(Schema schema);
@@ -473,6 +494,9 @@ void CreateTableWithPrepare(std::shared_ptr<ODBCHandles> conn,
 
 void DropTableWithPrepare(std::shared_ptr<ODBCHandles> conn,
                           std::string table_name);
+
+void DropProcedureWithPrepare(std::shared_ptr<ODBCHandles> conn,
+                           std::string procedure_name);
 
 // If SQL_ASYNC_ENABLE_ON, this function can be used to run a ODBC API till the
 // status is not SQL_STILL_EXECUTING

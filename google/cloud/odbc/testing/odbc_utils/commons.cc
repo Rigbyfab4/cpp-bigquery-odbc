@@ -451,6 +451,42 @@ void Table::DropWithPrepare(std::shared_ptr<ODBCHandles> conn) {
   DropTableWithPrepare(conn, table_name_);
 }
 
+void Procedure::DropWithPrepare(std::shared_ptr<ODBCHandles> conn) {
+  DropProcedureWithPrepare(conn, procedure_name_);
+}
+
+void Procedure::Drop(std::shared_ptr<ODBCHandles> conn,
+                              bool use_ansi) {
+  char drop_procedure_stmt[kBufferLength];
+  StrToChar(drop_procedure_stmt, "DROP PROCEDURE IF EXISTS " + procedure_name_);
+  SQLRETURN status;
+  if (use_ansi) {
+    status =
+        SQLExecDirectA(conn->hstmt, (SQLCHAR*)drop_procedure_stmt, SQL_NTS);
+  } else {
+    status = SQLExecDirect(conn->hstmt, (SQLCHAR*)drop_procedure_stmt, SQL_NTS);
+  }
+  CheckError(status, "SQLExecDirect", conn, use_ansi);
+}
+
+void DropProcedureWithPrepare(std::shared_ptr<ODBCHandles> conn,
+                           std::string procedure_name) {
+  // Allocate a buffer to store the DROP PROCEDURE SQL statement
+  char drop_procedure_stmt[kBufferLength];
+  // Construct the SQL statement to drop the procedure
+  StrToChar(drop_procedure_stmt, "DROP PROCEDURE IF EXISTS " + procedure_name);
+
+  SQLRETURN status;
+  // Prepare the SQL statement
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)drop_procedure_stmt,
+                      strlen(drop_procedure_stmt));
+  CheckError(status, "SQLPrepare", conn, false);
+
+  // Execute the prepared statement to drop the procedure
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecDirect", conn, false);
+}
+
 // TODO(#11): Generic implementation of InsertIntoTable function from
 // testing/commons.*
 void Table::InsertData(std::shared_ptr<ODBCHandles> conn, StdRows rows,
