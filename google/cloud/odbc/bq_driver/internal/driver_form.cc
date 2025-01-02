@@ -304,12 +304,12 @@ void DriverForm::InitControls() {
       CreateLabel(m_hwnd, "Encrypt Sensitive Data:", 20, 100, 180, 20,
                   WS_VISIBLE | SS_LEFT);
   HWND h_encrypt_data_combo_box =
-      CreateComboBox(m_hwnd, 180, 100, 220, 20, kIdcEncryptDataComboBox);
+      CreateComboBox(m_hwnd, 180, 100, 220, 100, kIdcEncryptDataComboBox);
 
   HWND h_auth_header = CreateLabel(m_hwnd, "OAuth Mechanism:", 20, 140, 180, 20,
                                    WS_VISIBLE | SS_LEFT);
   HWND h_auth_combo_box =
-      CreateComboBox(m_hwnd, 180, 140, 220, 20, kIdcAuthBox);
+      CreateComboBox(m_hwnd, 180, 140, 220, 100, kIdcAuthBox);
 
   HWND h_email_header =
       CreateLabel(m_hwnd, "Email:", 20, 180, 100, 20, WS_VISIBLE | SS_LEFT);
@@ -329,7 +329,7 @@ void DriverForm::InitControls() {
   HWND h_min_tls_header = CreateLabel(m_hwnd, "Minimum TLS Version:", 20, 300,
                                       180, 20, WS_VISIBLE | SS_LEFT);
   HWND h_min_tls_combo_box =
-      CreateComboBox(m_hwnd, 180, 300, 220, 20, kIdcMinTLSComboBox);
+      CreateComboBox(m_hwnd, 180, 300, 220, 100, kIdcMinTLSComboBox);
 
   HWND h_trusted_cert_header = CreateLabel(m_hwnd, "Trusted Certificate:", 20,
                                            340, 150, 20, WS_VISIBLE | SS_LEFT);
@@ -341,12 +341,13 @@ void DriverForm::InitControls() {
 
   HWND h_catalog_header =
       CreateLabel(m_hwnd, "Catalog:", 20, 380, 150, 20, WS_VISIBLE | SS_LEFT);
-  HWND h_catalog_box = CreateComboBox(m_hwnd, 180, 380, 220, 20, kIdcCatlogBOX);
+  HWND h_catalog_box =
+      CreateComboBox(m_hwnd, 180, 380, 220, 100, kIdcCatlogBOX);
 
   HWND h_dataset_header =
       CreateLabel(m_hwnd, "Dataset:", 20, 420, 150, 20, WS_VISIBLE | SS_LEFT);
   HWND h_dataset_box =
-      CreateComboBox(m_hwnd, 180, 420, 220, 20, kIdcDatasetBOX);
+      CreateComboBox(m_hwnd, 180, 420, 220, 100, kIdcDatasetBOX);
 
   HWND h_gcp_parent_folder_header = CreateLabel(
       m_hwnd, "GCP Parent Folder:", 20, 460, 180, 20, WS_VISIBLE | SS_LEFT);
