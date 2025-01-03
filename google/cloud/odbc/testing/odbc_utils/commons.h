@@ -496,7 +496,7 @@ void DropTableWithPrepare(std::shared_ptr<ODBCHandles> conn,
                           std::string table_name);
 
 void DropProcedureWithPrepare(std::shared_ptr<ODBCHandles> conn,
-                           std::string procedure_name);
+                              std::string procedure_name);
 
 // If SQL_ASYNC_ENABLE_ON, this function can be used to run a ODBC API till the
 // status is not SQL_STILL_EXECUTING

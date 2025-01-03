@@ -455,8 +455,7 @@ void Procedure::DropWithPrepare(std::shared_ptr<ODBCHandles> conn) {
   DropProcedureWithPrepare(conn, procedure_name_);
 }
 
-void Procedure::Drop(std::shared_ptr<ODBCHandles> conn,
-                              bool use_ansi) {
+void Procedure::Drop(std::shared_ptr<ODBCHandles> conn, bool use_ansi) {
   char drop_procedure_stmt[kBufferLength];
   StrToChar(drop_procedure_stmt, "DROP PROCEDURE IF EXISTS " + procedure_name_);
   SQLRETURN status;
@@ -470,7 +469,7 @@ void Procedure::Drop(std::shared_ptr<ODBCHandles> conn,
 }
 
 void DropProcedureWithPrepare(std::shared_ptr<ODBCHandles> conn,
-                           std::string procedure_name) {
+                              std::string procedure_name) {
   // Allocate a buffer to store the DROP PROCEDURE SQL statement
   char drop_procedure_stmt[kBufferLength];
   // Construct the SQL statement to drop the procedure
