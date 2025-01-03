@@ -20,7 +20,7 @@ namespace google::cloud::odbc_tests {
 namespace {
 using google::cloud::odbc_bq_driver_internal::DriverForm;
 using google::cloud::odbc_bq_driver_internal::kIdcBrowseButton;
-using google::cloud::odbc_bq_driver_internal::kIdcButtonOk;
+using google::cloud::odbc_bq_driver_internal::kIdcButtonCancel;
 using google::cloud::odbc_bq_driver_internal::kIdcKeyfileEdit;
 using google::cloud::odbc_bq_driver_internal::OpenFileDialog;
 
@@ -62,21 +62,27 @@ void MockOpenFileDialog(HWND hwnd, HWND hEdit, char const* simulatedPath) {
 }
 
 }  // namespace
+void WaitForUIUpdate(HWND hwnd) {
+  MSG msg;
+  while (GetMessage(&msg, NULL, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+}
 
 TEST_F(DriverFormTest, TestUIOpenAndClose) {
   ASSERT_NE(form->GetHwnd(), nullptr) << "Form window should be created.";
 
   ProcessMessages();
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(500));  // Wait for 500ms
+  WaitForUIUpdate(form->GetHwnd());
 
   ASSERT_TRUE(IsWindowVisible(form->GetHwnd()))
       << "Form window should be visible.";
 
-  HWND hOkButton = GetDlgItem(form->GetHwnd(), kIdcButtonOk);
-  ASSERT_NE(hOkButton, nullptr) << "OK button should be found.";
-  SendMessage(form->GetHwnd(), WM_COMMAND, MAKEWPARAM(kIdcButtonOk, BN_CLICKED),
-              (LPARAM)hOkButton);
+  HWND hCancelButton = GetDlgItem(form->GetHwnd(), kIdcButtonCancel);
+  ASSERT_NE(hCancelButton, nullptr) << "Cancel button should be found.";
+  SendMessage(form->GetHwnd(), WM_COMMAND,
+              MAKEWPARAM(kIdcButtonCancel, BN_CLICKED), (LPARAM)hCancelButton);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -95,6 +101,7 @@ TEST_F(DriverFormTest, TestFileDialogButton) {
 
   SendMessage(form->GetHwnd(), WM_COMMAND,
               MAKEWPARAM(kIdcBrowseButton, BN_CLICKED), (LPARAM)hBrowseButton);
+  WaitForUIUpdate(form->GetHwnd());
 
   char const* simulatedFilePath = "C:\\path\\to\\selected\\file.json";
   MockOpenFileDialog(form->GetHwnd(), hKeyFileEdit, simulatedFilePath);

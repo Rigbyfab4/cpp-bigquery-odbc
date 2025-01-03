@@ -35,6 +35,20 @@ std::string DriverForm::key_file_path_;
 std::string DriverForm::o_auth_mechanism_;
 std::string DriverForm::catalog_;
 std::string DriverForm::dataset_;
+std::string DriverForm::encrypt_data_;
+std::string DriverForm::min_tls_version_;
+std::string DriverForm::trusted_cert_;
+std::string DriverForm::description_;
+std::string const kDsnName = "DSN";
+std::string const kEmail = "Email";
+std::string const kOAuthMechanism = "OAuthMechanism";
+std::string const kKeyFilePath = "KeyFilePath";
+std::string const kCatalog = "Catalog";
+std::string const kDataset = "Dataset";
+std::string const kEncryptData = "EncryptData";
+std::string const kDescription = "Description";
+std::string const kMinTlsVersion = "Min_TLS";
+std::string const kTrustedCerts = "TrustedCerts";
 
 SQLRETURN ConnectUsingRegistryDsn(Authentication auth) {
   Oauth o_auth;
@@ -58,13 +72,13 @@ Authentication CreateAuthentication(Section& dsn_section) {
   Authentication auth;
   int auth_int;
   try {
-    auth_int = stoi(dsn_section["OAuthMechanism"]);
+    auth_int = stoi(dsn_section[kOAuthMechanism]);
   } catch (std::exception const& ex) {
     auth_int = 0;
   }
   auth.auth_mechanism = static_cast<OauthMechanism>(auth_int);
   auth.email = dsn_section["Email"];
-  auth.key_file_path = dsn_section["KeyFilePath"];
+  auth.key_file_path = dsn_section[kKeyFilePath];
   auth.refresh_token = dsn_section["RefreshToken"];
   return auth;
 }
@@ -75,19 +89,19 @@ StatusRecord DriverForm::TestODBCConnection(
     return StatusRecord{SQLStates::k_HY000(), "The provided section is null."};
   }
 
-  if (section->find("KeyFilePath") == section->end() ||
-      (*section)["KeyFilePath"].empty()) {
+  if (section->find(kKeyFilePath) == section->end() ||
+      (*section)[kKeyFilePath].empty()) {
     return StatusRecord{SQLStates::k_HY000(),
                         "KeyFilePath is missing or empty."};
   }
 
-  if (section->find("OAuthMechanism") == section->end() ||
-      (*section)["OAuthMechanism"].empty()) {
+  if (section->find(kOAuthMechanism) == section->end() ||
+      (*section)[kOAuthMechanism].empty()) {
     return StatusRecord{SQLStates::k_HY000(),
                         "OAuthMechanism is missing or empty."};
   }
 
-  std::string oauth_mechanism = (*section)["OAuthMechanism"];
+  std::string oauth_mechanism = (*section)[kOAuthMechanism];
   std::string oauth_value;
   if (oauth_mechanism == "Service Authentication") {
     oauth_value =
@@ -101,9 +115,9 @@ StatusRecord DriverForm::TestODBCConnection(
                         "'Application Default Credentials'."};
   }
 
-  (*section)["OAuthMechanism"] = oauth_value;
+  (*section)[kOAuthMechanism] = oauth_value;
 
-  std::string key_file_path = (*section)["KeyFilePath"];
+  std::string key_file_path = (*section)[kKeyFilePath];
   std::string key_file_path_up;
   for (char ch : key_file_path) {
     if (ch == '\\') {
@@ -181,27 +195,44 @@ void OpenFileDialog(HWND hwnd, HWND h_edit,
 }
 
 void DriverForm::SetValues(Section const& attributes_map) {
-  dsn_name_ = attributes_map.count("DSN") > 0 ? attributes_map.at("DSN") : "";
-  email_ = attributes_map.count("Email") > 0 ? attributes_map.at("Email") : "";
-  if (attributes_map.count("OAuthMechanism") > 0) {
-    if (attributes_map.at("OAuthMechanism") ==
+  dsn_name_ =
+      attributes_map.count(kDsnName) > 0 ? attributes_map.at(kDsnName) : "";
+  email_ = attributes_map.count(kEmail) > 0 ? attributes_map.at(kEmail) : "";
+
+  if (attributes_map.count(kOAuthMechanism) > 0) {
+    std::string const& oauth_value = attributes_map.at(kOAuthMechanism);
+    if (oauth_value ==
         std::to_string(static_cast<int>(OauthMechanism::kServiceAccount))) {
       o_auth_mechanism_ = "Service Authentication";
-    } else if (attributes_map.at("OAuthMechanism") ==
-               std::to_string(
-                   static_cast<int>(OauthMechanism::kApplicationDefault))) {
+    } else if (oauth_value == std::to_string(static_cast<int>(
+                                  OauthMechanism::kApplicationDefault))) {
       o_auth_mechanism_ = "Application Default Credentials";
-    } else
+    } else {
       o_auth_mechanism_ = "";
-  } else
+    }
+  } else {
     o_auth_mechanism_ = "";
-  key_file_path_ = attributes_map.count("KeyFilePath") > 0
-                       ? attributes_map.at("KeyFilePath")
+  }
+
+  key_file_path_ = attributes_map.count(kKeyFilePath) > 0
+                       ? attributes_map.at(kKeyFilePath)
                        : "";
   catalog_ =
-      attributes_map.count("Catalog") > 0 ? attributes_map.at("Catalog") : "";
+      attributes_map.count(kCatalog) > 0 ? attributes_map.at(kCatalog) : "";
   dataset_ =
-      attributes_map.count("Dataset") > 0 ? attributes_map.at("Dataset") : "";
+      attributes_map.count(kDataset) > 0 ? attributes_map.at(kDataset) : "";
+  encrypt_data_ = attributes_map.count(kEncryptData) > 0
+                      ? attributes_map.at(kEncryptData)
+                      : "";
+  description_ = attributes_map.count(kDescription) > 0
+                     ? attributes_map.at(kDescription)
+                     : "";
+  min_tls_version_ = attributes_map.count(kMinTlsVersion) > 0
+                         ? attributes_map.at(kMinTlsVersion)
+                         : "";
+  trusted_cert_ = attributes_map.count(kTrustedCerts) > 0
+                      ? attributes_map.at(kTrustedCerts)
+                      : "";
 }
 
 HFONT CreateCustomFont(int font_size) {
@@ -249,78 +280,121 @@ void SetControlFont(HWND hwnd, HFONT font) {
   SendMessage(hwnd, WM_SETFONT, (WPARAM)font, TRUE);
 }
 
-// Function to initialize controls
 void DriverForm::InitControls() {
-  // Set custom font for the controls
-  HFONT h_font = CreateCustomFont(10);  // Font size 10
+  HFONT h_font =
+      CreateFont(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                 OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+                 DEFAULT_PITCH | FF_SWISS, "Segoe UI");
 
-  // Create controls
-  HWND h_dsn_name_header = CreateLabel(m_hwnd, "DSN Name:", 20, 80, 100, 20, 0);
-  HWND h_dsn_name_edit = CreateEditBox(m_hwnd, 100, 80, 200, 20, kIdcDSNEdit);
+  HWND h_dsn_name_header = CreateLabel(m_hwnd, "Data Source Name:", 20, 20, 150,
+                                       20, WS_VISIBLE | SS_LEFT);
+  HWND h_dsn_name_edit = CreateEditBox(m_hwnd, 180, 20, 220, 20, kIdcDSNEdit);
+
   SetWindowText(h_dsn_name_edit, dsn_name_.c_str());
   if (!dsn_name_.empty()) {
-    // If there is a value, make the edit box read-only
-    HWND h_dsn_edit_box = GetDlgItem(m_hwnd, kIdcDSNEdit);
-    SendMessage(h_dsn_edit_box, EM_SETREADONLY, TRUE, 0);
+    SendMessage(h_dsn_name_edit, EM_SETREADONLY, TRUE, 0);
   }
 
-  HWND h_auth_head =
-      CreateLabel(m_hwnd, "OAuth Mechanism:", 20, 120, 120, 20, kIdcLabel);
-  HWND h_auth_box = CreateComboBox(m_hwnd, 140, 120, 150, 100, kIdcAuthBox);
+  HWND h_description_header = CreateLabel(m_hwnd, "Description:", 20, 60, 100,
+                                          20, WS_VISIBLE | SS_LEFT);
+  HWND h_description_edit =
+      CreateEditBox(m_hwnd, 180, 60, 220, 20, kIdcDescriptionEdit);
 
-  HWND h_email_header = CreateLabel(m_hwnd, "Email:", 20, 160, 40, 20, 0);
-  HWND h_email_edit = CreateEditBox(m_hwnd, 100, 160, 200, 20, kIdcEmailEdit);
+  HWND h_encrypt_data_header =
+      CreateLabel(m_hwnd, "Encrypt Sensitive Data:", 20, 100, 180, 20,
+                  WS_VISIBLE | SS_LEFT);
+  HWND h_encrypt_data_combo_box =
+      CreateComboBox(m_hwnd, 180, 100, 220, 100, kIdcEncryptDataComboBox);
 
-  HWND h_path_add = CreateLabel(m_hwnd, "Key File Path:", 20, 200, 100, 30, 0);
-  HWND h_keyfile_edit =
-      CreateEditBox(m_hwnd, 120, 200, 250, 20, kIdcKeyfileEdit);
-  CreateButton(m_hwnd, "Browse", 150, 230, 100, 20, kIdcBrowseButton);
+  HWND h_auth_header = CreateLabel(m_hwnd, "OAuth Mechanism:", 20, 140, 180, 20,
+                                   WS_VISIBLE | SS_LEFT);
+  HWND h_auth_combo_box =
+      CreateComboBox(m_hwnd, 180, 140, 220, 100, kIdcAuthBox);
 
-  HWND h_catalog_text = CreateLabel(m_hwnd, "Catalog (Project):", 20, 280, 110,
-                                    20, kIdcCatalogLabel);
+  HWND h_email_header =
+      CreateLabel(m_hwnd, "Email:", 20, 180, 100, 20, WS_VISIBLE | SS_LEFT);
+  HWND h_email_edit = CreateEditBox(m_hwnd, 180, 180, 220, 20, kIdcEmailEdit);
+
+  HWND h_key_file_path_header = CreateLabel(m_hwnd, "Key File Path:", 20, 220,
+                                            120, 20, WS_VISIBLE | SS_LEFT);
+  HWND h_key_file_edit =
+      CreateEditBox(m_hwnd, 180, 220, 220, 20, kIdcKeyfileEdit);
+
+  HWND h_browse_button =
+      CreateButton(m_hwnd, "Browse", 420, 220, 80, 20, kIdcBrowseButton);
+
+  HWND h_ssl_header = CreateLabel(m_hwnd, "SSL Options:", 20, 260, 120, 20,
+                                  WS_VISIBLE | SS_LEFT);
+
+  HWND h_min_tls_header = CreateLabel(m_hwnd, "Minimum TLS Version:", 20, 300,
+                                      180, 20, WS_VISIBLE | SS_LEFT);
+  HWND h_min_tls_combo_box =
+      CreateComboBox(m_hwnd, 180, 300, 220, 100, kIdcMinTLSComboBox);
+
+  HWND h_trusted_cert_header = CreateLabel(m_hwnd, "Trusted Certificate:", 20,
+                                           340, 150, 20, WS_VISIBLE | SS_LEFT);
+  HWND h_trusted_cert_edit =
+      CreateEditBox(m_hwnd, 180, 340, 220, 20, kIdcTrustedCertEdit);
+
+  HWND h_trusted_cert_browse_button = CreateButton(
+      m_hwnd, "Browse", 420, 340, 80, 20, kIdcTrustedCertBrowseButton);
+
+  HWND h_catalog_header =
+      CreateLabel(m_hwnd, "Catalog:", 20, 380, 150, 20, WS_VISIBLE | SS_LEFT);
   HWND h_catalog_box =
-      CreateComboBox(m_hwnd, 160, 280, 230, 100, kIdcCatlogBOX);
+      CreateComboBox(m_hwnd, 180, 380, 220, 100, kIdcCatlogBOX);
 
-  HWND h_dataset_text =
-      CreateLabel(m_hwnd, "Dataset:", 20, 320, 50, 20, kIdcDatasetLabel);
+  HWND h_dataset_header =
+      CreateLabel(m_hwnd, "Dataset:", 20, 420, 150, 20, WS_VISIBLE | SS_LEFT);
   HWND h_dataset_box =
-      CreateComboBox(m_hwnd, 160, 320, 230, 100, kIdcDatasetBOX);
+      CreateComboBox(m_hwnd, 180, 420, 220, 100, kIdcDatasetBOX);
 
-  HWND hwnd_test_button =
-      CreateButton(m_hwnd, "Test...", 120, 400, 80, 30, kIdcButtonTest);
+  HWND h_gcp_parent_folder_header = CreateLabel(
+      m_hwnd, "GCP Parent Folder:", 20, 460, 180, 20, WS_VISIBLE | SS_LEFT);
+  HWND h_gcp_parent_folder_text =
+      CreateEditBox(m_hwnd, 180, 460, 220, 20, kIdcGcpFolder);
 
-  HWND hwnd_ok_button =
-      CreateButton(m_hwnd, "Ok", 220, 400, 80, 30, kIdcButtonOk);
-  HWND hwnd_cancel_button =
-      CreateButton(m_hwnd, "Cancel", 320, 400, 80, 30, kIdcButtonCancel);
+  HWND h_proxy_options_button = CreateButton(
+      m_hwnd, "Proxy Options...", 20, 500, 150, 30, kIdcProxyOptionsButton);
+  HWND h_login_button = CreateButton(m_hwnd, "Logging Options...", 190, 500,
+                                     150, 30, kIdcLoggingBtn);
+  HWND h_advance_opt_button = CreateButton(m_hwnd, "Advance Options...", 360,
+                                           500, 130, 30, kIdcAdvanceOptBtn);
+  HWND h_test_button =
+      CreateButton(m_hwnd, "Test...", 190, 560, 80, 30, kIdcButtonTest);
+  EnableWindow(h_test_button, FALSE);
+  HWND h_ok_button = CreateButton(m_hwnd, "OK", 280, 560, 80, 30, kIdcButtonOk);
+  EnableWindow(h_ok_button, FALSE);
+  HWND h_cancel_button =
+      CreateButton(m_hwnd, "Cancel", 370, 560, 80, 30, kIdcButtonCancel);
 
-  // Populate dropdowns
-  SendMessage(h_auth_box, CB_ADDSTRING, 0, (LPARAM) "Service Authentication");
-  SendMessage(h_auth_box, CB_ADDSTRING, 0,
+  SendMessage(h_encrypt_data_combo_box, CB_ADDSTRING, 0,
+              (LPARAM) "For Current User Only");
+  SendMessage(h_encrypt_data_combo_box, CB_ADDSTRING, 0,
+              (LPARAM) "For All Users");
+  SendMessage(h_encrypt_data_combo_box, CB_SETCURSEL, 0, 0);
+
+  SendMessage(h_auth_combo_box, CB_ADDSTRING, 0,
+              (LPARAM) "Service Authentication");
+  SendMessage(h_auth_combo_box, CB_ADDSTRING, 0,
               (LPARAM) "Application Default Credentials");
-  SendMessage(h_auth_box, CB_SETCURSEL, 0, 0);
+  SendMessage(h_auth_combo_box, CB_SETCURSEL, 0, 0);
 
-  // Apply font to controls
-  SetControlFont(h_auth_head, h_font);
-  SetControlFont(h_auth_box, h_font);
-  SetControlFont(h_dsn_name_header, h_font);
-  SetControlFont(h_dsn_name_edit, h_font);
-  SetControlFont(h_email_header, h_font);
-  SetControlFont(h_email_edit, h_font);
-  SetControlFont(h_path_add, h_font);
-  SetControlFont(h_keyfile_edit, h_font);
-  SetControlFont(h_catalog_text, h_font);
-  SetControlFont(h_catalog_box, h_font);
-  SetControlFont(h_dataset_text, h_font);
-  SetControlFont(h_dataset_box, h_font);
+  SendMessage(h_min_tls_combo_box, CB_ADDSTRING, 0, (LPARAM) "1.0");
+  SendMessage(h_min_tls_combo_box, CB_ADDSTRING, 0, (LPARAM) "1.1");
+  SendMessage(h_min_tls_combo_box, CB_ADDSTRING, 0, (LPARAM) "1.2");
+  SendMessage(h_min_tls_combo_box, CB_SETCURSEL, 2, 0);
 
   SetWindowText(h_email_edit, email_.c_str());
-  SetWindowText(h_keyfile_edit, key_file_path_.c_str());
+  SetWindowText(h_key_file_edit, key_file_path_.c_str());
   SetWindowText(h_catalog_box, catalog_.c_str());
   SetWindowText(h_dataset_box, dataset_.c_str());
-  SetWindowText(h_auth_box, o_auth_mechanism_.c_str());
+  SetWindowText(h_auth_combo_box, o_auth_mechanism_.c_str());
+  SetWindowText(h_description_edit, description_.c_str());
+  SetWindowText(h_trusted_cert_edit, trusted_cert_.c_str());
+  SetWindowText(h_min_tls_combo_box, min_tls_version_.c_str());
+  SetWindowText(h_encrypt_data_combo_box, encrypt_data_.c_str());
 }
-
 // Function to initialize and display the form
 void DriverForm::Show() {
   if (m_hwnd) {
@@ -350,11 +424,6 @@ void DriverForm::Show() {
       GetModuleHandle(NULL), this);
 
   if (m_hwnd) {
-    CreateWindowEx(0, "STATIC",
-                   "DSN configure",  // Header text
-                   WS_VISIBLE | WS_CHILD | SS_LEFT, 20, 50, 200,
-                   20,  // Position and size
-                   m_hwnd, (HMENU)kIdcHeaderLabel, GetModuleHandle(NULL), NULL);
     InitControls();
 
     // Create and position OK and Cancel buttons at the bottom
@@ -382,6 +451,26 @@ StatusRecord DriverForm::IsValidEmail(std::string const& email) {
   }
 }
 
+void EvaluateFields(HWND hwnd) {
+  char dsn_buffer[256] = {0};
+  char key_buffer[256] = {0};
+  char auth_buffer[256] = {0};
+  char catalog_buffer[256] = {0};
+
+  GetWindowText(GetDlgItem(hwnd, kIdcDSNEdit), dsn_buffer, sizeof(dsn_buffer));
+  GetWindowText(GetDlgItem(hwnd, kIdcKeyfileEdit), key_buffer,
+                sizeof(key_buffer));
+  GetWindowText(GetDlgItem(hwnd, kIdcAuthBox), auth_buffer,
+                sizeof(auth_buffer));
+  GetWindowText(GetDlgItem(hwnd, kIdcCatlogBOX), catalog_buffer,
+                sizeof(catalog_buffer));
+  BOOL enable = dsn_buffer[0] != '\0' && key_buffer[0] != '\0' &&
+                auth_buffer[0] != '\0' && catalog_buffer[0] != '\0';
+
+  EnableWindow(GetDlgItem(hwnd, kIdcButtonOk), enable);
+  EnableWindow(GetDlgItem(hwnd, kIdcButtonTest), enable);
+}
+
 LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
                                         LPARAM l_param) {
   DriverForm* p_this =
@@ -394,9 +483,22 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
       break;
 
     case WM_COMMAND:
+      if (HIWORD(w_param) == EN_UPDATE || HIWORD(w_param) == EN_CHANGE) {
+        EvaluateFields(hwnd);
+      }
       switch (LOWORD(w_param)) {
+        case kIdcAuthBox:
+        case kIdcCatlogBOX:
+        case kIdcDSNEdit:
+        case kIdcKeyfileEdit: {
+          EvaluateFields(hwnd);
+        } break;
         case kIdcBrowseButton: {
           HWND h_edit = GetDlgItem(hwnd, kIdcKeyfileEdit);
+          OpenFileDialog(hwnd, h_edit);
+        } break;
+        case kIdcTrustedCertBrowseButton: {
+          HWND h_edit = GetDlgItem(hwnd, kIdcTrustedCertEdit);
           OpenFileDialog(hwnd, h_edit);
         } break;
         case kIdcButtonOk: {
@@ -438,6 +540,35 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           GetWindowText(h_dataset_box, data_buffer, sizeof(data_buffer));
           dataset_ = data_buffer;
 
+          HWND h_encrypt_combo_box = GetDlgItem(hwnd, kIdcEncryptDataComboBox);
+          char encrypt_buffer[256];
+          GetWindowText(h_encrypt_combo_box, encrypt_buffer,
+                        sizeof(encrypt_buffer));
+          encrypt_data_ = encrypt_buffer;
+
+          HWND h_min_tls_box = GetDlgItem(hwnd, kIdcMinTLSComboBox);
+          char min_tls_buffer[256];
+          GetWindowText(h_min_tls_box, min_tls_buffer, sizeof(min_tls_buffer));
+          min_tls_version_ = min_tls_buffer;
+          if (min_tls_version_ != "1.2") {
+            MessageBox(hwnd, "Invalid MIN TLS Version!", "Error",
+                       MB_OK | MB_ICONERROR);
+            min_tls_version_ = "";
+            return 0;
+          }
+
+          HWND h_trusted_cert_box = GetDlgItem(hwnd, kIdcTrustedCertEdit);
+          char trusted_cert_buffer[256];
+          GetWindowText(h_trusted_cert_box, trusted_cert_buffer,
+                        sizeof(trusted_cert_buffer));
+          trusted_cert_ = trusted_cert_buffer;
+
+          HWND h_description_box = GetDlgItem(hwnd, kIdcDescriptionEdit);
+          char description_buffer[256];
+          GetWindowText(h_description_box, description_buffer,
+                        sizeof(description_buffer));
+          description_ = description_buffer;
+
           DestroyWindow(hwnd);  // Close the window
           break;
         }
@@ -455,11 +586,11 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           GetWindowText(h_auth_box, auth_buffer, sizeof(auth_buffer));
 
           Section attributes_map;
-          attributes_map["DSN"] = dsn_buffer;
-          attributes_map["Email"] = email_;
-          attributes_map["KeyFilePath"] = key_buffer;
-          attributes_map["OAuthMechanism"] = auth_buffer;
-          attributes_map["Dataset"] = dataset_;
+          attributes_map[kDsnName] = dsn_buffer;
+          attributes_map[kEmail] = email_;
+          attributes_map[kKeyFilePath] = key_buffer;
+          attributes_map[kOAuthMechanism] = auth_buffer;
+          attributes_map[kDataset] = dataset_;
 
           auto status =
               TestODBCConnection(std::make_shared<Section>(attributes_map));
