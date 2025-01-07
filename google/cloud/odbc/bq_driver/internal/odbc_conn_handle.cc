@@ -63,6 +63,7 @@ StatusRecord ValidateConnection(bool isConnected, std::string& err_msg,
 
 }  // namespace
 
+// TODO(b/385136383): Change DSN Section Keys to Uppercase for Consistency
 void ConnectionHandle::SetUp(Section& dsn_section,
                              std::string const& dsn_name) {
   dsn_.description = dsn_section["Description"];
@@ -71,6 +72,8 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   dsn_.default_dataset = dsn_section["DefaultDataset"];
   dsn_.list_projects_parent = dsn_section["ListProjectsParent"];
   dsn_.dsn_name = dsn_name;
+  dsn_.key_file_path = dsn_section["KeyFilePath"];
+  dsn_.o_auth_mechanism = dsn_section["OAuthMechanism"];
 
   std::string sql_dialect = dsn_section["SQLDialect"];
   dsn_.is_bq_legacy_sql = (sql_dialect == "0");
@@ -307,5 +310,4 @@ StatusRecord ConnectionHandle::SetAttribute(SQLINTEGER attribute,
 
   return StatusRecord::Ok();
 }
-
 }  // namespace google::cloud::odbc_bq_driver_internal

@@ -863,4 +863,67 @@ bool operator<(ColumnSchema const& lhs, ColumnSchema const& rhs) {
   return (lhs.col_index < rhs.col_index);
 }
 
+// verify the parameters for the connection and return any missing parameter as
+// a string.
+odbc_internal::StatusRecordOr<std::string> GetMissingAttributesStr(
+    ConnectionHandle* conn_handle) {
+  Dsn dsn = conn_handle->GetDsn();
+  std::ostringstream missing;
+
+  if (dsn.o_auth_mechanism.empty() && dsn.catalog.empty()) {
+    missing << "Catalog:"
+            << "Catalog=?;";
+    missing << "OAuthMechanism:"
+            << "OAuthMechanism=?;";
+  } else {
+    if (dsn.catalog.empty()) {
+      missing << "Catalog:"
+              << "Catalog=?;";
+    }
+    if (dsn.o_auth_mechanism.empty()) {
+      missing << "OAuthMechanism:"
+              << "OAuthMechanism=?;";
+    }
+    if (!dsn.o_auth_mechanism.empty() && dsn.key_file_path.empty()) {
+      missing << "KeyFilePath:"
+              << "KeyFilePath=?;";
+    }
+  }
+  std::string missing_str = missing.str();
+  if (!missing_str.empty()) {
+    return missing_str;
+  }
+  return StatusRecord::Ok();
+}
+
+odbc_internal::StatusRecord ValidateAllowedAttributes(
+    ConnectionHandle* conn_handle, Section const& attributes) {
+  StatusRecord status_record = StatusRecord::Ok();
+  Dsn dsn_fields = conn_handle->GetDsn();
+
+  // TODO(b/384384699): Support ListProjectsParent as part of DSN from the UI
+  std::unordered_map<std::string, std::string> dsn_map = {
+      {"Driver", dsn_fields.driver},
+      {"Catalog", dsn_fields.catalog},
+      {"DSN", dsn_fields.dsn_name},
+      {"KeyFilePath", dsn_fields.key_file_path},
+      {"OAuthMechanism", dsn_fields.o_auth_mechanism}};
+
+  for (auto const& [key, _] : attributes) {
+    auto it = dsn_map.find(key);
+    if (it != dsn_map.end()) {
+      if (!it->second.empty()) {
+        status_record = StatusRecord{SQLStates::k_HY000(),
+                                     "Connection Error: Connection Attribute " +
+                                         key + " already found!"};
+      }
+    } else {
+      status_record =
+          StatusRecord{SQLStates::k_HY000(),
+                       "Connection Error: Non Requested connection attribute " +
+                           key + " in ConnectionString"};
+    }
+  }
+  return status_record;
+}
 }  // namespace google::cloud::odbc_bq_driver_internal

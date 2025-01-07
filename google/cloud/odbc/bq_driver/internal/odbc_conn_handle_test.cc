@@ -474,6 +474,4 @@ TEST(ConnectionHandle, SetAttribute_SetTwice) {
   EXPECT_EQ(actual_val_2, "test_2");
 }
 
-// TODO(171): Add tests which use refresh token
-
 }  // namespace google::cloud::odbc_bq_driver_internal

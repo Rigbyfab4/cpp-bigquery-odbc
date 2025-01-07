@@ -24,6 +24,7 @@
 #include "absl/types/variant.h"
 #include <chrono>
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,12 @@ inline SQLRETURN LogAndReturnCode(
   }
   return status_record.CalculateReturnCode();
 }
+
+odbc_internal::StatusRecordOr<std::string> GetMissingAttributesStr(
+    ConnectionHandle* conn_handle);
+
+odbc_internal::StatusRecord ValidateAllowedAttributes(
+    ConnectionHandle* conn_handle, Section const& attributes);
 
 // Data Types as supported by the BQ DataSource.
 enum BQDataType {
