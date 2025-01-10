@@ -16,6 +16,7 @@
 #include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
 #include "google/cloud/odbc/bq_client_interface/odbc_bq_client.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_conn_handle.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_sql_tables.h"
 #include <regex>
 
 namespace google::cloud::odbc_bq_driver_internal {
@@ -23,6 +24,9 @@ using google::cloud::odbc_bigquery_client_interface::Oauth;
 using google::cloud::odbc_bigquery_client_interface::OauthMechanism;
 using google::cloud::odbc_bigquery_client_interface::ODBCBQClient;
 using google::cloud::odbc_bq_driver_internal::Authentication;
+using google::cloud::odbc_bq_driver_internal::GetResultSetForDatasets;
+using google::cloud::odbc_bq_driver_internal::GetResultSetForProjects;
+using google::cloud::odbc_bq_driver_internal::ResultSet;
 using google::cloud::odbc_bq_driver_internal::Section;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
@@ -137,6 +141,66 @@ StatusRecord DriverForm::TestODBCConnection(
   }
 
   return StatusRecord::Ok();
+}
+
+bool containsAlphanumeric(std::string const& str) {
+  return std::any_of(str.begin(), str.end(),
+                     [](unsigned char c) { return std::isalnum(c); });
+}
+
+StatusRecordOr<std::string> DriverForm::GetCatalogAndDataset(
+    std::string const& action, std::string const& key_file_path,
+    std::string const& oauth_token, std::string const& catalog_name) {
+  google::cloud::odbc_bigquery_client_interface::OauthMechanism oauth_value;
+
+  // TODO(b/383592420): Add call to user auth once its tested
+  if (oauth_token == "Service Authentication") {
+    oauth_value = google::cloud::odbc_bigquery_client_interface::
+        OauthMechanism::kServiceAccount;
+  } else if (oauth_token == "Application Default Credentials") {
+    oauth_value = google::cloud::odbc_bigquery_client_interface::
+        OauthMechanism::kApplicationDefault;
+  } else {
+    oauth_value = google::cloud::odbc_bigquery_client_interface::
+        OauthMechanism::kExternalUser;
+  }
+
+  SQLULEN metadata_id = 0;
+  auto bq_client_ptr =
+      ODBCBQClient::CreateBQClient({oauth_value, key_file_path});
+  if (!bq_client_ptr) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "Failed to create BigQuery client."};
+  }
+
+  ODBCBQClient& bq_client = **bq_client_ptr;
+
+  StatusRecordOr<ResultSet> result_set_status;
+  if (action == "Catalog") {
+    result_set_status = GetResultSetForProjects(bq_client, metadata_id);
+  } else if (action == "Dataset") {
+    result_set_status =
+        GetResultSetForDatasets(bq_client, metadata_id, catalog_name);
+  }
+
+  if (!result_set_status.Ok()) {
+    return StatusRecord{SQLStates::k_HY000(), "Failed to fetch result set."};
+  }
+
+  ResultSet const& result_set = *result_set_status;
+  std::string row_string;
+  for (auto const& row : result_set.rows) {
+    for (auto const& value : row) {
+      std::string value_string(value.begin(), value.end());
+      value_string.erase(remove(value_string.begin(), value_string.end(), ' '),
+                         value_string.end());
+      if (!value_string.empty() && containsAlphanumeric(value_string)) {
+        row_string += value_string + ";";
+      }
+    }
+  }
+
+  return row_string;
 }
 
 int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE h_prev_instance,
@@ -471,6 +535,59 @@ void EvaluateFields(HWND hwnd) {
   EnableWindow(GetDlgItem(hwnd, kIdcButtonTest), enable);
 }
 
+void PopulateDropdown(HWND h_dataset_box, std::string text,
+                      std::string key_file, std::string oauth,
+                      std::string catalog) {
+  SendMessage(h_dataset_box, CB_RESETCONTENT, 0, 0);
+
+  StatusRecordOr<std::string> status_record =
+      DriverForm::GetCatalogAndDataset(text, key_file, oauth, catalog);
+
+  if (!status_record.Ok()) {
+    MessageBox(h_dataset_box, status_record.GetStatusRecord().message.c_str(),
+               "Error", MB_OK | MB_ICONERROR);
+    return;
+  }
+
+  std::string row_string = status_record.GetValue();
+
+  std::vector<std::string> values = Split(row_string, ";");
+
+  for (auto const& value : values) {
+    if (!value.empty()) {
+      SendMessage(h_dataset_box, CB_ADDSTRING, 0,
+                  reinterpret_cast<LPARAM>(value.c_str()));
+    }
+  }
+}
+
+void RetrieveFieldText(HWND hwnd, int control_id, char* buffer,
+                       size_t buffer_size) {
+  HWND h_control = GetDlgItem(hwnd, control_id);
+  GetWindowText(h_control, buffer, buffer_size);
+}
+
+void HandleDropdown(HWND hwnd, int control_id, char const* field_type,
+                    char const* key_buffer, char const* auth_buffer,
+                    char const* catalog_buffer = "") {
+  HWND h_control = GetDlgItem(hwnd, control_id);
+  if (key_buffer[0] && auth_buffer[0] &&
+      (strcmp(field_type, "Catalog") == 0 || catalog_buffer[0])) {
+    PopulateDropdown(h_control, field_type, key_buffer, auth_buffer,
+                     catalog_buffer);
+  }
+}
+
+void HandleSelectionChange(HWND hwnd, int control_id) {
+  HWND h_control = GetDlgItem(hwnd, control_id);
+  int selected_index = SendMessage(h_control, CB_GETCURSEL, 0, 0);
+  if (selected_index != CB_ERR) {
+    char selected_value[256];
+    SendMessage(h_control, CB_GETLBTEXT, selected_index,
+                reinterpret_cast<LPARAM>(selected_value));
+    SetWindowText(h_control, selected_value);
+  }
+}
 LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
                                         LPARAM l_param) {
   DriverForm* p_this =
@@ -488,7 +605,6 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
       }
       switch (LOWORD(w_param)) {
         case kIdcAuthBox:
-        case kIdcCatlogBOX:
         case kIdcDSNEdit:
         case kIdcKeyfileEdit: {
           EvaluateFields(hwnd);
@@ -605,6 +721,49 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
                        MB_OK | MB_ICONERROR);
             return 0;
           }
+        }
+        case kIdcCatlogBOX:
+        case kIdcDatasetBOX: {
+          EvaluateFields(hwnd);
+          char catalog_buffer[256] = {};
+          char dsn_buffer[256] = {};
+          char key_buffer[256] = {};
+          char auth_buffer[256] = {};
+          char data_buffer[256] = {};  // Only used for kIdcDatasetBOX
+
+          RetrieveFieldText(hwnd, kIdcCatlogBOX, catalog_buffer,
+                            sizeof(catalog_buffer));
+          RetrieveFieldText(hwnd, kIdcDSNEdit, dsn_buffer, sizeof(dsn_buffer));
+          RetrieveFieldText(hwnd, kIdcKeyfileEdit, key_buffer,
+                            sizeof(key_buffer));
+          RetrieveFieldText(hwnd, kIdcAuthBox, auth_buffer,
+                            sizeof(auth_buffer));
+
+          if (LOWORD(w_param) == kIdcDatasetBOX) {
+            RetrieveFieldText(hwnd, kIdcDatasetBOX, data_buffer,
+                              sizeof(data_buffer));
+          }
+
+          switch (HIWORD(w_param)) {
+            case CBN_DROPDOWN:
+              if (LOWORD(w_param) == kIdcCatlogBOX) {
+                HandleDropdown(hwnd, kIdcCatlogBOX, "Catalog", key_buffer,
+                               auth_buffer);
+              } else if (LOWORD(w_param) == kIdcDatasetBOX) {
+                HandleDropdown(hwnd, kIdcDatasetBOX, "Dataset", key_buffer,
+                               auth_buffer, catalog_buffer);
+              }
+              break;
+
+            case CBN_SELCHANGE:
+              if (LOWORD(w_param) == kIdcCatlogBOX) {
+                HandleSelectionChange(hwnd, kIdcCatlogBOX);
+              } else if (LOWORD(w_param) == kIdcDatasetBOX) {
+                HandleSelectionChange(hwnd, kIdcDatasetBOX);
+              }
+              break;
+          }
+          break;
         }
         case kIdcButtonCancel:
           DestroyWindow(hwnd);  // Close the window
