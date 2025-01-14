@@ -155,6 +155,23 @@ struct BasicTestStruct {
 
 using StdAllTypesRows = std::vector<BasicTestStruct>;
 
+struct StructBasicTestStruct {
+  SQLBIGINT int_value;
+  SQLDOUBLE double_value;
+  std::string string_value;
+};
+
+struct ArrayBasicTestStruct {
+  SQLSMALLINT target_c_type;
+  std::vector<SQLBIGINT> int_value;
+  std::vector<SQLDOUBLE> double_value;
+  std::vector<std::string> string_value;
+  std::vector<StructBasicTestStruct> struct_value;
+  SQLRETURN status;
+};
+
+using StdArrayRows = std::vector<ArrayBasicTestStruct>;
+
 struct StdOdbcRow {
   SQLCHAR str_field[3 * kBufferLength];
   SQLLEN len_status_ind_str;
@@ -424,6 +441,9 @@ class Table {
   void InsertTimestampData(std::shared_ptr<ODBCHandles> conn,
                            std::vector<SQL_TIMESTAMP_STRUCT> rows,
                            bool insert_index);
+
+  void InsertArrayData(std::shared_ptr<ODBCHandles> conn,
+                       StdArrayRows array_rows, bool insert_index);
 
   void InsertDateData(std::shared_ptr<ODBCHandles> conn,
                       std::vector<SQL_DATE_STRUCT> rows, bool insert_index);
