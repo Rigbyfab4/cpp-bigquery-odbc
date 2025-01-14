@@ -2426,12 +2426,22 @@ TEST_P(MultiStatementTest, BasicScript) {
   EXPECT_EQ(num_cols, 0);
   EXPECT_EQ(SQLFetch(conn->hstmt), SQL_ERROR);
 
+  SQLLEN row_count;
+  status = SQLRowCount(conn->hstmt, &row_count);
+  CheckError(status, "SQLRowCount after CREATE", conn);
+  EXPECT_EQ(row_count, -1);
+
   // Validations for insert_stmt
   EXPECT_EQ(SQLMoreResults(conn->hstmt), SQL_SUCCESS);
   status = SQLNumResultCols(conn->hstmt, &num_cols);
   CheckError(status, "SQLNumResultCols", conn);
   EXPECT_EQ(num_cols, 0);
   EXPECT_EQ(SQLFetch(conn->hstmt), SQL_ERROR);
+
+  // Check rows affected by the insert_stmt
+  status = SQLRowCount(conn->hstmt, &row_count);
+  CheckError(status, "SQLRowCount after INSERT", conn);
+  EXPECT_EQ(row_count, kSampleData.size());
 
   // Validations for select_stmt_1
   EXPECT_EQ(SQLMoreResults(conn->hstmt), SQL_SUCCESS);
@@ -2461,6 +2471,11 @@ TEST_P(MultiStatementTest, BasicScript) {
     EXPECT_GT(column_size, 0);  // Column size should be > 0
   }
 
+  // Check rows returned by select_stmt_1
+  status = SQLRowCount(conn->hstmt, &row_count);
+  CheckError(status, "SQLRowCount after SELECT 1", conn);
+  EXPECT_EQ(row_count, -1);
+
   // Validations for select_stmt_2
   EXPECT_EQ(SQLMoreResults(conn->hstmt), SQL_SUCCESS);
   status = SQLNumResultCols(conn->hstmt, &num_cols);
@@ -2488,6 +2503,11 @@ TEST_P(MultiStatementTest, BasicScript) {
     EXPECT_GT(name_length, 0);  // Column name length should be > 0
     EXPECT_GT(column_size, 0);  // Column size should be > 0
   }
+
+  // Check rows returned by select_stmt_2
+  status = SQLRowCount(conn->hstmt, &row_count);
+  CheckError(status, "SQLRowCount after SELECT 2", conn);
+  EXPECT_EQ(row_count, -1);
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
@@ -2615,6 +2635,15 @@ TEST_P(MultiStatementTest, ProcedureWithInOutParams) {
     status = SQLNumResultCols(conn->hstmt, &num_cols);
     CheckError(status, "SQLNumResultCols", conn);
     EXPECT_EQ(num_cols, 0);
+    SQLLEN row_count = 0;
+    status = SQLRowCount(conn->hstmt, &row_count);
+    CheckError(status, "SQLRowCount", conn);
+    EXPECT_GT(row_count, 0);
+
+    status = SQLNumResultCols(conn->hstmt, &num_cols);
+    CheckError(status, "SQLNumResultCols", conn);
+    EXPECT_EQ(num_cols, 0);
+    EXPECT_EQ(SQLFetch(conn->hstmt), SQL_ERROR);
 
     EXPECT_EQ(SQLMoreResults(conn->hstmt), SQL_SUCCESS);
     status = SQLNumResultCols(conn->hstmt, &num_cols);
@@ -2779,6 +2808,85 @@ TEST(SQLMoreResults, ProcedureWithNoParameters) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(SQLRowCount, WrongUpdateValidation) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string table_name =
+      kDatasetWithTablePrefix + "ROWCOUNT_WRONG_UPDATE_TEST_TABLE";
+
+  std::string update_stmt =
+      "UPDATE " + table_name +
+      " SET StringField = \"Updated Row\" WHERE IntegerField = 4;";
+
+  Table table(table_name);
+  table.CreateWithPrepare(
+      conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+
+  table.InsertData(conn, kRowCountSampleData);
+
+  auto status =
+      SQLExecDirect(conn->hstmt, (SQLCHAR*)update_stmt.c_str(), SQL_NTS);
+  EXPECT_EQ(status, SQL_NO_DATA);
+
+  SQLLEN row_count;
+  status = SQLRowCount(conn->hstmt, &row_count);
+  CheckError(status, "SQLRowCount (Update)", conn);
+  EXPECT_EQ(row_count, 0);
+
+  table.DropWithPrepare(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(SQLRowCount, NonExistentTable) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string non_existent_table =
+      kDatasetWithTablePrefix + "NON_EXISTENT_TABLE";
+  std::string select_stmt = "SELECT COUNT(*) FROM " + non_existent_table;
+
+  auto status =
+      SQLExecDirect(conn->hstmt, (SQLCHAR*)select_stmt.c_str(), SQL_NTS);
+  EXPECT_NE(status, SQL_SUCCESS);
+
+  SQLLEN row_count;
+  status = SQLRowCount(conn->hstmt, &row_count);
+  EXPECT_NE(status, SQL_SUCCESS);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
+
+TEST(SQLRowCount, SameValueUpdate) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string table_name =
+      kDatasetWithTablePrefix + "ROWCOUNT_SAME_UPDATE_TEST_TABLE";
+
+  std::string update_stmt =
+      "UPDATE " + table_name +
+      " SET StringField = \"Row 3\" WHERE IntegerField = 3;";
+
+  Table table(table_name);
+  table.CreateWithPrepare(
+      conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
+
+  table.InsertData(conn, kRowCountSampleData, false, true);
+
+  auto status = ExecWithPrepare(conn, update_stmt);
+  CheckError(status, "ExecWithPrepare (Update)", conn);
+
+  SQLLEN row_count;
+  status = SQLRowCount(conn->hstmt, &row_count);
+  CheckError(status, "SQLRowCount (Update)", conn);
+  EXPECT_EQ(row_count, 1);
+
+  table.DropWithPrepare(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
 class SQLRowCountTest : public ::testing::TestWithParam<bool> {
  protected:
   std::shared_ptr<ODBCHandles> conn_;
@@ -2836,9 +2944,9 @@ class SQLRowCountTest : public ::testing::TestWithParam<bool> {
     EXPECT_EQ(row_count, expected_row_count);
   }
 };
-
+// TODO(b/308656304): Enable for true as well when SQLExecDirect is implemented.
 INSTANTIATE_TEST_SUITE_P(WithOrWithoutExecDirect, SQLRowCountTest,
-                         testing::Values(false, true));
+                         testing::Values(false));
 
 TEST_P(SQLRowCountTest, AllValidations) {
   SQLLEN row_count;
@@ -2847,7 +2955,7 @@ TEST_P(SQLRowCountTest, AllValidations) {
   EXPECT_EQ(row_count, -1);
 
   Table table(table_name_);
-  table.InsertData(conn_, kRowCountSampleData);
+  table.InsertData(conn_, kRowCountSampleData, false, true);
 
   status = SQLRowCount(conn_->hstmt, &row_count);
   CheckError(status, "SQLRowCount (Insert)", conn_);
@@ -2858,96 +2966,57 @@ TEST_P(SQLRowCountTest, AllValidations) {
           " SET StringField = \"Updated Row\" WHERE IntegerField <= 3;",
       3, "Update");
 
-  status =
-      SQLPrepare(conn_->hstmt,
-                 (SQLCHAR*)("SELECT * FROM " + table_name_).c_str(), SQL_NTS);
-  CheckError(status, "SQLPrepare (Select)", conn_);
+  ExecuteAndValidate("SELECT * FROM " + table_name_, -1, "Select");
 
-  status = SQLRowCount(conn_->hstmt, &row_count);
-  EXPECT_EQ(status, -1);
+  status = SQLCloseCursor(conn_->hstmt);
+  if (status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO) {
+    CheckError(status, "SQLCloseCursor (SELECT)", conn_);
+  }
 
   ExecuteAndValidate("DELETE FROM " + table_name_ + " WHERE IntegerField < 3;",
                      2, "Delete");
 }
 
-TEST(SQLRowCount, SameValueUpdate) {
+TEST(SQLRowCount, Async_Execute_stillExecuting) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query = "SELECT 1";
+  auto status = SQLPrepare(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
 
-  std::string table_name =
-      kDatasetWithTablePrefix + "ROWCOUNT_SAME_UPDATE_TEST_TABLE";
+  status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_ASYNC_ENABLE,
+                          (SQLPOINTER)SQL_ASYNC_ENABLE_ON, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
 
-  std::string update_stmt =
-      "UPDATE " + table_name +
-      " SET StringField = \"Row 3\" WHERE IntegerField = 3;";
-
-  Table table(table_name);
-  table.CreateWithPrepare(
-      conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
-
-  table.InsertData(conn, kRowCountSampleData);
-
-  auto status = ExecWithPrepare(conn, update_stmt);
-  CheckError(status, "ExecWithPrepare (Update)", conn);
-
-  SQLLEN row_count;
-  status = SQLRowCount(conn->hstmt, &row_count);
-  CheckError(status, "SQLRowCount (Update)", conn);
-  EXPECT_EQ(row_count, 1);
-
-  table.DropWithPrepare(conn);
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-}
-
-TEST(SQLRowCount, WrongUpdateValidation) {
-  auto conn = std::make_shared<ODBCHandles>();
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-
-  std::string table_name =
-      kDatasetWithTablePrefix + "ROWCOUNT_WRONG_UPDATE_TEST_TABLE";
-
-  std::string update_stmt =
-      "UPDATE " + table_name +
-      " SET StringField = \"Updated Row\" WHERE IntegerField = 4;";
-
-  Table table(table_name);
-  table.CreateWithPrepare(
-      conn, "(StringField STRING, IntegerField INTEGER, FloatField FLOAT64)");
-
-  table.InsertData(conn, kRowCountSampleData);
-
-  auto status =
-      SQLExecDirect(conn->hstmt, (SQLCHAR*)update_stmt.c_str(), SQL_NTS);
-  EXPECT_EQ(status, SQL_NO_DATA);
-
-  SQLLEN row_count;
-  status = SQLRowCount(conn->hstmt, &row_count);
-  CheckError(status, "SQLRowCount (Update)", conn);
-  EXPECT_EQ(row_count, 0);
-
-  table.DropWithPrepare(conn);
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-}
-
-TEST(SQLRowCount, NonExistentTable) {
-  auto conn = std::make_shared<ODBCHandles>();
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-
-  std::string non_existent_table =
-      kDatasetWithTablePrefix + "NON_EXISTENT_TABLE";
-  std::string select_stmt = "SELECT COUNT(*) FROM " + non_existent_table;
-
-  auto status =
-      SQLExecDirect(conn->hstmt, (SQLCHAR*)select_stmt.c_str(), SQL_NTS);
-  EXPECT_NE(status, SQL_SUCCESS);
-
-  SQLLEN row_count;
-  status = SQLRowCount(conn->hstmt, &row_count);
-  EXPECT_NE(status, SQL_SUCCESS);
+  status = SQLExecute(conn->hstmt);
+  std::string error;
+  while (status == SQL_STILL_EXECUTING) {
+    SQLLEN row_count;
+    SQLRETURN rc_status = SQLRowCount(conn->hstmt, &row_count);
+    EXPECT_EQ(rc_status, SQL_ERROR);
+// On Linux, Simba driver returns the state of S1010 and on windows as
+// HY010.Hence this tag is added to only check for windows.
+#ifdef _WIN32
+    ASSERT_EQ(SQL_SUCCESS,
+              GetCancelErrorDetails("SQLRowCount", conn->hstmt, error));
+    ASSERT_TRUE(absl::StrContains(error, "HY010"))
+        << "SQLRowCount failed with unexpected error: " << error;
+    ASSERT_TRUE(absl::StrContains(error, "Function sequence error"))
+        << "SQLRowCount failed with unexpected error: " << error;
+#endif  //_WIN32
+    ExponentialBackoffPolicy backoff(std::chrono::milliseconds(10),
+                                     std::chrono::milliseconds(100), 2);
+    status = PollODBC(SQLExecute, backoff, conn->hstmt);
+    if (SQL_SUCCEEDED(status)) {
+      CheckError(status, "SQLExecute", conn);
+    } else {
+      ASSERT_EQ(SQL_SUCCESS,
+                GetCancelErrorDetails("SQLExecute", conn->hstmt, error));
+      return;
+    }
+  }
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
-#endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 }  // namespace google::cloud::odbc_tests
