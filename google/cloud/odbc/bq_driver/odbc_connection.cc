@@ -323,8 +323,8 @@ SQLRETURN SQLConnectInternal(SQLHDBC conn_handle, SQLCHAR* server_name,
           SQLStates::k_HY090(), "Username needs to be an email address"};
       return LogAndReturnCode(handle_ref, status_record);
     }
-    dsn_section["OAUTHMECHANISM"] =
-        std::to_string(static_cast<int>(OauthMechanism::kServiceAccount));
+    dsn_section["OAUTHMECHANISM"] = std::to_string(
+        static_cast<int>(OauthMechanism::kServiceAndUserAccount));
     dsn_section["EMAIL"] = user_name_str;
     dsn_section["KEYFILEPATH"] = auth_string_str;
   }
