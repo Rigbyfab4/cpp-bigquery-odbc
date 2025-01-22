@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/odbc_sql_results.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_query.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_fetch.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_type_info.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
@@ -26,6 +27,8 @@
 namespace google::cloud::odbc_bq_driver {
 
 using google::cloud::bigquery_v2_minimal_internal::DmlStats;
+using google::cloud::odbc_bq_driver_internal::BQDataType;
+using google::cloud::odbc_bq_driver_internal::CheckTargetType;
 using google::cloud::odbc_bq_driver_internal::CreateDSRowFromTypeInfo;
 using google::cloud::odbc_bq_driver_internal::CreateTypeInfoRowSchema;
 using google::cloud::odbc_bq_driver_internal::DescriptorHandle;
@@ -33,6 +36,7 @@ using google::cloud::odbc_bq_driver_internal::DescriptorRecord;
 using google::cloud::odbc_bq_driver_internal::DescriptorType;
 using google::cloud::odbc_bq_driver_internal::DSRow;
 using google::cloud::odbc_bq_driver_internal::DSValue;
+using google::cloud::odbc_bq_driver_internal::GetColumnData;
 using google::cloud::odbc_bq_driver_internal::IntValueToOutputBufferResponse;
 using google::cloud::odbc_bq_driver_internal::kSqlToBqDataTypes;
 using google::cloud::odbc_bq_driver_internal::kTraceOption;
@@ -168,6 +172,7 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
 
   ResultSet const& result_set = handle.GetResultSet();
   result_set.cursor++;
+  result_set.row_offset_ = 0;
   if (result_set.cursor >= result_set.rows.size()) {
     return SQL_NO_DATA;
   }
@@ -486,6 +491,116 @@ SQLRETURN SQLRowCountInternal(SQLHSTMT statement_handle, SQLLEN* row_count) {
   }
 
   return status_record.CalculateReturnCode();
+}
+
+SQLRETURN SQLGetDataInternal(SQLHSTMT statement_handle,
+                             SQLUSMALLINT column_number,
+                             SQLSMALLINT target_c_type, SQLPOINTER target_value,
+                             SQLLEN target_value_buffer_len,
+                             SQLLEN* target_value_string_len) {
+  StatusRecordOr<StatementHandle*> handle_result =
+      ValidateStatementHandle(statement_handle);
+  if (!handle_result) {
+    TracePrintInternal(**kTraceOption, handle_result.GetStatusRecord().message);
+    return handle_result.GetCalculatedReturnCode();
+  }
+  StatementHandle& stmt_handle = *(*handle_result);
+
+  StatusRecord status_record;
+  if (stmt_handle.GetStmtState() == StmtStates::kStatementNotPrepared) {
+    status_record = {SQLStates::k_HY007(),
+                     "Associated statement is not prepared"};
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+  if (column_number < 0) {
+    status_record = {SQLStates::k_HY000(),
+                     "Invalid ColumnNumber parameter - should not be < 0"};
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+
+  StatusRecordOr<SQLULEN> use_bookmarks_status =
+      stmt_handle.GetAttribute(SQL_ATTR_USE_BOOKMARKS);
+  if (!use_bookmarks_status) {
+    return LogAndReturnCode(stmt_handle, use_bookmarks_status);
+  }
+  if (*use_bookmarks_status == SQL_UB_OFF && column_number == 0) {
+    status_record = {SQLStates::k_07009(), "Invalid descriptor index"};
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+
+  if (target_value == nullptr) {
+    status_record = {SQLStates::k_HY009(), "Invalid use of null pointer"};
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+
+  if (target_value_buffer_len < 0) {
+    status_record = {SQLStates::k_HY090(), "Invalid string or buffer length"};
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+
+  if (!CheckTargetType(target_c_type)) {
+    status_record = {SQLStates::k_HY003(), "Program type out of range"};
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+
+  if (column_number > stmt_handle.GetResultSet().row_schema.size()) {
+    status_record = {SQLStates::k_07009(), "Invalid Column In Result Set"};
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+
+  ResultSet const& result_set = stmt_handle.GetResultSet();
+  if (result_set.cursor >= result_set.rows.size()) {
+    return SQL_NO_DATA;
+  }
+
+  DescriptorHandle& ard = stmt_handle.GetDescriptorHandle(DescriptorType::kARD);
+  if (target_c_type == SQL_ARD_TYPE) {
+    GetDescField(&ard, column_number, SQL_DESC_CONCISE_TYPE, &target_c_type, 0,
+                 nullptr);
+  }
+
+  int cursor = result_set.cursor;
+  DSRow const& ds_row = result_set.rows[cursor];
+  RowSchema const& schema = result_set.row_schema;
+  BQDataType bq_data_type;
+  for (auto const& col_schema : schema) {
+    if (col_schema.col_index == column_number - 1)
+      bq_data_type = col_schema.col_type;
+  }
+  DSValue const& ds_val = ds_row[column_number - 1];
+
+  SQLLEN offset = result_set.row_offset_;
+  // Validating if data size is more then buffersize, SQLGetData will return
+  // partial Data
+  if (ds_val.size() - offset >= target_value_buffer_len) {
+    SQLLEN chunk_size = std::min(target_value_buffer_len,
+                                 static_cast<SQLLEN>(ds_val.size() - offset));
+    DSValue temp_ds_val(ds_val.begin() + offset,
+                        ds_val.begin() + offset + chunk_size - 1);
+    temp_ds_val.emplace_back('\0');
+    status_record =
+        GetColumnData(temp_ds_val, bq_data_type, target_c_type, target_value,
+                      target_value_buffer_len, target_value_string_len);
+    result_set.row_offset_ = offset + target_value_buffer_len - 1;
+    status_record =
+        StatusRecord{SQLStates::k_01004(), "String data, right truncated"};
+    if (target_value_string_len) {
+      *target_value_string_len = SQL_SUCCESS_WITH_INFO;
+    }
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+  if (offset != 0) {
+    DSValue temp_ds_val(ds_val.begin() + offset, ds_val.end());
+    temp_ds_val.emplace_back('\0');
+    status_record =
+        GetColumnData(temp_ds_val, bq_data_type, target_c_type, target_value,
+                      target_value_buffer_len, target_value_string_len);
+    return LogAndReturnCode(stmt_handle, status_record);
+  }
+  status_record =
+      GetColumnData(ds_val, bq_data_type, target_c_type, target_value,
+                    target_value_buffer_len, target_value_string_len);
+  return LogAndReturnCode(stmt_handle, status_record);
 }
 
 }  // namespace google::cloud::odbc_bq_driver
