@@ -194,6 +194,14 @@ HWND CreateButton(HWND parent, char const* text, int x, int y, int width,
       0, "BUTTON", text, WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON, x,
       y, width, height, parent, (HMENU)id, GetModuleHandle(NULL), NULL);
 }
+
+// Helper function to create a checkbox
+HWND CreateCheckBox(HWND parent, char const* text, int x, int y, int width,
+                    int height, int id) {
+  return CreateWindowEx(0, "BUTTON", text,
+                        WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX, x, y, width,
+                        height, parent, (HMENU)id, GetModuleHandle(NULL), NULL);
+}
 #else
 
 StatusRecordOr<std::shared_ptr<Sections>> ParseConfig(

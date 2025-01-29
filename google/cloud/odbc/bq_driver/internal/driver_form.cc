@@ -714,6 +714,27 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
             return 0;
           }
         }
+        case kIdcProxyOptionsButton: {
+          ProxyOptions proxy_form;
+          if (IsWindowVisible(proxy_form.GetHwnd())) {
+            SetForegroundWindow(proxy_form.GetHwnd());
+            EnableWindow(hwnd, FALSE);
+            break;
+          }
+          if (!proxy_form.GetHwnd()) {
+            proxy_form = ProxyOptions();
+            EnableWindow(hwnd, FALSE);
+          }
+          proxy_form.Show(hwnd);
+          MSG msg = {};
+          while (GetMessage(&msg, NULL, 0, 0)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+          }
+          EnableWindow(hwnd, TRUE);
+          SetForegroundWindow(hwnd);
+          break;
+        }
         case kIdcCatlogBOX:
         case kIdcDatasetBOX: {
           EvaluateFields(hwnd);
