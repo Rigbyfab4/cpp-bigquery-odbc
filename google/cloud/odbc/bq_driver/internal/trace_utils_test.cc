@@ -42,8 +42,7 @@ Sections const kConfigSections6{{"Driver", kDriverSection6}};
 Sections const kConfigSections7{{"Driver", kDriverSection7}};
 
 #ifdef _WIN32
-Section const kWINDriverSection1{{"LogLevel", "1"},
-                                 {"LogFile", "C:\\b\\trace.log"}};
+Section const kWINDriverSection1{{"LogLevel", "1"}, {"LogFile", "C:\\b"}};
 Sections const kWINConfigSections1{{"Driver", kWINDriverSection1}};
 #endif  // _WIN32
 

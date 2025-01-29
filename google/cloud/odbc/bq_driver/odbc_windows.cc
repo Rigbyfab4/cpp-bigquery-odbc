@@ -15,19 +15,26 @@
 #include "google/cloud/odbc/bq_driver/odbc_windows.h"
 #include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
 #include "google/cloud/odbc/bq_driver/internal/driver_form.h"
+#include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver {
 using ::google::cloud::odbc_bigquery_client_interface::OauthMechanism;
 using google::cloud::odbc_bq_driver_internal::AddDSNToRegistry;
+using google::cloud::odbc_bq_driver_internal::AddLogTraceToRegistry;
 using google::cloud::odbc_bq_driver_internal::ConvertLPCSTRToString;
 using google::cloud::odbc_bq_driver_internal::DriverForm;
 using google::cloud::odbc_bq_driver_internal::EditDSNInRegistry;
 using google::cloud::odbc_bq_driver_internal::GetPathToOdbcIni;
 using google::cloud::odbc_bq_driver_internal::GetSectionWin;
+using google::cloud::odbc_bq_driver_internal::GetTraceLogRegistryPath;
+using google::cloud::odbc_bq_driver_internal::GetUpperStr;
+using google::cloud::odbc_bq_driver_internal::LogLevel;
+using google::cloud::odbc_bq_driver_internal::LogTraceDialog;
 using google::cloud::odbc_bq_driver_internal::ParseConnectionString;
 using google::cloud::odbc_bq_driver_internal::RemoveDSNFromRegistry;
 using google::cloud::odbc_bq_driver_internal::Section;
+using google::cloud::odbc_bq_driver_internal::Trim;
 using google::cloud::odbc_internal::StatusRecordOr;
 
 std::string ConvertOAuthMechanism(std::string o_auth_mechanism) {
@@ -42,6 +49,22 @@ std::string ConvertOAuthMechanism(std::string o_auth_mechanism) {
     o_auth_value = "";
   return o_auth_value;
 }
+
+// TODO(b/b/391859145): Customization and Support For Logging and Driver
+// Parameters
+std::string ConvertLogLevel(std::string log_level) {
+  std::string log_level_val;
+
+  if (log_level == "LOG_TRACE") {
+    log_level_val = std::to_string(static_cast<int>(LogLevel::kLogTrace));
+  } else if (log_level == "LOG_OFF") {
+    log_level_val = std::to_string(static_cast<int>(LogLevel::kLogOff));
+  } else {
+    log_level_val = "";
+  }
+  return log_level_val;
+}
+
 bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
                        LPCSTR lpsz_attributes) {
   if (!lpsz_driver) {
@@ -70,6 +93,11 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
       section.count("Min_TLS") > 0 ? section.at("Min_TLS") : "";
   std::string description =
       section.count("Description") > 0 ? section.at("Description") : "";
+  std::string log_level = ConvertLogLevel(
+      section.count("LogLevel") > 0 ? section.at("LogLevel") : "0");
+  std::string log_file =
+      section.count("LogFile") > 0 ? section.at("LogFile") : "";
+
   DriverForm form;
   auto CreateSectionFromForm = [&]() -> Section {
     return {{"Email", email},
@@ -81,6 +109,10 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
             {"TrustedCerts", trusted_certs},
             {"Min_TLS", min_tls_version},
             {"Description", description}};
+  };
+
+  auto CreateSectionFromLogForm = [&]() -> Section {
+    return {{"LogLevel", log_level}, {"LogFile", log_file}};
   };
 
   auto ShowFormAndReturnValues = [&]() -> std::string {
@@ -102,7 +134,8 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
     trusted_certs = form.GetTrustedCerts();
     min_tls_version = form.GetMinTls();
     description = form.GetDescription();
-
+    log_level = ConvertLogLevel(form.GetLogLevel());
+    log_file = form.GetLogFilePath();
     return dsn_name;
   };
 
@@ -110,13 +143,17 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
     case ODBC_ADD_DSN: {
       if (hwnd_parent == NULL) {
         Section section = CreateSectionFromForm();
+        Section trace_section = CreateSectionFromLogForm();
         AddDSNToRegistry(dsn_value, lpsz_driver, section);
+        AddLogTraceToRegistry(trace_section);
         return true;
       }
 
       dsn_name = ShowFormAndReturnValues();
       Section section = CreateSectionFromForm();
+      Section trace_section = CreateSectionFromLogForm();
       AddDSNToRegistry(dsn_name, lpsz_driver, section);
+      AddLogTraceToRegistry(trace_section);
       return TRUE;
     }
 
@@ -128,15 +165,23 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
       }
 
       std::string registry_key = GetPathToOdbcIni() + "\\" + dsn_value;
+      std::string driver_registry_key = GetTraceLogRegistryPath() + "\\Driver";
+
       auto res = GetSectionWin(registry_key);
+      auto trace_result = GetSectionWin(driver_registry_key);
       auto section = res.GetValue();
+      auto trace_section = trace_result.GetValue();
+
       (*section)["DSN"] = dsn_value;
 
       form.SetValues(*section);
+      form.SetLogTraceValues(*trace_section);
       dsn_name = ShowFormAndReturnValues();
 
       Section section_config = CreateSectionFromForm();
+      Section trace_config_section = CreateSectionFromLogForm();
       EditDSNInRegistry(dsn_value, section_config);
+      AddLogTraceToRegistry(trace_config_section);
       return TRUE;
     }
     case ODBC_REMOVE_DSN:

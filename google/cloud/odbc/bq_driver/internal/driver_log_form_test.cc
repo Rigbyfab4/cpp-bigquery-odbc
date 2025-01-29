@@ -31,7 +31,7 @@ class LogTraceDialogTest : public ::testing::Test {
 
 TEST(LogTraceDialogTest, SetValues_ValidAttributes) {
   LogTraceDialog log_trace_dialog;
-  ASSERT_EQ(log_trace_dialog.GetLogLevel(), "");
+  ASSERT_EQ(log_trace_dialog.GetLogLevel(), "LOG_OFF");
   ASSERT_EQ(log_trace_dialog.GetLogFilePath(), "");
 
   Section attributes_map;
@@ -51,7 +51,7 @@ TEST(LogTraceDialogTest, SetValues_InvalidLogLevel) {
   attributes_map["LogFile"] = "C:\\temp\\log.txt";
   log_trace_dialog.SetValues(attributes_map);
 
-  ASSERT_EQ(log_trace_dialog.GetLogLevel(), "");
+  ASSERT_EQ(log_trace_dialog.GetLogLevel(), "LOG_OFF");
   ASSERT_EQ(log_trace_dialog.GetLogFilePath(), "C:\\temp\\log.txt");
 }
 

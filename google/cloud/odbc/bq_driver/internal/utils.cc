@@ -285,7 +285,7 @@ std::string GetPathToOdbcIni() {
 #ifndef _WIN64
   // 32-bit
   path = "SOFTWARE\\WOW6432Node\\ODBC\\ODBC.INI";
-#endif /* WIN64 */
+#endif  // _WIN64
   if (path) {
     return *path;
   }
@@ -298,8 +298,20 @@ std::string GetPathToOdbcIni() {
   if (home) {
     return *home + "/.odbc.ini";
   }
-#endif /* WIN32 */
+#endif  // _WIN32
   return "";
+}
+
+std::string GetTraceLogRegistryPath() {
+  std::string path;
+#ifdef _WIN64
+  // 64-bit
+  path = R"(SOFTWARE\\Google\\ODBC Driver for Google BigQuery)";
+#else
+  // 32-bit
+  path = R"(SOFTWARE\\WOW6432Node\\Google\\ODBC Driver for Google BigQuery)";
+#endif  // _WIN64
+  return path;
 }
 
 std::vector<std::string> SplitTableTypes(std::string const& table_types) {
@@ -642,7 +654,16 @@ std::string ConvertLPCSTRToString(LPCSTR lpszAttributes) {
 
   return result;
 }
-StatusRecord SetRegValues(HKEY h_key, Section const& section) {
+
+// TODO(b/385158889): Support other log levels for tracing
+StatusRecord SetRegValues(HKEY registry_root, std::string const& registry_path,
+                          Section const& section) {
+  HKEY h_key = nullptr;
+  if (RegCreateKeyExA(registry_root, registry_path.c_str(), 0, NULL, 0,
+                      KEY_WRITE, NULL, &h_key, NULL) != ERROR_SUCCESS) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "Failed to create or open registry key for DSN"};
+  }
   for (auto const& kv : section) {
     if (RegSetValueExA(h_key, kv.first.c_str(), 0, REG_SZ,
                        reinterpret_cast<const BYTE*>(kv.second.c_str()),
@@ -653,6 +674,7 @@ StatusRecord SetRegValues(HKEY h_key, Section const& section) {
                           "Failed to set " + kv.first + " value"};
     }
   }
+  RegCloseKey(h_key);
   return StatusRecord::Ok();
 }
 // TODO:b/376206999- Add USER DSN functionality
@@ -669,41 +691,35 @@ StatusRecord AddDSNToRegistry(std::string const& dsn_name,
     return StatusRecord{SQLStates::k_HY000(), "DSN Name cannot be empty"};
   }
 
-  if (RegCreateKeyExA(registry_root, registry_path.c_str(), 0, NULL, 0,
-                      KEY_WRITE, NULL, &h_key, NULL) != ERROR_SUCCESS) {
-    return StatusRecord{SQLStates::k_HY000(),
-                        "Failed to create or open registry key for DSN"};
-  }
-
-  StatusRecord status = SetRegValues(h_key, section);
+  StatusRecord status =
+      SetRegValues(HKEY_LOCAL_MACHINE, registry_path, section);
   if (!status.ok()) {
-    RegCloseKey(h_key);
     return status;
   }
-  if (RegSetValueExA(h_key, "Driver", 0, REG_SZ,
-                     reinterpret_cast<const BYTE*>(driver.c_str()),
-                     static_cast<DWORD>(driver.size() + 1)) != ERROR_SUCCESS) {
-    RegCloseKey(h_key);
-    return StatusRecord{SQLStates::k_HY000(),
-                        "Failed to set Driver field in DSN registry"};
-  }
-  RegCloseKey(h_key);
 
-  if (RegCreateKeyExA(registry_root, odbc_path.c_str(), 0, NULL, 0, KEY_WRITE,
-                      NULL, &h_key, NULL) != ERROR_SUCCESS) {
-    return StatusRecord{SQLStates::k_HY000(),
-                        "Failed to open ODBC Data Sources registry key"};
+  // Set the Driver field in the DSN registry
+  status =
+      SetRegValues(HKEY_LOCAL_MACHINE, registry_path, {{"Driver", driver}});
+  if (!status.ok()) {
+    return status;
   }
 
-  if (RegSetValueExA(h_key, dsn_name.c_str(), 0, REG_SZ,
-                     reinterpret_cast<const BYTE*>(driver.c_str()),
-                     static_cast<DWORD>(driver.size() + 1)) != ERROR_SUCCESS) {
-    RegCloseKey(h_key);
-    return StatusRecord{SQLStates::k_HY000(),
-                        "Failed to add DSN to ODBC Data Sources"};
+  // Add the DSN to ODBC Data Sources
+  status = SetRegValues(HKEY_LOCAL_MACHINE, odbc_path, {{dsn_name, driver}});
+  if (!status.ok()) {
+    return status;
   }
+  return StatusRecord::Ok();
+}
 
-  RegCloseKey(h_key);
+// TODO:b/376206999- Add USER DSN functionality
+StatusRecord AddLogTraceToRegistry(Section const& section) {
+  std::string const registry_path = GetTraceLogRegistryPath() + "\\Driver";
+  StatusRecord status =
+      SetRegValues(HKEY_LOCAL_MACHINE, registry_path, section);
+  if (!status.ok()) {
+    return status;
+  }
   return StatusRecord::Ok();
 }
 
@@ -724,8 +740,7 @@ StatusRecord EditDSNInRegistry(std::string const& dsn_name,
                         "Failed to open registry key for DSN"};
   }
 
-  StatusRecord status = SetRegValues(h_key, section);
-  RegCloseKey(h_key);
+  StatusRecord status = SetRegValues(registry_root, registry_path, section);
   return status;
 }
 

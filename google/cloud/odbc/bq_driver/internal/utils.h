@@ -167,6 +167,8 @@ odbc_internal::StatusRecord ValidateTableParameters(
 
 std::string GetPathToOdbcIni();
 
+std::string GetTraceLogRegistryPath();
+
 inline std::string CastOdbcRegexToCppRegex(std::string const& str) {
   auto percent_filter_out =
       std::regex_replace(str, std::regex("^%|([^\\\\])%"), "$1.*");
@@ -212,6 +214,8 @@ std::string ConvertLPCSTRToString(LPCSTR lpsz_attributes);
 odbc_internal::StatusRecord AddDSNToRegistry(std::string const& dsn_name,
                                              std::string const& driver,
                                              Section const& section);
+
+odbc_internal::StatusRecord AddLogTraceToRegistry(Section const& section);
 
 odbc_internal::StatusRecord EditDSNInRegistry(std::string const& dsn_name,
                                               Section const& section);
