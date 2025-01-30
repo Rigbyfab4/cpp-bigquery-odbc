@@ -473,6 +473,10 @@ class Table {
                       std::vector<nlohmann::json> rows,
                       bool insert_index = false);
 
+  void InsertGeographyData(
+      std::shared_ptr<ODBCHandles> conn,
+      std::vector<std::pair<std::string, std::string>> data, bool insert_index);
+
   void InsertBooleanData(std::shared_ptr<ODBCHandles> conn,
                          std::vector<uint8_t> rows, bool insert_index);
 
