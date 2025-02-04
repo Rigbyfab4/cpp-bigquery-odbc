@@ -2768,4 +2768,115 @@ TEST(DataTranslationTest, From_SQL_RangeTimeStamp_to_all) {
 
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
+#ifndef BQ_DRIVER_INTEGRATION_TESTS
+
+std::vector<RangeDateStruct> const kConversionFromRangeDateTestData{
+    {SQL_C_CHAR, {{2024, 2, 20}, {2024, 3, 20}}, SQL_SUCCESS},
+    {SQL_C_TYPE_DATE, {{2024, 4, 20}, {2024, 5, 20}}, SQL_ERROR},
+    {SQL_C_TYPE_TIMESTAMP, {{2024, 6, 20}, {2024, 7, 20}}, SQL_ERROR},
+    {SQL_C_WCHAR, {{2024, 8, 20}, {2024, 9, 20}}, SQL_SUCCESS},
+    {SQL_C_BINARY, {{2024, 10, 20}, {2024, 11, 20}}, SQL_SUCCESS},
+    {SQL_C_USHORT, {{2024, 12, 20}, {2025, 1, 20}}, SQL_ERROR},
+    {SQL_C_DOUBLE, {{2025, 2, 20}, {2025, 3, 20}}, SQL_ERROR},
+};
+
+void TestTranslationsFromRangeDate(std::shared_ptr<ODBCHandles> conn,
+                                   std::string query) {
+  SQLRETURN status;
+  SQLCHAR data[kBufferLength];
+  SQLLEN strlen_or_ind;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query.c_str());
+
+  int row_count = 0;
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  CheckError(status, "SQLPrepare", conn);
+
+  status = SQLExecute(conn->hstmt);
+  CheckError(status, "SQLExecute", conn);
+
+  for (auto const& expected : kConversionFromRangeDateTestData) {
+    status = SQLBindCol(conn->hstmt, 1, expected.target_c_type, data,
+                        kBufferLength, &strlen_or_ind);
+    CheckError(status, "SQLBindCol", conn);
+
+    status = SQLFetch(conn->hstmt);
+
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+    if (!SQL_SUCCEEDED(status)) {
+      EXPECT_EQ(SQL_ERROR, expected.status);
+      ++row_count;
+      continue;
+    }
+    EXPECT_EQ(SQL_SUCCESS, expected.status);
+    std::string expected_val = "[" + FormatDate(expected.value.first) + ", " +
+                               FormatDate(expected.value.second) + ")";
+    std::string returned_val;
+    switch (expected.target_c_type) {
+      case SQL_C_CHAR: {
+        returned_val = reinterpret_cast<char*>(data);
+        EXPECT_EQ(returned_val, expected_val);
+        break;
+      }
+      case SQL_C_WCHAR: {
+        std::string returned_val_utf8 =
+            ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(data), 24);
+        EXPECT_STREQ(returned_val_utf8.data(), expected_val.data());
+        break;
+      }
+      case SQL_C_BINARY: {
+        if (strlen_or_ind == sizeof(SQL_DATE_STRUCT) * 2) {
+          auto* range =
+              reinterpret_cast<std::pair<SQL_DATE_STRUCT, SQL_DATE_STRUCT>*>(
+                  data);
+
+          returned_val = "[" + FormatDate(range->first) + ", " +
+                         FormatDate(range->second) + ")";
+
+          EXPECT_EQ(returned_val, expected_val);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    ++row_count;
+  }
+  EXPECT_EQ(row_count, kConversionFromRangeDateTestData.size());
+}
+
+TEST(DataTranslationTest, From_SQL_RangeDate_to_all) {
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_DATA_TRANSLATION_RANGE_DATE";
+  Table table(table_name);
+
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.CreateWithPrepare(conn, "(index INTEGER, RangeField RANGE<DATE>)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::vector<std::pair<SQL_DATE_STRUCT, SQL_DATE_STRUCT>> range_data;
+  for (auto const& test_case : kConversionFromRangeDateTestData) {
+    range_data.push_back(test_case.value);
+  }
+  table.InsertRangeDateData(conn, range_data, true);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query =
+      "SELECT RangeField FROM " + table_name + " Order by index";
+  TestTranslationsFromRangeDate(conn, query);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.DropWithPrepare(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
+
 }  // namespace google::cloud::odbc_tests

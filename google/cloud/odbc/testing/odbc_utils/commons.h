@@ -284,6 +284,16 @@ static Schema const kFullSchema = {
     */
 };
 
+// Struct to store test data for date range validation
+struct RangeDateStruct {
+  // Target C type
+  SQLSMALLINT target_c_type;
+  // Range of date values (start and end) where result value is stored
+  std::pair<SQL_DATE_STRUCT, SQL_DATE_STRUCT> value;
+  // The status that should be returned for this C Type
+  SQLRETURN status;
+};
+
 inline bool str_comparison(std::string a, std::string b) { return a < b; }
 
 inline bool isNumeric(std::string const& str) {
@@ -493,6 +503,11 @@ class Table {
       std::shared_ptr<ODBCHandles> conn,
       std::vector<std::pair<SQL_TIMESTAMP_STRUCT, SQL_TIMESTAMP_STRUCT>> const&
           data,
+      bool insert_index);
+
+  void InsertRangeDateData(
+      std::shared_ptr<ODBCHandles> conn,
+      std::vector<std::pair<SQL_DATE_STRUCT, SQL_DATE_STRUCT>> rows,
       bool insert_index);
 
  private:
