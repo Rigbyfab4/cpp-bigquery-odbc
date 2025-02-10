@@ -2632,4 +2632,140 @@ TEST(DataTranslationTest, From_Geography_To_All) {
   table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
+#ifndef BQ_DRIVER_INTEGRATION_TESTS
+
+struct RangeTimeStampBasicTestStruct {
+  // Target C type
+  SQLSMALLINT target_c_type;
+  // Range of timestamp values (start and end) where result value is stored
+  std::pair<SQL_TIMESTAMP_STRUCT, SQL_TIMESTAMP_STRUCT> value;
+  // The status that should be returned for this C Type
+  SQLRETURN status;
+};
+
+std::vector<RangeTimeStampBasicTestStruct> const
+    kConversionFromRangeTimeStampTestData{
+        {SQL_C_CHAR,
+         {{2024, 2, 20, 12, 30, 45, 0}, {2024, 3, 20, 14, 15, 30, 425}},
+         SQL_SUCCESS},
+        {SQL_C_TYPE_DATE,
+         {{2024, 4, 20, 10, 0, 0, 0}, {2024, 5, 20, 11, 45, 0, 250}},
+         SQL_ERROR},
+        {SQL_C_TYPE_TIMESTAMP,
+         {{2024, 6, 20, 8, 20, 15, 750}, {2024, 7, 20, 9, 10, 5, 125}},
+         SQL_ERROR},
+        {SQL_C_WCHAR,
+         {{2024, 8, 20, 16, 55, 30, 0}, {2024, 9, 20, 18, 40, 20, 375}},
+         SQL_SUCCESS},
+        {SQL_C_BINARY,
+         {{2024, 10, 20, 20, 10, 5, 612}, {2024, 11, 20, 21, 30, 45, 0}},
+         SQL_SUCCESS},
+        {SQL_C_USHORT,
+         {{2024, 12, 20, 22, 25, 35, 900}, {2025, 1, 20, 23, 50, 55, 100}},
+         SQL_ERROR},
+        {SQL_C_DOUBLE,
+         {{2025, 2, 20, 13, 15, 10, 200}, {2025, 3, 20, 15, 5, 40, 300}},
+         SQL_ERROR},
+    };
+
+void TestTranslationsFromRangeTimestamp(std::shared_ptr<ODBCHandles> conn,
+                                        std::string query) {
+  SQLRETURN status;
+  SQLCHAR data[kBufferLength];
+  SQLLEN strlen_or_ind;
+  char read_stmt[kBufferLength];
+
+  int row_count = 0;
+
+  status = ExecWithPrepare(conn, query);
+  CheckError(status, "ExecWithPrepare", conn);
+
+  for (auto const& expected : kConversionFromRangeTimeStampTestData) {
+    status = SQLBindCol(conn->hstmt, 1, expected.target_c_type, data,
+                        kBufferLength, &strlen_or_ind);
+    CheckError(status, "SQLBindCol", conn);
+
+    status = SQLFetch(conn->hstmt);
+
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+
+    if (!SQL_SUCCEEDED(status)) {
+      EXPECT_EQ(SQL_ERROR, expected.status);
+      row_count++;
+      continue;
+    }
+
+    std::string expected_val =
+        "[" + FormatRangeTimeStamp(expected.value.first) + ", " +
+        FormatRangeTimeStamp(expected.value.second) + ")";
+    std::string returned_val;
+    switch (expected.target_c_type) {
+      case SQL_C_CHAR: {
+        returned_val = reinterpret_cast<char const*>(data);
+        EXPECT_EQ(returned_val, expected_val);
+        break;
+      }
+      case SQL_C_WCHAR: {
+        SQLINTEGER length = strlen_or_ind / sizeof(SQLWCHAR);
+        returned_val =
+            ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(data), length);
+        returned_val.erase(returned_val.find_last_not_of('\0') + 1);
+        EXPECT_EQ(returned_val, expected_val);
+        break;
+      }
+      case SQL_C_BINARY: {
+        returned_val = reinterpret_cast<char const*>(data);
+// Existing Driver returns timestamp range in case of binary conversion in the
+// format "[value, value) " on windows
+#ifdef _WIN32
+        expected_val.append(" ");
+#else
+        // whereas on linux it returns "[value, value):"
+        expected_val.append(":");
+#endif  //_WIN32
+        EXPECT_EQ(returned_val, expected_val);
+      }
+      default:
+        break;
+    }
+    EXPECT_EQ(returned_val, expected_val);
+    ++row_count;
+  }
+  EXPECT_EQ(row_count, kConversionFromRangeTimeStampTestData.size());
+}
+
+TEST(DataTranslationTest, From_SQL_RangeTimeStamp_to_all) {
+  auto const table_name =
+      kDatasetWithTablePrefix + "ODBC_DATA_TRANSLATION_RANGE_TIMESTAMP";
+  Table table(table_name);
+
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.CreateWithPrepare(conn, "(index INTEGER, RangeField RANGE<TIMESTAMP>)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::vector<std::pair<SQL_TIMESTAMP_STRUCT, SQL_TIMESTAMP_STRUCT>> range_data;
+  for (auto const& test_case : kConversionFromRangeTimeStampTestData) {
+    range_data.push_back(test_case.value);
+  }
+  table.InsertRangeTimeStampData(conn, range_data, true);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query =
+      "SELECT RangeField FROM " + table_name + " Order by index";
+  TestTranslationsFromRangeTimestamp(conn, query);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.DropWithPrepare(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
+
 }  // namespace google::cloud::odbc_tests

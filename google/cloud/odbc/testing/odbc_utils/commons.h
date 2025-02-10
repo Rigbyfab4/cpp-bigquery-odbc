@@ -489,6 +489,12 @@ class Table {
                         std::vector<StructBasicTestStruct> const& rows,
                         bool insert_index);
 
+  void InsertRangeTimeStampData(
+      std::shared_ptr<ODBCHandles> conn,
+      std::vector<std::pair<SQL_TIMESTAMP_STRUCT, SQL_TIMESTAMP_STRUCT>> const&
+          data,
+      bool insert_index);
+
  private:
   std::string table_name_;
   std::wstring wtable_name_;
@@ -528,6 +534,8 @@ std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 std::string FormatTimetoString(const SQL_TIME_STRUCT& time);
 
 std::string FormatTimetoString(const SQL_TIME_STRUCT& time);
+
+std::string FormatRangeTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 
 std::string GetIntervalTypeStr(const SQLINTERVAL type);
 
