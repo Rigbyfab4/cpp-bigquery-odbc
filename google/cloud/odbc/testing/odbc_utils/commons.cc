@@ -722,6 +722,46 @@ void Table::InsertTimestampData(std::shared_ptr<ODBCHandles> conn,
   CheckError(status, "SQLExecute", conn);
 }
 
+void Table::InsertRangeTimeStampData(
+    std::shared_ptr<ODBCHandles> conn,
+    std::vector<std::pair<SQL_TIMESTAMP_STRUCT, SQL_TIMESTAMP_STRUCT>> const&
+        data,
+    bool insert_index) {
+  if (data.empty()) {
+    return;
+  }
+
+  std::ostringstream insert_stmt;
+  insert_stmt << "INSERT INTO " << table_name_ << " VALUES ";
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    auto const& row = data[i];
+    insert_stmt << "(";
+
+    if (insert_index) {
+      insert_stmt << i << ", ";
+    }
+
+    if (row.first.year != 0 && row.second.year != 0) {
+      insert_stmt << "RANGE(TIMESTAMP '" << FormatRangeTimeStamp(row.first)
+                  << "', "
+                  << "TIMESTAMP '" << FormatRangeTimeStamp(row.second) << "')";
+    } else {
+      insert_stmt << "NULL";
+    }
+
+    insert_stmt << ")";
+
+    if (i != data.size() - 1) {
+      insert_stmt << ", ";
+    }
+  }
+
+  std::string insert_stmt_str = insert_stmt.str();
+  SQLRETURN status = ExecWithPrepare(conn, insert_stmt_str);
+  CheckError(status, "ExecWithPrepare", conn);
+}
+
 void Table::InsertStructData(std::shared_ptr<ODBCHandles> conn,
                              std::vector<StructBasicTestStruct> const& rows,
                              bool insert_index) {
@@ -1415,6 +1455,19 @@ std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp) {
      << std::setfill('0') << std::setw(2) << timestamp.minute << ":"
      << std::setfill('0') << std::setw(2) << timestamp.second << "."
      << std::setfill('0') << std::left << std::setw(9) << timestamp.fraction;
+
+  return ts.str();
+}
+
+std::string FormatRangeTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp) {
+  std::ostringstream ts;
+  ts << std::setfill('0') << std::setw(4) << timestamp.year << "-"
+     << std::setfill('0') << std::setw(2) << timestamp.month << "-"
+     << std::setfill('0') << std::setw(2) << timestamp.day << " "
+     << std::setfill('0') << std::setw(2) << timestamp.hour << ":"
+     << std::setfill('0') << std::setw(2) << timestamp.minute << ":"
+     << std::setfill('0') << std::setw(2) << timestamp.second << "."
+     << std::setfill('0') << std::setw(6) << timestamp.fraction;
 
   return ts.str();
 }
