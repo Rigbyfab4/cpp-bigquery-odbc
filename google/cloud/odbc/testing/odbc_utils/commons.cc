@@ -1262,6 +1262,47 @@ void Table::InsertGeographyData(
   SQLRETURN status = ExecWithPrepare(conn, insert_stmt_str);
 }
 
+void Table::InsertRangeDateData(
+    std::shared_ptr<ODBCHandles> conn,
+    std::vector<std::pair<SQL_DATE_STRUCT, SQL_DATE_STRUCT>> rows,
+    bool insert_index) {
+  if (rows.empty()) {
+    return;
+  }
+
+  std::ostringstream insert_stmt;
+  insert_stmt << "INSERT INTO " << table_name_ << " VALUES ";
+
+  for (size_t i = 0; i < rows.size(); ++i) {
+    auto const& row = rows[i];
+    insert_stmt << "(";
+
+    if (insert_index) {
+      insert_stmt << i << ", ";
+    }
+
+    // Insert the range
+    if (row.first.year != 0 && row.second.year != 0) {
+      insert_stmt << "RANGE(DATE '" << FormatDate(row.first) << "', DATE '"
+                  << FormatDate(row.second) << "')";
+    } else {
+      insert_stmt << "NULL";
+    }
+
+    insert_stmt << ")";
+
+    if (i != rows.size() - 1) {
+      insert_stmt << ", ";
+    }
+  }
+
+  std::string insert_stmt_str = insert_stmt.str();
+  SQLRETURN status;
+
+  status = ExecWithPrepare(conn, insert_stmt_str);
+  CheckError(status, "ExecWithPrepare", conn);
+}
+
 void CreateTableDirect(std::shared_ptr<ODBCHandles> conn,
                        std::string create_table_schema, bool use_ansi) {
   char create_table_stmt[kBufferLength];
