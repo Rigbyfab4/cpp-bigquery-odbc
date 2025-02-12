@@ -1066,4 +1066,134 @@ StatusRecord ConvertFromBytesDSValue(DSValue const& src_dsval,
   }
 }
 
+// Func to convert unix timestamp data into formatted timestamp string.
+// Example -[1708432245.000000, 1710944130.000425) to [2024-02-20
+// 12:30:45.00000, 2024-03-20T14:15:30.000425)
+StatusRecord ConvertRangeToTimestampFormat(std::string& input) {
+  size_t start_pos = input.find('[');
+  size_t comma_pos = input.find(',');
+  size_t end_pos = input.find(')');
+
+  // Check for invalid input format
+  if (start_pos == std::string::npos || comma_pos == std::string::npos ||
+      end_pos == std::string::npos) {
+    return StatusRecord{SQLStates::k_01004(), "Invalid input format"};
+  }
+
+  // Parse start and end timestamps as double
+  double start_ts;
+  double end_ts;
+
+  try {
+    start_ts =
+        std::stod(input.substr(start_pos + 1, comma_pos - start_pos - 1));
+    end_ts = std::stod(input.substr(comma_pos + 1, end_pos - comma_pos - 1));
+  } catch (std::invalid_argument const& e) {
+    return StatusRecord{SQLStates::k_01004(), "Failed to parse timestamps"};
+  }
+
+  // Convert both timestamps
+  SQL_TIMESTAMP_STRUCT start_timestamp;
+  auto start_status =
+      ConvertUnixTimestampToTimestampStruct(start_ts, start_timestamp);
+
+  SQL_TIMESTAMP_STRUCT end_timestamp;
+  auto end_status =
+      ConvertUnixTimestampToTimestampStruct(end_ts, end_timestamp);
+
+  // Format both timestamps
+  std::string start_str = FormatTimestampToString(start_timestamp);
+  std::string end_str = FormatTimestampToString(end_timestamp);
+
+  input = "[" + FormatTimestampToString(start_timestamp) + ", " +
+          FormatTimestampToString(end_timestamp) + ")";
+
+  return StatusRecord::Ok();
+}
+
+// Func to convert date time from client library to desired format
+// Example: [2024-02-20T12:30:45, 2024-03-20T14:15:30.000425) to [2024-02-20
+// 12:30:45.00000, 2024-03-20T14:15:30.000425)
+void NormalizeDatetimeRange(std::string& src_str) {
+  std::replace(src_str.begin(), src_str.end(), 'T', ' ');
+
+  // Ensure both timestamps have fractions
+  size_t comma_pos = src_str.find(',');
+  if (comma_pos != std::string::npos) {
+    size_t first_fraction_pos = src_str.find('.', comma_pos - 9);
+    if (first_fraction_pos == std::string::npos ||
+        first_fraction_pos > comma_pos) {
+      src_str.insert(comma_pos, ".000000");
+      comma_pos += 7;
+    }
+
+    size_t second_fraction_pos = src_str.find('.', comma_pos + 9);
+    size_t close_bracket_pos = src_str.find(')', comma_pos + 1);
+    if (second_fraction_pos == std::string::npos ||
+        second_fraction_pos > close_bracket_pos) {
+      src_str.insert(close_bracket_pos, ".000000");
+    }
+  }
+}
+
+StatusRecord ConvertFromRangeDSValue(DSValue const& src_dsval,
+                                     DataBuffer& dest_data) {
+  std::string src_str;
+  DSValueToString(src_dsval, src_str);
+  SQLLEN buffer_length = dest_data.buflen;
+
+  if (buffer_length < 0) {
+    return StatusRecord{SQLStates::k_HY090(), "Buffer length is negative"};
+  }
+  // Example: [2024-10-10, 2024-10-11)
+  std::regex const date_range_regex(
+      R"(\[(\d{4})-(\d{2})-(\d{2}), (\d{4})-(\d{2})-(\d{2})\))");
+
+  // Example: [2024-02-20T12:30:45, 2024-03-20T14:15:30.000425)
+  std::regex const datetime_range_regex(
+      R"(^\[(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?\s*,\s*(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?\)$)");
+
+  bool is_datetime_range = std::regex_match(src_str, datetime_range_regex);
+  bool is_date_range = std::regex_match(src_str, date_range_regex);
+
+  if (is_datetime_range) {
+    NormalizeDatetimeRange(src_str);
+  } else if (!is_date_range) {
+    ConvertRangeToTimestampFormat(src_str);
+  }
+
+  switch (dest_data.type) {
+    case SQL_C_CHAR: {
+      return StringValueToOutputBufferResponse(src_str.c_str(), dest_data);
+    }
+    case SQL_C_BINARY: {
+      if (!std::regex_match(src_str, date_range_regex)) {
+// Existing Driver returns timestamp range in case of binary conversion in the
+// format "[value, value) " on windows
+#ifdef _WIN32
+        src_str.append(" ");
+#else
+        // whereas on linux it returns "[value, value):"
+        src_str.append(":");
+#endif  //_WIN32
+      }
+      return StringValueToOutputBufferResponse(src_str.c_str(), dest_data);
+    }
+    case SQL_C_WCHAR: {
+      StatusRecordOr<std::wstring> wstr = Utf8ToUtf16(src_str);
+      if (!wstr) {
+        return StatusRecord{SQLStates::k_HY000(),
+                            "Conversion to SQL_C_WCHAR failed."};
+      }
+      SQLLEN required_size = (wstr->length() + 1) * sizeof(wchar_t);
+      return WStrToOutputBufferResponse(
+          wstr.GetValue(), dest_data.buf, buffer_length, src_str.length(),
+          required_size, reinterpret_cast<SQLLEN*>(dest_data.result_len));
+    }
+    default: {
+      return StatusRecord{SQLStates::k_HY000(), "Conversion is unsupported"};
+    }
+  }
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal

@@ -2643,41 +2643,29 @@ TEST(DataTranslationTest, From_Geography_To_All) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-#ifndef BQ_DRIVER_INTEGRATION_TESTS
-
-struct RangeTimeStampBasicTestStruct {
-  // Target C type
-  SQLSMALLINT target_c_type;
-  // Range of timestamp values (start and end) where result value is stored
-  std::pair<SQL_TIMESTAMP_STRUCT, SQL_TIMESTAMP_STRUCT> value;
-  // The status that should be returned for this C Type
-  SQLRETURN status;
+std::vector<RangeTimeStampStruct> const kConversionFromRangeTimeStampTestData{
+    {SQL_C_CHAR,
+     {{2024, 2, 20, 12, 30, 45, 0}, {2024, 3, 20, 14, 15, 30, 425}},
+     SQL_SUCCESS},
+    {SQL_C_TYPE_DATE,
+     {{2024, 4, 20, 10, 0, 0, 0}, {2024, 5, 20, 11, 45, 0, 250}},
+     SQL_ERROR},
+    {SQL_C_TYPE_TIMESTAMP,
+     {{2024, 6, 20, 8, 20, 15, 750}, {2024, 7, 20, 9, 10, 5, 125}},
+     SQL_ERROR},
+    {SQL_C_WCHAR,
+     {{2024, 8, 20, 16, 55, 30, 0}, {2024, 9, 20, 18, 40, 20, 375}},
+     SQL_SUCCESS},
+    {SQL_C_BINARY,
+     {{2024, 10, 20, 20, 10, 5, 612}, {2024, 11, 20, 21, 30, 45, 0}},
+     SQL_SUCCESS},
+    {SQL_C_USHORT,
+     {{2024, 12, 20, 22, 25, 35, 900}, {2025, 1, 20, 23, 50, 55, 100}},
+     SQL_ERROR},
+    {SQL_C_DOUBLE,
+     {{2025, 2, 20, 13, 15, 10, 200}, {2025, 3, 20, 15, 5, 40, 300}},
+     SQL_ERROR},
 };
-
-std::vector<RangeTimeStampBasicTestStruct> const
-    kConversionFromRangeTimeStampTestData{
-        {SQL_C_CHAR,
-         {{2024, 2, 20, 12, 30, 45, 0}, {2024, 3, 20, 14, 15, 30, 425}},
-         SQL_SUCCESS},
-        {SQL_C_TYPE_DATE,
-         {{2024, 4, 20, 10, 0, 0, 0}, {2024, 5, 20, 11, 45, 0, 250}},
-         SQL_ERROR},
-        {SQL_C_TYPE_TIMESTAMP,
-         {{2024, 6, 20, 8, 20, 15, 750}, {2024, 7, 20, 9, 10, 5, 125}},
-         SQL_ERROR},
-        {SQL_C_WCHAR,
-         {{2024, 8, 20, 16, 55, 30, 0}, {2024, 9, 20, 18, 40, 20, 375}},
-         SQL_SUCCESS},
-        {SQL_C_BINARY,
-         {{2024, 10, 20, 20, 10, 5, 612}, {2024, 11, 20, 21, 30, 45, 0}},
-         SQL_SUCCESS},
-        {SQL_C_USHORT,
-         {{2024, 12, 20, 22, 25, 35, 900}, {2025, 1, 20, 23, 50, 55, 100}},
-         SQL_ERROR},
-        {SQL_C_DOUBLE,
-         {{2025, 2, 20, 13, 15, 10, 200}, {2025, 3, 20, 15, 5, 40, 300}},
-         SQL_ERROR},
-    };
 
 void TestTranslationsFromRangeTimestamp(std::shared_ptr<ODBCHandles> conn,
                                         std::string query) {
@@ -2805,10 +2793,6 @@ TEST(DataTranslationTest, From_SQL_RangeDatetime_to_all) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-#endif  // BQ_DRIVER_INTEGRATION_TESTS
-
-#ifndef BQ_DRIVER_INTEGRATION_TESTS
-
 std::vector<RangeDateStruct> const kConversionFromRangeDateTestData{
     {SQL_C_CHAR, {{2024, 2, 20}, {2024, 3, 20}}, SQL_SUCCESS},
     {SQL_C_TYPE_DATE, {{2024, 4, 20}, {2024, 5, 20}}, SQL_ERROR},
@@ -2915,7 +2899,5 @@ TEST(DataTranslationTest, From_SQL_RangeDate_to_all) {
   table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
-#endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 }  // namespace google::cloud::odbc_tests

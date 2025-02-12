@@ -1234,4 +1234,97 @@ TEST(ValidatingBinaryValues, Base64_To_Hex) {
 
   EXPECT_EQ(expected_val, returned);
 }
+
+TEST(ConvertUnixTimestampToTimestampStructTest, ValidUnixTimestamp) {
+  SQL_TIMESTAMP_STRUCT timestamp_struct;
+  double unix_timestamp =
+      1609459200.0;  // Timestamp for 2021-01-01 00:00:00 UTC
+
+  StatusRecord status =
+      ConvertUnixTimestampToTimestampStruct(unix_timestamp, timestamp_struct);
+
+  ASSERT_TRUE(status.ok());
+  ASSERT_EQ(timestamp_struct.year, 2021);
+  ASSERT_EQ(timestamp_struct.month, 1);
+  ASSERT_EQ(timestamp_struct.day, 1);
+  ASSERT_EQ(timestamp_struct.hour, 0);
+  ASSERT_EQ(timestamp_struct.minute, 0);
+  ASSERT_EQ(timestamp_struct.second, 0);
+  ASSERT_EQ(timestamp_struct.fraction, 0);  // Since it's a whole second
+}
+
+TEST(ConvertUnixTimestampToTimestampStructTest, InvalidUnixTimestampNegative) {
+  SQL_TIMESTAMP_STRUCT timestamp_struct;
+  double unix_timestamp = -1609459200.0;  // Invalid negative timestamp
+
+  StatusRecord status =
+      ConvertUnixTimestampToTimestampStruct(unix_timestamp, timestamp_struct);
+
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status.sql_state, SQLStates::k_01004());
+  ASSERT_EQ(status.message, "Invalid Unix timestamp");
+}
+
+TEST(ConvertUnixTimestampToTimestampStructTest, InvalidUnixTimestampNaN) {
+  SQL_TIMESTAMP_STRUCT timestamp_struct;
+  double unix_timestamp = std::nan("");  // NaN value
+
+  StatusRecord status =
+      ConvertUnixTimestampToTimestampStruct(unix_timestamp, timestamp_struct);
+
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status.sql_state, SQLStates::k_01004());
+  ASSERT_EQ(status.message, "Invalid Unix timestamp");
+}
+
+TEST(ConvertUnixTimestampToTimestampStructTest, EdgeCaseUnixTimestampEpoch) {
+  SQL_TIMESTAMP_STRUCT timestamp_struct;
+  double unix_timestamp = 0.0;  // Unix epoch 1970-01-01 00:00:00 UTC
+
+  StatusRecord status =
+      ConvertUnixTimestampToTimestampStruct(unix_timestamp, timestamp_struct);
+
+  ASSERT_TRUE(status.ok());
+  ASSERT_EQ(timestamp_struct.year, 1970);
+  ASSERT_EQ(timestamp_struct.month, 1);
+  ASSERT_EQ(timestamp_struct.day, 1);
+  ASSERT_EQ(timestamp_struct.hour, 0);
+  ASSERT_EQ(timestamp_struct.minute, 0);
+  ASSERT_EQ(timestamp_struct.second, 0);
+  ASSERT_EQ(timestamp_struct.fraction, 0);  // No fractional part
+}
+
+TEST(ConvertUnixTimestampToTimestampStructTest, FutureTimestamp) {
+  SQL_TIMESTAMP_STRUCT timestamp_struct;
+  double unix_timestamp = 32503680000.0;  // 3000-01-01 00:00:00 UTC
+
+  StatusRecord status =
+      ConvertUnixTimestampToTimestampStruct(unix_timestamp, timestamp_struct);
+
+  ASSERT_TRUE(status.ok());
+  ASSERT_EQ(timestamp_struct.year, 3000);
+  ASSERT_EQ(timestamp_struct.month, 1);
+  ASSERT_EQ(timestamp_struct.day, 1);
+  ASSERT_EQ(timestamp_struct.hour, 0);
+  ASSERT_EQ(timestamp_struct.minute, 0);
+  ASSERT_EQ(timestamp_struct.second, 0);
+  ASSERT_EQ(timestamp_struct.fraction, 0);
+}
+
+TEST(ConvertUnixTimestampToTimestampStructTest, FractionalTimestamp) {
+  SQL_TIMESTAMP_STRUCT timestamp_struct;
+  double unix_timestamp = 1609459200.123456;  // Timestamp with fractional part
+
+  StatusRecord status =
+      ConvertUnixTimestampToTimestampStruct(unix_timestamp, timestamp_struct);
+
+  ASSERT_TRUE(status.ok());
+  ASSERT_EQ(timestamp_struct.year, 2021);
+  ASSERT_EQ(timestamp_struct.month, 1);
+  ASSERT_EQ(timestamp_struct.day, 1);
+  ASSERT_EQ(timestamp_struct.hour, 0);
+  ASSERT_EQ(timestamp_struct.minute, 0);
+  ASSERT_EQ(timestamp_struct.second, 0);
+  ASSERT_EQ(timestamp_struct.fraction, 123456);  // Microseconds (fraction part)
+}
 }  // namespace google::cloud::odbc_bq_driver_internal
