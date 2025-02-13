@@ -73,9 +73,9 @@ TEST_F(AdvanceOptionsTest, ShowWindow) {
 }
 
 TEST_F(AdvanceOptionsTest, SetValues_ValidInput) {
-  Section attribute_map = {{"SQLDialect", "Standard SQL"},
+  Section attribute_map = {{"SQLDialect", "1"},
                            {"LargeResultsDatasetId", "dataset1"},
-                           {"EncryptionKey", "key123"},
+                           {"KMSKeyName", "key123"},
                            {"RowsFetchedPerBlock", "500"},
                            {"DefaultStringColumnLength", "10000"},
                            {"LargeResultsTempTableExpirationTime", "3600000"},
@@ -100,7 +100,7 @@ TEST_F(AdvanceOptionsTest, SetValues_ValidInput) {
 }
 TEST_F(AdvanceOptionsTest, SetValues_MissingKeys) {
   Section attribute_map = {
-      {"SQLDialect", "Standard SQL"},
+      {"SQLDialect", "1"},
   };
 
   AdvanceOptions options;
