@@ -30,6 +30,14 @@
 
 namespace google::cloud::odbc_bq_driver_internal {
 
+// The Base64 character set
+// (ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/) is a
+// well-defined, standardized string that doesn’t change across different
+// implementations of Base64 encoding. The characters in this string represent
+// the 64 possible values used in Base64 encoding.
+static std::string const kBasE64Chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 template <typename T>
 SQLRETURN LogAndReturnCode(
     Handle& handle, odbc_internal::StatusRecordOr<T> const& status_record_or) {
@@ -83,6 +91,7 @@ enum BQDataType {
 struct ColumnSchema {
   int col_index;
   BQDataType col_type;
+  BQDataType array_type;
 };
 bool operator==(ColumnSchema const& lhs, ColumnSchema const& rhs);
 bool operator>(ColumnSchema const& lhs, ColumnSchema const& rhs);
@@ -119,6 +128,67 @@ inline bool IsDSValueNull(DSValue const& value) {
 inline void StringToDSValue(std::string const& str, DSValue& value) {
   value.resize(str.size());
   std::copy(str.begin(), str.end(), value.begin());
+}
+
+// Func to decode a Base64-encoded string into a vector of bytes.
+inline void Base64Decode(std::string const& encoded,
+                         std::vector<uint8_t>& result) {
+  int val = 0;
+  int valb = -8;
+
+  for (unsigned char c : encoded) {
+    if (!absl::StrContains(kBasE64Chars, c)) {
+      break;  // Stop at non-base64 characters (ignore padding)
+    }
+
+    val = (val << 6) + kBasE64Chars.find(c);
+    valb += 6;
+
+    if (valb >= 0) {
+      result.push_back((val >> valb) & 0xFF);
+      valb -= 8;
+    }
+  }
+}
+
+// Function to convert byte data to a hex string
+inline void BytesToHex(std::vector<uint8_t> const& data,
+                       std::string& restult_str) {
+  std::stringstream ss;
+  for (auto byte : data) {
+    ss << std::hex << std::uppercase << std::setfill('0') << std::setw(2)
+       << static_cast<int>(byte);
+  }
+  restult_str = "0x" + ss.str();
+}
+
+inline void ArrayJsonToDSValue(std::string const& str, DSValue& value,
+                               BQDataType array_type) {
+  nlohmann::json json_data = nlohmann::json::parse(str);
+
+  nlohmann::json obj;
+  obj["v"] = json_data;
+  if (array_type == BQDataType::kBytes) {
+    // Iterate through each element in the JSON array
+    for (auto& element : obj["v"]) {
+      // Extract base64-encoded string
+      std::string base64_str = element["v"];
+
+      // Decode base64 string to byte data
+      std::vector<uint8_t> decoded_data;
+      Base64Decode(base64_str, decoded_data);
+
+      // Convert the decoded byte data to hexadecimal
+      std::string hex_str;
+      BytesToHex(decoded_data, hex_str);
+
+      element["v"] = hex_str;
+    }
+  }
+
+  std::string str_data = obj.dump();
+  value.resize(str_data.size());
+  std::copy(str_data.begin(), str_data.end(), value.begin());
 }
 
 inline void StringToDSValue(const SQLCHAR* c_str, DSValue& value) {

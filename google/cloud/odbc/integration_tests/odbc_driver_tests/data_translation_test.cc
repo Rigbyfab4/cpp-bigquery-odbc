@@ -733,7 +733,7 @@ TEST(DataTranslationTest, From_SQL_Boolean_to_all) {
   table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-#ifndef BQ_DRIVER_INTEGRATION_TESTS
+
 std::vector<ArrayBasicTestStruct> const kConversionFromArrayTestData{
     {SQL_C_CHAR,
      {1, 2, 3, 4, 5},
@@ -1068,7 +1068,6 @@ TEST(DataTranslationTest, From_SQL_Array_Struct) {
   table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-#endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 // TODO(b/394015883): Add more cases of Struct into StructBasicTestStruct
 struct StructTestStruct {

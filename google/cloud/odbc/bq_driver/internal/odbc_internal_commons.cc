@@ -377,14 +377,19 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
   // SQLFetch.
   for (int i = 0; i < schema.fields.size(); i++) {
     TableFieldSchema table_field_schema = schema.fields[i];
+    ColumnSchema col_schema;
+    col_schema.col_index = i;
     StatusRecordOr<BQDataType> type_status_record =
         ConvertDSType(table_field_schema.type);
     if (!type_status_record.Ok()) {
       return type_status_record.GetStatusRecord();
     }
-    ColumnSchema col_schema;
-    col_schema.col_index = i;
-    col_schema.col_type = *type_status_record;
+    if (table_field_schema.mode == "REPEATED") {
+      col_schema.col_type = kArray;
+      col_schema.array_type = *type_status_record;
+    } else {
+      col_schema.col_type = *type_status_record;
+    }
     result_set.row_schema.emplace_back(col_schema);
   }
   // Populate the data for each row.
@@ -392,7 +397,7 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
     DSRow rs_row;
     int i = 0;
     for (auto const& col : row.columns) {
-      BQDataType col_type = result_set.row_schema[i++].col_type;
+      BQDataType col_type = result_set.row_schema[i].col_type;
       std::string data = col.value;
       if (col.is_null) {
         rs_row.emplace_back(kNullValue);
@@ -416,6 +421,11 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
           case BQDataType::kJson:
           case BQDataType::kStruct: {
             StringToDSValue(data, row_val);
+            break;
+          }
+          case BQDataType::kArray: {
+            BQDataType array_type = result_set.row_schema[i].array_type;
+            ArrayJsonToDSValue(data, row_val, array_type);
             break;
           }
           case BQDataType::kDate: {
@@ -471,6 +481,7 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
         }
         rs_row.emplace_back(row_val);
       }
+      i++;
     }
     result_set.rows.emplace_back(rs_row);
   }
