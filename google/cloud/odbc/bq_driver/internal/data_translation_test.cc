@@ -1694,4 +1694,109 @@ TEST(ConvertFromArrayDSValue, To_SQL_C_BINARY_InsufficientBuffer) {
       status_record,
       StatusRecIs(SQLStates::k_01004(), StrEq("Binary data, right truncated")));
 }
+
+TEST(ConvertFromRangeDSValueTest, ValidDateRangeConversionToSQL_C_CHAR) {
+  DSValue src_dsval;
+  StringToDSValue("[2024-01-01, 2024-12-31)", src_dsval);
+  char buffer[50];
+  DataBuffer dest_data{SQL_C_CHAR, buffer, sizeof(buffer), nullptr};
+
+  StatusRecord status = ConvertFromRangeDSValue(src_dsval, dest_data);
+
+  EXPECT_TRUE(status.ok());
+  EXPECT_STREQ(buffer, "[2024-01-01, 2024-12-31)");
+}
+
+TEST(ConvertFromRangeDSValueTest, ValidTimeStampRangeConversionToSQL_C_CHAR) {
+  DSValue src_dsval;
+  StringToDSValue("[1708432245.000000, 1710944130.000425)", src_dsval);
+  char buffer[100];
+  DataBuffer dest_data{SQL_C_CHAR, buffer, sizeof(buffer), nullptr};
+
+  StatusRecord status = ConvertFromRangeDSValue(src_dsval, dest_data);
+
+  EXPECT_TRUE(status.ok());
+  EXPECT_STREQ(buffer,
+               "[2024-02-20 12:30:45.000000, 2024-03-20 14:15:30.000425)");
+}
+
+TEST(ConvertFromRangeDSValueTest, ValidDateRangeConversionToSQL_C_BINARY) {
+  DSValue src_dsval;
+  StringToDSValue("[2024-01-01, 2024-12-31)", src_dsval);
+
+  char buffer[50];
+  DataBuffer dest_data{SQL_C_BINARY, buffer, sizeof(buffer), nullptr};
+
+  StatusRecord status = ConvertFromRangeDSValue(src_dsval, dest_data);
+
+  EXPECT_TRUE(status.ok());
+  EXPECT_STREQ(buffer, "[2024-01-01, 2024-12-31)");
+}
+
+TEST(ConvertFromRangeDSValueTest, ValidTimeStampRangeConversionToSQL_C_BINARY) {
+  DSValue src_dsval;
+  StringToDSValue("[1708432245.000000, 1710944130.000425)", src_dsval);
+  char buffer[100];
+  DataBuffer dest_data{SQL_C_BINARY, buffer, sizeof(buffer), nullptr};
+
+  StatusRecord status = ConvertFromRangeDSValue(src_dsval, dest_data);
+
+  EXPECT_TRUE(status.ok());
+  std::string expected =
+      "[2024-02-20 12:30:45.000000, 2024-03-20 14:15:30.000425)";
+#ifdef _WIN32
+  expected.append(" ");
+#else
+  expected.append(":");
+#endif  //_WIN32
+  EXPECT_EQ(buffer, expected);
+}
+
+TEST(ConvertFromRangeDSValueTest, ValidDateRangeConversionToSQL_C_WCHAR) {
+  DSValue src_dsval;
+  StringToDSValue("[2024-01-01, 2024-12-31)", src_dsval);
+
+  SQLWCHAR dest_buf[100];
+  SQLLEN result_len;
+  DataBuffer dest_data{SQL_C_WCHAR, dest_buf, sizeof(dest_buf), &result_len};
+  auto status = ConvertFromRangeDSValue(src_dsval, dest_data);
+
+  ASSERT_TRUE(status.ok());
+
+  auto returned =
+      ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(dest_data.buf),
+                              result_len / sizeof(SQLWCHAR));
+  std::string expected = "[2024-01-01, 2024-12-31)";
+  EXPECT_EQ(returned.GetValue().c_str(), expected);
+}
+
+TEST(ConvertFromRangeDSValueTest, ValidTimeStampRangeConversionToSQL_C_WCHAR) {
+  DSValue src_dsval;
+  StringToDSValue("[1708432245.000000, 1710944130.000425)", src_dsval);
+
+  SQLWCHAR dest_buf[100];
+  SQLLEN result_len;
+  DataBuffer dest_data{SQL_C_WCHAR, dest_buf, sizeof(dest_buf), &result_len};
+  auto status = ConvertFromRangeDSValue(src_dsval, dest_data);
+
+  ASSERT_TRUE(status.ok());
+
+  auto returned =
+      ConvertSQLWCHARToString(reinterpret_cast<SQLWCHAR*>(dest_data.buf),
+                              result_len / sizeof(SQLWCHAR));
+  std::string expected =
+      "[2024-02-20 12:30:45.000000, 2024-03-20 14:15:30.000425)";
+  EXPECT_EQ(returned.GetValue().c_str(), expected);
+}
+
+TEST(ConvertFromRangeDSValueTest, BufferTooSmall) {
+  DSValue src_dsval;
+  StringToDSValue("2024/01/01 - 2024/12/31", src_dsval);
+  char buffer[5];  // Too small buffer
+  DataBuffer dest_data{SQL_C_CHAR, buffer, sizeof(buffer), nullptr};
+
+  StatusRecord status = ConvertFromRangeDSValue(src_dsval, dest_data);
+
+  EXPECT_FALSE(status.ok());
+}
 }  // namespace google::cloud::odbc_bq_driver_internal

@@ -85,6 +85,8 @@ StatusRecord WriteToApplicationBuffer(DSValue const& ds_val,
       return ConvertFromGeographyDSValue(ds_val, data);
     case BQDataType::kBytes:
       return ConvertFromBytesDSValue(ds_val, data);
+    case BQDataType::kRange:
+      return ConvertFromRangeDSValue(ds_val, data);
   }
   return {SQLStates::k_HYC00(), "Data type not supported"};
 }

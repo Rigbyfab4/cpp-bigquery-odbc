@@ -294,6 +294,15 @@ struct RangeDateStruct {
   SQLRETURN status;
 };
 
+struct RangeTimeStampStruct {
+  // Target C type
+  SQLSMALLINT target_c_type;
+  // Range of timestamp values (start and end) where result value is stored
+  std::pair<SQL_TIMESTAMP_STRUCT, SQL_TIMESTAMP_STRUCT> value;
+  // The status that should be returned for this C Type
+  SQLRETURN status;
+};
+
 inline bool str_comparison(std::string a, std::string b) { return a < b; }
 
 inline bool isNumeric(std::string const& str) {

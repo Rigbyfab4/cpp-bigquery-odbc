@@ -62,9 +62,12 @@ int DaysInMonth(int year, int month) {
   return kDaysInMonth[month - 1];
 }
 
-SQL_TIMESTAMP_STRUCT ConvertUnixTimestampToTimestampStruct(
-    double unix_timestamp) {
-  SQL_TIMESTAMP_STRUCT timestamp_struct;
+StatusRecord ConvertUnixTimestampToTimestampStruct(
+    double unix_timestamp, SQL_TIMESTAMP_STRUCT& timestamp_struct) {
+  // Check for invalid timestamp (e.g., negative or non-finite)
+  if (unix_timestamp < 0 || !std::isfinite(unix_timestamp)) {
+    return StatusRecord{SQLStates::k_01004(), "Invalid Unix timestamp"};
+  }
 
   // Calculate whole seconds and fractional part
   auto total_seconds = static_cast<time_t>(unix_timestamp);
@@ -105,7 +108,7 @@ SQL_TIMESTAMP_STRUCT ConvertUnixTimestampToTimestampStruct(
   timestamp_struct.second = static_cast<unsigned char>(second);
   timestamp_struct.fraction = fractional_part;
 
-  return timestamp_struct;
+  return StatusRecord::Ok();
 }
 
 SQL_DATE_STRUCT ConvertStringToDateStruct(std::string const& date_str) {
@@ -440,8 +443,8 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
           }
           case BQDataType::kTimeStamp: {
             double unix_timestamp = std::stod(data);
-            SQL_TIMESTAMP_STRUCT time_struct =
-                ConvertUnixTimestampToTimestampStruct(unix_timestamp);
+            SQL_TIMESTAMP_STRUCT time_struct;
+            ConvertUnixTimestampToTimestampStruct(unix_timestamp, time_struct);
             TimestampToDSValue(time_struct, row_val);
             break;
           }
@@ -470,7 +473,8 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
             BooleanToDSValue(bool_val, row_val);
             break;
           }
-          case BQDataType::kGeography: {
+          case BQDataType::kGeography:
+          case BQDataType::kRange: {
             StringToDSValue(data, row_val);
             break;
           }
@@ -880,6 +884,9 @@ odbc_internal::StatusRecordOr<SQLSMALLINT> GetSQLDataType(
     return SQL_VARCHAR;
   }
   if (type == "ARRAY") {
+    return SQL_VARCHAR;
+  }
+  if (type == "RANGE") {
     return SQL_VARCHAR;
   }
   std::string err_msg = "Invalid Data Type: ";
