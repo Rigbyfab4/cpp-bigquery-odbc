@@ -424,6 +424,11 @@ ConstructNamedParametersPostQueryRequest(
 SQL_TIMESTAMP_STRUCT ConvertStringToTimestampStruct(
     std::string const& date_str);
 
+enum class LanguageDialect {
+  kStandardSQL = 1,
+  kLegacySQL = 0,
+};
+
 }  // namespace google::cloud::odbc_bq_driver_internal
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_INTERNAL_COMMONS_H

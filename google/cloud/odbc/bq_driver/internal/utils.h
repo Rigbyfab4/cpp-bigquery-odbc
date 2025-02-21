@@ -151,6 +151,9 @@ HWND CreateButton(HWND parent, char const* text, int x, int y, int width,
 HWND CreateCheckBox(HWND parent, char const* text, int x, int y, int width,
                     int height, int id);
 
+HWND CreateScrollableEditBox(HWND parent, int x, int y, int width, int height,
+                             int id);
+
 inline std::string GetValueOrDefault(Section const& attribute_map,
                                      std::string const& key) {
   auto it = std::find_if(

@@ -260,44 +260,26 @@ void OpenFileDialog(HWND hwnd, HWND h_edit,
 }
 
 void DriverForm::SetValues(Section const& attributes_map) {
-  dsn_name_ =
-      attributes_map.count(kDsnName) > 0 ? attributes_map.at(kDsnName) : "";
-  email_ = attributes_map.count(kEmail) > 0 ? attributes_map.at(kEmail) : "";
+  dsn_name_ = GetValueOrDefault(attributes_map, kDsnName);
+  email_ = GetValueOrDefault(attributes_map, kEmail);
+  key_file_path_ = GetValueOrDefault(attributes_map, kKeyFilePath);
+  catalog_ = GetValueOrDefault(attributes_map, kCatalog);
+  dataset_ = GetValueOrDefault(attributes_map, kDataset);
+  encrypt_data_ = GetValueOrDefault(attributes_map, kEncryptData);
+  description_ = GetValueOrDefault(attributes_map, kDescription);
+  min_tls_version_ = GetValueOrDefault(attributes_map, kMinTlsVersion);
+  trusted_cert_ = GetValueOrDefault(attributes_map, kTrustedCerts);
 
-  if (attributes_map.count(kOAuthMechanism) > 0) {
-    std::string const& oauth_value = attributes_map.at(kOAuthMechanism);
-    if (oauth_value == std::to_string(static_cast<int>(
-                           OauthMechanism::kServiceAndUserAccount))) {
-      o_auth_mechanism_ = "Service Authentication";
-    } else if (oauth_value == std::to_string(static_cast<int>(
-                                  OauthMechanism::kApplicationDefault))) {
-      o_auth_mechanism_ = "Application Default Credentials";
-    } else {
-      o_auth_mechanism_ = "";
-    }
+  std::string oauth_value = GetValueOrDefault(attributes_map, kOAuthMechanism);
+  if (oauth_value == std::to_string(static_cast<int>(
+                         OauthMechanism::kServiceAndUserAccount))) {
+    o_auth_mechanism_ = "Service Authentication";
+  } else if (oauth_value == std::to_string(static_cast<int>(
+                                OauthMechanism::kApplicationDefault))) {
+    o_auth_mechanism_ = "Application Default Credentials";
   } else {
     o_auth_mechanism_ = "";
   }
-
-  key_file_path_ = attributes_map.count(kKeyFilePath) > 0
-                       ? attributes_map.at(kKeyFilePath)
-                       : "";
-  catalog_ =
-      attributes_map.count(kCatalog) > 0 ? attributes_map.at(kCatalog) : "";
-  dataset_ =
-      attributes_map.count(kDataset) > 0 ? attributes_map.at(kDataset) : "";
-  encrypt_data_ = attributes_map.count(kEncryptData) > 0
-                      ? attributes_map.at(kEncryptData)
-                      : "";
-  description_ = attributes_map.count(kDescription) > 0
-                     ? attributes_map.at(kDescription)
-                     : "";
-  min_tls_version_ = attributes_map.count(kMinTlsVersion) > 0
-                         ? attributes_map.at(kMinTlsVersion)
-                         : "";
-  trusted_cert_ = attributes_map.count(kTrustedCerts) > 0
-                      ? attributes_map.at(kTrustedCerts)
-                      : "";
 }
 
 HFONT CreateCustomFont(int font_size) {
@@ -443,6 +425,7 @@ void DriverForm::Show() {
   wc.lpfnWndProc = WindowProc;
   wc.hInstance = GetModuleHandle(NULL);
   wc.lpszClassName = CLASS_NAME;
+  wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);  // Sets background to white
 
   RegisterClass(&wc);
   int window_width = 520;
@@ -455,7 +438,8 @@ void DriverForm::Show() {
   int yPos = (screen_height - window_height) / 2;
 
   m_hwnd = CreateWindowEx(
-      0, CLASS_NAME, "Google ODBC Driver for Google Bigquery DSN Setup",
+      WS_EX_TOPMOST,  // Ensures the window stays on top
+      CLASS_NAME, "Google ODBC Driver for Google BigQuery DSN Setup",
       WS_OVERLAPPEDWINDOW, xPos, yPos, window_width, window_height, NULL, NULL,
       GetModuleHandle(NULL), this);
 
@@ -590,6 +574,7 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           OpenFileDialog(hwnd, h_edit);
         } break;
         case kIdcLoggingBtn: {
+          SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
           LogTraceDialog log_form;
           if (IsWindowVisible(log_form.GetHwnd())) {
             SetForegroundWindow(log_form.GetHwnd());
@@ -601,6 +586,8 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
             EnableWindow(hwnd, FALSE);
           }
           log_form.Show();
+          SetWindowPos(log_form.GetHwnd(), HWND_TOPMOST, 0, 0, 0, 0,
+                       SWP_NOMOVE | SWP_NOSIZE);
           MSG msg = {};
           while (GetMessage(&msg, NULL, 0, 0)) {
             TranslateMessage(&msg);
@@ -608,6 +595,7 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           }
           EnableWindow(hwnd, TRUE);
           SetForegroundWindow(hwnd);
+          SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
           break;
         }
         case kIdcButtonOk: {
@@ -716,6 +704,8 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           }
         }
         case kIdcProxyOptionsButton: {
+          SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
           ProxyOptions proxy_form;
           if (IsWindowVisible(proxy_form.GetHwnd())) {
             SetForegroundWindow(proxy_form.GetHwnd());
@@ -727,6 +717,9 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
             EnableWindow(hwnd, FALSE);
           }
           proxy_form.Show(hwnd);
+          SetWindowPos(proxy_form.GetHwnd(), HWND_TOPMOST, 0, 0, 0, 0,
+                       SWP_NOMOVE | SWP_NOSIZE);
+
           MSG msg = {};
           while (GetMessage(&msg, NULL, 0, 0)) {
             TranslateMessage(&msg);
@@ -734,9 +727,11 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           }
           EnableWindow(hwnd, TRUE);
           SetForegroundWindow(hwnd);
+          SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
           break;
         }
         case kIdcAdvanceOptBtn: {
+          SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
           AdvanceOptions adv_form;
           if (IsWindowVisible(adv_form.GetHwnd())) {
             SetForegroundWindow(adv_form.GetHwnd());
@@ -748,6 +743,9 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
             EnableWindow(hwnd, FALSE);
           }
           adv_form.Show(hwnd);
+          SetWindowPos(adv_form.GetHwnd(), HWND_TOPMOST, 0, 0, 0, 0,
+                       SWP_NOMOVE | SWP_NOSIZE);
+
           MSG msg = {};
           while (GetMessage(&msg, NULL, 0, 0)) {
             TranslateMessage(&msg);
@@ -755,6 +753,8 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           }
           EnableWindow(hwnd, TRUE);
           SetForegroundWindow(hwnd);
+          SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
           break;
         }
         case kIdcCatlogBOX:
@@ -805,7 +805,6 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           break;
       }
       break;
-
     case WM_CLOSE:
       DestroyWindow(hwnd);
       return 0;

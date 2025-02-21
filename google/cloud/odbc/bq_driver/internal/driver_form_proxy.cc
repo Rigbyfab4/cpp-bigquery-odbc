@@ -108,6 +108,8 @@ void ProxyOptions::Show(HWND hwnd) {
   wc_proxy.lpfnWndProc = ProxyOptions::ProxyOptProc;
   wc_proxy.hInstance = GetModuleHandle(NULL);
   wc_proxy.lpszClassName = CLASS_NAME;
+  wc_proxy.hbrBackground =
+      (HBRUSH)(COLOR_WINDOW + 1);  // Sets background to white
 
   RegisterClass(&wc_proxy);
 

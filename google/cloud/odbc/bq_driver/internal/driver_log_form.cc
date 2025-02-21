@@ -121,6 +121,8 @@ void LogTraceDialog::Show() {
   wc_logging.lpfnWndProc = LogTraceDialog::LogTraceProc;
   wc_logging.hInstance = GetModuleHandle(NULL);
   wc_logging.lpszClassName = CLASS_NAME;
+  wc_logging.hbrBackground =
+      (HBRUSH)(COLOR_WINDOW + 1);  // Sets background to white
 
   RegisterClass(&wc_logging);
 

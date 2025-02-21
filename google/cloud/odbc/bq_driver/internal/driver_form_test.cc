@@ -137,6 +137,23 @@ TEST_F(DriverFormTest, SetValues_ValidInput) {
   EXPECT_EQ(form->GetLogFilePath(), "/path/to/file");
 }
 
+TEST_F(DriverFormTest, SetValues_CheckCaseInsensitive) {
+  Section attributes = {{"DSN", "test"},
+                        {"EMaiL", "test@example.com"},
+                        {"OAuthMechanISM", "0"},
+                        {"KeyFilePATH", "/path/to/key"},
+                        {"CaTaLoG", "test_catalog"},
+                        {"DAtaSET", "test_dataset"}};
+
+  form->SetValues(attributes);
+
+  EXPECT_EQ(form->GetEmail(), "test@example.com");
+  EXPECT_EQ(form->GetOAuthMechanism(), "Service Authentication");
+  EXPECT_EQ(form->GetKeyFilePath(), "/path/to/key");
+  EXPECT_EQ(form->GetCatalogName(), "test_catalog");
+  EXPECT_EQ(form->GetDatasetName(), "test_dataset");
+}
+
 TEST_F(DriverFormTest, SetValues_MissingAttributes) {
   Section attributes = {
       {"Email", "test@example.com"},

@@ -18,7 +18,7 @@
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 
 namespace google::cloud::odbc_bq_driver_internal {
-// NEXTID:144
+// NEXTID:145
 static int const kIdcUseDefaultCheckbox = 128;
 static int const kIdcDatasetNameEdit = 129;
 static int const kIdcTempExpirationEdit = 130;
@@ -35,6 +35,7 @@ static int const kIdcQueryPropertiesEdit = 140;
 static int const kIdcOKButton = 141;
 static int const kIdcCancelButton = 142;
 static int const kIdcLanguageDialectComboBox = 143;
+static int const kIdcVariableCheckbox = 144;
 
 class AdvanceOptions {
  public:
@@ -74,6 +75,17 @@ class AdvanceOptions {
   inline std::string const& GetActivationThreshold() const {
     return activation_threshold_;
   }
+  inline std::string const& GetUseWchar() const { return use_wchar_; }
+  inline std::string const& GetEnableSession() const { return enable_session_; }
+  inline std::string const& GetActivationThresholdCheckbox() const {
+    return activation_threshold_checkbox_;
+  }
+  inline std::string const& GetAllowLargeResults() const {
+    return allow_large_results_;
+  }
+  inline std::string const& GetUseDefaultLargeResults() const {
+    return use_default_large_results_;
+  }
 
   void SetValues(Section const& attributes_map);
 
@@ -94,6 +106,11 @@ class AdvanceOptions {
   static std::string additional_projects_;
   static std::string query_properties_;
   static std::string activation_threshold_;
+  static std::string use_wchar_;
+  static std::string enable_session_;
+  static std::string activation_threshold_checkbox_;
+  static std::string allow_large_results_;
+  static std::string use_default_large_results_;
 
   static LRESULT CALLBACK AdvanceOptProc(HWND hwnd, UINT uMsg, WPARAM w_param,
                                          LPARAM l_param);
