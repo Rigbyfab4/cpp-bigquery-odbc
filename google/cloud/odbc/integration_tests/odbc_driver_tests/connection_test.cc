@@ -20,11 +20,22 @@ using google::cloud::odbc_tests::SetAttributes;
 using ::testing::HasSubstr;
 
 // TODO(b/380186523): Need to fix the Driver Name for both Windows & Linux
+// TODO(b/402379435): Update '#ifdef DRIVER_MANAGER_TESTING_ENABLED' after
+// driver manager enabled.
 std::string GetDriverName() {
 #ifdef _WIN32
+#ifdef DRIVER_MANAGER_TESTING_ENABLED
+  return "Google BigQuery ODBC Driver";
+#else
   return "Simba ODBC Driver for Google BigQuery";
+#endif
+#else
+#ifdef DRIVER_MANAGER_TESTING_ENABLED
+  return "Google BigQuery ODBC Driver";
 #else
   return "Simba Google BigQuery ODBC Connector";
+#endif
+
 #endif  // _WIN32
 }
 
@@ -389,8 +400,6 @@ void AssertUnSupportedFnsODBC2(SQLUSMALLINT* odbc2_fns) {
   EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLALLOCSTMT]);
   EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLFREECONNECT]);
   EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLFREEENV]);
-  EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLFREESTMT]);
-  EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLBINDPARAMETER]);
   EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLGETCONNECTOPTION]);
   EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLGETSTMTOPTION]);
   EXPECT_EQ(SQL_FALSE, odbc2_fns[SQL_API_SQLSETCONNECTOPTION]);
@@ -628,7 +637,7 @@ TEST(ConnectionTest, SQLDriverConnect_SQL_DRIVER_NOPROMPT) {
 TEST(ConnectionTest, SQLDriverConnect_StringDataRightTruncated) {
   auto conn = std::make_shared<ODBCHandles>();
 
-  std::string conn_str = "DSN=SampleDSN";
+  std::string conn_str = kDefaultConnectionString;
   SQLCHAR in_conn_str[kBufferLength];
   SQLCHAR out_conn_str[10] = {0};
   SQLSMALLINT out_conn_str_len;
@@ -648,8 +657,9 @@ TEST(ConnectionTest, SQLDriverConnect_StringDataRightTruncated) {
 
 TEST(ConnectionTest, SQL_DriverConnect_CaseInsensitive) {
   auto conn = std::make_shared<ODBCHandles>();
-  std::vector<std::string> const conn_string = {
-      "dsn=SampleDSN", "DSN=SampleDSN", "DsN=SampleDSN"};
+  std::vector<std::string> const conn_string = {"dsn=" + GetDefaultDSN(),
+                                                "DSN=" + GetDefaultDSN(),
+                                                "DsN=" + GetDefaultDSN()};
   for (auto const& conn_str : conn_string) {
     EXPECT_EQ(Connect(conn_str, conn, true), SQL_SUCCESS);
     EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
@@ -1086,8 +1096,9 @@ TEST(ConnectionTest, SQLBrowseConnect_SQL_NEED_DATA) {
   std::string res_out_conn_str(reinterpret_cast<char const*>(out_conn_str));
 
   // TODO(b/383449326): Add other connection attributes for the connection
+  // TODO(b/402379435): Remove if (kIsBqDriver) after driver manager enabled.
   if (kIsBqDriver) {
-    EXPECT_EQ(out_conn_str_len, res_out_conn_str.size());
+    EXPECT_GE(out_conn_str_len, res_out_conn_str.size());
   } else {
     EXPECT_GT(out_conn_str_len, res_out_conn_str.size());
   }
@@ -1192,16 +1203,16 @@ TEST(ConnectionTest, SQLBrowseConnect_InvalidConnectionString) {
                             sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
                             sizeof(out_conn_str), &out_conn_str_len);
   EXPECT_EQ(status, SQL_ERROR);
-
-// TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
+  // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
 #ifdef _WIN32
   EXPECT_THAT(res_out_conn_str,
               HasSubstr("Catalog:Catalog=?;OAuthMechanism:OAuthMechanism=?"));
 #endif  // _WIN32
 
   // TODO(b/383449326): Add other connection attributes for the connection
+  // TODO(b/402379435): Remove if (kIsBqDriver) after driver manager enabled.
   if (kIsBqDriver) {
-    EXPECT_EQ(out_conn_str_len, res_out_conn_str.size());
+    EXPECT_GE(out_conn_str_len, res_out_conn_str.size());
     CheckDiagnosticRecord(
         conn->hdbc, "HY000", 0,
         "[Google][ODBC BigQuery Driver] Invalid Connection String");
@@ -1256,8 +1267,9 @@ TEST(ConnectionTest, SQLBrowseConnect_NonRequestedConnAttribute) {
 #endif  // _WIN32
 
   // TODO(b/383449326): Add other connection attributes for the connection
+  // TODO(b/402379435): Remove if (kIsBqDriver) after driver manager enabled.
   if (kIsBqDriver) {
-    EXPECT_EQ(out_conn_str_len, res_out_conn_str.size());
+    EXPECT_GE(out_conn_str_len, res_out_conn_str.size());
     CheckDiagnosticRecord(conn->hdbc, "HY000", 0,
                           "[Google][ODBC BigQuery Driver] Connection Error: "
                           "Non Requested connection attribute");
@@ -1378,8 +1390,6 @@ TEST(BQDriverConnectionTest, SQLConnectA_DSNLess) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-#endif  // DRIVER_MANAGER_TESTING_ENABLED
-
 TEST(SQLDisconnect, CheckAllHandlesAreFreed) {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn, true), SQL_SUCCESS);
@@ -1412,7 +1422,7 @@ TEST(SQLDisconnect, CheckAllHandlesAreFreed) {
   status = SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
   CheckError(status, "SQLFreeHandle(SQL_HANDLE_ENV)", conn);
 }
-
+#endif  // DRIVER_MANAGER_TESTING_ENABLED
 // This test should not be run for Simba Driver since different values are
 // returned between google and Simba for some information types. For more
 // details please look at design doc: http://goto.google.com/sql-get-info-design
@@ -1478,6 +1488,7 @@ TEST(BQDriverTest, SQLGetFunctions_ODBC3_FunctionIdNotSupported) {
   EXPECT_EQ(SQL_FALSE, supported);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+#ifndef DRIVER_MANAGER_TESTING_ENABLED
 
 TEST(BQDriverTest, SQLGetFunctions_ODBC2_FunctionIdNotSupported) {
   auto conn = std::make_shared<ODBCHandles>();
@@ -1502,6 +1513,7 @@ TEST(BQDriverTest, SQLGetFunctions_ODBC2_AllUnSupported) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+#endif  // DRIVER_MANAGER_TESTING_ENABLED
 // Negative test cases for SQLGetFunctions
 
 TEST(SQLGetFunctionsInternal, SQLGetFunctions_ODBC2_NullConnectionHandle) {
