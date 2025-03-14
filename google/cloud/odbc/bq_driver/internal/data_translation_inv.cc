@@ -44,13 +44,26 @@ StatusRecordOr<std::string> ConvertFromCharBuffer(DataBuffer& src_data,
       src_str = std::string(static_cast<char*>(src_buf), result_len);
       break;
     }
-    // TODO(b/345194139): Support SQL_C_WCHAR here
+    case SQL_C_WCHAR: {
+      auto* wchar_buf = static_cast<SQLWCHAR*>(src_buf);
+      if ((result_len > 0) || (result_len == SQL_NTS)) {
+        auto utf8_res = ConvertSQLWCHARToString(wchar_buf, result_len);
+        if (!utf8_res) {
+          return StatusRecord{SQLStates::k_HY000(), "UTF-8 conversion failed"};
+        }
+        src_str = *utf8_res;
+        break;
+      }
+      return StatusRecord{SQLStates::k_HY000(), "Invalid buffer length"};
+    }
     default: {
       return StatusRecord{SQLStates::k_HY000(), "Conversion is unsupported"};
     }
   }
   switch (sql_type) {
     case SQL_VARCHAR:
+    case SQL_WLONGVARCHAR:
+    case SQL_LONGVARCHAR:
     case SQL_CHAR:
     case SQL_WCHAR: {
       return src_str;
@@ -77,12 +90,80 @@ StatusRecordOr<std::string> ConvertFromCharBuffer(DataBuffer& src_data,
   return StatusRecord::Ok();
 }
 
+StatusRecordOr<std::string> ConvertFromBinaryBuffer(DataBuffer& src_data,
+                                                    SQLSMALLINT sql_type) {
+  SQLPOINTER src_buf = src_data.buf;
+  SQLLEN* src_result_len = src_data.result_len;
+
+  auto* src_val = static_cast<uint8_t*>(src_buf);
+  if (!src_val || !src_result_len || *src_result_len <= 0) {
+    return StatusRecord{SQLStates::k_HY000(), "Invalid binary data"};
+  }
+
+  switch (sql_type) {
+    case SQL_CHAR:
+    case SQL_VARCHAR:
+    case SQL_LONGVARCHAR:
+    case SQL_WCHAR:
+    case SQL_WVARCHAR:
+    case SQL_WLONGVARCHAR:
+    case SQL_BINARY:
+    case SQL_VARBINARY:
+    case SQL_LONGVARBINARY: {
+      return Base64Encode(src_val, *src_result_len);
+    }
+    default:
+      return StatusRecord{SQLStates::k_HY000(), "Conversion is unsupported"};
+  }
+}
+
+StatusRecordOr<std::string> ConvertFromBitBuffer(DataBuffer src_data,
+                                                 SQLSMALLINT sql_type) {
+  SQLPOINTER src_buf = src_data.buf;
+  SQLCHAR src_val = *reinterpret_cast<SQLCHAR*>(src_buf);
+
+  if (src_val != 0 && src_val != 1) {
+    return StatusRecord{SQLStates::k_22003(),
+                        "Invalid BIT value (must be 0 or 1)"};
+  }
+  switch (sql_type) {
+    case SQL_CHAR:
+    case SQL_BIT:
+    case SQL_VARCHAR:
+    case SQL_LONGVARCHAR: {
+      return std::string((src_val == 0) ? "false" : "true");
+    }
+    case SQL_INTEGER: {
+      return std::to_string(static_cast<SQLINTEGER>(src_val));
+    }
+    case SQL_SMALLINT: {
+      return std::to_string(static_cast<SQLSMALLINT>(src_val));
+    }
+    case SQL_TINYINT: {
+      return std::to_string(static_cast<SQLCHAR>(src_val));
+    }
+    case SQL_FLOAT:
+    case SQL_REAL: {
+      return std::to_string(static_cast<SQLREAL>(src_val));
+    }
+    case SQL_DOUBLE: {
+      return std::to_string(static_cast<SQLDOUBLE>(src_val));
+    }
+    case SQL_BIGINT: {
+      return std::to_string(static_cast<SQLBIGINT>(src_val));
+    }
+    default:
+      return StatusRecord{SQLStates::k_HY000(), "Conversion is unsupported"};
+  }
+}
+
 StatusRecordOr<std::string> ConvertFromBuffer(DataBuffer& src_data,
                                               SQLSMALLINT sql_type) {
   SQLPOINTER src_buf = src_data.buf;
   SQLLEN* res_len = src_data.result_len;
 
   switch (src_data.type) {
+    case SQL_C_WCHAR:
     case SQL_C_CHAR: {
       auto conv_status = ConvertFromCharBuffer(src_data, sql_type);
       if (!conv_status) {
@@ -156,6 +237,20 @@ StatusRecordOr<std::string> ConvertFromBuffer(DataBuffer& src_data,
       auto src_val = *reinterpret_cast<SQLUINTEGER*>(src_buf);
       auto conv_status =
           ConvertFromArithmeticValue<SQLUINTEGER>(src_val, sql_type);
+      if (!conv_status) {
+        return conv_status.GetStatusRecord();
+      }
+      return *conv_status;
+    }
+    case SQL_C_BIT: {
+      auto conv_status = ConvertFromBitBuffer(src_data, sql_type);
+      if (!conv_status) {
+        return conv_status.GetStatusRecord();
+      }
+      return *conv_status;
+    }
+    case SQL_C_BINARY: {
+      auto conv_status = ConvertFromBinaryBuffer(src_data, sql_type);
       if (!conv_status) {
         return conv_status.GetStatusRecord();
       }
