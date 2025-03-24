@@ -101,18 +101,34 @@ std::vector<NumericBasicTestStruct> const kConversionFromNumericTestData{
                               // integral value. Weird!
     {SQL_C_NUMERIC, "-1234567891234567891", SQL_SUCCESS,
      "-1234567891234567891"},
-    // TODO(b/345194139): check if digits after decimal are expected to be
-    // omitted
+    {SQL_C_DOUBLE, "123123123123123123123.222", SQL_SUCCESS},
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+    {SQL_C_NUMERIC, "123.78", SQL_SUCCESS,
+     "123.78"},  // returns 123- scale value is always 0 for existing Driver
+    {SQL_C_CHAR, "-123",
+     SQL_SUCCESS},  // in Existing Driver it returns "-123.000000000"
+    {SQL_C_CHAR, "123.222",
+     SQL_SUCCESS},  // in Existing Driver it returns "123.222000000"
+    {SQL_C_CHAR, "-123.222", SQL_SUCCESS},
+    {SQL_C_CHAR, "123123123123123123123.222",
+     SQL_SUCCESS},  // Existing Driver returns  123123123123123123123.222000000
+    {SQL_C_CHAR, "123",
+     SQL_SUCCESS},  // Existing Driver returns "123.000000000" here
+#endif              // BQ_DRIVER_INTEGRATION_TESTS
+
     {SQL_C_NUMERIC, "-123456789123456.78", SQL_SUCCESS_WITH_INFO,
      "-123456789123456"},
-// TODO(b/345194139): Check why this string is returned as
-// "16208844614347859008"
-// {SQL_C_NUMERIC, "12345678912345678912345678912.345678912",
-//  SQL_SUCCESS_WITH_INFO},
-#ifdef BQ_DRIVER_INTEGRATION_TESTS
-    // Existing driver returns "123.000000000" here
-    {SQL_C_CHAR, "123", SQL_SUCCESS},
-#endif  // BQ_DRIVER_INTEGRATION_TESTS
+
+    {SQL_C_NUMERIC, "1234567891234567", SQL_SUCCESS, "1234567891234567"},
+    {SQL_C_NUMERIC, "-1234567891234567", SQL_SUCCESS, "-1234567891234567"},
+
+    {SQL_C_DOUBLE, "-9.9999999999999999999999999999999999999E+28", SQL_SUCCESS},
+    {SQL_C_DOUBLE, "9.9999999999999999999999999999999999999E+28", SQL_SUCCESS},
+
+    {SQL_C_DOUBLE, "38.3", SQL_SUCCESS},
+    {SQL_C_DOUBLE, "-38.3", SQL_SUCCESS},
+
+    {SQL_C_CHAR, "99999999999999999999999999999.999999999", SQL_SUCCESS},
     {SQL_C_FLOAT, "156.1", SQL_SUCCESS},
     {SQL_C_FLOAT, "-157.8", SQL_SUCCESS},
     {SQL_C_DOUBLE, "-38.3", SQL_SUCCESS},
@@ -132,7 +148,68 @@ std::vector<NumericBasicTestStruct> const kConversionFromNumericTestData{
     {SQL_C_BIT, "0", SQL_SUCCESS},
     {SQL_C_BIT, "1", SQL_SUCCESS},
     {SQL_C_BIT, "2", SQL_ERROR},
+};
 
+std::vector<NumericBasicTestStruct> const kConversionFromBigNumericTestData{
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+    {SQL_C_NUMERIC, "123.78", SQL_SUCCESS,
+     "123.78"},  // SQLNumericToString returns 123 as the scale info is not
+                 // correct
+    {SQL_C_NUMERIC, "999.78354", SQL_SUCCESS, "999.78354"},
+    {SQL_C_NUMERIC, "123.7835", SQL_SUCCESS, "123.7835"},
+    {SQL_C_NUMERIC, "123456789", SQL_SUCCESS, "123456789"},
+
+    {SQL_C_CHAR, "-123",
+     SQL_SUCCESS},  // Existing Driver returns
+                    // -123.00000000000000000000000000000000000000
+    {SQL_C_CHAR, "123.222",
+     SQL_SUCCESS},  // Existing Driver returns
+                    // 123.22200000000000000000000000000000000000
+    {SQL_C_CHAR, "-123.222",
+     SQL_SUCCESS},  // Existing Driver returns
+                    // 123.22200000000000000000000000000000000000
+    {SQL_C_CHAR, "99999999999999999999999999999.999999999",
+     SQL_SUCCESS},  //"99999999999999999999999999999.99999999900000000000000000000000000000"
+    {SQL_C_CHAR, "123123123123123123123.222", SQL_SUCCESS},
+#endif
+    {SQL_C_NUMERIC, "1234567891234567", SQL_SUCCESS, "1234567891234567"},
+    {SQL_C_NUMERIC, "-1234567891234567", SQL_SUCCESS, "-1234567891234567"},
+
+    {SQL_C_DOUBLE,
+     "-5."
+     "7896044618658097711785492504343953926634992332820282019728792003956564819"
+     "968E+38",
+     SQL_SUCCESS},
+    {SQL_C_DOUBLE,
+     "5."
+     "7896044618658097711785492504343953926634992332820282019728792003956564819"
+     "967E+38",
+     SQL_SUCCESS},
+    {SQL_C_DOUBLE, "123123123123123123123.222", SQL_SUCCESS},
+    {SQL_C_DOUBLE, "9.9999999999999999999999999999999999999E+29", SQL_SUCCESS},
+    {SQL_C_DOUBLE, "9.9999999999999999999999999999999999999E+28", SQL_SUCCESS},
+
+    {SQL_C_SSHORT, "31", SQL_SUCCESS_WITH_INFO},
+    {SQL_C_SSHORT, "-31", SQL_SUCCESS_WITH_INFO},
+    {SQL_C_USHORT, "3", SQL_SUCCESS_WITH_INFO},
+    {SQL_C_SLONG, "-13", SQL_SUCCESS_WITH_INFO},
+    {SQL_C_ULONG, "81", SQL_SUCCESS_WITH_INFO},
+    {SQL_C_FLOAT, "156.1", SQL_SUCCESS},
+    {SQL_C_FLOAT, "-157.8", SQL_SUCCESS},
+
+    {SQL_C_DOUBLE, "38.3", SQL_SUCCESS},
+    {SQL_C_DOUBLE, "-38.3", SQL_SUCCESS},
+
+    {SQL_C_USHORT, "65537" /* 2^16 + 1 */, SQL_ERROR},
+
+    {SQL_C_SLONG, "13.3", SQL_SUCCESS_WITH_INFO},
+
+    {SQL_C_ULONG, "-8", SQL_ERROR},
+    {SQL_C_ULONG, "1.1", SQL_SUCCESS_WITH_INFO},
+
+    {SQL_C_BIT, "0", SQL_SUCCESS},
+    {SQL_C_BIT, "1", SQL_SUCCESS},
+    {SQL_C_BIT, "2", SQL_ERROR},
 };
 
 std::vector<Int64BasicTestStruct> const kConversionFromInt64TestData{
@@ -299,8 +376,9 @@ void TestTranslationsFromArithmetic(std::shared_ptr<ODBCHandles> conn,
 
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
 
-void TestTranslationsFromNumeric(std::shared_ptr<ODBCHandles> conn,
-                                 std::string query) {
+void TestTranslationsFromNumeric(
+    std::shared_ptr<ODBCHandles> conn, std::string query,
+    std::vector<NumericBasicTestStruct> const kFromNumericTestData) {
   SQLRETURN status;
   SQLCHAR data[kBufferLength];
   SQLLEN strlen_or_ind;
@@ -312,7 +390,7 @@ void TestTranslationsFromNumeric(std::shared_ptr<ODBCHandles> conn,
 
   // Read all the rows using SQLFetch
   int row_count = 0;
-  for (NumericBasicTestStruct expected : kConversionFromNumericTestData) {
+  for (NumericBasicTestStruct expected : kFromNumericTestData) {
     status = SQLFetch(conn->hstmt);
     if (status == SQL_NO_DATA) {
       break;
@@ -383,6 +461,7 @@ void TestTranslationsFromNumeric(std::shared_ptr<ODBCHandles> conn,
         case SQL_C_NUMERIC: {
           SQL_NUMERIC_STRUCT returned_val = *(SQL_NUMERIC_STRUCT*)data;
           EXPECT_EQ(SQLNumericToString(returned_val), expected.expected_str);
+
           break;
         }
         default: {
@@ -392,7 +471,7 @@ void TestTranslationsFromNumeric(std::shared_ptr<ODBCHandles> conn,
       row_count++;
     }
   }
-  EXPECT_EQ(row_count, kConversionFromNumericTestData.size());
+  EXPECT_EQ(row_count, kFromNumericTestData.size());
 }
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
@@ -525,7 +604,6 @@ TEST(DataTranslationTest, From_NUMERIC_to_all) {
   auto const table_name =
       kDatasetWithTablePrefix + "ODBC_DATA_TRANSLATION_SQL_NUMERIC";
   Table table(table_name);
-
   // Create Table
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -541,18 +619,47 @@ TEST(DataTranslationTest, From_NUMERIC_to_all) {
   table.InsertNumericData(conn, numeric_data_to_insert, true);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
-  // Execute a read query and check whether the results returned are as expected
+  // Execute a read query and check whether the results returned are as
+  // expected
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   std::string query =
       "SELECT NumericField FROM " + table_name + " ORDER BY index";
-
-  TestTranslationsFromNumeric(conn, query);
-
+  TestTranslationsFromNumeric(conn, query, kConversionFromNumericTestData);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Delete table
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   table.Drop(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(DataTranslationTest, From_BIGNUMERIC_All) {
+  auto const table_name = kDatasetWithTablePrefix +
+                          "ODBC_DATA_TRANSLATION_SQL_NUMERIC" + "BIGNUMERIC";
+  Table table(table_name);
+  // Create Table
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.CreateWithPrepare(conn, "(index INT64, NumericField BIGNUMERIC)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  // Insert data to read
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::vector<std::string> numeric_data_to_insert;
+  for (auto elem : kConversionFromBigNumericTestData) {
+    numeric_data_to_insert.push_back(elem.value);
+  }
+  table.InsertNumericData(conn, numeric_data_to_insert, true);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  // Execute a read query and check whether the results returned are as
+  // expected
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  std::string query =
+      "SELECT NumericField FROM " + table_name + " ORDER BY index";
+  TestTranslationsFromNumeric(conn, query, kConversionFromBigNumericTestData);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  // Delete table
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  table.DropWithPrepare(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
