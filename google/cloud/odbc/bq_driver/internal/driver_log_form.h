@@ -23,6 +23,10 @@ static int const kIdcLogBtnOk = 101;
 static int const kIdcLogBtnCancel = 102;
 static int const kIdcLogFileEdit = 103;
 static int const kIdclogTraceBox = 104;
+static int const kIdcMaxFilesEdit = 105;  // Max Number Files Edit Box
+static int const kIdcMaxSizeEdit = 106;   // Max File Size (MB) Edit Box
+static int const kIdcGroupBox = 107;      // Group Box for Log Rotation
+static int const kIdcHyperlink = 108;
 
 class LogTraceDialog {
  public:
@@ -41,6 +45,8 @@ class LogTraceDialog {
   HWND parent_hwnd;
   static std::string log_level_;
   static std::string log_file_path_;
+  static std::string original_log_level;
+  static std::string original_log_file_path;
 
   static LRESULT CALLBACK LogTraceProc(HWND hwnd, UINT u_msg, WPARAM w_param,
                                        LPARAM l_param);
