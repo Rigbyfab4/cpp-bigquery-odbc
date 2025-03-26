@@ -50,6 +50,10 @@ bool const kIsBqDriver = true;
 bool const kIsBqDriver = false;
 #endif
 
+bool const kIsUnixODBC =
+    google::cloud::internal::GetEnv("UNIXODBC_INSTALLED").value_or("false") ==
+    "true";
+
 constexpr SQLSMALLINT kBufferLength = 1024;
 
 std::string const kCatalogName = "bigquery-devtools-drivers";

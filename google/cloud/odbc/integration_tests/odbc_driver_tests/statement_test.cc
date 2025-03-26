@@ -1805,8 +1805,12 @@ TEST_P(StatementParameterizedTest, SetAndGetExplicitDescriptor) {
   GetDescField(conn->ard, 0, SQL_DESC_ARRAY_SIZE, &arr_size_new, 0, NULL,
                GetParam());
 
-  EXPECT_EQ(SQL_DESC_ALLOC_AUTO, alloc_type);
-  EXPECT_EQ(arr_size_implicit, arr_size_new);
+  if (!kIsUnixODBC) {
+    // Skipping this, as unixODBC the driver manager is unable to reset
+    // descriptors for both the existing driver and the internal driver.
+    EXPECT_EQ(SQL_DESC_ALLOC_AUTO, alloc_type);
+    EXPECT_EQ(arr_size_implicit, arr_size_new);
+  }
 
   EXPECT_EQ(SQLFreeHandle(SQL_HANDLE_DESC, desc_expl), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
@@ -2459,8 +2463,10 @@ TEST(SQLCancel, Prepare_Execute_CancelAsync_StillExecuting) {
 // status
 #ifndef _WIN32
 #ifdef DRIVER_MANAGER_TESTING_ENABLED
-      ASSERT_TRUE(absl::StrContains(error, "S1010"))
-          << "SQLExecute failed with unexpected error: " << error;
+      // In unixODBC, the status code is `HY010`, but in other Driver Managers,
+      // it is `S1010`. Updating it to match.
+      ASSERT_TRUE(absl::StrContains(error, "S1010") ||
+                  absl::StrContains(error, "HY010"));
       ASSERT_TRUE(absl::StrContains(error, "Function sequence error"))
           << "SQLExecute failed with unexpected error: " << error;
 #else

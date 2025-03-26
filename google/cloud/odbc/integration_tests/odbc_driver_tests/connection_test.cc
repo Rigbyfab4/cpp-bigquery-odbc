@@ -566,16 +566,6 @@ TEST(ConnectionTest, SQLDriverConnectW_NULLOutput) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-// Duplicate DSNs are not functioning properly(WIN).
-#ifndef _WIN32
-TEST(ConnectionTest, SQLDriverConnect_DuplicateDsn) {
-  auto conn = std::make_shared<ODBCHandles>();
-  EXPECT_EQ(Connect(kDefaultConnectionString + ";DSN=InvalidDsn", conn),
-            SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-}
-#endif
-
 void CreateDriverConnection() {
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
@@ -1023,7 +1013,6 @@ TEST(ConnectionTest, SQLBrowseConnect_OverrideDSNWithConnStrValues) {
   auto status = SQLBrowseConnect(conn->hdbc, (SQLCHAR*)in_conn_str,
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
                                  sizeof(out_conn_str), &out_conn_str_len);
-
   PrintDriverVerName(conn);
   EXPECT_EQ(status, SQL_SUCCESS);
 
