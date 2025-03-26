@@ -676,6 +676,90 @@ std::shared_ptr<Results> ScrollResults(std::shared_ptr<ODBCHandles> conn,
   return std::make_shared<Results>(results);
 }
 
+std::shared_ptr<Results> FetchScrollResultsAllColumns(
+    std::shared_ptr<ODBCHandles> conn, std::string query,
+    SQLSMALLINT fetch_orientation) {
+  SQLRETURN status;
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  status = SQLPrepare(conn->hstmt, (SQLCHAR*)read_stmt, strlen(read_stmt));
+  CheckError(status, "SQLPrepare", conn);
+
+  SQLSMALLINT num_cols;
+  status = SQLNumResultCols(conn->hstmt, &num_cols);  // No ANSI version.
+  CheckError(status, "SQLNumResultCols", conn);
+
+  std::vector<std::shared_ptr<Column>> cols(num_cols);
+  Results results;
+  for (int i = 0; i < num_cols; i++) {
+    auto col_ptr = std::make_shared<Column>();
+    cols[i] = col_ptr;
+
+    DescribeCol(conn, col_ptr, i + 1);
+
+    std::string col_name = (char*)col_ptr->name;
+
+    // Initializing results
+    std::vector<std::string> cols_data;
+    results[col_name] = cols_data;
+
+    SqlToCdataTypes(col_ptr);
+    // Allocate memory for column data using dynamic memory.
+    col_ptr->data = new SQLCHAR[col_ptr->data_size + 1];
+    BindCol(conn, col_ptr, i + 1);
+  }
+
+  SQLExecute(conn->hstmt);  // No ansi version.
+  CheckError(status, "SQLExecute", conn);
+
+  // Read all the rows using SQLFetchScroll
+  while (1) {
+    status =
+        SQLFetchScroll(conn->hstmt, fetch_orientation, 0);  // No ansi version.
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+    if (!SQL_SUCCEEDED(status)) {
+      CheckError(status, "SQLFetchScroll", conn);
+      break;
+    }
+
+    for (int i_c = 0; i_c < num_cols; i_c++) {
+      auto col_name = (char*)cols[i_c]->name;
+      SQLPOINTER data = cols[i_c]->data;
+      SQLLEN data_len = cols[i_c]->data_len;
+
+      if (data_len == -1) {
+        results[col_name].emplace_back(std::string());
+        continue;
+      }
+      std::string val;
+      switch (cols[i_c]->data_type) {
+        case SQL_DOUBLE: {
+          val = std::to_string(*reinterpret_cast<SQLDOUBLE*>(data));
+          break;
+        }
+        case SQL_BIGINT:
+        case SQL_C_SBIGINT: {
+          val = std::to_string(*reinterpret_cast<SQLBIGINT*>(data));
+          break;
+        }
+        default: {
+          val = std::string(reinterpret_cast<char*>(data), data_len);
+          break;
+        }
+      }
+      results[col_name].push_back(val);
+    }
+  }
+  // Clean up allocated memory
+  for (int i = 0; i < num_cols; i++) {
+    delete[] cols[i]->data;
+  }
+  return std::make_shared<Results>(results);
+}
+
 std::vector<std::shared_ptr<Column>> GetCols(std::shared_ptr<ODBCHandles> conn,
                                              std::string query) {
   SQLRETURN status;
