@@ -20,25 +20,18 @@ source "$(dirname "$0")/../../lib/init.sh"
 source module ci/gha/builds/lib/macos.sh
 source module ci/gha/builds/lib/cmake.sh
 
-mapfile -t args < <(cmake::common_args)
-args+=(
-  -DODBC_INTEGRATION_TESTING=OFF
-)
-mapfile -t vcpkg_args < <(cmake::vcpkg_args)
+cp ci/gha/builds/lib/odbc_osx.ini /Users/runner/work/connection/odbc-driver/odbc.ini
+cp ci/gha/builds/lib/odbcinst_osx.ini /Users/runner/work/connection/odbc-driver/odbcinst.ini
+export ODBCINI=/Users/runner/work/connection/odbc-driver/odbc.ini
+export ODBCINSTINI=/Users/runner/work/connection/odbc-driver/odbcinst.ini
+export ODBC_TESTS_DSN="SampleDSNGoogleDriver"
+export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY=/Users/runner/work/connection/key.json
+
 mapfile -t ctest_args < <(ctest::common_args)
 
-io::log_h1 "Starting Build"
-TIMEFORMAT="==> 🕑 CMake configuration done in %R seconds"
-time {
-  io::run cmake "${args[@]}" "${vcpkg_args[@]}"
-}
-
-TIMEFORMAT="==> 🕑 CMake build done in %R seconds"
-time {
-  io::run cmake --build cmake-out
-}
-
-TIMEFORMAT="==> 🕑 CMake test done in %R seconds"
-time {
-  io::run ctest "${ctest_args[@]}" --test-dir cmake-out -LE integration-test
-}
+if [[ "$MATRIX_OS" == "macos-14" ]]; then
+  TIMEFORMAT="==> 🕑 CMake test done in %R seconds"
+  time {
+    io::run ctest "${ctest_args[@]}" --test-dir cmake-out -LE integration-test
+  }
+fi
