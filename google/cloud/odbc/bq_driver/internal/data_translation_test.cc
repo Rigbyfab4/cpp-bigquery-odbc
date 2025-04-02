@@ -240,6 +240,155 @@ TEST(ConvertFromArithmeticDSValue, To_SQL_C_BIT) {
       "Numeric value out of range");
 }
 
+// Numeric Function Unit Test
+TEST(GetNumericDetailsFromStr, To_Numeric_Val) {
+  SQL_NUMERIC_STRUCT numst;
+  std::string str_input = "121.66";
+  SQLCHAR precision = 5;
+  SQLSCHAR scale = 2;
+  SQLCHAR sign = 1; /* 0 for negative, 1 for positive */
+  SQLCHAR val[SQL_MAX_NUMERIC_LEN] = "12166";
+  GetNumericDetailsFromStr(str_input, numst);
+  EXPECT_EQ(numst.precision, precision);
+  EXPECT_EQ(numst.sign, sign);
+  EXPECT_EQ(numst.scale, scale);
+}
+
+template <typename DestType>
+void FromNumericToAllTest(std::string src_val, DestType expected_val,
+                          SQLSMALLINT dest_type,
+                          std::string expected_state = "",
+                          std::string expected_message = "") {
+  SQLPOINTER buf = malloc(50);
+  SQLLEN result_len = 0;
+  DataBuffer data = {dest_type, buf, 50, &result_len};
+  DSValue ds_value;
+
+  StringToDSValue(src_val, ds_value);
+  StatusRecord status_record = ConvertFromNumericDSValue(ds_value, data);
+  if (expected_state.empty() || expected_state == SQLStates::k_01S07()) {
+    DestType* returned_val = (DestType*)data.buf;
+    EXPECT_EQ(*returned_val, expected_val);
+    EXPECT_EQ(result_len, sizeof(DestType));
+    EXPECT_EQ(expected_message, status_record.message);
+  } else {
+    EXPECT_EQ(expected_state, status_record.sql_state);
+    EXPECT_EQ(expected_message, status_record.message);
+  }
+
+  free(buf);
+}
+
+TEST(ConvertFromNumericDSValue, To_SQL_C_FLOAT) {
+  FromNumericToAllTest<SQLREAL>("42", 42, SQL_C_FLOAT);
+  FromNumericToAllTest<SQLREAL>("42.1", 42.1, SQL_C_FLOAT);
+  FromNumericToAllTest<SQLREAL>("-1.1", -1.1, SQL_C_FLOAT);
+  FromNumericToAllTest<SQLREAL>("abc", 0, SQL_C_FLOAT, SQLStates::k_HY000(),
+                                "Invalid conversion");
+  FromNumericToAllTest<SQLREAL>("-1.0e100", 0, SQL_C_FLOAT,
+                                SQLStates::k_22003(),
+                                "Numeric value out of range");
+}
+
+TEST(ConvertFromNumericDSValue, To_SQL_C_Numeric) {
+  // Prepare buffer for SQL_NUMERIC_STRUCT
+  SQL_NUMERIC_STRUCT numeric_struct;
+  memset(&numeric_struct, 0, sizeof(numeric_struct));
+
+  // Successful conversion cases
+  SQLPOINTER buf = &numeric_struct;
+  SQLLEN result_len = 0;
+  DataBuffer data = {SQL_C_NUMERIC, buf, sizeof(SQL_NUMERIC_STRUCT),
+                     &result_len};
+
+  {
+    DSValue ds_value;
+    StringToDSValue("42", ds_value);
+    StatusRecord status_record = ConvertFromNumericDSValue(ds_value, data);
+
+    EXPECT_EQ(numeric_struct.val[0], 42);
+    EXPECT_EQ(numeric_struct.sign, 1);  // Positive number
+    EXPECT_EQ(result_len, sizeof(SQL_NUMERIC_STRUCT));
+  }
+
+  {
+    DSValue ds_value;
+    StringToDSValue("-99", ds_value);
+    StatusRecord status_record = ConvertFromNumericDSValue(ds_value, data);
+
+    EXPECT_EQ(numeric_struct.val[0], 99);
+    EXPECT_EQ(numeric_struct.sign, 0);  // Negative number
+    EXPECT_EQ(result_len, sizeof(SQL_NUMERIC_STRUCT));
+  }
+
+  // Failure cases
+  {
+    DSValue ds_value;
+    StringToDSValue("abc", ds_value);  // Invalid numeric input
+    StatusRecord status_record = ConvertFromNumericDSValue(ds_value, data);
+
+    EXPECT_EQ(status_record.sql_state,
+              SQLStates::k_HY000());  // Invalid conversion error
+    EXPECT_EQ(status_record.message, "Invalid conversion");
+  }
+
+  {
+    DSValue ds_value;
+    StringToDSValue("123456789123456789123456789123456789.123456789", ds_value);
+    StatusRecord status_record = ConvertFromNumericDSValue(ds_value, data);
+    EXPECT_EQ(status_record.sql_state,
+              SQLStates::k_22003());  // Expect "Numeric value out of range"
+    EXPECT_EQ(status_record.message, "Numeric value out of range");
+  }
+
+  {
+    DSValue ds_value;
+    StringToDSValue("-0.00000000000000000000000000000000000001", ds_value);
+    StatusRecord status_record = ConvertFromNumericDSValue(ds_value, data);
+    EXPECT_EQ(status_record.sql_state,
+              SQLStates::k_22003());  // Expect "Numeric value out of range"
+    EXPECT_EQ(status_record.message, "Numeric value out of range");
+  }
+}
+
+TEST(ConvertFromNumericDSValue, To_SQL_C_SSHORT) {
+  FromNumericToAllTest<SQLSMALLINT>("42", 42, SQL_C_SSHORT);
+  FromNumericToAllTest<SQLSMALLINT>(
+      "42.1", 42, SQL_C_SSHORT, SQLStates::k_01S07(), "Fractional truncation");
+  FromNumericToAllTest<SQLSMALLINT>("-3", -3, SQL_C_SSHORT);
+  FromNumericToAllTest<SQLSMALLINT>("-17.1", -17, SQL_C_SSHORT,
+                                    SQLStates::k_01S07(),
+                                    "Fractional truncation");
+}
+
+TEST(ConvertFromNumericDSValue, To_SQL_C_USHORT) {
+  FromNumericToAllTest<SQLUSMALLINT>("42", 42, SQL_C_USHORT);
+  FromNumericToAllTest<SQLUSMALLINT>(
+      "42.1", 42, SQL_C_USHORT, SQLStates::k_01S07(), "Fractional truncation");
+  FromNumericToAllTest<SQLUSMALLINT>("-3", 11111 /* doesn't matter */,
+                                     SQL_C_USHORT, SQLStates::k_22003(),
+                                     "Numeric value out of range");
+  FromNumericToAllTest<SQLUSMALLINT>("-17.1", 11111 /* doesn't matter */,
+                                     SQL_C_USHORT, SQLStates::k_22003(),
+                                     "Numeric value out of range");
+}
+
+TEST(ConvertFromNumericDSValue, To_SQL_C_CHAR_success) {
+  SQLPOINTER buf = malloc(50);
+  SQLLEN result_len = 0;
+  DataBuffer data = {SQL_C_CHAR, buf, 50, &result_len};
+  DSValue ds_value;
+  std::string src_val = "123";
+
+  StringToDSValue(src_val, ds_value);
+  StatusRecord status_record = ConvertFromNumericDSValue(ds_value, data);
+  ASSERT_TRUE(status_record.ok());
+  std::string returned_val = (char*)(SQLCHAR*)data.buf;
+  EXPECT_EQ(returned_val, src_val);
+  free(buf);
+}
+// End Numeric conversion function unit test
+
 TEST(ConvertFromStringDSValue, To_SQL_C_CHAR_success) {
   SQLPOINTER buf = malloc(50);
   SQLLEN result_len = 0;

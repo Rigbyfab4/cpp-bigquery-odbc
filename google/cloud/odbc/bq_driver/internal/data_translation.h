@@ -27,6 +27,8 @@ using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
 
 constexpr int kTimeCharLength = 8;
+constexpr int kMaxNumericPrecision = 38;
+constexpr int kMinNumericPrecision = 1;
 
 // Checks if an arithmetic value can be converted to another accurately.
 template <typename SrcType, typename DestType>
@@ -254,6 +256,8 @@ inline odbc_internal::StatusRecordOr<SQLDOUBLE> ConvertToDouble(
   return result;
 }
 
+odbc_internal::StatusRecord ConvertFromNumericDSValue(DSValue const& src_dsval,
+                                                      DataBuffer& dest_data);
 // Assuming that DSValue hosts string data, this converts it to the destination
 // data type in the DataBuffer
 odbc_internal::StatusRecord ConvertFromStringDSValue(DSValue const& src_dsval,

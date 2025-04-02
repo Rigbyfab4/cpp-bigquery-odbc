@@ -50,6 +50,10 @@ StatusRecord GetColumnData(DSValue const& ds_val, BQDataType bq_data_type,
     case BQDataType::kInt64:
       status_record = ConvertFromArithmeticDSValue<SQLBIGINT>(ds_val, data);
       break;
+    case BQDataType::kBigNumeric:
+    case BQDataType::kNumeric:
+      status_record = ConvertFromNumericDSValue(ds_val, data);
+      return status_record;
     case BQDataType::kFloat64:
       status_record = ConvertFromArithmeticDSValue<SQLDOUBLE>(ds_val, data);
       break;

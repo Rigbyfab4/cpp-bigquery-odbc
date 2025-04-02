@@ -136,7 +136,10 @@ DSValue const kNullValue{0};
 inline bool IsDSValueNull(DSValue const& value) {
   return value.size() == 1 && value[0] == 0;
 }
-
+// converting the given string to Numeric number
+// getting scale ,precision, sign and the value from sting parameter
+void GetNumericDetailsFromStr(std::string const& src_dsval,
+                              SQL_NUMERIC_STRUCT& numst);
 inline void StringToDSValue(std::string const& str, DSValue& value) {
   value.resize(str.size());
   std::copy(str.begin(), str.end(), value.begin());
@@ -163,6 +166,10 @@ inline void Base64Decode(std::string const& encoded,
   }
 }
 
+inline void NumericToDSValue(std::string const& str, DSValue& DSval) {
+  DSval.resize(str.size());
+  std::copy(str.begin(), str.end(), DSval.begin());
+}
 // Function to convert byte data to a hex string
 inline void BytesToHex(std::vector<uint8_t> const& data,
                        std::string& restult_str) {
