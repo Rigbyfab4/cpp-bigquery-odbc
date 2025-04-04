@@ -22,6 +22,8 @@
 #ifdef _WIN32
 #include <uxtheme.h>                 // Required for SetWindowTheme
 #pragma comment(lib, "UxTheme.lib")  // Link UxTheme.lib
+#include <filesystem>
+namespace fs = std::filesystem;
 #endif
 
 namespace google::cloud::odbc_bq_driver_internal {
@@ -258,7 +260,33 @@ HWND CreateHyperlinkLabel(HWND parent, char const* text, int x, int y,
 
   return h_hyperlink;
 }
+void setWindowIcon(HWND hwnd) {
+  fs::path source_path(__FILE__);
+  fs::path absolute_path = fs::absolute(source_path);
+  fs::path project_dir = absolute_path;
+  // Traverse up to find the project directory (by checking for .git file)
+  while (project_dir.has_parent_path()) {
+    if (fs::exists(project_dir / ".git")) {
+      break;
+    }
+    project_dir = project_dir.parent_path();
+  }
 
+  fs::path const ICON_RELATIVE_PATH =
+      "ci/installer/InstallerProj/Assets/bq.ico";
+  fs::path icon_path = project_dir / ICON_RELATIVE_PATH;
+  HICON h_icon = (HICON)LoadImageA(NULL, icon_path.string().c_str(), IMAGE_ICON,
+                                   32, 32, LR_LOADFROMFILE);
+  if (!h_icon) {
+    MessageBoxA(hwnd,
+                ("Failed to load icon from: " + icon_path.string()).c_str(),
+                "Error", MB_OK | MB_ICONERROR);
+    return;
+  }
+  // Set the window icon
+  SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)h_icon);
+  SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)h_icon);
+}
 #else
 
 StatusRecordOr<std::shared_ptr<Sections>> ParseConfig(
