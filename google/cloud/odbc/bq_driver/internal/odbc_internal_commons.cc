@@ -550,6 +550,10 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
           }
         }
         rs_row.emplace_back(row_val);
+      } else {
+        DSValue empty_value;
+        StringToDSValue("", empty_value);
+        rs_row.emplace_back(empty_value);
       }
       i++;
     }
