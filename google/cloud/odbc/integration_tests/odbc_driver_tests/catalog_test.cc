@@ -662,10 +662,30 @@ TEST(CatalogTest, SQLColumns_AllColumns_EmptyDefault) {
        kSqlColumnsEmptyDefaultTable, "IntField", "INTEGER", "INT64", "", "YES",
        SQL_BIGINT, SQL_BIGINT, SQL_NULL_DATA, 0, 10, 1, 19, 20, SQL_NULL_DATA,
        2});
+
   // Fetch all columns
-  TestSQLColumns("%", expected_results, false,
-                 kSqlColumnsEmptyDefaultTableSchema,
-                 kSqlColumnsEmptyDefaultTable);
+  auto conn = std::make_shared<ODBCHandles>();
+  std::cout << "Creating table with schema : "
+            << kSqlColumnsEmptyDefaultTableSchema << std::endl;
+  // Create table for SQLColumns.
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  CreateTableDirect(conn, kSqlColumnsEmptyDefaultTableSchema);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Set statement attribute so the parameters are passed as literal values.
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  SQLRETURN status;
+  status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_METADATA_ID,
+                          (SQLPOINTER)SQL_FALSE, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  // We are deliberately using an empty catalog name here to test the behaviour
+  // of assigning a default catalog value(b/399756489)
+  std::vector<SQLColumnsResult> results =
+      Catalog::GetColumns(conn, "", kCatalogFnsDataset.c_str(),
+                          kSqlColumnsEmptyDefaultTable.c_str(), "%");
+  VerifyColumnsResults(results, expected_results);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 // This preprocessor flag is used to disable tests for unimplemented bq_driver
