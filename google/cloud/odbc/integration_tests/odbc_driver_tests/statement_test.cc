@@ -735,10 +735,6 @@ TEST(StatementTest, SQLFetch_with_SQLExecDirectAsync_Ansi) {
                           true);
 }
 
-// This preprocessor flag is used to disable tests for unimplemented bq_driver
-// ODBC APIs
-#ifndef BQ_DRIVER_INTEGRATION_TESTS
-
 // No ANSI version.
 TEST(StatementTest, SQLFetchScroll) {
   auto const table_name = kDatasetWithTablePrefix + "ODBC_SCROLL_RESULTS_TEST";
@@ -762,7 +758,6 @@ TEST(StatementTest, SQLFetchScroll) {
   auto const query = "SELECT StringField FROM " + table_name;
   auto results = *ScrollResults(conn, query, 3);
   VerifyColumnWiseResults(kSampleData, results, std::vector<std::string>());
-
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Delete table
@@ -815,6 +810,7 @@ TEST(StatementTest, SQLFetchScroll_All_Types) {
   SQLCHAR buf_sql_fetch_prior[kBufferLength];
   SQLCHAR buf_sql_fetch_first[kBufferLength];
   SQLCHAR buf_sql_fetch_last[kBufferLength];
+  SQLCHAR buf_sql_fetch_bookmark[kBufferLength];
   SQLSMALLINT string_length_ptr;
 
   char read_stmt[kBufferLength];
@@ -868,7 +864,7 @@ TEST(StatementTest, SQLFetchScroll_All_Types) {
   EXPECT_THAT(actual_message, ::testing::HasSubstr("Fetch type not supported"));
 
   // Fetch Last Row
-  status = SQLFetchScroll(conn->hstmt, SQL_FETCH_FIRST, 0);
+  status = SQLFetchScroll(conn->hstmt, SQL_FETCH_LAST, 0);
   EXPECT_EQ(status, SQL_ERROR);
   status =
       SQLGetDiagField(SQL_HANDLE_STMT, conn->hstmt, 1, SQL_DIAG_MESSAGE_TEXT,
@@ -876,9 +872,17 @@ TEST(StatementTest, SQLFetchScroll_All_Types) {
   actual_message = reinterpret_cast<char*>(buf_sql_fetch_last);
   EXPECT_THAT(actual_message, ::testing::HasSubstr("Fetch type not supported"));
 
+  // Fetch Bookmark row
+  status = SQLFetchScroll(conn->hstmt, SQL_FETCH_BOOKMARK, 0);
+  EXPECT_EQ(status, SQL_ERROR);
+  status = SQLGetDiagField(SQL_HANDLE_STMT, conn->hstmt, 1, SQL_DIAG_SQLSTATE,
+                           &buf_sql_fetch_bookmark, kBufferLength,
+                           &string_length_ptr);
+  actual_message = reinterpret_cast<char*>(buf_sql_fetch_bookmark);
+  EXPECT_EQ(actual_message, "HY106");
+
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-#endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 TEST(StatementTest, SQLGetData) {
   auto const table_name = kDatasetWithTablePrefix + "ODBC_GET_DATA_TEST";
