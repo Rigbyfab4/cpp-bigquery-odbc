@@ -23,7 +23,7 @@
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver_internal {
-// NEXTID:125
+// NEXTID:129
 static int const kIdcAuthBox = 102;
 static int const kIdcButtonOk = 103;
 static int const kIdcHeaderLabel = 104;
@@ -47,6 +47,10 @@ static int const kIdcLoggingBtn = 121;
 static int const kIdcProxyOptionsButton = 122;
 static int const kIdcAdvanceOptBtn = 123;
 static int const kIdcGcpFolder = 124;
+static int const kIdcDriveScopeCheckbox = 125;
+static int const kIdcSystemTrustStoreCheckbox = 126;
+static int const kIdcHyperlink3 = 127;
+static int const kIdcKeyFileHeader = 128;
 
 class DriverForm {
  public:
@@ -58,7 +62,6 @@ class DriverForm {
   void SetValues(Section const& attributes_map);
   odbc_internal::StatusRecord IsValidEmail(std::string const& email);
   inline std::string const& GetDSN() const { return dsn_name_; }
-  inline std::string const& GetEmail() const { return email_; }
 
   inline std::string const& GetKeyFilePath() const { return key_file_path_; }
 
@@ -92,7 +95,6 @@ class DriverForm {
 
  private:
   static std::string dsn_name_;
-  static std::string email_;
   static std::string key_file_path_;
   static std::string o_auth_mechanism_;
   static std::string dataset_;
@@ -109,7 +111,10 @@ class DriverForm {
   static char const CLASS_NAME[];
 };
 
-void OpenFileDialog(HWND hwnd, HWND h_edit, char const* mock_file_path);
+void OpenFileDialog(
+    HWND hwnd, HWND h_edit, char const* mock_file_path = nullptr,
+    char const* file_filter = "JSON (*.json)\0*.json\0All Files (*.*)\0*.*\0",
+    char const* default_ext = "json");
 
 }  // namespace google::cloud::odbc_bq_driver_internal
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_DRIVER_FORM_H
