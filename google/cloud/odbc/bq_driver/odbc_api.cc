@@ -3202,57 +3202,68 @@ SQLRETURN SQL_API SQLColumnsW(SQLHSTMT statementHandle, SQLWCHAR* catalogName,
 
   // Handle Unicode conversion of input parameters.
   StatusRecordOr<std::string> utf8_catalog_name;
-  if (catalogNameLen > 0 || catalogNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_catalog_name = nullptr;
+  if (catalogName) {
     utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
     if (!utf8_catalog_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_catalog_name.GetStatusRecord().message);
       return utf8_catalog_name.GetCalculatedReturnCode();
     }
-    catalogNameLen = utf8_catalog_name->length();
+    sqlchar_catalog_name = ToSqlChar(utf8_catalog_name->data());
+    if (catalogNameLen && catalogNameLen != SQL_NTS)
+      catalogNameLen = utf8_catalog_name->length();
   }
 
   StatusRecordOr<std::string> utf8_schema_name;
-  if (schemaNameLen > 0 || schemaNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_schema_name = nullptr;
+  if (schemaName) {
     utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
     if (!utf8_schema_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_schema_name.GetStatusRecord().message);
       return utf8_schema_name.GetCalculatedReturnCode();
     }
-    schemaNameLen = utf8_schema_name->length();
+    sqlchar_schema_name = ToSqlChar(utf8_schema_name->data());
+    if (catalogNameLen && catalogNameLen != SQL_NTS)
+      schemaNameLen = utf8_schema_name->length();
   }
 
   StatusRecordOr<std::string> utf8_table_name;
-  if (tableNameLen > 0 || tableNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_table_name = nullptr;
+  if (tableName) {
     utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
     if (!utf8_table_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_table_name.GetStatusRecord().message);
       return utf8_table_name.GetCalculatedReturnCode();
     }
-    tableNameLen = utf8_table_name->length();
+    sqlchar_table_name = ToSqlChar(utf8_table_name->data());
+    if (tableNameLen && tableNameLen != SQL_NTS)
+      tableNameLen = utf8_table_name->length();
   }
 
   StatusRecordOr<std::string> utf8_col_name;
-  if (columnNameLen > 0 || columnNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_column_name = nullptr;
+  if (columnName) {
     utf8_col_name = ConvertSQLWCHARToString(columnName, columnNameLen);
     if (!utf8_col_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_col_name.GetStatusRecord().message);
       return utf8_col_name.GetCalculatedReturnCode();
     }
-    columnNameLen = utf8_col_name->length();
+    sqlchar_column_name = ToSqlChar(utf8_col_name->data());
+    if (columnNameLen && columnNameLen != SQL_NTS)
+      columnNameLen = utf8_col_name->length();
   }
 
   // Call to common internal function for SQLColumns and SQLColumnsW
   // in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
   rc = google::cloud::odbc_bq_driver::SQLColumnsInternal(
-      statementHandle, ToSqlChar(utf8_catalog_name->c_str()), catalogNameLen,
-      ToSqlChar(utf8_schema_name->c_str()), schemaNameLen,
-      ToSqlChar(utf8_table_name->c_str()), tableNameLen,
-      ToSqlChar(utf8_col_name->c_str()), columnNameLen);
+      statementHandle, sqlchar_catalog_name, catalogNameLen,
+      sqlchar_schema_name, schemaNameLen, sqlchar_table_name, tableNameLen,
+      sqlchar_column_name, columnNameLen);
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled) TraceFunctionExit_SQLColumnsW(rc, *(*kTraceOption));
@@ -3322,56 +3333,61 @@ SQLRETURN SQL_API SQLTablesW(SQLHSTMT statementHandle, SQLWCHAR* catalogName,
 
   // Handle Unicode conversion of input parameters.
   StatusRecordOr<std::string> utf8_catalog_name;
-  if (catalogNameLen > 0 || catalogNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_category_name = nullptr;
+  if (catalogName) {
     utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
     if (!utf8_catalog_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_catalog_name.GetStatusRecord().message);
       return utf8_catalog_name.GetCalculatedReturnCode();
     }
-    catalogNameLen = utf8_catalog_name->length();
+    sqlchar_category_name = ToSqlChar(utf8_catalog_name->data());
+    if (catalogNameLen && catalogNameLen != SQL_NTS)
+      catalogNameLen = utf8_catalog_name->length();
   }
-  SQLCHAR* sqlchar_category_name = nullptr;
-  if (catalogName) sqlchar_category_name = ToSqlChar(utf8_catalog_name->data());
 
   StatusRecordOr<std::string> utf8_schema_name;
-  if (schemaNameLen > 0 || schemaNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_schema_name = nullptr;
+  if (schemaName) {
     utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
     if (!utf8_schema_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_schema_name.GetStatusRecord().message);
       return utf8_schema_name.GetCalculatedReturnCode();
     }
-    schemaNameLen = utf8_schema_name->length();
+    sqlchar_schema_name = ToSqlChar(utf8_schema_name->data());
+    if (schemaNameLen && schemaNameLen != SQL_NTS)
+      schemaNameLen = utf8_schema_name->length();
   }
-  SQLCHAR* sqlchar_schema_name = nullptr;
-  if (schemaName) sqlchar_schema_name = ToSqlChar(utf8_schema_name->data());
 
   StatusRecordOr<std::string> utf8_table_name;
-  if (tableNameLen > 0 || tableNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_table_name = nullptr;
+  if (tableName) {
     utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
     if (!utf8_table_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_table_name.GetStatusRecord().message);
       return utf8_table_name.GetCalculatedReturnCode();
     }
-    tableNameLen = utf8_table_name->length();
+    sqlchar_table_name = ToSqlChar(utf8_table_name->data());
+    if (tableNameLen && tableNameLen != SQL_NTS)
+      tableNameLen = utf8_table_name->length();
   }
-  SQLCHAR* sqlchar_table_name = nullptr;
-  if (tableName) sqlchar_table_name = ToSqlChar(utf8_table_name->data());
 
   StatusRecordOr<std::string> utf8_table_type;
-  if (tableTypeLen > 0 || tableTypeLen == SQL_NTS) {
+  SQLCHAR* sqlchar_table_type = nullptr;
+  if (tableType) {
     utf8_table_type = ConvertSQLWCHARToString(tableType, tableTypeLen);
     if (!utf8_table_type) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_table_type.GetStatusRecord().message);
       return utf8_table_type.GetCalculatedReturnCode();
     }
-    tableTypeLen = utf8_table_type->length();
+    sqlchar_table_type = ToSqlChar(utf8_table_type->data());
+
+    if (tableTypeLen && tableTypeLen != SQL_NTS)
+      tableTypeLen = utf8_table_type->length();
   }
-  SQLCHAR* sqlchar_table_type = nullptr;
-  if (tableType) sqlchar_table_type = ToSqlChar(utf8_table_type->data());
 
   // Call to common internal function for SQLTables and SQLTablesW
   // in odbc_driver_metadata.h.
@@ -3443,44 +3459,56 @@ SQLRETURN SQL_API SQLPrimaryKeysW(
 
   // Handle Unicode conversion of input parameters.
   StatusRecordOr<std::string> utf8_catalog_name;
-  if (catalogNameLen > 0 || catalogNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_category_name = nullptr;
+  if (catalogName) {
     utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
     if (!utf8_catalog_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_catalog_name.GetStatusRecord().message);
       return utf8_catalog_name.GetCalculatedReturnCode();
     }
-    catalogNameLen = utf8_catalog_name->length();
+    std::cout << "catalog_name inside api " << utf8_catalog_name->data()
+              << std::endl;
+    sqlchar_category_name = ToSqlChar(utf8_catalog_name->data());
+    std::cout << "catalogNameLen inside api " << catalogNameLen << std::endl;
+    if (catalogNameLen && catalogNameLen != SQL_NTS)
+      catalogNameLen = utf8_catalog_name->length();
+    std::cout << "catalogNameLen inside api2 " << catalogNameLen << std::endl;
   }
 
   StatusRecordOr<std::string> utf8_schema_name;
-  if (schemaNameLen > 0 || schemaNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_schema_name = nullptr;
+  if (schemaName) {
     utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
     if (!utf8_schema_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_schema_name.GetStatusRecord().message);
       return utf8_schema_name.GetCalculatedReturnCode();
     }
-    schemaNameLen = utf8_schema_name->length();
+    sqlchar_schema_name = ToSqlChar(utf8_schema_name->data());
+    if (schemaNameLen && schemaNameLen != SQL_NTS)
+      schemaNameLen = utf8_schema_name->length();
   }
 
   StatusRecordOr<std::string> utf8_table_name;
-  if (tableNameLen > 0 || tableNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_table_name = nullptr;
+  if (tableName) {
     utf8_table_name = ConvertSQLWCHARToString(tableName, tableNameLen);
     if (!utf8_table_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_table_name.GetStatusRecord().message);
       return utf8_table_name.GetCalculatedReturnCode();
     }
-    tableNameLen = utf8_table_name->length();
+    sqlchar_table_name = ToSqlChar(utf8_table_name->data());
+    if (tableNameLen && tableNameLen != SQL_NTS)
+      tableNameLen = utf8_table_name->length();
   }
 
   // Call to common internal function for SQLPrimaryKeys and SQLPrimaryKeysW
   // in odbc_driver_metadata.h.
   rc = google::cloud::odbc_bq_driver::SQLPrimaryKeysInternal(
-      statementHandle, ToSqlChar(utf8_catalog_name->data()), catalogNameLen,
-      ToSqlChar(utf8_schema_name->data()), schemaNameLen,
-      ToSqlChar(utf8_table_name->data()), tableNameLen);
+      statementHandle, sqlchar_category_name, catalogNameLen,
+      sqlchar_schema_name, schemaNameLen, sqlchar_table_name, tableNameLen);
 
   // Handle Unicode conversion of output parameters.
 
@@ -3564,58 +3592,68 @@ SQLRETURN SQL_API SQLProcedureColumnsW(
 
   // Handle Unicode conversion of input parameters.
   StatusRecordOr<std::string> utf8_catalog_name;
-  if (catalogNameLen > 0 || catalogNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_catalog_name = nullptr;
+  if (catalogName) {
     utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
     if (!utf8_catalog_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_catalog_name.GetStatusRecord().message);
       return utf8_catalog_name.GetCalculatedReturnCode();
     }
-    catalogNameLen = utf8_catalog_name->length();
+    sqlchar_catalog_name = ToSqlChar(utf8_catalog_name->data());
+    if (catalogNameLen && catalogNameLen != SQL_NTS)
+      catalogNameLen = utf8_catalog_name->length();
   }
 
   StatusRecordOr<std::string> utf8_schema_name;
-  if (schemaNameLen > 0 || schemaNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_schema_name = nullptr;
+  if (schemaName) {
     utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
     if (!utf8_schema_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_schema_name.GetStatusRecord().message);
       return utf8_schema_name.GetCalculatedReturnCode();
     }
-    schemaNameLen = utf8_schema_name->length();
+    sqlchar_schema_name = ToSqlChar(utf8_schema_name->data());
+    if (schemaNameLen && schemaNameLen != SQL_NTS)
+      schemaNameLen = utf8_schema_name->length();
   }
 
   StatusRecordOr<std::string> utf8_proc_name;
-  if (procNameLen > 0 || procNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_proc_name = nullptr;
+  if (procName) {
     utf8_proc_name = ConvertSQLWCHARToString(procName, procNameLen);
     if (!utf8_proc_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_proc_name.GetStatusRecord().message);
       return utf8_proc_name.GetCalculatedReturnCode();
     }
-    procNameLen = utf8_proc_name->length();
+    sqlchar_proc_name = ToSqlChar(utf8_proc_name->data());
+    if (procNameLen && procNameLen != SQL_NTS)
+      procNameLen = utf8_proc_name->length();
   }
 
   StatusRecordOr<std::string> utf8_col_name;
-  if (columnNameLen > 0 || columnNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_column_name = nullptr;
+  if (columnName) {
     utf8_col_name = ConvertSQLWCHARToString(columnName, columnNameLen);
     if (!utf8_col_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_col_name.GetStatusRecord().message);
       return utf8_col_name.GetCalculatedReturnCode();
     }
-    columnNameLen = utf8_col_name->length();
+    sqlchar_column_name = ToSqlChar(utf8_col_name->data());
+    if (columnNameLen && columnNameLen != SQL_NTS)
+      columnNameLen = utf8_col_name->length();
   }
 
   // Call to common internal function for SQLProcedureColumns and
   // SQLProcedureColumnsW in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
   rc = google::cloud::odbc_bq_driver::SQLProcedureColumnsInternal(
-      statementHandle, ToSqlChar(utf8_catalog_name->c_str()), catalogNameLen,
-      ToSqlChar(utf8_schema_name->c_str()), schemaNameLen,
-      ToSqlChar(utf8_proc_name->c_str()), procNameLen,
-      ToSqlChar(utf8_col_name->c_str()), columnNameLen);
-
+      statementHandle, sqlchar_catalog_name, catalogNameLen,
+      sqlchar_schema_name, schemaNameLen, sqlchar_proc_name, procNameLen,
+      sqlchar_column_name, columnNameLen);
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
     TraceFunctionExit_SQLProcedureColumnsW(rc, *(*kTraceOption));
@@ -3696,45 +3734,53 @@ SQLRETURN SQL_API SQLProceduresW(SQLHSTMT statementHandle,
   // Handle Unicode conversion of input parameters.
 
   StatusRecordOr<std::string> utf8_catalog_name;
-  if (catalogNameLen > 0 || catalogNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_catalog_name = nullptr;
+  if (catalogName) {
     utf8_catalog_name = ConvertSQLWCHARToString(catalogName, catalogNameLen);
     if (!utf8_catalog_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_catalog_name.GetStatusRecord().message);
       return utf8_catalog_name.GetCalculatedReturnCode();
     }
-    catalogNameLen = utf8_catalog_name->length();
+    sqlchar_catalog_name = ToSqlChar(utf8_catalog_name->data());
+    if (catalogNameLen && catalogNameLen != SQL_NTS)
+      catalogNameLen = utf8_catalog_name->length();
   }
 
   StatusRecordOr<std::string> utf8_schema_name;
-  if (schemaNameLen > 0 || schemaNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_schema_name = nullptr;
+  if (schemaName) {
     utf8_schema_name = ConvertSQLWCHARToString(schemaName, schemaNameLen);
     if (!utf8_schema_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_schema_name.GetStatusRecord().message);
       return utf8_schema_name.GetCalculatedReturnCode();
     }
-    schemaNameLen = utf8_schema_name->length();
+    sqlchar_schema_name = ToSqlChar(utf8_schema_name->data());
+    if (schemaNameLen && schemaNameLen != SQL_NTS)
+      schemaNameLen = utf8_schema_name->length();
   }
 
   StatusRecordOr<std::string> utf8_proc_name;
-  if (procNameLen > 0 || procNameLen == SQL_NTS) {
+  SQLCHAR* sqlchar_proc_name = nullptr;
+  if (procName) {
     utf8_proc_name = ConvertSQLWCHARToString(procName, procNameLen);
     if (!utf8_proc_name) {
       TracePrintInternal(*(*kTraceOption),
                          utf8_proc_name.GetStatusRecord().message);
       return utf8_proc_name.GetCalculatedReturnCode();
     }
-    procNameLen = utf8_proc_name->length();
+    sqlchar_proc_name = ToSqlChar(utf8_proc_name->data());
+    if (procNameLen && procNameLen != SQL_NTS)
+      procNameLen = utf8_proc_name->length();
   }
 
   // Call to common internal function for SQLProcedures and SQLProceduresW
   // in odbc_driver_metadata.h.
   // Handle Unicode conversion of output parameters.
   rc = google::cloud::odbc_bq_driver::SQLProcedureInternal(
-      statementHandle, ToSqlChar(utf8_catalog_name->c_str()), catalogNameLen,
-      ToSqlChar(utf8_schema_name->c_str()), schemaNameLen,
-      ToSqlChar(utf8_proc_name->c_str()), procNameLen);
+      statementHandle, sqlchar_catalog_name, catalogNameLen,
+      sqlchar_schema_name, schemaNameLen, sqlchar_proc_name, procNameLen);
 
   // Call to Trace Unicode function exit in odbc_trace.h if tracing is enabled.
   if (is_tracing_enabled)
