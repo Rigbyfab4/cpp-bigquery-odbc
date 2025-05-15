@@ -477,9 +477,12 @@ SQLRETURN SQLColAttributeInternal(SQLHSTMT statement_handle,
                        reinterpret_cast<SQLSMALLINT*>(char_attr_string_len));
       break;
     default:
+      // SQLColAttribute expects some descriptor fields to return values as
+      // SQLLEN, but their default type is SQLSMALLINT. This datatype mismatch
+      // leads to truncation or incorrect (garbage) values during conversion.
       result = GetDescField(&ird, static_cast<SQLSMALLINT>(column_number),
                             static_cast<SQLSMALLINT>(field_identifier),
-                            numeric_attribute, 0, nullptr);
+                            numeric_attribute, 0, nullptr, true);
   }
   return LogAndReturnCode(stmt_handle, result);
 }
