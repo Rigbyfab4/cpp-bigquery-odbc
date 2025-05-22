@@ -503,7 +503,7 @@ StatusRecordOr<std::string> Utf16ToUtf8(std::wstring const& utf_16_str) {
   }
 #ifdef _WIN32
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
-  int utf8Length = WideCharToMultiByte(CP_ACP, 0, utf_16_str.c_str(), -1, NULL,
+  int utf8Length = WideCharToMultiByte(CP_UTF8, 0, utf_16_str.c_str(), -1, NULL,
                                        0, NULL, NULL);
   if (utf8Length == 0) {
     return StatusRecord{
@@ -515,7 +515,7 @@ StatusRecordOr<std::string> Utf16ToUtf8(std::wstring const& utf_16_str) {
   }
   std::string utf8Str(utf8Length, 0);
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
-  int result = WideCharToMultiByte(CP_ACP, 0, utf_16_str.c_str(), -1,
+  int result = WideCharToMultiByte(CP_UTF8, 0, utf_16_str.c_str(), -1,
                                    &utf8Str[0], utf8Length, NULL, NULL);
   if (result == 0) {
     return StatusRecord{SQLStates::k_HY000(),
@@ -564,7 +564,7 @@ StatusRecordOr<std::wstring> Utf8ToUtf16(std::string const& utf_8_str) {
 #ifdef _WIN32
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
   int utf16Length =
-      MultiByteToWideChar(CP_ACP, 0, utf_8_str.c_str(), -1, NULL, 0);
+      MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1, NULL, 0);
   if (utf16Length == 0) {
     return StatusRecord{
         SQLStates::k_HY000(),
@@ -572,7 +572,7 @@ StatusRecordOr<std::wstring> Utf8ToUtf16(std::string const& utf_8_str) {
   }
   std::wstring utf16Str(utf16Length, 0);
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
-  int result = MultiByteToWideChar(CP_ACP, 0, utf_8_str.c_str(), -1,
+  int result = MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1,
                                    &utf16Str[0], utf16Length);
   if (result == 0) {
     return StatusRecord{SQLStates::k_HY000(),
@@ -622,26 +622,18 @@ StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR* in_str,
   if (in_str == nullptr) {
     return StatusRecord{SQLStates::k_HY000(), "in_str string is empty/Null"};
   }
-  if (in_str_len == 0 || in_str[0] == '\0') {
+  if (((in_str != nullptr) && (in_str[0] == '\0'))) {
     return std::string();
   }
-  std::wstring stmt_txt_wstr;
-  std::wstring wstr(reinterpret_cast<wchar_t const*>(in_str));
   if (in_str_len == SQL_NTS || in_str_len == NULL) {
-    in_str_len = wstr.size();
-    // Calculating length based on SQLWCHAR size in different plateform and
-    // compiler.
-#ifndef _WIN32
-    if (sizeof(SQLWCHAR) == 2) {
-      in_str_len = in_str_len * sizeof(SQLWCHAR);
-    }
-#endif  // _WIN32
+    in_str_len =
+        static_cast<SQLINTEGER>(std::char_traits<SQLWCHAR>::length(in_str));
   }
-  stmt_txt_wstr.reserve(in_str_len);
-  for (SQLINTEGER i = 0; i < in_str_len; ++i) {
-    stmt_txt_wstr.push_back(static_cast<wchar_t>(in_str[i]));
-  }
-  return Utf16ToUtf8(stmt_txt_wstr);
+
+  // Directly create a wide string
+  std::wstring wstr(in_str, in_str + in_str_len);
+
+  return Utf16ToUtf8(wstr);
 }
 
 bool IsDiagIdentifierString(SQLSMALLINT DiagIdentifier) {

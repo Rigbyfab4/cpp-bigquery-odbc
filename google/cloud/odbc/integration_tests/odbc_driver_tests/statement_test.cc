@@ -105,13 +105,38 @@ void VerifyColumnWiseUnicodeResults(StdUnicodeRows input_data,
     std::vector<std::string> input_col_values;
     if (col_name.compare("Hindi")) {
       for (auto data : input_data) {
-        std::string dataStr = Utf16ToUtf8(data.str_field2);
-        input_col_values.emplace_back(dataStr);
+        std::string data_str;
+        // For the existing driver in Unicode mode on Windows, data is
+        // received(by the application) encoded in CP_ACP but is transmitted as
+        // UTF-8. In contrast, our driver consistently uses UTF-8 for Unicode
+        // data, because we don't want to conform to the legacy CP_ACP encoding
+#ifdef _WIN32
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+
+        data_str = Utf16ToUtf8(data.str_field2);
+#else
+        data_str = Utf16ToUtf8(data.str_field2, CP_ACP);
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
+#else
+        data_str = Utf16ToUtf8(data.str_field2);
+#endif  //_WIN32
+        input_col_values.emplace_back(data_str);
       }
     } else if (col_name.compare("Chinese")) {
       for (auto data : input_data) {
-        std::string dataStr = Utf16ToUtf8(data.str_field1);
-        input_col_values.emplace_back(dataStr);
+        std::string data_str;
+#ifdef _WIN32
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+
+        data_str = Utf16ToUtf8(data.str_field1);
+#else
+        data_str = Utf16ToUtf8(data.str_field1, CP_ACP);
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
+#else
+        data_str = Utf16ToUtf8(data.str_field1);
+#endif  //_WIN32
+
+        input_col_values.emplace_back(data_str);
       }
     }
     sort(input_col_values.begin(), input_col_values.end(), str_comparison);
