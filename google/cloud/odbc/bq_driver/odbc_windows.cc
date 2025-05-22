@@ -23,12 +23,10 @@
 
 namespace google::cloud::odbc_bq_driver {
 using ::google::cloud::odbc_bigquery_client_interface::OauthMechanism;
-using google::cloud::odbc_bq_driver_internal::AddDSNToRegistry;
 using google::cloud::odbc_bq_driver_internal::AddLogTraceToRegistry;
 using google::cloud::odbc_bq_driver_internal::AdvanceOptions;
 using google::cloud::odbc_bq_driver_internal::ConvertLPCSTRToString;
 using google::cloud::odbc_bq_driver_internal::DriverForm;
-using google::cloud::odbc_bq_driver_internal::EditDSNInRegistry;
 using google::cloud::odbc_bq_driver_internal::EncryptPassword;
 using google::cloud::odbc_bq_driver_internal::GetPathToOdbcIni;
 using google::cloud::odbc_bq_driver_internal::GetSectionWin;
@@ -40,7 +38,6 @@ using google::cloud::odbc_bq_driver_internal::LogLevel;
 using google::cloud::odbc_bq_driver_internal::LogTraceDialog;
 using google::cloud::odbc_bq_driver_internal::ParseConnectionString;
 using google::cloud::odbc_bq_driver_internal::ProxyOptions;
-using google::cloud::odbc_bq_driver_internal::RemoveDSNFromRegistry;
 using google::cloud::odbc_bq_driver_internal::Section;
 using google::cloud::odbc_bq_driver_internal::Trim;
 using google::cloud::odbc_internal::StatusRecordOr;
@@ -243,53 +240,69 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
 
   switch (f_request) {
     case ODBC_ADD_DSN: {
-      if (hwnd_parent == NULL) {
-        Section section = CreateSectionFromForm();
-        Section trace_section = CreateSectionFromLogForm();
-        AddDSNToRegistry(dsn_value, lpsz_driver, section);
-        AddLogTraceToRegistry(trace_section);
-        return true;
+      std::string dsn_name = dsn_value;
+      if (hwnd_parent != NULL) {
+        dsn_name = ShowFormAndReturnValues();
       }
 
-      dsn_name = ShowFormAndReturnValues();
       Section section = CreateSectionFromForm();
+
+      if (!SQLWriteDSNToIni(dsn_name.c_str(), lpsz_driver)) {
+        return FALSE;
+      }
+
+      for (auto const& kv : section) {
+        SQLWritePrivateProfileString(dsn_name.c_str(), kv.first.c_str(),
+                                     kv.second.c_str(), "ODBC.INI");
+      }
       Section trace_section = CreateSectionFromLogForm();
-      AddDSNToRegistry(dsn_name, lpsz_driver, section);
       AddLogTraceToRegistry(trace_section);
+
       return TRUE;
     }
 
     case ODBC_CONFIG_DSN: {
-      if (hwnd_parent == NULL) {
-        Section section_config = CreateSectionFromForm();
-        EditDSNInRegistry(dsn_value, section_config);
-        return true;
+      std::string dsn_name = dsn_value;
+
+      if (hwnd_parent != NULL) {
+        int const BUFFER_SIZE = 1024;
+        char buffer[BUFFER_SIZE];
+
+        Section section = CreateSectionFromForm();
+        for (auto& kv : section) {
+          SQLGetPrivateProfileString(dsn_name.c_str(), kv.first.c_str(), "",
+                                     buffer, BUFFER_SIZE, "ODBC.INI");
+          section[kv.first.c_str()] = buffer;
+        }
+        section[dsn_key] = dsn_value;
+        std::string driver_registry_key =
+            GetTraceLogRegistryPath() + "\\Driver";
+        auto trace_result = GetSectionWin(driver_registry_key);
+        auto trace_section = trace_result.GetValue();
+
+        form.SetValues(section);
+        advance_form.SetValues(section);
+        proxy_form.SetValues(section);
+
+        form.SetLogTraceValues(*trace_section);
+        dsn_name = ShowFormAndReturnValues();
+        Section trace_config_section = CreateSectionFromLogForm();
+        AddLogTraceToRegistry(trace_config_section);
       }
 
-      std::string registry_key = GetPathToOdbcIni() + "\\" + dsn_value;
-      std::string driver_registry_key = GetTraceLogRegistryPath() + "\\Driver";
-
-      auto res = GetSectionWin(registry_key);
-      auto trace_result = GetSectionWin(driver_registry_key);
-      auto section = res.GetValue();
-      auto trace_section = trace_result.GetValue();
-
-      (*section)[dsn_key] = dsn_value;
-
-      form.SetValues(*section);
-      advance_form.SetValues(*section);
-      proxy_form.SetValues(*section);
-      form.SetLogTraceValues(*trace_section);
-      dsn_name = ShowFormAndReturnValues();
-
       Section section_config = CreateSectionFromForm();
-      Section trace_config_section = CreateSectionFromLogForm();
-      EditDSNInRegistry(dsn_value, section_config);
-      AddLogTraceToRegistry(trace_config_section);
+
+      for (auto const& kv : section_config) {
+        SQLWritePrivateProfileString(dsn_name.c_str(), kv.first.c_str(),
+                                     kv.second.c_str(), "ODBC.INI");
+      }
       return TRUE;
     }
+
     case ODBC_REMOVE_DSN:
-      RemoveDSNFromRegistry(dsn_value);
+      if (!SQLRemoveDSNFromIni(dsn_value.c_str())) {
+        return FALSE;
+      }
       return TRUE;
 
     default:
