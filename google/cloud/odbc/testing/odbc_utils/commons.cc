@@ -229,6 +229,69 @@ std::string SQLNumericToString(const SQL_NUMERIC_STRUCT& numeric) {
   return result;
 }
 
+SQL_NUMERIC_STRUCT ConvertStringToNumeric(std::string const& numeric_str) {
+  SQL_NUMERIC_STRUCT numeric_struct = {};
+  std::string num_str;
+  bool is_negative = false;
+  size_t decimal_pos = std::string::npos;
+
+  // Parse sign and find decimal point
+  size_t start = numeric_str.find_first_not_of(" \t");
+  if (start != std::string::npos && numeric_str[start] == '-') {
+    is_negative = true;
+    start++;
+  }
+
+  // Extract all digits (both integral and fractional)
+  for (size_t i = start; i < numeric_str.size(); i++) {
+    if (isdigit(numeric_str[i])) {
+      num_str += numeric_str[i];
+    } else if (numeric_str[i] == '.' && decimal_pos == std::string::npos) {
+      decimal_pos = num_str.length();
+    }
+  }
+
+  // Handle cases where decimal point was at end or not found
+  if (decimal_pos == std::string::npos) {
+    decimal_pos = num_str.length();
+  }
+
+  // Remove leading zeros except if it's the only digit before decimal
+  if (num_str.length() > 1) {
+    size_t first_non_zero = num_str.find_first_not_of('0');
+    if (first_non_zero != std::string::npos && first_non_zero < decimal_pos) {
+      num_str.erase(0, first_non_zero);
+      decimal_pos -= first_non_zero;
+    } else if (first_non_zero == std::string::npos) {
+      num_str = "0";
+      decimal_pos = 1;
+    }
+  }
+
+  // Calculate precision and scale
+  numeric_struct.precision = static_cast<SQLCHAR>(num_str.length());
+  numeric_struct.scale = static_cast<SQLSCHAR>(num_str.length() - decimal_pos);
+  numeric_struct.sign = is_negative ? 0 : 1;
+
+  // Convert to binary (little-endian)
+  memset(numeric_struct.val, 0, SQL_MAX_NUMERIC_LEN);
+  std::string bigint_str = num_str;  // Full number without decimal
+  uint64_t value = 0;
+
+  try {
+    value = std::stoull(bigint_str);
+  } catch (...) {
+    throw std::runtime_error("Numeric value out of range");
+  }
+
+  // Store in little-endian format
+  for (size_t i = 0; i < sizeof(value) && i < SQL_MAX_NUMERIC_LEN; i++) {
+    numeric_struct.val[i] = static_cast<SQLCHAR>((value >> (i * 8)) & 0xFF);
+  }
+
+  return numeric_struct;
+}
+
 SQLRETURN GetCancelErrorDetails(std::string const& api, SQLHANDLE handle,
                                 std::string& error_details) {
   if (handle == nullptr) {
