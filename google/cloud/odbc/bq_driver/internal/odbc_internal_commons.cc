@@ -340,6 +340,14 @@ StatusRecord ConvertStringToIntervalStruct(
   return StatusRecord::Ok();
 }
 
+StatusRecordOr<std::string> FormatDateToString(SQL_DATE_STRUCT date) {
+  std::ostringstream oss;
+  oss << std::setfill('0');
+  oss << std::setw(4) << date.year << "-" << std::setw(2) << date.month << "-"
+      << std::setw(2) << date.day;
+  return oss.str();
+}
+
 std::string FormatIntervalToString(const SQL_INTERVAL_STRUCT interval) {
   char buffer[80];
   switch (interval.interval_type) {
