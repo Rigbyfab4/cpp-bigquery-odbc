@@ -925,4 +925,64 @@ bool CheckTargetType(int c_type) {
   }
 }
 
+StatusRecordOr<std::vector<ConnectionProperty>> ParseQueryProperties(
+    std::string const& input) {
+  std::string temp_input = input;
+  Trim(temp_input);
+
+  if (temp_input.empty()) {
+    return std::vector<ConnectionProperty>{};
+  }
+  std::vector<ConnectionProperty> properties;
+  std::vector<std::string> splits = Split(input, ",");
+
+  for (std::string& property_str : splits) {
+    Trim(property_str);
+
+    if (property_str.empty()) {
+      return StatusRecord{SQLStates::k_HY000(),
+                          "Malformed list of key-value pairs. Property not "
+                          "separated by an equals sign (=)."};
+    }
+    if (absl::StrContains(property_str, ';')) {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "Malformed list of key-value pairs. Multiple properties not "
+          "separated by a comma (,)."};
+    }
+
+    std::vector<std::string> property_splits = Split(property_str, "=", 2);
+    if (property_splits.size() != 2) {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "Invalid Query Property Format: Missing '=' or value"};
+    }
+
+    std::string key = property_splits[0];
+    std::string value = property_splits[1];
+    Trim(key);
+    Trim(value);
+
+    if (key.empty()) {
+      return StatusRecord{SQLStates::k_HY000(),
+                          "Invalid Query Property Format: Empty key name"};
+    }
+    if (value.empty()) {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "Invalid Query Property Format: Empty value for key '" + key + "'"};
+    }
+    if (absl::StrContains(value, '=')) {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "Invalid Query Property Format: Value for key '" + key +
+              "' contains an unexpected '='. Values cannot contain '='."};
+    }
+
+    properties.emplace_back(ConnectionProperty{key, value});
+  }
+
+  return properties;
+}
+
 }  // namespace google::cloud::odbc_bq_driver_internal
