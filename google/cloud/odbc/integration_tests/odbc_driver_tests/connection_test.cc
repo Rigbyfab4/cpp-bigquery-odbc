@@ -1328,6 +1328,65 @@ TEST(ConnectionTest, DISABLED_SQLGetConnectAttr) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(ConnectionTest, validate_columnSize_with_DefaultStringColumnLength) {
+  SQLRETURN status;
+
+  // Setup connection handle
+  auto conn = std::make_shared<ODBCHandles>();
+  std::string connectionstring =
+      kDefaultConnectionString + "; DefaultStringColumnLength=4;";
+
+  // Connect
+  EXPECT_EQ(Connect(connectionstring, conn), SQL_SUCCESS);
+
+  // Execute SELECT with a literal
+  status = SQLExecDirect(conn->hstmt,
+                         (SQLCHAR*)"SELECT 'Hello, BigQuery!' AS my_string, ['Hello', 'BigQuery', '!'] AS my_array, 123 AS my_int",
+                         SQL_NTS);
+  CheckError(status, "SQLExecDirect(ASSERT)", conn);
+
+  // Describe the column
+  SQLCHAR column_name[256];
+  SQLSMALLINT name_length = 0;
+  SQLSMALLINT data_type = 0;
+  SQLULEN column_size = 0;
+  SQLSMALLINT decimal_digits = 0;
+  SQLSMALLINT nullable = 0;
+
+  status = SQLDescribeCol(conn->hstmt,
+                          1,  // Column index 1
+                          column_name, sizeof(column_name), &name_length,
+                          &data_type, &column_size, &decimal_digits, &nullable);
+  CheckError(status, "SQLDescribeCol(ASSERT)", conn);
+
+  EXPECT_STREQ((char const*)column_name, "my_string");
+  EXPECT_TRUE(data_type == SQL_VARCHAR || data_type == SQL_CHAR);
+  EXPECT_EQ(column_size, 4);
+
+  status = SQLDescribeCol(conn->hstmt,
+                          2,  // Column index 2
+                          column_name, sizeof(column_name), &name_length,
+                          &data_type, &column_size, &decimal_digits, &nullable);
+  CheckError(status, "SQLDescribeCol(ASSERT)", conn);
+
+  EXPECT_STREQ((char const*)column_name, "my_array");
+  EXPECT_TRUE(data_type == SQL_VARCHAR || data_type == SQL_CHAR);
+  EXPECT_EQ(column_size, 4);
+
+  status = SQLDescribeCol(conn->hstmt,
+                          3,  // Column index 1
+                          column_name, sizeof(column_name), &name_length,
+                          &data_type, &column_size, &decimal_digits, &nullable);
+  CheckError(status, "SQLDescribeCol(ASSERT)", conn);
+
+  EXPECT_STREQ((char const*)column_name, "my_int");
+  EXPECT_FALSE(data_type == SQL_VARCHAR || data_type == SQL_CHAR);
+  EXPECT_EQ(column_size, 19);
+
+  // Clean up
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 #ifndef _WIN32
 TEST(SQLDisconnect, CheckAllHandlesAreFreed) {
   auto conn = std::make_shared<ODBCHandles>();

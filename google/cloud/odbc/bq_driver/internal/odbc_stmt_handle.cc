@@ -254,6 +254,7 @@ StatusRecord StatementHandle::PrepareQuery(std::string const& query) {
 
   DescriptorHandle& desc_handle =
       this->GetDescriptorHandle(DescriptorType::kIRD);
+  desc_handle.SetConnectionHandle(&conn_handle);
   desc_handle.ClearDescriptorRecordsMap();
   StatusRecord ird_response = PopulateIrd(desc_handle, schema, table_fields);
   if (!ird_response.ok()) {
@@ -289,6 +290,7 @@ StatusRecord StatementHandle::PopulateIrd(DescriptorHandle& descriptor_handle,
   std::string const nullable = "NULLABLE";
   std::string const nullable_required = "REQUIRED";
   std::string const array_field = "REPEATED";
+  ConnectionHandle& conn_handle = *(descriptor_handle.GetConnectionHandle());
   for (int i = 0; i < schema.fields.size(); ++i) {
     auto const& res = schema.fields[i];
     DescriptorRecord descriptor_record;
@@ -309,6 +311,11 @@ StatusRecord StatementHandle::PopulateIrd(DescriptorHandle& descriptor_handle,
     TypeInfoRow type_info;
     GetTypeInfoFromBQType(type_status_record.GetValue(), res.type,
                           res.mode == array_field, type_info);
+
+    if (type_status_record.GetValue() == SQL_VARCHAR ||
+        type_status_record.GetValue() == SQL_VARBINARY) {
+      type_info.col_size = conn_handle.GetDsn().default_string_column_length;
+    }
 
     descriptor_record.base_column_name = res.name;
     descriptor_record.base_table_name = table_fields.table_id;
