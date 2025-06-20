@@ -54,6 +54,24 @@ using google::cloud::odbc_internal::StatusRecordOr;
 using ::google::cloud::serviceusage_v1::MakeServiceUsageConnection;
 using ::google::cloud::serviceusage_v1::ServiceUsageClient;
 
+namespace {
+
+google::cloud::ProxyConfig CreateProxyConfig(std::string hostname,
+                                             std::string port,
+                                             std::string username,
+                                             std::string password,
+                                             std::string scheme = "http") {
+  google::cloud::ProxyConfig proxy_config;
+  proxy_config.set_hostname(std::move(hostname))
+      .set_port(std::move(port))
+      .set_username(std::move(username))
+      .set_password(std::move(password))
+      .set_scheme(std::move(scheme));
+  return proxy_config;
+}
+
+}  // namespace
+
 StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
     Oauth const& oauth) {
   StatusRecordOr<std::shared_ptr<Credentials>> credentials =
@@ -70,6 +88,14 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
   if (!pem_file.empty()) {
     options.set<google::cloud::CARootsFilePathOption>(pem_file);
   }
+
+  options.set<google::cloud::ProxyOption>(
+      ProxyConfig()
+          .set_hostname(oauth.proxy_options.hostname)
+          .set_port(oauth.proxy_options.port)
+          .set_username(oauth.proxy_options.username)
+          .set_password(oauth.proxy_options.password)
+          .set_scheme("http"));
 
   DatasetClient dataset_client = DatasetClient(MakeDatasetConnection(options));
   JobClient job_client = JobClient(MakeBigQueryJobConnection(options));

@@ -87,6 +87,9 @@ struct Dsn {
   // The URI used to generate authentication tokens. Defaults to
   // https://sts.googleapis.com/v1/token.
   std::string byoid_token_url;
+
+  // Proxy options fields
+  google::cloud::odbc_bigquery_client_interface::ProxyOptions proxy_options;
 };
 
 class EnvironmentHandle;
