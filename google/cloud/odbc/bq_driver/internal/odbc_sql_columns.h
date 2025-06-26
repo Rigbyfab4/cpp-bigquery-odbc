@@ -30,7 +30,7 @@ namespace google::cloud::odbc_bq_driver_internal {
 // https://docs.google.com/document/d/1THL56A-lfcsW0XlZcrk1aMzl8sb56Oa0gszN7V_koXE/edit?pli=1&tab=t.0#bookmark=id.hzhd12b54a5r
 static std::map<std::string, ColumnSchema> const kODBCColumnsMap = {
     {"TABLE_CAT", ColumnSchema{0, BQDataType::kString}},
-    {"TABLE_SCHEMA", ColumnSchema{1, BQDataType::kString}},
+    {"TABLE_SCHEM", ColumnSchema{1, BQDataType::kString}},
     {"TABLE_NAME", ColumnSchema{2, BQDataType::kString}},
     {"COLUMN_NAME", ColumnSchema{3, BQDataType::kString}},
     {"DATA_TYPE", ColumnSchema{4, BQDataType::kInt64}},

@@ -799,6 +799,49 @@ StatusRecordOr<DSResults> FetchBQData(
   return results;
 }
 
+odbc_internal::StatusRecordOr<TableSchema> BuildTableSchemaFromRowSchema(
+    RowSchema& row_schema,
+    std::map<std::string, ColumnSchema> const& metadata_schema) {
+  if (row_schema.empty()) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "row schema should not be less than 0"};
+  }
+  // we need to sort row_schema by col_index in ascending order.
+  std::sort(row_schema.begin(), row_schema.end(),
+            [](ColumnSchema const& a, ColumnSchema const& b) {
+              return a.col_index < b.col_index;
+            });
+
+  TableSchema schema;
+  for (auto& row : row_schema) {
+    TableFieldSchema field;
+    // Find the matching column name in metadata_schema
+    bool is_col_found = false;
+    for (auto const& [col_name, col_schema] : metadata_schema) {
+      if (col_schema.col_index == row.col_index) {
+        field.name = col_name;
+        is_col_found = true;
+        break;
+      }
+    }
+
+    if (!is_col_found) {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "No matching col_index found: " + std::to_string(row.col_index)};
+    }
+    auto result = GetDataTypeInStr(row.col_type);
+    if (!result) {
+      return StatusRecord{SQLStates::k_HY000(),
+                          result.GetStatusRecord().message};
+    }
+    field.type = *result;
+    field.mode = row.is_mode_repeated ? "REPEATED" : "NULLABLE";
+    schema.fields.push_back(std::move(field));
+  }
+  return schema;
+}
+
 StatusRecordOr<BQDataType> ConvertDSType(std::string const& type) {
   if (type == "STRING") {
     return BQDataType::kString;
@@ -1006,6 +1049,51 @@ ConstructNamedParametersPostQueryRequest(
   post_request.set_project_id(catalog);
   post_request.set_query_request(query_request);
   return post_request;
+}
+
+odbc_internal::StatusRecordOr<std::string> GetDataTypeInStr(BQDataType type) {
+  switch (type) {
+    case BQDataType::kArray:
+      return std::string("ARRAY");
+    case BQDataType::kBigNumeric:
+      return std::string("BIGNUMERIC");
+    case BQDataType::kNumeric:
+      return std::string("NUMERIC");
+    case BQDataType::kBytes:
+      return std::string("BYTES");
+    case BQDataType::kInt64:
+      return std::string("INT64");
+    case BQDataType::kDate:
+      return std::string("DATE");
+    case BQDataType::kFloat64:
+      return std::string("FLOAT64");
+    case BQDataType::kInterval:
+      return std::string("INTERVAL");
+    case BQDataType::kGeography:
+      return std::string("GEOGRAPHY");
+    case BQDataType::kDatetime:
+      return std::string("DATETIME");
+    case BQDataType::kTime:
+      return std::string("TIME");
+    case BQDataType::kBool:
+      return std::string("BOOL");
+    case BQDataType::kString:
+      return std::string("STRING");
+    case BQDataType::kRange:
+      return std::string("RANGE");
+    case BQDataType::kStruct:
+      return std::string("STRUCT");
+    case BQDataType::kJson:
+      return std::string("JSON");
+    case BQDataType::kTimeStamp:
+      return std::string("TIMESTAMP");
+    case BQDataType::kNull:
+      return std::string("NULL");
+    default:
+      std::string err_msg = "Invalid BQ Data Type: ";
+      err_msg.append(std::to_string(type));
+      return StatusRecord{SQLStates::k_HY000(), err_msg};
+  }
 }
 
 odbc_internal::StatusRecordOr<SQLSMALLINT> GetSQLDataType(

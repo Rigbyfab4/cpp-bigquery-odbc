@@ -22,9 +22,17 @@
 namespace google::cloud::odbc_bq_driver_internal {
 
 std::vector<std::string> const kAllTableTypes = {
-    "BASE TABLE", "VIEW", "EXTERNAL", "MATERIALIZED VIEW", "SNAPSHOT"};
+    "TABLE", "VIEW", "EXTERNAL", "MATERIALIZED VIEW", "SNAPSHOT"};
 
 std::string const kMatchAll = "%";
+
+static std::map<std::string, ColumnSchema> const kSchema = {
+    {"TABLE_CAT", ColumnSchema{0, BQDataType::kString}},
+    {"TABLE_SCHEM", ColumnSchema{1, BQDataType::kString}},
+    {"TABLE_NAME", ColumnSchema{2, BQDataType::kString}},
+    {"TABLE_TYPE", ColumnSchema{3, BQDataType::kString}},
+    {"REMARKS", ColumnSchema{4, BQDataType::kString}},
+};
 
 struct FilteredTableResponse {
   std::string table_name;
