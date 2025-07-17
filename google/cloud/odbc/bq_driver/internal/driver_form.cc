@@ -114,12 +114,6 @@ StatusRecord DriverForm::TestODBCConnection(
     return StatusRecord{SQLStates::k_HY000(), "The provided section is null."};
   }
 
-  if (section->find(kKeyFilePath) == section->end() ||
-      (*section)[kKeyFilePath].empty()) {
-    return StatusRecord{SQLStates::k_HY000(),
-                        "KeyFilePath is missing or empty."};
-  }
-
   if (section->find(kOAuthMechanism) == section->end() ||
       (*section)[kOAuthMechanism].empty()) {
     return StatusRecord{SQLStates::k_HY000(),
@@ -128,17 +122,19 @@ StatusRecord DriverForm::TestODBCConnection(
 
   std::string oauth_mechanism = (*section)[kOAuthMechanism];
   std::string oauth_value;
+
   if (oauth_mechanism == "Service Authentication") {
+    if (section->find(kKeyFilePath) == section->end() ||
+        (*section)[kKeyFilePath].empty()) {
+      return StatusRecord{SQLStates::k_HY000(),
+                          "KeyFilePath is missing or empty."};
+    }
     oauth_value = std::to_string(
         static_cast<int>(OauthMechanism::kServiceAndUserAccount));
   } else if (oauth_mechanism == "Application Default Credentials") {
     oauth_value =
         std::to_string(static_cast<int>(OauthMechanism::kApplicationDefault));
-    // TODO(b/414877049): Remove the error code once Application Default
-    // Credentials OAuth Mechanism is implemented.
-    return StatusRecord{SQLStates::k_HY000(),
-                        "OAuthMechanism 'Application Default Credentials' not "
-                        "supported at the moment."};
+    (*section)[kKeyFilePath] = "";
   } else {
     return StatusRecord{SQLStates::k_HY000(),
                         "OAuthMechanism must be 'Service Authentication' or "
@@ -176,28 +172,28 @@ bool containsAlphanumeric(std::string const& str) {
 StatusRecordOr<std::string> DriverForm::GetCatalogAndDataset(
     std::string const& action, std::string const& key_file_path,
     std::string const& oauth_token, std::string const& catalog_name) {
-  google::cloud::odbc_bigquery_client_interface::OauthMechanism oauth_value;
+  OauthMechanism oauth_value;
+  Oauth oauth_struct;
 
-  // TODO(b/383592420): Add call to user auth once its tested
   if (oauth_token == "Service Authentication") {
-    oauth_value = google::cloud::odbc_bigquery_client_interface::
-        OauthMechanism::kServiceAndUserAccount;
+    oauth_value = OauthMechanism::kServiceAndUserAccount;
+    oauth_struct.credentials_file_path = key_file_path;
   } else if (oauth_token == "Application Default Credentials") {
-    oauth_value = google::cloud::odbc_bigquery_client_interface::
-        OauthMechanism::kApplicationDefault;
-    // TODO(b/414877049): Remove the error code once Application Default
-    // Credentials OAuth Mechanism is done.
-    return StatusRecord{SQLStates::k_HY000(),
-                        "OAuthMechanism 'Application Default Credentials' not "
-                        "supported at the moment."};
+    oauth_value = OauthMechanism::kApplicationDefault;
+    if (std::getenv("GOOGLE_APPLICATION_CREDENTIALS") == nullptr) {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "Environment variable GOOGLE_APPLICATION_CREDENTIALS is not set. "
+          "Please set it before using Application Default Credentials."};
+    }
   } else {
-    oauth_value = google::cloud::odbc_bigquery_client_interface::
-        OauthMechanism::kExternalUser;
+    oauth_value = OauthMechanism::kExternalUser;
+    oauth_struct.credentials_file_path = key_file_path;
   }
 
+  oauth_struct.auth_mechanism = oauth_value;
   SQLULEN metadata_id = 0;
-  auto bq_client_ptr =
-      ODBCBQClient::CreateBQClient({oauth_value, key_file_path});
+  auto bq_client_ptr = ODBCBQClient::CreateBQClient(oauth_struct);
   if (!bq_client_ptr) {
     return bq_client_ptr.GetStatusRecord();
   }
@@ -633,9 +629,13 @@ void EvaluateFields(HWND hwnd) {
                 sizeof(auth_buffer));
   GetWindowText(GetDlgItem(hwnd, kIdcCatlogBOX), catalog_buffer,
                 sizeof(catalog_buffer));
-  BOOL enable = dsn_buffer[0] != '\0' && key_buffer[0] != '\0' &&
-                auth_buffer[0] != '\0' && catalog_buffer[0] != '\0';
+  BOOL enable = dsn_buffer[0] != '\0' && auth_buffer[0] != '\0' &&
+                catalog_buffer[0] != '\0';
 
+  bool is_adc = (strcmp(auth_buffer, "Application Default Credentials") == 0);
+  if (strcmp(auth_buffer, "Service Authentication") == 0) {
+    enable = enable && (key_buffer[0] != '\0');
+  }
   EnableWindow(GetDlgItem(hwnd, kIdcButtonOk), enable);
   EnableWindow(GetDlgItem(hwnd, kIdcButtonTest), enable);
 }
@@ -676,29 +676,30 @@ StatusRecord HandleDropdown(HWND hwnd, int control_id, char const* field_type,
                             char const* key_buffer, char const* auth_buffer,
                             char const* catalog_buffer = "") {
   HWND h_control = GetDlgItem(hwnd, control_id);
-  if (key_buffer[0] && auth_buffer[0] &&
-      (strcmp(field_type, "Catalog") == 0 || catalog_buffer[0])) {
-    PopulateDropdown(h_control, field_type, key_buffer, auth_buffer,
+
+  bool is_adc = (strcmp(auth_buffer, "Application Default Credentials") == 0);
+  bool has_auth = auth_buffer[0] != '\0';
+  bool has_key = key_buffer[0] != '\0';
+  bool has_catalog =
+      (strcmp(field_type, "Catalog") == 0 || catalog_buffer[0] != '\0');
+
+  if (has_auth && has_catalog && (is_adc || has_key)) {
+    char const* key_to_use = is_adc ? "" : key_buffer;
+    PopulateDropdown(h_control, field_type, key_to_use, auth_buffer,
                      catalog_buffer);
     return StatusRecord::Ok();
   }
 
-  if (!key_buffer[0] &&
-      strcmp(auth_buffer, "Application Default Credentials") == 0) {
-    // TODO(b/414877049): Remove the error code once Application Default
-    // Credentials OAuth Mechanism is done.
-    return StatusRecord{SQLStates::k_HY000(),
-                        "OAuthMechanism 'Application Default Credentials' not "
-                        "supported at the moment"};
-  }
-
-  if (!auth_buffer[0]) {
+  if (!has_auth) {
     return StatusRecord{SQLStates::k_HY000(), "OAuthMechanism not selected"};
   }
 
-  if (!key_buffer[0]) {
+  if (!has_key && !is_adc) {
     return StatusRecord{SQLStates::k_HY000(), "KeyFile Path not entered"};
   }
+
+  return StatusRecord{SQLStates::k_HY000(),
+                      "Unknown error during dropdown handling."};
 }
 
 void CheckAuthentication(HWND hwnd) {

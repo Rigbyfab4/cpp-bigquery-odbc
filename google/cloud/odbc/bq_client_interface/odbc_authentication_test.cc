@@ -39,18 +39,16 @@ using ::testing::HasSubstr;
 using ::testing::Return;
 using ::testing::StrEq;
 
-TEST(ServiceAuthentication, ServiceAccountAuthentication) {
-  auto credentials = CreateCredentials(
-      {OauthMechanism::kServiceAndUserAccount, "path-to-the-file"});
+TEST(ServiceAuthentication, InvalidPath_FileDoesNotExist) {
+  std::string invalid_path = "non_existing_key.json";
 
-  ASSERT_STATUS_RECORD_OK(credentials);
-}
+  auto credentials =
+      CreateCredentials({OauthMechanism::kServiceAndUserAccount, invalid_path});
 
-TEST(ServiceAuthentication, UserAccountAuthentication) {
-  auto credentials = CreateCredentials(
-      {OauthMechanism::kServiceAndUserAccount, "path-to-the-file"});
-
-  ASSERT_STATUS_RECORD_OK(credentials);
+  EXPECT_THAT(credentials,
+              StatusRecordIs(odbc_internal::SQLStates::k_HY000(),
+                             testing::HasSubstr(
+                                 "Could not open Service Account key file")));
 }
 
 TEST(DefaultApplicationAuthentication, DefaultApplicationAuthentication) {
