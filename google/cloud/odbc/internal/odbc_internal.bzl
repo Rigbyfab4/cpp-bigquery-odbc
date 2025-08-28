@@ -21,6 +21,7 @@ odbc_internal_hdrs = [
     "odbc_includes.h",
     "sql_state_constants.h",
     "status_record_or.h",
+    "version.h",
 ]
 
 odbc_internal_srcs = [
