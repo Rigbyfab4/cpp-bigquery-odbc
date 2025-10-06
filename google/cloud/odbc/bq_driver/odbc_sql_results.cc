@@ -187,6 +187,8 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
   ResultSet const& result_set = handle.GetResultSet();
   result_set.cursor++;
   result_set.translated_data.row_offset = 0;
+  result_set.translated_data.data.clear();
+  result_set.translated_data.last_target_c_type = 0;
   if (result_set.cursor >= result_set.rows.size()) {
     LOG(INFO) << "SQLFetch:: cursor is greater then result set size";
     return SQL_NO_DATA;
@@ -722,19 +724,28 @@ SQLRETURN SQLGetDataInternal(SQLHSTMT statement_handle,
   // passed here are different
   if (result_set.translated_data.last_column_index != column_number) {
     result_set.translated_data.row_offset = 0;
-    result_set.translated_data.last_column_index = column_number;
   }
   result_set.translated_data.last_column_index = column_number;
 
   SQLLEN offset = result_set.translated_data.row_offset;
 
-  // Translating complete data in case of less buffer length when SQLGetData
-  // called for the first time
-  //  and storing it in result_set.translated_data.data in case of
-  // variable length data type i.e. string and binary followed by copying into
-  // target_value in parts of buffer length.
+  // Calculate the usable buffer length based on the C data type.
+  // For wide characters (SQL_C_WCHAR), convert byte length to character count.
+  // For other types, use the buffer length as-is (in bytes).
+
+  // If this is the first call to SQLGetData (offset == 0) and the data size
+  // exceeds the target buffer length for variable-length types (e.g., STRING,
+  // BYTES, JSON, STRUCT, ARRAY):
+  // 1. Translate and store the full data into result_set.translated_data.data.
+  // 2. This allows returning the data in chunks across multiple SQLGetData
+  // calls.
+  // 3. If the data fits or is not a variable-length type, return it directly in
+  // the caller’s buffer.
+  SQLLEN target_buff_len = (target_c_type == SQL_C_WCHAR)
+                               ? (target_value_buffer_len / sizeof(SQLWCHAR))
+                               : target_value_buffer_len;
   if (offset == 0) {
-    if ((ds_val.size() > target_value_buffer_len) &&
+    if ((ds_val.size() > target_buff_len) &&
         (bq_data_type == BQDataType::kString ||
          bq_data_type == BQDataType::kBytes ||
          bq_data_type == BQDataType::kJson ||
@@ -742,17 +753,24 @@ SQLRETURN SQLGetDataInternal(SQLHSTMT statement_handle,
          bq_data_type == BQDataType::kArray)) {
       result_set.translated_data.last_target_c_type = target_c_type;
 
-      // Use reserve to prevent excessive reallocations
-      if (result_set.translated_data.data.capacity() < ds_val.size() + 1) {
-        result_set.translated_data.data.reserve(ds_val.size() + 1);
+      size_t buffer_size = 0;
+      if (target_c_type == SQL_C_WCHAR) {
+        buffer_size = (ds_val.size() + 1) * sizeof(SQLWCHAR);
+      } else {
+        buffer_size = ds_val.size() + 1;
       }
-      result_set.translated_data.data.resize(ds_val.size() + 1);
+
+      // Use reserve to prevent excessive reallocations
+      if (result_set.translated_data.data.capacity() < buffer_size) {
+        result_set.translated_data.data.reserve(buffer_size);
+      }
+      result_set.translated_data.data.resize(buffer_size);
 
       SQLLEN target_value_len = 0;
 
       status_record = GetColumnData(ds_val, bq_data_type, target_c_type,
                                     result_set.translated_data.data.data(),
-                                    ds_val.size() + 1, &target_value_len);
+                                    buffer_size, &target_value_len);
       if (target_value_string_len) {
         *target_value_string_len = target_value_len;
       }
@@ -762,7 +780,7 @@ SQLRETURN SQLGetDataInternal(SQLHSTMT statement_handle,
         result_set.translated_data.data.resize(target_value_len);
       }
 
-      std::memset(target_value, '\0', target_value_buffer_len);
+      std::memset(target_value, '\0', target_buff_len);
     } else {
       status_record =
           GetColumnData(ds_val, bq_data_type, target_c_type, target_value,
@@ -791,18 +809,32 @@ SQLRETURN SQLGetDataInternal(SQLHSTMT statement_handle,
       std::memcpy(target_value, result_set.translated_data.data.data() + offset,
                   target_value_buffer_len);
       result_set.translated_data.row_offset = offset + target_value_buffer_len;
+    } else if (target_c_type == SQL_C_WCHAR) {
+      auto data_size = result_set.translated_data.data.size();
+      auto max_buff_chars = target_value_buffer_len / sizeof(SQLWCHAR);
+      auto offset_chars = offset / sizeof(SQLWCHAR);
+      auto remain_chars =
+          (data_size > offset_chars) ? (data_size - offset_chars) : 0;
+      auto copy_chars = (remain_chars >= max_buff_chars) ? (max_buff_chars - 1)
+                                                         : remain_chars;
+
+      std::memcpy(target_value, result_set.translated_data.data.data() + offset,
+                  copy_chars * sizeof(SQLWCHAR));
+      reinterpret_cast<SQLWCHAR*>(target_value)[copy_chars] = 0;
+      result_set.translated_data.row_offset =
+          offset + (copy_chars * sizeof(SQLWCHAR));
     } else {
       std::memcpy(target_value, result_set.translated_data.data.data() + offset,
                   target_value_buffer_len - 1);
       result_set.translated_data.row_offset =
           offset + target_value_buffer_len - 1;
     }
+
     status_record =
         StatusRecord{SQLStates::k_01004(), "String data, right truncated"};
+    LOG(WARNING) << "SQLGetData:: " << status_record.message;
     if (target_value_string_len) {
-      LOG(WARNING) << "SQLGetData:: " << status_record.message;
-      LOG(INFO) << "SQLGetData:: " << status_record.message;
-      *target_value_string_len = SQL_SUCCESS_WITH_INFO;
+      *target_value_string_len = SQL_NO_TOTAL;
     }
     return LogAndReturnCode(stmt_handle, status_record);
   }
@@ -813,6 +845,9 @@ SQLRETURN SQLGetDataInternal(SQLHSTMT statement_handle,
     } else {
       std::memcpy(target_value, result_set.translated_data.data.data() + offset,
                   result_set.translated_data.data.size() - offset + 1);
+    }
+    if (target_value_string_len) {
+      *target_value_string_len = result_set.translated_data.data.size();
     }
     return LogAndReturnCode(stmt_handle, status_record);
   }
