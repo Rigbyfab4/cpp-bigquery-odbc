@@ -23,6 +23,12 @@
 #include "google/cloud/odbc/internal/sql_state_constants.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "absl/types/variant.h"
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+#include <arrow/api.h>
+#include <arrow/io/memory.h>
+#include <arrow/ipc/api.h>
+#include <arrow/ipc/reader.h>
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 #include <chrono>
 #include <cstring>
 #include <sstream>
@@ -102,7 +108,7 @@ enum BQDataType {
 struct ColumnSchema {
   int col_index;
   BQDataType col_type;
-  bool is_mode_repeated;
+  bool is_mode_repeated = false;
 };
 bool operator==(ColumnSchema const& lhs, ColumnSchema const& rhs);
 bool operator>(ColumnSchema const& lhs, ColumnSchema const& rhs);
@@ -141,6 +147,10 @@ struct ResultSet {
   mutable int cursor{-1};  // points before the next row to fetch
   mutable TranslatedData translated_data;
 };
+
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+using RowSchemaRead = std::vector<arrow::Type>;
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 
 DSValue const kNullValue{0};
 
@@ -390,7 +400,8 @@ inline void GetSinglePrecisionInterval(
 struct DSResults {
   absl::variant<absl::monostate,
                 google::cloud::bigquery_v2_minimal_internal::PostQueryResults,
-                google::cloud::bigquery_v2_minimal_internal::GetQueryResults>
+                google::cloud::bigquery_v2_minimal_internal::GetQueryResults,
+                google::cloud::odbc_bq_driver_internal::ResultSet>
       data_source_results;
   std::int64_t num_dml_affected_rows = 0;
   // We need optional here because:

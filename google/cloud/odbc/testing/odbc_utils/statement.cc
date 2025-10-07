@@ -219,8 +219,11 @@ RowWiseResults Table::Fetch(std::shared_ptr<ODBCHandles> const& conn,
   }
   SQLRETURN status;
 
-  status = ExecWithPrepare(conn, query);
-  CheckError(status, "ExecWithPrepare", conn);
+  status = SQLExecDirect(
+      conn->hstmt,
+      const_cast<SQLCHAR*>(reinterpret_cast<const SQLCHAR*>(query.c_str())),
+      SQL_NTS);
+  CheckError(status, "SQLExecDirect", conn);
 
   SQLSMALLINT num_cols;
   status = SQLNumResultCols(conn->hstmt, &num_cols);  // No ANSI version.
