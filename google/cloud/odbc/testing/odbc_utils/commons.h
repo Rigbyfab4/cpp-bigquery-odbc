@@ -321,6 +321,15 @@ inline bool isNumeric(std::string const& str) {
   }
 }
 
+// Converts a timestamp string from "YYYY-MM-DD HH:MM:SS" format
+// to datetime format "YYYY-MM-DDTHH:MM:SS" by replacing the first space with
+// 'T'.
+inline std::string FormatToGoogleDatetimeStr(std::string const& val) {
+  size_t pos = val.find(' ');
+  if (pos == std::string::npos) return val;  // no space found
+  return val.substr(0, pos) + 'T' + val.substr(pos + 1);
+}
+
 inline SQLSMALLINT NumSqlChar(const SQLCHAR* x) {
   return static_cast<SQLSMALLINT>(
       std::strlen(reinterpret_cast<char const*>(x)));
@@ -339,6 +348,61 @@ inline std::wstring ToWStr(std::string const& str) {
 inline std::string WStrToStr(std::wstring const& wstr) {
   std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
   return converter.to_bytes(wstr);
+}
+
+inline bool IsHex(std::string const& str) {
+  if (str.empty() || str.size() % 2 != 0) return false;
+
+  return std::all_of(str.begin(), str.end(),
+                     [](unsigned char c) { return std::isxdigit(c); });
+}
+
+inline bool IsBase64(std::string const& str) {
+  if (IsHex(str)) return false;
+  if (str.empty() || str.size() % 4 != 0) return false;
+
+  return std::all_of(str.begin(), str.end(), [](unsigned char c) {
+    return (std::isalnum(c) != 0) || c == '+' || c == '/' || c == '=';
+  });
+}
+
+inline std::string HexToBytes(std::string const& hex) {
+  if (hex.size() % 2 != 0)
+    throw std::invalid_argument("Invalid hex string length");
+
+  std::string bytes;
+  bytes.reserve(hex.size() / 2);
+
+  for (size_t i = 0; i < hex.size(); i += 2) {
+    unsigned int byte;
+    std::stringstream ss;
+    ss << std::hex << hex.substr(i, 2);
+    ss >> byte;
+    bytes.push_back(static_cast<char>(byte));
+  }
+  return bytes;
+}
+
+inline std::string Base64Decode(std::string const& encoded) {
+  std::string decoded;
+  static std::string const kBase64Chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz"
+      "0123456789+/";
+  int val = 0;
+  int valb = -8;
+  for (unsigned char c : encoded) {
+    if (isspace(c)) continue;
+    if (c == '=') break;
+
+    val = (val << 6) + kBase64Chars.find(c);
+    valb += 6;
+    if (valb >= 0) {
+      decoded.push_back(static_cast<char>((val >> valb) & 0xFF));
+      valb -= 8;
+    }
+  }
+  return decoded;
 }
 
 inline SQL_INTERVAL_STRUCT MakeYearMonthInterval(SQLINTERVAL type,
@@ -534,7 +598,7 @@ class Table {
       std::vector<std::pair<std::string, std::string>> data, bool insert_index);
 
   void InsertBooleanData(std::shared_ptr<ODBCHandles> const& conn,
-                         std::vector<uint8_t> rows, bool insert_index);
+                         std::vector<std::string> rows, bool insert_index);
 
   void InsertBytesData(std::shared_ptr<ODBCHandles> const& conn,
                        std::vector<std::vector<SQLCHAR>> const& bytes_data,
@@ -585,13 +649,20 @@ std::string GetRandomString(int len);
 
 std::string getSchemaStr(Schema schema);
 
+std::string ParseAndFormatRangeTimeStamp(std::string const& input);
+
+std::string ParseAndFormatRangeDatetime(std::string const& input);
+
+SQL_TIMESTAMP_STRUCT ConvertStrToTimestampStruct(std::string const& str);
+
+std::string ParseAndFormatRange(std::string const& input,
+                                std::string const& type = "");
+
 std::string FormatDate(const SQL_DATE_STRUCT& date);
 
 std::string FormatTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
 
 std::string FormatBinaryTimeStamp(const SQL_TIMESTAMP_STRUCT& timestamp);
-
-std::string FormatTimetoString(const SQL_TIME_STRUCT& time);
 
 std::string FormatTimetoString(const SQL_TIME_STRUCT& time);
 
