@@ -183,11 +183,9 @@ StatusRecordOr<std::string> DriverForm::GetCatalogAndDataset(
     std::string const& action, std::string const& key_file_path,
     std::string const& oauth_token, std::string const& catalog_name) {
   OauthMechanism oauth_value;
-  Oauth oauth_struct;
-
   if (oauth_token == "Service Authentication") {
     oauth_value = OauthMechanism::kServiceAndUserAccount;
-    oauth_struct.credentials_file_path = key_file_path;
+
   } else if (oauth_token == "Application Default Credentials") {
     oauth_value = OauthMechanism::kApplicationDefault;
     if (std::getenv("GOOGLE_APPLICATION_CREDENTIALS") == nullptr) {
@@ -198,12 +196,11 @@ StatusRecordOr<std::string> DriverForm::GetCatalogAndDataset(
     }
   } else {
     oauth_value = OauthMechanism::kExternalUser;
-    oauth_struct.credentials_file_path = key_file_path;
   }
 
-  oauth_struct.auth_mechanism = oauth_value;
   SQLULEN metadata_id = 0;
-  auto bq_client_ptr = ODBCBQClient::CreateBQClient(oauth_struct);
+  auto bq_client_ptr =
+      ODBCBQClient::CreateBQClient({oauth_value, key_file_path});
   if (!bq_client_ptr) {
     return bq_client_ptr.GetStatusRecord();
   }
