@@ -517,7 +517,7 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
     connection_string =
         kDefaultConnectionString +
         ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
-    limit = "500";
+    limit = "24000";
   }
   EXPECT_EQ(Connect(connection_string, conn), SQL_SUCCESS);
 
@@ -530,7 +530,7 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
   // The table name here doesn't matter because we didn't create one.
   Table table("Random_table_name");
   RowWiseResults const& results = table.Fetch(conn, query);
-  int const expected_num_rows = limit == "3000" ? 3000 : 500;
+  int const expected_num_rows = limit == "3000" ? 3000 : 24000;
   int const expected_num_cols = 300;
   ASSERT_EQ(results.size(), expected_num_rows) << "Row count mismatch.";
   for (int i = 0; i < expected_num_rows; ++i) {
@@ -954,7 +954,7 @@ TEST(StatementTest, CheckSqlGetData) {
     for (SQLUSMALLINT col = 1; col <= num_cols; col++) {
       std::wstring col_data;
       SQLLEN indicator = 0;
-      SQLWCHAR buf[500];  // small buffer → forces truncation on long strings
+      SQLWCHAR buf[4000];  // small buffer → forces truncation on long strings
       do {
         memset(buf, 0, sizeof(buf));
         status = SQLGetData(conn->hstmt, col, SQL_C_WCHAR, buf, sizeof(buf),

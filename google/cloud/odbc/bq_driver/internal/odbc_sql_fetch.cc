@@ -255,13 +255,16 @@ StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
         {SQLStates::k_SQL_NO_DATA(), "SQL_ATTR_MAX_ROWS limit reached."});
   }
 #if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+  // std::cout << "SACHIN:: FetchNextResultSet:: CP1" << std::endl;
   if (stmt_handle.WasHtapiEnabled()) {
+    // std::cout << "SACHIN:: FetchNextResultSet:: CP2" << std::endl;
     StatusRecord read_status = ReadNextResultsFromStream(stmt_handle);
     if (!read_status.ok()) {
       LOG(ERROR) << "ReadNextResultsFromStream:: " << read_status.message;
       return read_status;
     }
   } else {
+    // std::cout << "SACHIN:: FetchNextResultSet:: CP3" << std::endl;
     StatusRecord read_status = FetchNextPageResultSet(stmt_handle);
     if (!read_status.ok()) {
       LOG(ERROR) << "FetchNextPageResultSet:: " << read_status.message;
@@ -269,7 +272,6 @@ StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
     }
   }
 #else
-
   StatusRecord read_status = FetchNextPageResultSet(stmt_handle);
   if (!read_status.ok()) {
     LOG(ERROR) << "FetchNextPageResultSet:: " << read_status.message;

@@ -16,6 +16,7 @@
 #define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_STMT_HANDLE_H
 
 #include "google/cloud/odbc/bq_driver/internal/data_translation.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_arrow_prefetcher.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_query.h"
@@ -135,7 +136,11 @@ class StatementHandle : public Handle {
   inline void ClearReadRowsIterator() { read_rows_iterator_.reset(); }
 
   // Returns true if read_rows_stream_ is NOT null (i.e., has a value).
-  inline bool WasHtapiEnabled() const { return read_rows_stream_.has_value(); }
+  inline bool WasHtapiEnabled() const {
+    // SACHIN:: temporary testing change
+    return true;
+    return read_rows_stream_.has_value();
+  }
 
   void SetReadRowsStream(
       StreamRange<::google::cloud::bigquery::storage::v1::ReadRowsResponse>
@@ -161,6 +166,21 @@ class StatementHandle : public Handle {
     return result_set_.arrow_schema;
   }
 #endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+
+  void SetArrowPrefetcher(std::unique_ptr<ArrowPrefetcher> prefetcher) {
+    arrow_prefetcher_ = std::move(prefetcher);
+  }
+
+  ArrowPrefetcher* GetArrowPrefetcher() {
+    return arrow_prefetcher_.get();
+  }
+
+  void ClearArrowPrefetcher() {
+    if (arrow_prefetcher_) {
+        arrow_prefetcher_->Stop();
+    }
+    arrow_prefetcher_.reset();
+  }
 
   inline void SetResultSet(ResultSet const& result_set) {
     result_set_ = result_set;
@@ -369,6 +389,7 @@ class StatementHandle : public Handle {
   std::vector<std::pair<std::string, std::string>> job_data_;
   bool is_statement_prepared_ = false;
   PagingInfo paging_info_;
+  std::unique_ptr<ArrowPrefetcher> arrow_prefetcher_;
 };
 
 }  // namespace google::cloud::odbc_bq_driver_internal

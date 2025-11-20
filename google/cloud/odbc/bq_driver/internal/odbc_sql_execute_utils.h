@@ -62,6 +62,12 @@ odbc_internal::StatusRecordOr<DSResults> ExecuteScript(
         post_query_request);
 
 #if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+
+StatusRecord ProcessRecordBatchToVector(
+    std::shared_ptr<arrow::Schema> schema,
+    std::shared_ptr<arrow::RecordBatch> record_batch, 
+    std::vector<DSRow>& out_rows);
+
 /*
  * @brief Reads the next set of rows from the stream cached in the statement
  * handle

@@ -353,6 +353,123 @@ StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> GetArrowRecordBatch(
   return record_batch;
 }
 
+StatusRecord ProcessRecordBatchToVector(
+    std::shared_ptr<arrow::Schema> schema,
+    std::shared_ptr<arrow::RecordBatch> record_batch, 
+    std::vector<DSRow>& out_rows) {
+    
+  for (std::int64_t row = 0; row < record_batch->num_rows(); ++row) {
+    DSRow rs_row;
+    for (std::int64_t col_i = 0; col_i < record_batch->num_columns(); ++col_i) {
+      // ... (Keep the exact same scalar extraction logic as original ProcessRecordBatch) ...
+      std::shared_ptr<arrow::Array> column = record_batch->column(col_i);
+      arrow::Result<std::shared_ptr<arrow::Scalar>> result = column->GetScalar(row);
+      if (!result.ok()) {
+        return StatusRecord{SQLStates::k_HY000(), "Internal Error: Unable to parse scalar"};
+      }
+      std::shared_ptr<arrow::Scalar> scalar = result.ValueOrDie();
+      
+      // ... (Keep exact switch case logic for types) ... 
+      // Logic copies directly to rs_row
+      if (!scalar->is_valid) {
+        rs_row.emplace_back(kNullValue);
+        continue;
+      }
+      std::string data = scalar->ToString();
+      DSValue row_val;
+      switch (scalar->type->id()) {
+        case arrow::Type::INT64: {
+          SQLBIGINT l_data;
+          try {
+            l_data = std::stoll(data);
+          } catch (std::exception const& ex) {
+            return StatusRecord{SQLStates::k_HY000(),
+                                "data cannot be parsed as long long"};
+          }
+          ArithmeticToDSValue<SQLBIGINT>(l_data, row_val);
+          break;
+        }
+        case arrow::Type::DOUBLE: {
+          SQLDOUBLE d_data;
+          try {
+            d_data = std::stod(data);
+          } catch (std::exception const& ex) {
+            return StatusRecord{SQLStates::k_HY000(),
+                                "data cannot be parsed as double"};
+          }
+          ArithmeticToDSValue<SQLDOUBLE>(d_data, row_val);
+          break;
+        }
+        case arrow::Type::STRING: {
+          StringToDSValue(data, row_val);
+          break;
+        }
+        case arrow::Type::BOOL: {
+          bool bool_val = false;
+          std::transform(data.begin(), data.end(), data.begin(), ::tolower);
+          if (data == "1" || data == "true" || data == "yes") {
+            bool_val = true;
+          } else if (data == "0" || data == "false" || data == "no") {
+            bool_val = false;
+          }
+          BooleanToDSValue(bool_val, row_val);
+          break;
+        }
+        case arrow::Type::TIMESTAMP: {
+          double unix_timestamp = std::stod(data);
+          SQL_TIMESTAMP_STRUCT time_struct;
+          ConvertUnixTimestampToTimestampStruct(unix_timestamp, time_struct);
+          TimestampToDSValue(time_struct, row_val);
+          break;
+        }
+        case arrow::Type::TIME64: {
+          SQL_TIME_STRUCT t_data = ConvertToTimeStruct(data);
+          TimeToDSValue(t_data, row_val);
+          break;
+        }
+        case arrow::Type::DATE32: {
+          StatusRecordOr<SQL_DATE_STRUCT> date_struct =
+              ConvertStringToDateStruct(data);
+          if (!date_struct.Ok()) {
+            return date_struct.GetStatusRecord();
+          }
+          DateToDSValue(*date_struct, row_val);
+          break;
+        }
+        case arrow::Type::BINARY: {
+          StringToDSValue(data, row_val);
+          break;
+        }
+        case arrow::Type::LIST: {
+          // TODO(sachinpro): We are returning the array as it is for now. We
+          // need to check if it makes sense to translate the binary elements
+          // inside it, as we do for the REST API response.
+          StringToDSValue(data, row_val);
+          break;
+        }
+        case arrow::Type::STRUCT: {
+          StringToDSValue(data, row_val);
+          break;
+        }
+        case arrow::Type::DECIMAL128: {
+          NumericToDSValue(data, row_val);
+          break;
+        }
+        case arrow::Type::DECIMAL256: {
+          NumericToDSValue(data, row_val);
+          break;
+        }
+        default: {
+          StringToDSValue(data, row_val);
+        }
+      }
+      rs_row.emplace_back(row_val);
+    }
+    out_rows.emplace_back(std::move(rs_row)); // Move row to output vector
+  }
+  return StatusRecord::Ok();
+}
+
 StatusRecord ProcessRecordBatch(
     std::shared_ptr<arrow::Schema> schema,
     std::shared_ptr<arrow::RecordBatch> record_batch, ResultSet& result_set) {
@@ -509,66 +626,35 @@ StatusRecord ProcessRecordBatch(
   return StatusRecord::Ok();
 }
 
+// REFACTORED: ReadNextResultsFromStream
 StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
-  std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
-      stmt_handle.GetReadRowsStream();
-  if (!optional_stream.has_value()) {
-    return StatusRecord{SQLStates::k_HY000(),
-                        "Internal Error: No HTAPI read stream found!!"};
+  ArrowPrefetcher* prefetcher = stmt_handle.GetArrowPrefetcher();
+  if (!prefetcher) {
+    return StatusRecord{SQLStates::k_HY000(), "Internal Error: Arrow prefetcher not initialized!"};
   }
-  auto& read_rows_stream = *optional_stream;
-  auto& optional_it = stmt_handle.GetReadRowsIterator();
-  if (!optional_it.has_value()) {
-    // Initialize iterator to begin() and store it.
-    auto it = read_rows_stream.begin();
-    optional_it = std::move(it);
-  } else {
-    // Advance the stored iterator.
-    // The previous call processed the element at the iterator,
-    // so we increment it to move to the next element.
-    ++(*optional_it);
-    // Irrespective of any errors, if the iterator hasn't reached the end, we
-    // want to cache it
-    stmt_handle.SetReadRowsIterator(*optional_it);
+
+  // Blocking Pop from the queue
+  PrefetchedBatch batch = prefetcher->GetNextBatch();
+
+  if (!batch.status.ok()) {
+    stmt_handle.ClearArrowPrefetcher(); // Stop on error
+    return batch.status;
   }
-  auto& it = *optional_it;
-  if (it != read_rows_stream.end()) {
-    auto const& read_row_status = *it;
-    if (!read_row_status) {
-      return StatusRecord::ConvertFrom(read_row_status.status());
-    }
-    ReadRowsResponse row = *read_row_status;
-    if (row.has_arrow_record_batch()) {
-      // The schema is coming from ResultSet cached in the statement handle.
-      // We don't want to generate the schema again for every batch since it
-      // will remain the same.
-      std::shared_ptr<arrow::Schema> schema = stmt_handle.GetArrowSchema();
-      StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> record_batch_status =
-          GetArrowRecordBatch(row.arrow_record_batch(), schema);
-      if (!record_batch_status) {
-        return record_batch_status.GetStatusRecord();
-      }
-      // We are reading ResultSet from the stmt_handle because we want to
-      // preserve the previous state like `num_rows_fetched_yet`.
-      ResultSet& result_set = stmt_handle.GetResultSet();
-      // To have SQLFetch read the rows from the start, we are setting the
-      // cursor to default.
-      result_set.cursor = -1;
-      return ProcessRecordBatch(schema, *record_batch_status, result_set);
-    } else {
-      return StatusRecord{
-          SQLStates::k_HY000(),
-          "Internal Error: cannot find arrow record batch to process!"};
-    }
-  } else {
-    stmt_handle.ClearReadRowsStream();
-    stmt_handle.ClearReadRowsIterator();
+  if (batch.is_eos) {
+    stmt_handle.ClearArrowPrefetcher();
     LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
     return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
   }
+
+  // Success: Move rows into ResultSet
+  ResultSet& result_set = stmt_handle.GetResultSet();
+  result_set.rows = std::move(batch.rows);
+  result_set.cursor = -1;
+
   return StatusRecord::Ok();
 }
 
+// REFACTORED: FetchBQDataReadArrow
 StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
                                   TableReference& table_ref) {
   std::string project_id = table_ref.project_id;
@@ -586,8 +672,7 @@ StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
 
   Options options;
   auto bq_client = stmt_handle.GetConnectionHandle()->GetClient();
-  auto read_session_status =
-      bq_client->CreateReadSession(create_read_session_request, options);
+  auto read_session_status = bq_client->CreateReadSession(create_read_session_request, options);
   if (!read_session_status) {
     return read_session_status.GetStatusRecord();
   }
@@ -603,7 +688,7 @@ StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
     if (!schema_status) {
       return schema_status.GetStatusRecord();
     }
-    // The ResultSet now contains valid `row_schema`
+    
     stmt_handle.SetResultSet(result_set);
     std::shared_ptr<arrow::Schema> schema = *schema_status;
     stmt_handle.SetArrowSchema(schema);
@@ -612,16 +697,21 @@ StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
     ReadRowsRequest read_rows_request;
     read_rows_request.set_read_stream(read_stream_name);
 
-    // Before we call ReadNextResultsFromStream, we are caching the stream
+    // Create the stream
     StreamRange<google::cloud::bigquery::storage::v1::ReadRowsResponse>
-        read_rows_stream =
-            bq_client->GetReadRowsStream(read_rows_request, options);
-    stmt_handle.SetReadRowsStream(std::move(read_rows_stream));
+        read_rows_stream = bq_client->GetReadRowsStream(read_rows_request, options);
+
+    // Initialize and Start Prefetcher
+    // We move the stream into the prefetcher immediately.
+    auto prefetcher = std::make_unique<ArrowPrefetcher>(std::move(read_rows_stream), schema);
+    prefetcher->Start();
+    stmt_handle.SetArrowPrefetcher(std::move(prefetcher));
+
+    // Fetch the first batch to populate the initial result set
     return ReadNextResultsFromStream(stmt_handle);
   }
 
-  return StatusRecord{SQLStates::k_HY000(),
-                      "No valid stream found to read results"};
+  return StatusRecord{SQLStates::k_HY000(), "No valid stream found to read results"};
 }
 
 StatusRecord CreateLargeDatasetIfNeeded(
