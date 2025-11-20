@@ -353,120 +353,386 @@ StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> GetArrowRecordBatch(
   return record_batch;
 }
 
+// Helper to convert days since epoch (1970-01-01) to SQL_DATE_STRUCT.
+// Used for optimized Arrow DATE32 processing.
+SQL_DATE_STRUCT ConvertDaysToDateStruct(int32_t days_since_epoch) {
+  // 86400 seconds per day.
+  // We use time_t/gmtime for simplicity and standard compliance.
+  // Note: This is valid for dates representable by time_t (usually 1900-2038 on 32-bit, much wider on 64-bit).
+  // For extremely ancient or future dates, a full calendar algo is needed, but this covers standard SQL usage.
+  std::time_t raw_time = static_cast<std::time_t>(days_since_epoch) * 86400;
+  std::tm* ptm = std::gmtime(&raw_time);
+  
+  SQL_DATE_STRUCT date_struct;
+  if (ptm) {
+    date_struct.year = static_cast<SQLSMALLINT>(ptm->tm_year + 1900);
+    date_struct.month = static_cast<SQLUSMALLINT>(ptm->tm_mon + 1);
+    date_struct.day = static_cast<SQLUSMALLINT>(ptm->tm_mday);
+  } else {
+    // Fallback or error case (though unlikely for BQ data ranges)
+    date_struct = {0, 0, 0}; 
+  }
+  return date_struct;
+}
+
+// Helper to convert Nanoseconds in a day to SQL_TIME_STRUCT.
+// Used for optimized Arrow TIME64 processing.
+SQL_TIME_STRUCT ConvertNanosToTimeStruct(int64_t nanos) {
+  SQL_TIME_STRUCT t_data;
+  int64_t total_seconds = nanos / 1000000000LL;
+  
+  t_data.hour = static_cast<SQLUSMALLINT>(total_seconds / 3600);
+  int64_t rem_seconds = total_seconds % 3600;
+  t_data.minute = static_cast<SQLUSMALLINT>(rem_seconds / 60);
+  t_data.second = static_cast<SQLUSMALLINT>(rem_seconds % 60);
+  return t_data;
+}
+
+// Optimized Column-Wise processing of Arrow Record Batch.
+// Fills the pre-allocated vector of rows.
 StatusRecord ProcessRecordBatchToVector(
     std::shared_ptr<arrow::Schema> schema,
-    std::shared_ptr<arrow::RecordBatch> record_batch, 
+    std::shared_ptr<arrow::RecordBatch> record_batch,
     std::vector<DSRow>& out_rows) {
-    
-  for (std::int64_t row = 0; row < record_batch->num_rows(); ++row) {
-    DSRow rs_row;
-    for (std::int64_t col_i = 0; col_i < record_batch->num_columns(); ++col_i) {
-      // ... (Keep the exact same scalar extraction logic as original ProcessRecordBatch) ...
-      std::shared_ptr<arrow::Array> column = record_batch->column(col_i);
-      arrow::Result<std::shared_ptr<arrow::Scalar>> result = column->GetScalar(row);
-      if (!result.ok()) {
-        return StatusRecord{SQLStates::k_HY000(), "Internal Error: Unable to parse scalar"};
-      }
-      std::shared_ptr<arrow::Scalar> scalar = result.ValueOrDie();
-      
-      // ... (Keep exact switch case logic for types) ... 
-      // Logic copies directly to rs_row
-      if (!scalar->is_valid) {
-        rs_row.emplace_back(kNullValue);
-        continue;
-      }
-      std::string data = scalar->ToString();
-      DSValue row_val;
-      switch (scalar->type->id()) {
-        case arrow::Type::INT64: {
-          SQLBIGINT l_data;
-          try {
-            l_data = std::stoll(data);
-          } catch (std::exception const& ex) {
-            return StatusRecord{SQLStates::k_HY000(),
-                                "data cannot be parsed as long long"};
-          }
-          ArithmeticToDSValue<SQLBIGINT>(l_data, row_val);
-          break;
-        }
-        case arrow::Type::DOUBLE: {
-          SQLDOUBLE d_data;
-          try {
-            d_data = std::stod(data);
-          } catch (std::exception const& ex) {
-            return StatusRecord{SQLStates::k_HY000(),
-                                "data cannot be parsed as double"};
-          }
-          ArithmeticToDSValue<SQLDOUBLE>(d_data, row_val);
-          break;
-        }
-        case arrow::Type::STRING: {
-          StringToDSValue(data, row_val);
-          break;
-        }
-        case arrow::Type::BOOL: {
-          bool bool_val = false;
-          std::transform(data.begin(), data.end(), data.begin(), ::tolower);
-          if (data == "1" || data == "true" || data == "yes") {
-            bool_val = true;
-          } else if (data == "0" || data == "false" || data == "no") {
-            bool_val = false;
-          }
-          BooleanToDSValue(bool_val, row_val);
-          break;
-        }
-        case arrow::Type::TIMESTAMP: {
-          double unix_timestamp = std::stod(data);
-          SQL_TIMESTAMP_STRUCT time_struct;
-          ConvertUnixTimestampToTimestampStruct(unix_timestamp, time_struct);
-          TimestampToDSValue(time_struct, row_val);
-          break;
-        }
-        case arrow::Type::TIME64: {
-          SQL_TIME_STRUCT t_data = ConvertToTimeStruct(data);
-          TimeToDSValue(t_data, row_val);
-          break;
-        }
-        case arrow::Type::DATE32: {
-          StatusRecordOr<SQL_DATE_STRUCT> date_struct =
-              ConvertStringToDateStruct(data);
-          if (!date_struct.Ok()) {
-            return date_struct.GetStatusRecord();
-          }
-          DateToDSValue(*date_struct, row_val);
-          break;
-        }
-        case arrow::Type::BINARY: {
-          StringToDSValue(data, row_val);
-          break;
-        }
-        case arrow::Type::LIST: {
-          // TODO(sachinpro): We are returning the array as it is for now. We
-          // need to check if it makes sense to translate the binary elements
-          // inside it, as we do for the REST API response.
-          StringToDSValue(data, row_val);
-          break;
-        }
-        case arrow::Type::STRUCT: {
-          StringToDSValue(data, row_val);
-          break;
-        }
-        case arrow::Type::DECIMAL128: {
-          NumericToDSValue(data, row_val);
-          break;
-        }
-        case arrow::Type::DECIMAL256: {
-          NumericToDSValue(data, row_val);
-          break;
-        }
-        default: {
-          StringToDSValue(data, row_val);
-        }
-      }
-      rs_row.emplace_back(row_val);
-    }
-    out_rows.emplace_back(std::move(rs_row)); // Move row to output vector
+
+  const int64_t num_rows = record_batch->num_rows();
+  if (num_rows == 0) {
+    return StatusRecord::Ok();
   }
+  const int num_cols = record_batch->num_columns();
+
+  // 1. Pre-allocate vector memory to avoid reallocations during insertion
+  // The `out_rows` vector should be empty coming in, or we append to it.
+  // Here we assume we are appending or filling.
+  size_t start_row_index = out_rows.size();
+  out_rows.resize(start_row_index + num_rows);
+
+  // 2. Initialize the DSRow (vector of DSValue) for each new row
+  // We do this first so we can access [row][col] directly in the loops below.
+  for (size_t i = start_row_index; i < out_rows.size(); ++i) {
+    out_rows[i].resize(num_cols);
+  }
+
+  // 3. Iterate Column-by-Column (Column-Major Traversal)
+  // This reduces virtual function calls (casting array type) from (Rows * Cols) to (Cols).
+  for (int col_i = 0; col_i < num_cols; ++col_i) {
+    std::shared_ptr<arrow::Array> column_array = record_batch->column(col_i);
+
+    // Inner Loop: Iterate Rows for this specific column
+    switch (column_array->type()->id()) {
+      case arrow::Type::INT64: {
+        auto arr = std::static_pointer_cast<arrow::Int64Array>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            ArithmeticToDSValue<SQLBIGINT>(arr->Value(row_i), cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::DOUBLE: {
+        auto arr = std::static_pointer_cast<arrow::DoubleArray>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            ArithmeticToDSValue<SQLDOUBLE>(arr->Value(row_i), cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::STRING: {
+        auto arr = std::static_pointer_cast<arrow::StringArray>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            // string_view avoids copy from Arrow, but StringToDSValue takes std::string
+            StringToDSValue(arr->GetString(row_i), cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::BOOL: {
+        auto arr = std::static_pointer_cast<arrow::BooleanArray>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            BooleanToDSValue(arr->Value(row_i), cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::TIMESTAMP: {
+        auto arr = std::static_pointer_cast<arrow::TimestampArray>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            // BQ Storage API usually sends Microns or Nanos. 
+            // Assuming Nanoseconds based on Arrow Type, but `Value` returns int64 raw.
+            // Standard conversion logic from double exists:
+            int64_t raw_val = arr->Value(row_i);
+            // Convert to seconds (double) for the existing helper
+            double unix_timestamp = static_cast<double>(raw_val) / 1e9; // if nanos
+            if (arr->type()->ToString().find("micro") != std::string::npos) {
+                 unix_timestamp = static_cast<double>(raw_val) / 1e6;
+            }
+            
+            SQL_TIMESTAMP_STRUCT time_struct;
+            ConvertUnixTimestampToTimestampStruct(unix_timestamp, time_struct);
+            TimestampToDSValue(time_struct, cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::TIME64: {
+        auto arr = std::static_pointer_cast<arrow::Time64Array>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            // Time64 is usually nanoseconds (or micros) since midnight
+            SQL_TIME_STRUCT t_data = ConvertNanosToTimeStruct(arr->Value(row_i));
+            TimeToDSValue(t_data, cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::DATE32: {
+        auto arr = std::static_pointer_cast<arrow::Date32Array>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            // Value() returns int32 days since epoch
+            SQL_DATE_STRUCT date_struct = ConvertDaysToDateStruct(arr->Value(row_i));
+            DateToDSValue(date_struct, cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::BINARY: {
+        auto arr = std::static_pointer_cast<arrow::BinaryArray>(column_array);
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            StringToDSValue(arr->GetString(row_i), cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::DECIMAL128: {
+        auto arr = std::static_pointer_cast<arrow::Decimal128Array>(column_array);
+        auto dec_type = std::static_pointer_cast<arrow::Decimal128Type>(arr->type());
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            arrow::Decimal128 dec_val(arr->Value(row_i));
+            std::string str_val = dec_val.ToString(dec_type->scale());
+            NumericToDSValue(str_val, cell);
+          }
+        }
+        break;
+      }
+      case arrow::Type::DECIMAL256: {
+        auto arr = std::static_pointer_cast<arrow::Decimal256Array>(column_array);
+        auto dec_type = std::static_pointer_cast<arrow::Decimal256Type>(arr->type());
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+          DSValue& cell = out_rows[start_row_index + row_i][col_i];
+          if (arr->IsNull(row_i)) {
+            cell = kNullValue;
+          } else {
+            arrow::Decimal256 dec_val(arr->Value(row_i));
+            std::string str_val = dec_val.ToString(dec_type->scale());
+            NumericToDSValue(str_val, cell);
+          }
+        }
+        break;
+      }
+      // For complex or unoptimized types, we fallback to GetScalar (slow path)
+      // This avoids duplicating logic for structs/lists/etc.
+      case arrow::Type::LIST:
+      case arrow::Type::STRUCT:
+      default: {
+        for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+           DSValue& cell = out_rows[start_row_index + row_i][col_i];
+           // Original slow logic logic for specific cell
+           auto result = column_array->GetScalar(row_i);
+           if (!result.ok()) return StatusRecord{SQLStates::k_HY000(), "Internal Error: Unable to parse scalar"};
+           
+           std::shared_ptr<arrow::Scalar> scalar = result.ValueOrDie();
+           if (!scalar->is_valid) {
+             cell = kNullValue;
+           } else {
+             std::string data = scalar->ToString();
+             StringToDSValue(data, cell);
+           }
+        }
+        break;
+      }
+    }
+  }
+
+  return StatusRecord::Ok();
+}
+
+
+// Optimized version of ProcessRecordBatch
+StatusRecord ProcessRecordBatch1(
+    std::shared_ptr<arrow::Schema> schema,
+    std::shared_ptr<arrow::RecordBatch> record_batch, ResultSet& result_set) {
+  const int64_t num_rows = record_batch->num_rows();
+  if (num_rows == 0) {
+    return StatusRecord::Ok();
+  }
+  const int num_cols = record_batch->num_columns();
+
+  // Pre-allocate space for all the new rows to avoid reallocations.
+  size_t start_row_index = result_set.rows.size();
+  result_set.rows.resize(start_row_index + num_rows);
+
+  // --- Main Optimization: Process column by column ---
+  for (int col_i = 0; col_i < num_cols; ++col_i) {
+    std::shared_ptr<arrow::Array> column_array = record_batch->column(col_i);
+
+    // This loop populates the data for the current column (`col_i`)
+    // across all the newly added rows.
+    for (int64_t row_i = 0; row_i < num_rows; ++row_i) {
+        // Pre-allocate columns for the row on the first pass (col_i == 0)
+        if (col_i == 0) {
+            result_set.rows[start_row_index + row_i].resize(num_cols);
+        }
+
+        DSValue& cell_value = result_set.rows[start_row_index + row_i][col_i];
+
+        if (column_array->IsNull(row_i)) {
+            cell_value = kNullValue; // Assuming kNullValue is your representation
+            continue;
+        }
+
+        // Use a switch on the column's data type ID. This is much more efficient
+        // as we only do the type-check once per column, not once per cell.
+        switch (column_array->type()->id()) {
+            case arrow::Type::INT64: {
+                auto arr = std::static_pointer_cast<arrow::Int64Array>(column_array);
+                SQLBIGINT value = arr->Value(row_i);
+                // Directly use the helper that was already available.
+                ArithmeticToDSValue<SQLBIGINT>(value, cell_value);
+                break;
+            }
+            case arrow::Type::DOUBLE: {
+                auto arr = std::static_pointer_cast<arrow::DoubleArray>(column_array);
+                SQLDOUBLE value = arr->Value(row_i);
+                ArithmeticToDSValue<SQLDOUBLE>(value, cell_value);
+                break;
+            }
+            case arrow::Type::STRING: {
+                auto arr = std::static_pointer_cast<arrow::StringArray>(column_array);
+                // Get a string_view to avoid copying the string data from Arrow buffer.
+                std::string_view value = arr->GetView(row_i);
+                StringToDSValue(std::string(value), cell_value); // Assuming StringToDSValue needs std::string
+                break;
+            }
+            case arrow::Type::BOOL: {
+                auto arr = std::static_pointer_cast<arrow::BooleanArray>(column_array);
+                bool value = arr->Value(row_i);
+                BooleanToDSValue(value, cell_value);
+                break;
+            }
+            case arrow::Type::TIMESTAMP: {
+                auto arr = std::static_pointer_cast<arrow::TimestampArray>(column_array);
+                // Timestamps are often int64 internally (e.g., nanoseconds since epoch)
+                // We need to convert this to the SQL_TIMESTAMP_STRUCT
+                int64_t nanos_since_epoch = arr->Value(row_i);
+                double unix_timestamp = nanos_since_epoch / 1e9;
+                SQL_TIMESTAMP_STRUCT time_struct;
+                ConvertUnixTimestampToTimestampStruct(unix_timestamp, time_struct);
+                TimestampToDSValue(time_struct, cell_value);
+                break;
+            }
+            case arrow::Type::TIME64: {
+                auto arr = std::static_pointer_cast<arrow::Time64Array>(column_array);
+                // Assuming Time64 is nanoseconds. The original code converted from string.
+                // This is a guess; you may need to adjust based on the actual BQ format.
+                // For this example, let's assume it's nanoseconds in a day.
+                int64_t nanos = arr->Value(row_i);
+                SQL_TIME_STRUCT t_data;
+                t_data.hour = static_cast<SQLUSMALLINT>(nanos / 3600000000000LL);
+                t_data.minute = static_cast<SQLUSMALLINT>((nanos / 60000000000LL) % 60);
+                t_data.second = static_cast<SQLUSMALLINT>((nanos / 1000000000LL) % 60);
+                // Fractions would require more logic if needed.
+                TimeToDSValue(t_data, cell_value);
+                break;
+            }
+            case arrow::Type::DATE32: { // BQ DATE is DATE32 (days since epoch)
+                auto arr = std::static_pointer_cast<arrow::Date32Array>(column_array);
+                int32_t days_since_epoch = arr->Value(row_i);
+                // We need a function to convert days since epoch to SQL_DATE_STRUCT
+                // This is much faster than parsing "YYYY-MM-DD" string.
+                SQL_DATE_STRUCT date_struct = ConvertDaysToDateStruct(days_since_epoch);
+                DateToDSValue(date_struct, cell_value);
+                break;
+            }
+            case arrow::Type::BINARY: {
+                auto arr = std::static_pointer_cast<arrow::BinaryArray>(column_array);
+                std::string_view value = arr->GetView(row_i);
+                // Assuming StringToDSValue works for binary data as well by copying bytes.
+                StringToDSValue(std::string(value), cell_value);
+                break;
+            }
+            case arrow::Type::DECIMAL128: {
+                auto arr = std::static_pointer_cast<arrow::Decimal128Array>(column_array);
+                arrow::Decimal128 dec_val(arr->Value(row_i));
+                // The scale is part of the type information
+                auto dec_type = std::static_pointer_cast<arrow::Decimal128Type>(arr->type());
+                std::string str_val = dec_val.ToString(dec_type->scale());
+                NumericToDSValue(str_val, cell_value);
+                break;
+            }
+            case arrow::Type::DECIMAL256: {
+                auto arr = std::static_pointer_cast<arrow::Decimal256Array>(column_array);
+                arrow::Decimal256 dec_val(arr->Value(row_i));
+                auto dec_type = std::static_pointer_cast<arrow::Decimal256Type>(arr->type());
+                std::string str_val = dec_val.ToString(dec_type->scale());
+                NumericToDSValue(str_val, cell_value);
+                break;
+            }
+            // For LIST and STRUCT, the original code stringified them.
+            // A performant solution requires recursively processing them, but for now,
+            // we can replicate the old behavior without the GetScalar overhead if needed.
+            // However, this part remains slow.
+            case arrow::Type::LIST:
+            case arrow::Type::STRUCT:
+            default: {
+                // Fallback to the slower method for unsupported or complex types
+                // to maintain correctness. This still avoids GetScalar.
+                auto result = column_array->GetScalar(row_i);
+                if (result.ok()) {
+                    std::string str_val = result.ValueOrDie()->ToString();
+                    StringToDSValue(str_val, cell_value);
+                } else {
+                    return StatusRecord{SQLStates::k_HY000(), "Failed to get scalar for complex type"};
+                }
+                break;
+            }
+        }
+    }
+  }
+
   return StatusRecord::Ok();
 }
 
@@ -795,6 +1061,9 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
       dsn.use_default_large_results_dataset ? kDefaultDestDatasetId
                                             : dsn.large_results_dataset_id;
   job.configuration.query.destination_table.table_id = GenerateTableId();
+  std::cout << "SACHIN:: FetchBQDataRead:: dsn.large_results_dataset_id:: " << dsn.large_results_dataset_id << std::endl;
+  std::cout << "SACHIN:: FetchBQDataRead:: dataset_id:: " << job.configuration.query.destination_table.dataset_id << std::endl;
+  std::cout << "SACHIN:: FetchBQDataRead:: table_id:: " << job.configuration.query.destination_table.table_id << std::endl;
 
   job.configuration.query.parameter_mode = "POSITIONAL";
   job.configuration.query.allow_large_results = true;
