@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/odbc_sql_results.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_query.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_sql_execute_utils.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_fetch.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_type_info.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
@@ -36,9 +38,7 @@ using google::cloud::odbc_bq_driver_internal::DescriptorRecord;
 using google::cloud::odbc_bq_driver_internal::DescriptorType;
 using google::cloud::odbc_bq_driver_internal::DSRow;
 using google::cloud::odbc_bq_driver_internal::DSValue;
-#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 using google::cloud::odbc_bq_driver_internal::FetchNextResultSet;
-#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 using google::cloud::odbc_bq_driver_internal::GetColumnData;
 using google::cloud::odbc_bq_driver_internal::IntValueToOutputBufferResponse;
 using google::cloud::odbc_bq_driver_internal::kSqlToBqDataTypes;
@@ -197,7 +197,6 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
   if (result_set.cursor >= result_set.rows.size()) {
     LOG(INFO) << "SQLFetch:: cursor: " << result_set.cursor
               << " is >= result set size: " << result_set.rows.size();
-#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
     StatusRecord next_page_status = FetchNextResultSet(handle);
     if (!next_page_status.ok()) {
       LOG(ERROR) << "SQLFetch:: " << next_page_status.message;
@@ -205,10 +204,6 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
     }
     result_set = handle.GetResultSet();
     result_set.cursor++;
-#else
-    // TODO(b/447066272): Handle this for the pure REST API flow
-    return SQL_NO_DATA;
-#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
   }
 
   int rowset_size = ard.GetHeaderRecord().array_size;
@@ -263,16 +258,28 @@ SQLRETURN SQLFetchScrollInternal(SQLHSTMT statement_handle,
 
   DescriptorHandle& ard = handle.GetDescriptorHandle(DescriptorType::kARD);
 
-  ResultSet const& result_set = handle.GetResultSet();
+  ResultSet& result_set = handle.GetResultSet();
+  if (result_set.cursor >= result_set.rows.size() - 1 &&
+      !handle.GetPagingInfo().page_token.empty()) {
+    StatusRecord status_record = FetchNextResultSet(handle);
+    if (!status_record.ok()) {
+      LOG(ERROR) << "SQLFetchScroll::FetchNextResultSet:: "
+                 << status_record.message;
+      return LogAndReturnCode(handle, status_record);
+    }
+  }
   result_set.translated_data.row_offset = 0;
 
   // Compute new row position based on fetch type
   switch (fetch_orientation) {
     case SQL_FETCH_NEXT:
-      if (result_set.cursor + 1 < result_set.rows.size())
-        result_set.cursor++;
-      else
+      result_set.cursor++;
+      if (result_set.cursor >= result_set.rows.size() &&
+          handle.GetPagingInfo().page_token.empty()) {
+        LOG(INFO) << "SQLFetch:: cursor: " << result_set.cursor
+                  << " is >= result set size: " << result_set.rows.size();
         return SQL_NO_DATA;
+      }
       break;
     case SQL_FETCH_PRIOR:
     case SQL_FETCH_FIRST:

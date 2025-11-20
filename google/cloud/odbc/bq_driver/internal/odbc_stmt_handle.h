@@ -45,6 +45,12 @@ enum class StmtStates {
   kNeedsPutData
 };
 
+// Struct to manage pagination-related info like page token and job ID.
+struct PagingInfo {
+  std::string page_token;
+  std::string job_id;
+};
+
 class ConnectionHandle;
 
 class StatementHandle : public Handle {
@@ -281,6 +287,18 @@ class StatementHandle : public Handle {
     return StatusRecord{SQLStates::k_HY000(), "No job data available"};
   }
 
+  [[nodiscard]] inline ::google::cloud::bigquery_v2_minimal_internal::
+      PostQueryRequest&
+      GetPostQueryRequest() {
+    return post_query_request_;
+  }
+
+  inline void SetPostQueryRequest(
+      ::google::cloud::bigquery_v2_minimal_internal::PostQueryRequest const&
+          post_query_request) {
+    post_query_request_ = post_query_request;
+  }
+
   // Deletes next the job ID and statement type as a pair in the vector
   void DeleteNextJobData() {
     if (!job_data_.empty()) {
@@ -299,6 +317,11 @@ class StatementHandle : public Handle {
   }
 
   bool GetIsPartialPutdataCalled() const { return is_partial_putdata_called_; }
+
+  inline PagingInfo& GetPagingInfo() { return paging_info_; }
+  [[nodiscard]] inline PagingInfo const& GetPagingInfo() const {
+    return paging_info_;
+  }
 
  protected:
   StmtStates stmt_state_ = StmtStates::kStatementNotPrepared;
@@ -345,6 +368,7 @@ class StatementHandle : public Handle {
   // vector of pair of jobs Ids and respective statement types.
   std::vector<std::pair<std::string, std::string>> job_data_;
   bool is_statement_prepared_ = false;
+  PagingInfo paging_info_;
 };
 
 }  // namespace google::cloud::odbc_bq_driver_internal

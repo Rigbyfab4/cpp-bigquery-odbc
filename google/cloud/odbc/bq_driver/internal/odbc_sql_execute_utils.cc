@@ -35,6 +35,8 @@ using ::google::cloud::bigquery::storage::v1::DataFormat::ARROW;
 using ::google::cloud::bigquery_v2_minimal_internal::Job;
 using ::google::cloud::bigquery_v2_minimal_internal::QueryRequest;
 #endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+using ::google::cloud::bigquery_v2_minimal_internal::GetQueryResults;
+using ::google::cloud::bigquery_v2_minimal_internal::GetQueryResultsRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::PostQueryRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::QueryParameter;
 using google::cloud::odbc_bq_driver_internal::DescriptorRecord;
@@ -674,17 +676,16 @@ StatusRecordOr<DSResults> FetchBQData(
   DSResults results;
   results.num_dml_affected_rows = pq_status->num_dml_affected_rows;
   results.job_ref = pq_status->job_reference;
-  if (pq_status->job_complete && pq_status->page_token.empty()) {
+  stmt_handle.GetPagingInfo().job_id = pq_status->job_reference.job_id;
+  stmt_handle.GetPagingInfo().page_token = pq_status->page_token;
+  if (pq_status->job_complete) {
     // we have gotten all the results
     results.data_source_results = *pq_status;
   } else {
-    // Call GetAllQueryResults to get all the query results.
-    auto gq_status = conn_handle.GetClient()->GetAllQueryResults(
-        pq_status->job_reference.project_id, pq_status->job_reference.job_id,
-        pq_status->job_reference.location,
-        post_query_request.query_request().timeout(), Options{});
+    auto gq_status =
+        FetchNextPageOfQueryResults(stmt_handle, post_query_request);
     if (!gq_status) {
-      LOG(ERROR) << "FetchBQData::GetAllQueryResults:: "
+      LOG(ERROR) << "FetchBQData::FetchNextPageOfQueryResults:: "
                  << gq_status.GetStatusRecord().message;
       return gq_status.GetStatusRecord();
     }
@@ -698,4 +699,96 @@ StatusRecordOr<DSResults> FetchBQData(
   return results;
 }
 
+StatusRecord FetchNextPageResultSet(StatementHandle& stmt_handle) {
+  // In case of non-HTAPI execution there is no pagination, so we have to return
+  // `SQL_NO_DATA`
+  if (stmt_handle.GetPagingInfo().page_token.empty()) {
+    return StatusRecord(
+        {SQLStates::k_SQL_NO_DATA(), "No more data to return."});
+  }
+
+  stmt_handle.GetResultSet().rows.clear();
+  auto ds_status_record_or = FetchNextPageOfQueryResults(
+      stmt_handle, stmt_handle.GetPostQueryRequest());
+  if (!ds_status_record_or) {
+    stmt_handle.SetStmtState(StmtStates::kStatementPrepared);
+    return ds_status_record_or.GetStatusRecord();
+  }
+  DSResults results;
+  results.num_dml_affected_rows = ds_status_record_or->num_dml_affected_rows;
+  results.job_ref = ds_status_record_or->job_reference;
+  results.data_source_results = *ds_status_record_or;
+  stmt_handle.GetPagingInfo().page_token = ds_status_record_or->page_token;
+  stmt_handle.SetDSResults(results);
+  auto rs_status_record_or = ProcessQueryResults(results);
+  if (!rs_status_record_or) {
+    stmt_handle.SetStmtState(StmtStates::kStatementPrepared);
+    LOG(ERROR) << "FetchNextPageResultSet:: "
+               << rs_status_record_or.GetStatusRecord().message;
+    return rs_status_record_or.GetStatusRecord();
+  }
+  stmt_handle.SetResultSet(*rs_status_record_or);
+  return StatusRecord::Ok();
+}
+
+StatusRecordOr<GetQueryResults> FetchNextPageOfQueryResults(
+    StatementHandle& stmt_handle, PostQueryRequest const& post_query_request) {
+  GetQueryResultsRequest get_query_results_request;
+  get_query_results_request.set_project_id(post_query_request.project_id());
+  get_query_results_request.set_job_id(stmt_handle.GetPagingInfo().job_id);
+  get_query_results_request.set_location(
+      post_query_request.query_request().location());
+  get_query_results_request.set_timeout(
+      post_query_request.query_request().timeout());
+  get_query_results_request.set_page_token(
+      stmt_handle.GetPagingInfo().page_token);
+
+  ExponentialBackoffPolicy backoff(chrono_ms(10), chrono_ms(200), 2);
+  auto start_time = std::chrono::system_clock::now();
+  auto timeout_ms =
+      std::chrono::milliseconds(post_query_request.query_request().timeout());
+
+  Options options;
+  auto job_client = stmt_handle.GetConnectionHandle()->GetClient();
+
+  LOG(INFO) << "FetchNextPageOfQueryResults:: Request body: "
+            << get_query_results_request.DebugString("");
+
+  while (true) {
+    if (timeout_ms.count() > 0 &&
+        std::chrono::system_clock::now() > start_time + timeout_ms) {
+      std::string message = "The query timeout period of " +
+                            std::to_string(timeout_ms.count()) +
+                            "ms has expired";
+      LOG(ERROR) << "FetchNextPageOfQueryResults:: " << message;
+      return StatusRecord{SQLStates::k_HYT00(), message};
+    }
+
+    auto get_query_results_partial =
+        job_client->GetQueryResults(get_query_results_request, options);
+
+    if (!get_query_results_partial) {
+      LOG(ERROR) << "FetchNextPageOfQueryResults::QueryResults failed: "
+                 << get_query_results_partial.status().message();
+      return StatusRecord::ConvertFrom(get_query_results_partial.status());
+    }
+
+    // Wait if job is not yet complete and no rows have arrived
+    if (!get_query_results_partial->job_complete &&
+        get_query_results_partial->rows.empty()) {
+      std::this_thread::sleep_for(backoff.OnCompletion());
+      continue;
+    }
+
+    LOG(INFO) << "FetchNextPageOfQueryResults:: Response body: "
+              << get_query_results_partial->DebugString("");
+
+    // Replace get_query_results with this latest result
+    GetQueryResults get_query_results = *get_query_results_partial;
+    stmt_handle.GetPagingInfo().page_token =
+        get_query_results_partial->page_token;
+
+    return get_query_results;
+  }
+}
 }  // namespace google::cloud::odbc_bq_driver_internal

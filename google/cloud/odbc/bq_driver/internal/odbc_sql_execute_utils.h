@@ -76,6 +76,15 @@ odbc_internal::StatusRecordOr<DSResults> FetchBQData(
         post_query_request,
     bool with_htapi = false);
 
+odbc_internal::StatusRecord FetchNextPageResultSet(
+    StatementHandle& stmt_handle);
+odbc_internal::StatusRecordOr<
+    google::cloud::bigquery_v2_minimal_internal::GetQueryResults>
+FetchNextPageOfQueryResults(
+    StatementHandle& stmt_handle,
+    google::cloud::bigquery_v2_minimal_internal::PostQueryRequest const&
+        post_query_request);
+
 }  // namespace google::cloud::odbc_bq_driver_internal
 
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_SQL_EXECUTE_UTILS_H
