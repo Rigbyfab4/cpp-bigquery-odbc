@@ -16,6 +16,8 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include <thread>
+#include <future> // <--- Add this
+#include <vector> // <--- Add this
 
 //////////////////////////////////////////////////////////////////
 // This file has query execution related utilities which can have
@@ -25,6 +27,8 @@
 //////////////////////////////////////////////////////////////////
 
 namespace google::cloud::odbc_bq_driver_internal {
+
+using ::google::cloud::bigquery_storage_v1::BigQueryReadClient;
 
 #if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 using ::google::cloud::bigquery::storage::v1::CreateReadSessionRequest;
@@ -509,6 +513,47 @@ StatusRecord ProcessRecordBatch(
   return StatusRecord::Ok();
 }
 
+// Helper function to consume a single stream entirely on a separate thread
+StatusRecordOr<ResultSet> ConsumeStream(
+    std::shared_ptr<ODBCBQClient> bq_client,
+    std::string stream_name, std::shared_ptr<arrow::Schema> schema,
+    RowSchema row_schema) {
+  
+  ResultSet local_result_set;
+  local_result_set.row_schema = row_schema;
+  
+  ReadRowsRequest read_rows_request;
+  read_rows_request.set_read_stream(stream_name);
+
+  // We use a local options object for this thread
+  Options options;
+  auto stream_range = bq_client->GetReadRowsStream(read_rows_request, options);
+
+  for (auto const& read_row_status : stream_range) {
+    if (!read_row_status) {
+      return StatusRecord::ConvertFrom(read_row_status.status());
+    }
+    
+    auto row = *read_row_status;
+    if (row.has_arrow_record_batch()) {
+      auto record_batch_status =
+          GetArrowRecordBatch(row.arrow_record_batch(), schema);
+      if (!record_batch_status) {
+        return record_batch_status.GetStatusRecord();
+      }
+      
+      // Append data to the local result set
+      // ProcessRecordBatch automatically resizes and appends to local_result_set.rows
+      StatusRecord process_status = 
+          ProcessRecordBatch(schema, *record_batch_status, local_result_set);
+      if (!process_status.ok()) {
+        return process_status;
+      }
+    }
+  }
+  return local_result_set;
+}
+
 StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
   std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
       stmt_handle.GetReadRowsStream();
@@ -579,7 +624,10 @@ StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
 
   CreateReadSessionRequest create_read_session_request;
   create_read_session_request.set_parent("projects/" + project_id);
-  create_read_session_request.set_max_stream_count(1);
+  
+  // CHANGED: Request up to 8 streams for parallel reading
+  create_read_session_request.set_max_stream_count(8);
+  
   auto* read_session = create_read_session_request.mutable_read_session();
   read_session->set_table(table_path);
   read_session->set_data_format(ARROW);
@@ -594,34 +642,61 @@ StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
 
   auto session = *read_session_status;
 
-  if (!session.streams().empty()) {
-    std::string read_stream_name = session.streams(0).name();
-
-    ResultSet result_set;
-    StatusRecordOr<std::shared_ptr<arrow::Schema>> schema_status =
-        GetArrowSchema(session.arrow_schema(), result_set.row_schema);
-    if (!schema_status) {
-      return schema_status.GetStatusRecord();
-    }
-    // The ResultSet now contains valid `row_schema`
-    stmt_handle.SetResultSet(result_set);
-    std::shared_ptr<arrow::Schema> schema = *schema_status;
-    stmt_handle.SetArrowSchema(schema);
-
-    // Create a ReadRowsRequest.
-    ReadRowsRequest read_rows_request;
-    read_rows_request.set_read_stream(read_stream_name);
-
-    // Before we call ReadNextResultsFromStream, we are caching the stream
-    StreamRange<google::cloud::bigquery::storage::v1::ReadRowsResponse>
-        read_rows_stream =
-            bq_client->GetReadRowsStream(read_rows_request, options);
-    stmt_handle.SetReadRowsStream(std::move(read_rows_stream));
-    return ReadNextResultsFromStream(stmt_handle);
+  if (session.streams().empty()) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "No valid stream found to read results"};
   }
 
-  return StatusRecord{SQLStates::k_HY000(),
-                      "No valid stream found to read results"};
+  // 1. Parse Schema once
+  ResultSet master_result_set;
+  StatusRecordOr<std::shared_ptr<arrow::Schema>> schema_status =
+      GetArrowSchema(session.arrow_schema(), master_result_set.row_schema);
+  if (!schema_status) {
+    return schema_status.GetStatusRecord();
+  }
+  std::shared_ptr<arrow::Schema> schema = *schema_status;
+  stmt_handle.SetArrowSchema(schema);
+
+  // 2. Launch parallel tasks for each stream
+  std::vector<std::future<StatusRecordOr<ResultSet>>> tasks;
+  LOG(INFO) << "FetchBQDataReadArrow:: Starting parallel read of " 
+            << session.streams_size() << " streams.";
+
+  for (const auto& stream : session.streams()) {
+    tasks.push_back(std::async(std::launch::async, ConsumeStream, bq_client,
+                               stream.name(), schema,
+                               master_result_set.row_schema));
+  }
+
+  // 3. Wait for threads and merge results
+  for (auto& task : tasks) {
+    auto result_or_error = task.get();
+    if (!result_or_error) {
+      return result_or_error.GetStatusRecord();
+    }
+
+    ResultSet& part_result = *result_or_error;
+    
+    // Efficiently move rows from partial result to master result
+    if (!part_result.rows.empty()) {
+      master_result_set.rows.insert(
+          master_result_set.rows.end(),
+          std::make_move_iterator(part_result.rows.begin()),
+          std::make_move_iterator(part_result.rows.end()));
+    }
+  }
+
+  // 4. Store the fully buffered result set in the handle
+  master_result_set.cursor = -1; // Reset cursor for SQLFetch
+  stmt_handle.SetResultSet(master_result_set);
+
+  // Note: We do NOT call SetReadRowsStream here anymore because we 
+  // have already consumed the streams into memory.
+
+  LOG(INFO) << "FetchBQDataReadArrow:: Parallel read complete. Total rows: " 
+            << master_result_set.rows.size();
+
+  return StatusRecord::Ok();
 }
 
 StatusRecord CreateLargeDatasetIfNeeded(
