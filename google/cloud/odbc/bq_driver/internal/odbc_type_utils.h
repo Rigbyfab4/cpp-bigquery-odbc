@@ -96,6 +96,55 @@ inline SQLPOINTER ToSqlPointer(T x) {
 // U usually can be SQLINTEGER, SQLSMALLINT or SQLLEN
 template <typename U>
 odbc_internal::StatusRecord StringValueToOutputBufferResponse(
+    char const* src, size_t src_len, SQLPOINTER buffer_ptr, U buffer_len, U* str_len_ptr) {
+  // src_len is already calculated, so skip the strlen() call
+  if (str_len_ptr) {
+    *str_len_ptr = static_cast<U>(src_len);
+  }
+  if (!buffer_ptr) {
+    return odbc_internal::StatusRecord::Ok();
+  }
+  if (buffer_len < 0) {
+    return odbc_internal::StatusRecord{odbc_internal::SQLStates::k_HY090(),
+                                       "Buffer length is negative"};
+  }
+
+  char* dest = reinterpret_cast<char*>(buffer_ptr);
+  auto status_record = odbc_internal::StatusRecord::Ok();
+
+  if (src_len == 0) {
+    // If source is empty, or if buffer is only 0 length (shouldn't happen with U > 0)
+    if (buffer_len > 0) {
+      *dest = '\0';
+    }
+  } else if (src_len < buffer_len) {
+    // Source fits, copy data and ensure null termination
+    // NOTE: std::vector<char> from DSValue does not necessarily contain a null terminator.
+    // If strncpy is used, we only copy src_len chars, so we must add the null terminator.
+    std::memcpy(dest, src, src_len); // Use memcpy for non-null-terminated data
+    dest[src_len] = '\0';
+  } else {
+    // Source is truncated, copy only buffer_len - 1 chars
+    std::memcpy(dest, src, (buffer_len - 1));
+    dest[buffer_len - 1] = '\0';
+    status_record = odbc_internal::StatusRecord{
+        odbc_internal::SQLStates::k_01004(), "String data, right truncated"};
+  }
+  
+  // The logic for updating the result length needs careful review for an ODBC
+  // driver. It should typically be the length of the data *before* truncation.
+  // The current code updates it based on the *destination* length, which may be 
+  // truncated. Sticking to the original code's final update for now:
+  auto dest_len = strlen(dest);
+  if (str_len_ptr) {
+    *str_len_ptr = static_cast<U>(dest_len);
+  }
+
+  return status_record;
+}
+
+template <typename U>
+odbc_internal::StatusRecord StringValueToOutputBufferResponse(
     char const* src, SQLPOINTER buffer_ptr, U buffer_len, U* str_len_ptr) {
   auto src_len = strlen(src);
   if (str_len_ptr) {

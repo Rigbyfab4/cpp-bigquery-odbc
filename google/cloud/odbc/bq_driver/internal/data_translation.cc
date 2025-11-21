@@ -275,16 +275,42 @@ odbc_internal::StatusRecord ConvertFromStringDSValue(DSValue const& src_dsval,
   using odbc_internal::StatusRecord;
   using odbc_internal::StatusRecordOr;
 
-  std::string src_str;
-  DSValueToString(src_dsval, src_str);
-
   SQLSMALLINT dest_type = dest_data.type;
   SQLPOINTER dest_buf = dest_data.buf;
   SQLLEN* res_len = dest_data.result_len;
 
+  // --- Optimized character conversion: NO intermediate std::string copy ---
   if (dest_type == SQL_C_CHAR) {
-    return StringValueToOutputBufferResponse(src_str.c_str(), dest_data);
+    return StringValueToOutputBufferResponse<SQLLEN>(
+        src_dsval.data(),       // pointer to data
+        src_dsval.size(),       // length of data
+        dest_data.buf, 
+        dest_data.buflen, 
+        dest_data.result_len);
   }
+  
+  // NOTE: For SQL_C_BINARY, we can use the same approach without the 
+  // string formatting/termination complexities if it's meant for raw bytes.
+  if (dest_type == SQL_C_BINARY) {
+      // Assuming SQL_C_BINARY means copy raw bytes with length
+      auto* dest_val = reinterpret_cast<SQLCHAR*>(dest_data.buf);
+      size_t copy_len = std::min(src_dsval.size(), (size_t)dest_data.buflen);
+      
+      std::memcpy(dest_val, src_dsval.data(), copy_len);
+      
+      if (dest_data.result_len) {
+        *dest_data.result_len = static_cast<SQLLEN>(copy_len);
+      }
+      
+      // Check for truncation
+      if (src_dsval.size() > (size_t)dest_data.buflen) {
+          return StatusRecord{odbc_internal::SQLStates::k_01004(), "Data, right truncated"};
+      }
+      return StatusRecord::Ok();
+  }
+  std::string src_str;
+  DSValueToString(src_dsval, src_str);
+
   if (dest_type == SQL_C_WCHAR) {
     int src_len = src_str.length();
     StatusRecordOr<std::wstring> wstr = Utf8ToUtf16(src_str);

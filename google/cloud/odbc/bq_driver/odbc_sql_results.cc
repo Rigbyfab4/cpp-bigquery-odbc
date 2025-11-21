@@ -161,6 +161,17 @@ SQLRETURN SQLBindColInternal(SQLHSTMT statement_handle,
   return SQL_SUCCESS;
 }
 
+static std::chrono::nanoseconds g_total_fetch_next_time{0};
+static std::chrono::nanoseconds g_total_write_rowset_time{0};
+
+std::chrono::nanoseconds GetTotalFetchNextResultSetTime() {
+  return g_total_fetch_next_time;
+}
+
+std::chrono::nanoseconds GetTotalWriteRowsetTime() {
+  return g_total_write_rowset_time;
+}
+
 SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
   LOG(INFO) << "SQLFetchInternal:: Start";
   StatusRecordOr<StatementHandle*> handle_result =
@@ -197,7 +208,18 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
   if (result_set.cursor >= result_set.rows.size()) {
     LOG(INFO) << "SQLFetch:: cursor: " << result_set.cursor
               << " is >= result set size: " << result_set.rows.size();
+      
+    // Start timing for FetchNextResultSet
+    // auto start_time_fetch = std::chrono::high_resolution_clock::now();
+      
     StatusRecord next_page_status = FetchNextResultSet(handle);
+      
+    // Stop timing and accumulate
+    // auto end_time_fetch = std::chrono::high_resolution_clock::now();
+    // g_total_fetch_next_time += (end_time_fetch - start_time_fetch);
+    // auto fetch_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(g_total_fetch_next_time);
+    // std::cout << "Total time for FetchNextResultSet: " << fetch_time_ms.count() << " ms\n";
+      
     if (!next_page_status.ok()) {
       LOG(ERROR) << "SQLFetch:: " << next_page_status.message;
       return LogAndReturnCode(handle, next_page_status);
@@ -211,7 +233,18 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
     rowset_size = 1;
   }
   DescriptorHandle& ird = handle.GetDescriptorHandle(DescriptorType::kIRD);
+  
+  // Start timing for WriteRowset
+  // auto start_time_write = std::chrono::high_resolution_clock::now();
+  
   StatusRecord status_record = WriteRowset(result_set, rowset_size, ard, ird);
+  
+  // Stop timing and accumulate
+  // auto end_time_write = std::chrono::high_resolution_clock::now();
+  // g_total_write_rowset_time += (end_time_write - start_time_write);
+  // auto write_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(g_total_write_rowset_time);
+  // std::cout << "Total time for WriteRowset: " << write_time_ms.count() << " ms\n";
+  
   return LogAndReturnCode(handle, status_record);
 }
 

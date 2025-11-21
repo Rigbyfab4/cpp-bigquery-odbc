@@ -509,7 +509,11 @@ StatusRecord ProcessRecordBatch(
   return StatusRecord::Ok();
 }
 
+static std::chrono::nanoseconds g_total_process_batch_time{0};
+static std::chrono::nanoseconds g_total_read_next_time{0};
+
 StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
+  // auto start_time_read_next = std::chrono::high_resolution_clock::now();
   std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
       stmt_handle.GetReadRowsStream();
   if (!optional_stream.has_value()) {
@@ -548,13 +552,24 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
       if (!record_batch_status) {
         return record_batch_status.GetStatusRecord();
       }
+      // auto end_time_read_next = std::chrono::high_resolution_clock::now();
+      // g_total_read_next_time += (end_time_read_next - start_time_read_next);
+      // auto read_next_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(g_total_read_next_time);
+      // std::cout << "Total time for ReadNextResultsFromStream except ProcessRecordBatch: " << read_next_time_ms.count() << " ms\n";
+
       // We are reading ResultSet from the stmt_handle because we want to
       // preserve the previous state like `num_rows_fetched_yet`.
       ResultSet& result_set = stmt_handle.GetResultSet();
       // To have SQLFetch read the rows from the start, we are setting the
       // cursor to default.
       result_set.cursor = -1;
-      return ProcessRecordBatch(schema, *record_batch_status, result_set);
+      // auto start_time_process = std::chrono::high_resolution_clock::now();
+      auto ret = ProcessRecordBatch(schema, *record_batch_status, result_set);
+      // auto end_time_process = std::chrono::high_resolution_clock::now();
+      // g_total_process_batch_time += (end_time_process - start_time_process);
+      // auto process_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(g_total_process_batch_time);
+      // std::cout << "Total time for ProcessRecordBatch: " << process_time_ms.count() << " ms\n";
+      return ret;
     } else {
       return StatusRecord{
           SQLStates::k_HY000(),
