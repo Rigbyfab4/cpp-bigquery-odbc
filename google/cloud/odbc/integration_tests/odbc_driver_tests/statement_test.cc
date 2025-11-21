@@ -516,8 +516,8 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
   if (is_htapi) {
     connection_string =
         kDefaultConnectionString +
-        ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
-    limit = "50000";
+        ";EnableHTAPI=1;AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
+    limit = "100000";
   }
   EXPECT_EQ(Connect(connection_string, conn), SQL_SUCCESS);
 
@@ -530,7 +530,7 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
   // The table name here doesn't matter because we didn't create one.
   Table table("Random_table_name");
   RowWiseResults const& results = table.Fetch(conn, query);
-  int const expected_num_rows = limit == "3000" ? 3000 : 50000;
+  int const expected_num_rows = limit == "3000" ? 3000 : 100000;
   int const expected_num_cols = 300;
   ASSERT_EQ(results.size(), expected_num_rows) << "Row count mismatch.";
   for (int i = 0; i < expected_num_rows; ++i) {

@@ -22,6 +22,51 @@ namespace google::cloud::odbc_bq_driver_internal {
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 
+// This is according to the spec:
+// https://learn.microsoft.com/en-us/sql/odbc/reference/syntax/sqlbindcol-function?view=sql-server-ver16#buffer-addresses
+SQLLEN GetElemSize(DescriptorRecord& app_desc_rec) {
+  SQLSMALLINT target_c_type = app_desc_rec.concise_type;
+  SQLLEN app_buffer_len = app_desc_rec.octet_length;
+  switch (target_c_type) {
+    case SQL_C_CHAR:
+    case SQL_C_WCHAR:
+    case SQL_C_BINARY:
+      return app_buffer_len;
+    case SQL_C_SSHORT:
+      return sizeof(SQLSMALLINT);
+    case SQL_C_USHORT:
+      return sizeof(SQLUSMALLINT);
+    case SQL_C_SLONG:
+      return sizeof(SQLINTEGER);
+    case SQL_C_ULONG:
+      return sizeof(SQLUINTEGER);
+    case SQL_C_FLOAT:
+      return sizeof(SQLREAL);
+    case SQL_C_DOUBLE:
+      return sizeof(SQLDOUBLE);
+    case SQL_C_BIT:
+      return sizeof(SQLCHAR);
+    case SQL_C_STINYINT:
+      return sizeof(SQLSCHAR);
+    case SQL_C_UTINYINT:
+      return sizeof(SQLCHAR);
+    case SQL_C_SBIGINT:
+      return sizeof(SQLBIGINT);
+    case SQL_C_UBIGINT:
+      return sizeof(SQLUBIGINT);
+    case SQL_C_NUMERIC:
+      return sizeof(SQL_NUMERIC_STRUCT);
+    case SQL_C_TYPE_DATE:
+      return sizeof(SQL_DATE_STRUCT);
+    case SQL_C_TYPE_TIME:
+      return sizeof(SQL_TIME_STRUCT);
+    case SQL_C_TYPE_TIMESTAMP:
+      return sizeof(SQL_TIMESTAMP_STRUCT);
+    default:
+      return 0;
+  }
+}
+
 StatusRecord WriteToApplicationBuffer(DSValue const& ds_val,
                                       BQDataType bq_data_type,
                                       DescriptorRecord& app_desc_rec,
@@ -100,51 +145,6 @@ StatusRecord WriteToApplicationBuffer(DSValue const& ds_val,
   LOG(ERROR) << "WriteToApplicationBuffer:: Data type not supported: "
              << bq_data_type;
   return {SQLStates::k_HYC00(), "Data type not supported"};
-}
-
-// This is according to the spec:
-// https://learn.microsoft.com/en-us/sql/odbc/reference/syntax/sqlbindcol-function?view=sql-server-ver16#buffer-addresses
-SQLLEN GetElemSize(DescriptorRecord& app_desc_rec) {
-  SQLSMALLINT target_c_type = app_desc_rec.concise_type;
-  SQLLEN app_buffer_len = app_desc_rec.octet_length;
-  switch (target_c_type) {
-    case SQL_C_CHAR:
-    case SQL_C_WCHAR:
-    case SQL_C_BINARY:
-      return app_buffer_len;
-    case SQL_C_SSHORT:
-      return sizeof(SQLSMALLINT);
-    case SQL_C_USHORT:
-      return sizeof(SQLUSMALLINT);
-    case SQL_C_SLONG:
-      return sizeof(SQLINTEGER);
-    case SQL_C_ULONG:
-      return sizeof(SQLUINTEGER);
-    case SQL_C_FLOAT:
-      return sizeof(SQLREAL);
-    case SQL_C_DOUBLE:
-      return sizeof(SQLDOUBLE);
-    case SQL_C_BIT:
-      return sizeof(SQLCHAR);
-    case SQL_C_STINYINT:
-      return sizeof(SQLSCHAR);
-    case SQL_C_UTINYINT:
-      return sizeof(SQLCHAR);
-    case SQL_C_SBIGINT:
-      return sizeof(SQLBIGINT);
-    case SQL_C_UBIGINT:
-      return sizeof(SQLUBIGINT);
-    case SQL_C_NUMERIC:
-      return sizeof(SQL_NUMERIC_STRUCT);
-    case SQL_C_TYPE_DATE:
-      return sizeof(SQL_DATE_STRUCT);
-    case SQL_C_TYPE_TIME:
-      return sizeof(SQL_TIME_STRUCT);
-    case SQL_C_TYPE_TIMESTAMP:
-      return sizeof(SQL_TIMESTAMP_STRUCT);
-    default:
-      return 0;
-  }
 }
 
 StatusRecord WriteDSRow(DSRow const& ds_row, RowSchema const& schema,
@@ -237,7 +237,8 @@ StatusRecord WriteRowset(ResultSet const& result_set, int const rowset_size,
   return StatusRecord::Ok();
 }
 
-StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
+StatusRecord FetchNextResultSet1(StatementHandle& stmt_handle) {
+  // LOG(INFO) << "SACHIN:: FetchNextResultSet:: CP 0";
   // We need to return only the top `SQL_ATTR_MAX_ROWS` number of rows
   auto max_rows_status = stmt_handle.GetAttribute(SQL_ATTR_MAX_ROWS);
   if (!max_rows_status) {
@@ -245,6 +246,7 @@ StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
                << max_rows_status.GetStatusRecord().message;
     return max_rows_status.GetStatusRecord();
   }
+  // LOG(INFO) << "SACHIN:: FetchNextResultSet:: CP 1";
   SQLULEN max_rows = *max_rows_status;
   ResultSet& result_set = stmt_handle.GetResultSet();
   int num_rows_fetched_yet = result_set.num_rows_fetched_yet;
@@ -254,8 +256,10 @@ StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
     return StatusRecord(
         {SQLStates::k_SQL_NO_DATA(), "SQL_ATTR_MAX_ROWS limit reached."});
   }
+  // LOG(INFO) << "SACHIN:: FetchNextResultSet:: CP 2";
 #if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
   if (stmt_handle.WasHtapiEnabled()) {
+    LOG(INFO) <<  "SACHIN:: FetchNextResultSet:: ReadNextResultsFromStream called:: ";
     StatusRecord read_status = ReadNextResultsFromStream(stmt_handle);
     if (!read_status.ok()) {
       LOG(ERROR) << "ReadNextResultsFromStream:: " << read_status.message;
@@ -276,15 +280,18 @@ StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
     return read_status;
   }
 #endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+  LOG(INFO) <<  "SACHIN:: FetchNextResultSet::  CP2:: ";
   auto& rs_rows = result_set.rows;
   if (rs_rows.empty()) {
     LOG(INFO) << "FetchNextResultSet:: Empty result set fetched.";
     return StatusRecord(
         {SQLStates::k_SQL_NO_DATA(), "Empty result set fetched."});
   }
+  LOG(INFO) <<  "SACHIN:: FetchNextResultSet::  CP3:: ";
   if (max_rows > 0 && num_rows_to_be_fetched < rs_rows.size()) {
     rs_rows.erase(rs_rows.begin() + num_rows_to_be_fetched, rs_rows.end());
   }
+  LOG(INFO) <<  "SACHIN:: FetchNextResultSet::  CP4:: ";
   stmt_handle.SetStmtState(StmtStates::kStatementExecutedWithRs);
   return StatusRecord::Ok();
 }

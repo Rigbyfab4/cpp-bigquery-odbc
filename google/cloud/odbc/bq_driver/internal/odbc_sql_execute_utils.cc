@@ -335,6 +335,60 @@ StatusRecordOr<std::shared_ptr<arrow::Schema>> GetArrowSchema(
 }
 
 StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> GetArrowRecordBatch(
+    std::string const& serialized_data, // CHANGED: Takes string ref
+    std::shared_ptr<arrow::Schema> schema) {
+  
+  // Construct a Buffer that wraps the existing string memory without copying.
+  // The 'serialized_data' string must stay alive as long as this batch is used.
+  auto buffer = std::make_shared<arrow::Buffer>(
+      reinterpret_cast<uint8_t const*>(serialized_data.data()), 
+      static_cast<int64_t>(serialized_data.size()));
+
+  arrow::io::BufferReader buffer_reader(buffer);
+  arrow::ipc::DictionaryMemo dictionary_memo;
+  arrow::ipc::IpcReadOptions read_options;
+  
+  auto result = arrow::ipc::ReadRecordBatch(schema, &dictionary_memo,
+                                            read_options, &buffer_reader);
+  if (!result.ok()) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "Internal Error: Unable to parse record batch"};
+  }
+  return result.ValueOrDie();
+}
+
+
+StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> GetArrowRecordBatch1(
+    ::google::cloud::bigquery::storage::v1::ArrowRecordBatch const&
+        record_batch_in,
+    std::shared_ptr<arrow::Schema> schema) {
+  
+  // FIX: Deep copy the data. 
+  // The protobuf message 'record_batch_in' is temporary and will be destroyed.
+  // We must allocate a buffer that owns the data.
+  std::string const& src_data = record_batch_in.serialized_record_batch();
+  
+  auto buffer_res = arrow::AllocateBuffer(src_data.size());
+  if (!buffer_res.ok()) {
+    return StatusRecord{SQLStates::k_HY001(), "Internal Error: OOM allocating Arrow buffer"};
+  }
+  std::shared_ptr<arrow::Buffer> buffer = std::move(*buffer_res);
+  std::memcpy(buffer->mutable_data(), src_data.data(), src_data.size());
+
+  arrow::io::BufferReader buffer_reader(buffer);
+  arrow::ipc::DictionaryMemo dictionary_memo;
+  arrow::ipc::IpcReadOptions read_options;
+  auto result = arrow::ipc::ReadRecordBatch(schema, &dictionary_memo,
+                                            read_options, &buffer_reader);
+  if (!result.ok()) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "Internal Error: Unable to parse record batch"};
+  }
+  std::shared_ptr<arrow::RecordBatch> record_batch = result.ValueOrDie();
+  return record_batch;
+}
+
+StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> GetArrowRecordBatch2(
     ::google::cloud::bigquery::storage::v1::ArrowRecordBatch const&
         record_batch_in,
     std::shared_ptr<arrow::Schema> schema) {
@@ -521,7 +575,7 @@ StatusRecord ProcessRecordBatch(
 static std::chrono::nanoseconds g_total_process_batch_time{0};
 static std::chrono::nanoseconds g_total_read_next_time{0};
 
-StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
+StatusRecord ReadNextResultsFromStream1(StatementHandle& stmt_handle) {
   // auto start_time_read_next = std::chrono::high_resolution_clock::now();
   std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
       stmt_handle.GetReadRowsStream();
@@ -557,7 +611,7 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
       // will remain the same.
       std::shared_ptr<arrow::Schema> schema = stmt_handle.GetArrowSchema();
       StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> record_batch_status =
-          GetArrowRecordBatch(row.arrow_record_batch(), schema);
+          GetArrowRecordBatch1(row.arrow_record_batch(), schema);
       if (!record_batch_status) {
         return record_batch_status.GetStatusRecord();
       }
@@ -592,6 +646,68 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
     return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
   }
   return StatusRecord::Ok();
+}
+
+StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
+  std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
+      stmt_handle.GetReadRowsStream();
+  if (!optional_stream.has_value()) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "Internal Error: No HTAPI read stream found!!"};
+  }
+  auto& read_rows_stream = *optional_stream;
+  auto& optional_it = stmt_handle.GetReadRowsIterator();
+  if (!optional_it.has_value()) {
+    auto it = read_rows_stream.begin();
+    optional_it = std::move(it);
+  } else {
+    ++(*optional_it);
+    stmt_handle.SetReadRowsIterator(*optional_it);
+  }
+  auto& it = *optional_it;
+  if (it != read_rows_stream.end()) {
+    auto const& read_row_status = *it;
+    if (!read_row_status) {
+      return StatusRecord::ConvertFrom(read_row_status.status());
+    }
+    ReadRowsResponse row = *read_row_status;
+    if (row.has_arrow_record_batch()) {
+      std::shared_ptr<arrow::Schema> schema = stmt_handle.GetArrowSchema();
+      //StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> record_batch_status =
+      //    GetArrowRecordBatch1(row.arrow_record_batch(), schema);
+      std::string* persistent_buffer = stmt_handle.GetMutableArrowDataBuffer();
+      *persistent_buffer = std::move(*row.mutable_arrow_record_batch()->mutable_serialized_record_batch());
+      StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> record_batch_status =
+        GetArrowRecordBatch(*persistent_buffer, schema);
+
+      if (!record_batch_status) {
+        return record_batch_status.GetStatusRecord();
+      }
+
+      // CHANGE: Instead of processing to ResultSet, cache the columns directly
+      std::shared_ptr<arrow::RecordBatch> batch = *record_batch_status;
+      stmt_handle.SetArrowColumns(batch->columns());
+      stmt_handle.SetArrowBatchNumRows(batch->num_rows());
+      stmt_handle.SetArrowBatchCursor(0); // Reset local batch cursor
+      
+      // We do NOT call ProcessRecordBatch here anymore.
+      // The data extraction happens lazily in FetchNextResultSet/WriteArrowBatchRowset
+      
+      return StatusRecord::Ok();
+    } else {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "Internal Error: cannot find arrow record batch to process!"};
+    }
+  } else {
+    stmt_handle.ClearReadRowsStream();
+    stmt_handle.ClearReadRowsIterator();
+    // Clear cached arrow data
+    stmt_handle.SetArrowColumns({});
+    stmt_handle.SetArrowBatchNumRows(0);
+    LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
+    return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
+  }
 }
 
 StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,

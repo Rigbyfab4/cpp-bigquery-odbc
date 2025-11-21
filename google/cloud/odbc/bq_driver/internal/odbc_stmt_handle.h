@@ -153,6 +153,11 @@ class StatementHandle : public Handle {
   inline void ClearReadRowsStream() { read_rows_stream_.reset(); }
 
 #if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+
+  std::string* GetMutableArrowDataBuffer() {
+    return &arrow_data_buffer_;
+  }
+
   inline void SetArrowSchema(std::shared_ptr<arrow::Schema> arrow_schema) {
     result_set_.arrow_schema = arrow_schema;
   }
@@ -160,6 +165,37 @@ class StatementHandle : public Handle {
   inline std::shared_ptr<arrow::Schema> GetArrowSchema() {
     return result_set_.arrow_schema;
   }
+
+    // Sets the vector of Arrow Arrays (columns) for the current batch
+  void SetArrowColumns(std::vector<std::shared_ptr<arrow::Array>> columns) {
+    arrow_columns_ = std::move(columns);
+  }
+
+  // Gets the cached Arrow Arrays
+  std::vector<std::shared_ptr<arrow::Array>> const& GetArrowColumns() const {
+    return arrow_columns_;
+  }
+
+  // Sets the total number of rows in the current cached batch
+  void SetArrowBatchNumRows(int64_t num_rows) {
+    arrow_batch_num_rows_ = num_rows;
+  }
+
+  // Gets the total number of rows in the current cached batch
+  int64_t GetArrowBatchNumRows() const {
+    return arrow_batch_num_rows_;
+  }
+
+  // Sets the local cursor position within the current batch (0-based index)
+  void SetArrowBatchCursor(int64_t cursor) {
+    arrow_batch_cursor_ = cursor;
+  }
+
+  // Gets the local cursor position within the current batch
+  int64_t GetArrowBatchCursor() const {
+    return arrow_batch_cursor_;
+  }
+
 #endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 
   inline void SetResultSet(ResultSet const& result_set) {
@@ -369,6 +405,20 @@ class StatementHandle : public Handle {
   std::vector<std::pair<std::string, std::string>> job_data_;
   bool is_statement_prepared_ = false;
   PagingInfo paging_info_;
+
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+  // Storage for the columns of the current Arrow RecordBatch.
+  // We store columns directly to avoid overhead of keeping the whole RecordBatch object.
+  std::vector<std::shared_ptr<arrow::Array>> arrow_columns_;
+  
+  // The number of rows in the current arrow_columns_
+  int64_t arrow_batch_num_rows_ = 0;
+  
+  // The index of the next row to be read from arrow_columns_
+  int64_t arrow_batch_cursor_ = 0;
+
+  std::string arrow_data_buffer_; 
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 };
 
 }  // namespace google::cloud::odbc_bq_driver_internal

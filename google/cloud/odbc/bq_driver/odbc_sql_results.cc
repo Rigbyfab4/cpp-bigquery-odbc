@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/odbc_sql_results.h"
+// #include "google/cloud/odbc/bq_driver/internal/data_translation.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_query.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_execute_utils.h"
@@ -28,6 +29,20 @@
 
 namespace google::cloud::odbc_bq_driver {
 
+using google::cloud::odbc_bq_driver_internal::ColumnSchema;
+using google::cloud::odbc_bq_driver_internal::DataBuffer;
+using google::cloud::odbc_bq_driver_internal::ConvertFromArithmeticDSValue;
+using google::cloud::odbc_bq_driver_internal::ConvertFromArithmeticDSValue;
+using google::cloud::odbc_bq_driver_internal::ConvertFromStringDSValue;
+using google::cloud::odbc_bq_driver_internal::ConvertFromBooleanDSValue;
+using google::cloud::odbc_bq_driver_internal::ConvertFromBytesDSValue;
+using google::cloud::odbc_bq_driver_internal::ConvertFromTimestampDSValue;
+using  google::cloud::odbc_bq_driver_internal::ConvertFromDateDSValue;
+using  google::cloud::odbc_bq_driver_internal::ConvertFromTimeDSValue;
+using  google::cloud::odbc_bq_driver_internal::ConvertFromNumericDSValue;
+using  google::cloud::odbc_bq_driver_internal::ConvertFromArrayDSValue;
+using  google::cloud::odbc_bq_driver_internal::ConvertFromStructDSValue;
+
 using google::cloud::odbc_bq_driver_internal::BQDataType;
 using google::cloud::odbc_bq_driver_internal::CheckTargetType;
 using google::cloud::odbc_bq_driver_internal::ConnectionHandle;
@@ -38,7 +53,7 @@ using google::cloud::odbc_bq_driver_internal::DescriptorRecord;
 using google::cloud::odbc_bq_driver_internal::DescriptorType;
 using google::cloud::odbc_bq_driver_internal::DSRow;
 using google::cloud::odbc_bq_driver_internal::DSValue;
-using google::cloud::odbc_bq_driver_internal::FetchNextResultSet;
+using google::cloud::odbc_bq_driver_internal::FetchNextResultSet1;
 using google::cloud::odbc_bq_driver_internal::GetColumnData;
 using google::cloud::odbc_bq_driver_internal::IntValueToOutputBufferResponse;
 using google::cloud::odbc_bq_driver_internal::kSqlToBqDataTypes;
@@ -161,6 +176,383 @@ SQLRETURN SQLBindColInternal(SQLHSTMT statement_handle,
   return SQL_SUCCESS;
 }
 
+// This is according to the spec:
+// https://learn.microsoft.com/en-us/sql/odbc/reference/syntax/sqlbindcol-function?view=sql-server-ver16#buffer-addresses
+SQLLEN GetElemSize(DescriptorRecord& app_desc_rec) {
+  SQLSMALLINT target_c_type = app_desc_rec.concise_type;
+  SQLLEN app_buffer_len = app_desc_rec.octet_length;
+  switch (target_c_type) {
+    case SQL_C_CHAR:
+    case SQL_C_WCHAR:
+    case SQL_C_BINARY:
+      return app_buffer_len;
+    case SQL_C_SSHORT:
+      return sizeof(SQLSMALLINT);
+    case SQL_C_USHORT:
+      return sizeof(SQLUSMALLINT);
+    case SQL_C_SLONG:
+      return sizeof(SQLINTEGER);
+    case SQL_C_ULONG:
+      return sizeof(SQLUINTEGER);
+    case SQL_C_FLOAT:
+      return sizeof(SQLREAL);
+    case SQL_C_DOUBLE:
+      return sizeof(SQLDOUBLE);
+    case SQL_C_BIT:
+      return sizeof(SQLCHAR);
+    case SQL_C_STINYINT:
+      return sizeof(SQLSCHAR);
+    case SQL_C_UTINYINT:
+      return sizeof(SQLCHAR);
+    case SQL_C_SBIGINT:
+      return sizeof(SQLBIGINT);
+    case SQL_C_UBIGINT:
+      return sizeof(SQLUBIGINT);
+    case SQL_C_NUMERIC:
+      return sizeof(SQL_NUMERIC_STRUCT);
+    case SQL_C_TYPE_DATE:
+      return sizeof(SQL_DATE_STRUCT);
+    case SQL_C_TYPE_TIME:
+      return sizeof(SQL_TIME_STRUCT);
+    case SQL_C_TYPE_TIMESTAMP:
+      return sizeof(SQL_TIMESTAMP_STRUCT);
+    default:
+      return 0;
+  }
+}
+
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+
+// Optimized helper to write string_view directly to App Buffer without std::string allocation
+StatusRecord DirectWriteView(std::string_view view, DataBuffer& data) {
+  // If the application provided a buffer (SQL_C_CHAR or SQL_C_BINARY)
+  if (data.buf == nullptr) {
+     return {SQLStates::k_HY009(), "Invalid application buffer"};
+  }
+
+  SQLLEN data_len = static_cast<SQLLEN>(view.size());
+  
+  // Set the output length (StrLen_or_IndPtr).
+  // Note: In ODBC, for truncation, this usually holds the *total* available bytes, not written bytes.
+  if (data.result_len) {
+    *data.result_len = data_len;
+  }
+
+  SQLLEN buffer_len = data.buflen;
+  
+  if (data.type == SQL_C_CHAR) {
+    // For Char, we need space for null terminator
+    if (data_len >= buffer_len) {
+      // Truncation needed
+      if (buffer_len > 0) {
+        std::memcpy(data.buf, view.data(), buffer_len - 1);
+        static_cast<char*>(data.buf)[buffer_len - 1] = '\0';
+      }
+      return {SQLStates::k_01004(), "Data truncated"};
+    } else {
+      // No truncation
+      std::memcpy(data.buf, view.data(), data_len);
+      static_cast<char*>(data.buf)[data_len] = '\0';
+    }
+  } 
+  else if (data.type == SQL_C_BINARY) {
+    // For Binary, we fill up to buffer_len, no null terminator needed
+    if (data_len > buffer_len) {
+      if (buffer_len > 0) {
+        std::memcpy(data.buf, view.data(), buffer_len);
+      }
+      return {SQLStates::k_01004(), "Data truncated"};
+    } else {
+      std::memcpy(data.buf, view.data(), data_len);
+    }
+  } 
+  else {
+    // Fallback for types like SQL_C_WCHAR or others not handled by this fast path.
+    // We have to copy to std::string to use the existing translation utils.
+    DSValue val(view.data(), view.size());
+    return ConvertFromStringDSValue(val, data);
+  }
+
+  return StatusRecord::Ok();
+}
+
+StatusRecord WriteArrowBatchRowset(StatementHandle& stmt_handle, 
+                                   int const rowset_size,
+                                   DescriptorHandle& ard, 
+                                   DescriptorHandle& ird) {
+  // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP0:: ";
+  auto columns = stmt_handle.GetArrowColumns();
+  int64_t total_rows = stmt_handle.GetArrowBatchNumRows();
+  int64_t batch_cursor = stmt_handle.GetArrowBatchCursor();
+  // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP1:: ";
+  
+  if (columns.empty() || batch_cursor >= total_rows) {
+      return StatusRecord({SQLStates::k_SQL_NO_DATA(), "No data in current batch."});
+  }
+
+  // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP2:: ";
+
+  int64_t rows_to_write = std::min(static_cast<int64_t>(rowset_size), total_rows - batch_cursor);
+
+  // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP3:: ";
+  
+  RowSchema const& schema = stmt_handle.GetResultSet().row_schema;
+  
+  SQLLEN* bind_offset_ptr = ard.GetHeaderRecord().bind_offset_ptr;
+  SQLLEN bind_offset = (bind_offset_ptr) ? *bind_offset_ptr : 0;
+  SQLUSMALLINT* row_status_ptr = ird.GetHeaderRecord().array_status_ptr;
+
+  for (int i = 0; i < rows_to_write; ++i) {
+    // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP4:: ";
+    int64_t arrow_row_idx = batch_cursor + i;
+    
+    // Calculate Application Buffer Row Offset
+    // We do this calculation inside the loop but outside the column loop 
+    // if stride is uniform, but ARD allows per-column binding types.
+    // So we calculate per column.
+    
+    for (ColumnSchema const& col_schema : schema) {
+      int col_index = col_schema.col_index;
+      
+      if (!ard.HasDescriptorRecord(col_index + 1)) {
+        continue;
+      }
+      
+      DescriptorRecord& col_desc = ard.GetDescriptorRecord(col_index + 1);
+      auto& column = columns[col_index];
+
+      // 1. Setup Target Pointers
+      SQLINTEGER bind_type = ard.GetHeaderRecord().bind_type;
+      SQLLEN elem_size, elem_size_ind;
+      
+      if (bind_type == SQL_BIND_BY_COLUMN) {
+        elem_size = GetElemSize(col_desc);
+        elem_size_ind = sizeof(SQLLEN);
+      } else {
+        elem_size = bind_type;
+        elem_size_ind = bind_type;
+      }
+
+      SQLLEN row_offset = i * elem_size;
+      SQLLEN row_offset_ind = i * elem_size_ind;
+
+      SQLPOINTER app_buffer = static_cast<char*>(col_desc.data_ptr) + bind_offset + row_offset;
+      SQLLEN* indicator_ptr = nullptr;
+      SQLLEN* octet_length_ptr = nullptr;
+
+      if (col_desc.indicator_ptr) {
+        indicator_ptr = reinterpret_cast<SQLLEN*>(
+            reinterpret_cast<char*>(col_desc.indicator_ptr) + bind_offset + row_offset_ind);
+      }
+      if (col_desc.octet_length_ptr) {
+        octet_length_ptr = reinterpret_cast<SQLLEN*>(
+            reinterpret_cast<char*>(col_desc.octet_length_ptr) + bind_offset + row_offset_ind);
+      }
+
+      // 2. Handle Nulls
+      if (column->IsNull(arrow_row_idx)) {
+        if (indicator_ptr == nullptr) {
+          return {SQLStates::k_22002(), "Indicator variable required but not supplied for NULL data"};
+        }
+        *indicator_ptr = SQL_NULL_DATA;
+        continue;
+      }
+
+      // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP5:: " << col_index;
+      
+      // Prepare DataBuffer wrapper for the utility functions
+      DataBuffer data = {col_desc.concise_type, app_buffer, col_desc.octet_length, octet_length_ptr};
+      
+      // 3. Extract Arrow Value & Write Directly (Merged Switch)
+      StatusRecord status;
+      auto type_id = column->type_id();
+
+      // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP6:: ";
+
+      switch (type_id) {
+        case arrow::Type::INT64: {
+          auto int_arr = std::static_pointer_cast<arrow::Int64Array>(column);
+          // ConvertFromArithmeticDSValue expects a string representation
+          DSValue val = std::to_string(int_arr->Value(arrow_row_idx));
+          status = ConvertFromArithmeticDSValue<SQLBIGINT>(val, data);
+          break;
+        }
+        case arrow::Type::DOUBLE: {
+          auto dbl_arr = std::static_pointer_cast<arrow::DoubleArray>(column);
+          DSValue val = std::to_string(dbl_arr->Value(arrow_row_idx));
+          status = ConvertFromArithmeticDSValue<SQLDOUBLE>(val, data);
+          break;
+        }
+        case arrow::Type::STRING: {
+          // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP7:: ";
+          auto str_arr = std::static_pointer_cast<arrow::StringArray>(column);
+          status = DirectWriteView(str_arr->GetView(arrow_row_idx), data);
+          // auto view = str_arr->GetView(arrow_row_idx);
+          // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP8:: " << view.size();
+          // DSValue val;
+          // if (view.size() > 0) {
+          //    val.assign(view.data(), view.size());
+          // }
+          // LOG(INFO) << "SACHIN:: val:: " << val;
+          // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP9:: ";
+          // status = ConvertFromStringDSValue(val, data);
+          // LOG(INFO) << "SACHIN:: WriteArrowBatchRowset CP10:: ";
+          break;
+        }
+        case arrow::Type::BOOL: {
+          auto bool_arr = std::static_pointer_cast<arrow::BooleanArray>(column);
+          // ConvertFromBooleanDSValue typically expects "true"/"false" or "1"/"0" string
+          DSValue val = bool_arr->Value(arrow_row_idx) ? "true" : "false";
+          status = ConvertFromBooleanDSValue(val, data);
+          break;
+        }
+        case arrow::Type::BINARY: {
+          auto bin_arr = std::static_pointer_cast<arrow::BinaryArray>(column);
+          auto view = bin_arr->GetView(arrow_row_idx);
+          DSValue val(view.data(), view.size());
+          status = ConvertFromBytesDSValue(val, data);
+          break;
+        }
+        // For complex types or those needing formatting (Timestamp/Date/Time),
+        // we fallback to Arrow's ToString() which generates the format
+        // expected by our ConvertFrom* utilities (e.g. "YYYY-MM-DD...").
+        default: {
+          auto scalar_res = column->GetScalar(arrow_row_idx);
+          if (!scalar_res.ok()) {
+            return StatusRecord{SQLStates::k_HY000(), "Internal Error: Arrow GetScalar failed"};
+          }
+          std::string str_data = scalar_res.ValueOrDie()->ToString();
+          
+          switch (type_id) {
+            case arrow::Type::TIMESTAMP:
+              status = ConvertFromTimestampDSValue(str_data, data);
+              break;
+            case arrow::Type::DATE32:
+              status = ConvertFromDateDSValue(str_data, data);
+              break;
+            case arrow::Type::TIME64:
+              status = ConvertFromTimeDSValue(str_data, data);
+              break;
+            case arrow::Type::DECIMAL128:
+            case arrow::Type::DECIMAL256:
+              status = ConvertFromNumericDSValue(str_data, data);
+              break;
+            case arrow::Type::LIST:
+              // Remove arrow debug formatting if present (e.g. "list<item: string>[...]")
+              if (str_data.rfind("list<", 0) == 0) {
+                auto pos = str_data.find('[');
+                if (pos != std::string::npos) str_data = str_data.substr(pos);
+              }
+              status = ConvertFromArrayDSValue(str_data, data);
+              break;
+            case arrow::Type::STRUCT:
+               status = ConvertFromStructDSValue(str_data, data);
+               break;
+            default:
+              // Fallback for unknown types -> Treat as String
+              status = ConvertFromStringDSValue(str_data, data);
+              break;
+          }
+          break;
+        }
+      }
+
+      if (!status.ok()) {
+        LOG(ERROR) << "WriteArrowBatchRowset::ConversionError:: " << status.message;
+        return status;
+      }
+
+      // If success and indicator exists, set length (handled inside ConvertFrom... usually, 
+      // but we ensure the indicator is set to non-null if the util didn't)
+      if (indicator_ptr && *indicator_ptr == SQL_NULL_DATA) {
+         // This case should ideally not be reached if ConvertFrom* works correctly,
+         // as they calculate octet length.
+         // We leave it to the utility functions to populate *indicator_ptr (octet_length).
+      }
+    }
+
+    if (row_status_ptr) {
+      row_status_ptr[i] = SQL_ROW_SUCCESS;
+    }
+  }
+
+  if (row_status_ptr) {
+    for (int i = rows_to_write; i < rowset_size; i++) {
+      row_status_ptr[i] = SQL_ROW_NOROW;
+    }
+  }
+
+  if (auto* processed = ird.GetHeaderRecord().rows_processed_ptr) {
+    *processed = rows_to_write;
+  }
+
+  stmt_handle.SetArrowBatchCursor(batch_cursor + rows_to_write);
+
+  return StatusRecord::Ok();
+}
+
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+
+StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
+  // LOG(INFO) << "SACHIN:: FetchNextResultSet:: CP 0";
+  // We need to return only the top `SQL_ATTR_MAX_ROWS` number of rows
+  auto max_rows_status = stmt_handle.GetAttribute(SQL_ATTR_MAX_ROWS);
+  if (!max_rows_status) {
+    LOG(ERROR) << "FetchNextResultSet:: "
+               << max_rows_status.GetStatusRecord().message;
+    return max_rows_status.GetStatusRecord();
+  }
+  // LOG(INFO) << "SACHIN:: FetchNextResultSet:: CP 1";
+  SQLULEN max_rows = *max_rows_status;
+  ResultSet& result_set = stmt_handle.GetResultSet();
+  int num_rows_fetched_yet = result_set.num_rows_fetched_yet;
+  int num_rows_to_be_fetched = max_rows - num_rows_fetched_yet;
+  if (max_rows > 0 && num_rows_to_be_fetched <= 0) {
+    LOG(INFO) << "FetchNextResultSet:: SQL_ATTR_MAX_ROWS limit reached.";
+    return StatusRecord(
+        {SQLStates::k_SQL_NO_DATA(), "SQL_ATTR_MAX_ROWS limit reached."});
+  }
+  // LOG(INFO) << "SACHIN:: FetchNextResultSet:: CP 2";
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+  if (stmt_handle.WasHtapiEnabled()) {
+    LOG(INFO) <<  "SACHIN:: FetchNextResultSet:: ReadNextResultsFromStream called:: ";
+    StatusRecord read_status = ReadNextResultsFromStream(stmt_handle);
+    if (!read_status.ok()) {
+      LOG(ERROR) << "ReadNextResultsFromStream:: " << read_status.message;
+      return read_status;
+    }
+  } else {
+    StatusRecord read_status = FetchNextPageResultSet(stmt_handle);
+    if (!read_status.ok()) {
+      LOG(ERROR) << "FetchNextPageResultSet:: " << read_status.message;
+      return read_status;
+    }
+  }
+#else
+
+  StatusRecord read_status = FetchNextPageResultSet(stmt_handle);
+  if (!read_status.ok()) {
+    LOG(ERROR) << "FetchNextPageResultSet:: " << read_status.message;
+    return read_status;
+  }
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+  LOG(INFO) <<  "SACHIN:: FetchNextResultSet::  CP2:: ";
+  // SACHIN:: disabling this temporarily
+  // auto& rs_rows = result_set.rows;
+  // if (rs_rows.empty()) {
+  //   LOG(INFO) << "FetchNextResultSet:: Empty result set fetched.";
+  //   return StatusRecord(
+  //       {SQLStates::k_SQL_NO_DATA(), "Empty result set fetched."});
+  // }
+  LOG(INFO) <<  "SACHIN:: FetchNextResultSet::  CP3:: ";
+  // if (max_rows > 0 && num_rows_to_be_fetched < rs_rows.size()) {
+  //   rs_rows.erase(rs_rows.begin() + num_rows_to_be_fetched, rs_rows.end());
+  // }
+  LOG(INFO) <<  "SACHIN:: FetchNextResultSet::  CP4:: ";
+  stmt_handle.SetStmtState(StmtStates::kStatementExecutedWithRs);
+  return StatusRecord::Ok();
+}
+
 static std::chrono::nanoseconds g_total_fetch_next_time{0};
 static std::chrono::nanoseconds g_total_write_rowset_time{0};
 
@@ -177,76 +569,85 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
   StatusRecordOr<StatementHandle*> handle_result =
       ValidateStatementHandle(statement_handle);
   if (!handle_result) {
-    LOG(ERROR) << "SQLFetch::ValidateStatementHandle:: "
-               << handle_result.GetStatusRecord().message;
     return handle_result.GetCalculatedReturnCode();
   }
   StatementHandle& handle = *(*handle_result);
 
   if (handle.GetStmtState() == StmtStates::kStatementExecutedWithoutRs) {
-    auto status_record =
-        StatusRecord{SQLStates::k_24000(), "Invalid cursor state."};
-    LOG(ERROR) << "SQLFetch:: " << status_record.message;
-    return LogAndReturnCode(handle, status_record);
+    return LogAndReturnCode(handle, {SQLStates::k_24000(), "Invalid cursor state."});
   }
 
   if (handle.GetStmtState() != StmtStates::kStatementExecutedWithRs) {
-    StatusRecord status_record = {
-        SQLStates::k_HY010(),
-        "No statement has been executed with a resultset"};
-    LOG(ERROR) << "SQLFetch:: " << status_record.message;
-    return LogAndReturnCode(handle, status_record);
+    return LogAndReturnCode(handle, {SQLStates::k_HY010(), "No statement has been executed with a resultset"});
   }
 
   DescriptorHandle& ard = handle.GetDescriptorHandle(DescriptorType::kARD);
-
   ResultSet& result_set = handle.GetResultSet();
-  result_set.cursor++;
-  result_set.translated_data.row_offset = 0;
-  result_set.translated_data.data.clear();
-  result_set.translated_data.last_target_c_type = 0;
-  if (result_set.cursor >= result_set.rows.size()) {
-    LOG(INFO) << "SQLFetch:: cursor: " << result_set.cursor
-              << " is >= result set size: " << result_set.rows.size();
-      
-    // Start timing for FetchNextResultSet
-    // auto start_time_fetch = std::chrono::high_resolution_clock::now();
-      
+
+  // Determine if we need to fetch more data
+  bool need_fetch = false;
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+  if (handle.WasHtapiEnabled()) {
+    LOG(INFO) << "SQLFetchInternal:: SACHIN:: Htapi was Enabled";
+      // If arrow batch cursor reached the end of the current batch
+      if (handle.GetArrowBatchCursor() >= handle.GetArrowBatchNumRows()) {
+          need_fetch = true;
+      }
+  } else {
+      // Legacy check
+      if (result_set.cursor + 1 >= result_set.rows.size()) need_fetch = true;
+  }
+#else
+  if (result_set.cursor + 1 >= result_set.rows.size()) need_fetch = true;
+#endif
+
+  LOG(INFO) << "SQLFetchInternal:: SACHIN:: need_fetch:: " << need_fetch;
+
+  if (need_fetch) {
+    LOG(INFO) << "SQLFetchInternal:: SACHIN:: inside need_fetch:: ";
+    // For HTAPI, this fetches the next Arrow Batch and stores columns in handle.
+    // For REST, this fetches pages and fills result_set.rows.
     StatusRecord next_page_status = FetchNextResultSet(handle);
-      
-    // Stop timing and accumulate
-    // auto end_time_fetch = std::chrono::high_resolution_clock::now();
-    // g_total_fetch_next_time += (end_time_fetch - start_time_fetch);
-    // auto fetch_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(g_total_fetch_next_time);
-    // std::cout << "Total time for FetchNextResultSet: " << fetch_time_ms.count() << " ms\n";
-      
     if (!next_page_status.ok()) {
-      LOG(ERROR) << "SQLFetch:: " << next_page_status.message;
       return LogAndReturnCode(handle, next_page_status);
     }
-    result_set = handle.GetResultSet();
-    result_set.cursor++;
+    
+    // For Legacy REST flow, increment cursor/reset translated data
+    if (!handle.WasHtapiEnabled()) {
+        result_set.cursor++; 
+        // ... [Reset logic from original code if needed] ...
+    }
+  } else if (!handle.WasHtapiEnabled()) {
+      // Standard in-memory cursor advance for REST results
+      result_set.cursor++;
+      // Added by SACHIN:: 
+      result_set.translated_data.row_offset = 0;
+      result_set.translated_data.data.clear();
+      result_set.translated_data.last_target_c_type = 0;
   }
 
   int rowset_size = ard.GetHeaderRecord().array_size;
-  if (!rowset_size) {
-    rowset_size = 1;
-  }
+  if (!rowset_size) rowset_size = 1;
   DescriptorHandle& ird = handle.GetDescriptorHandle(DescriptorType::kIRD);
-  
-  // Start timing for WriteRowset
-  // auto start_time_write = std::chrono::high_resolution_clock::now();
-  
-  StatusRecord status_record = WriteRowset(result_set, rowset_size, ard, ird);
-  
-  // Stop timing and accumulate
-  // auto end_time_write = std::chrono::high_resolution_clock::now();
-  // g_total_write_rowset_time += (end_time_write - start_time_write);
-  // auto write_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(g_total_write_rowset_time);
-  // std::cout << "Total time for WriteRowset: " << write_time_ms.count() << " ms\n";
-  
+
+  StatusRecord status_record;
+
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+  if (handle.WasHtapiEnabled()) {
+      // LOG(INFO) << "SACHIN:: SQLFetchInternal:: WriteArrowBatchRowset called:: ";
+      // Optimized path: Write directly from cached Arrow columns to App Buffers
+      status_record = WriteArrowBatchRowset(handle, rowset_size, ard, ird);
+  } else {
+      // Standard path: Write from vector<vector<string>>
+      status_record = WriteRowset(result_set, rowset_size, ard, ird);
+  }
+#else
+  status_record = WriteRowset(result_set, rowset_size, ard, ird);
+#endif
+
   return LogAndReturnCode(handle, status_record);
 }
+
 
 SQLRETURN SQLFetchScrollInternal(SQLHSTMT statement_handle,
                                  SQLSMALLINT fetch_orientation,
