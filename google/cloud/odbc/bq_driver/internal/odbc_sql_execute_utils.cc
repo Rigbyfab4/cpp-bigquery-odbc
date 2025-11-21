@@ -16,6 +16,8 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include <thread>
+#include <future>
+#include <vector>
 
 //////////////////////////////////////////////////////////////////
 // This file has query execution related utilities which can have
@@ -45,6 +47,7 @@ using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using google::cloud::odbc_internal::SQLStates;
 using chrono_ms = std::chrono::milliseconds;
 
+// ... [ConstructPositionalQueryParams implementation remains unchanged] ...
 StatusRecord ConstructPositionalQueryParams(
     DescriptorHandle& apd, DescriptorHandle& ipd,
     std::vector<QueryParameter>& basic_query_params, bool is_data_buff_req) {
@@ -142,6 +145,7 @@ StatusRecord ConstructPositionalQueryParams(
   return StatusRecord::Ok();
 }
 
+// ... [ExecuteScript and other functions remain unchanged] ...
 StatusRecordOr<DSResults> ExecuteScript(
     StatementHandle& stmt_handle, PostQueryRequest const& post_query_request) {
   ConnectionHandle* conn_handle = stmt_handle.GetConnectionHandle();
@@ -509,6 +513,8 @@ StatusRecord ProcessRecordBatch(
   return StatusRecord::Ok();
 }
 
+constexpr int kMaxBatchesPerFetch = 8;
+
 StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
   std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
       stmt_handle.GetReadRowsStream();
@@ -518,57 +524,110 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
   }
   auto& read_rows_stream = *optional_stream;
   auto& optional_it = stmt_handle.GetReadRowsIterator();
-  if (!optional_it.has_value()) {
-    // Initialize iterator to begin() and store it.
-    auto it = read_rows_stream.begin();
-    optional_it = std::move(it);
-  } else {
-    // Advance the stored iterator.
-    // The previous call processed the element at the iterator,
-    // so we increment it to move to the next element.
-    ++(*optional_it);
-    // Irrespective of any errors, if the iterator hasn't reached the end, we
-    // want to cache it
-    stmt_handle.SetReadRowsIterator(*optional_it);
-  }
-  auto& it = *optional_it;
-  if (it != read_rows_stream.end()) {
-    auto const& read_row_status = *it;
+  std::shared_ptr<arrow::Schema> schema = stmt_handle.GetArrowSchema();
+
+  std::vector<ReadRowsResponse> pending_batches;
+  pending_batches.reserve(kMaxBatchesPerFetch);
+
+  // 1. Sequentially fetch batches from the stream
+  for (int i = 0; i < kMaxBatchesPerFetch; ++i) {
+    if (!optional_it.has_value()) {
+      // Initialize iterator to begin() and store it.
+      auto it = read_rows_stream.begin();
+      optional_it = std::move(it);
+    } else {
+      // If we are already at the end from a previous call, break immediately.
+      // Incrementing an iterator that is at end() is undefined behavior.
+      if (*optional_it == read_rows_stream.end()) {
+        break;
+      }
+      // Advance the stored iterator.
+      ++(*optional_it);
+    }
+
+    // Check if iterator is at the end (either after begin() or after increment)
+    if (*optional_it == read_rows_stream.end()) {
+      break;
+    }
+
+    auto const& read_row_status = **optional_it;
     if (!read_row_status) {
       return StatusRecord::ConvertFrom(read_row_status.status());
     }
-    ReadRowsResponse row = *read_row_status;
-    if (row.has_arrow_record_batch()) {
-      // The schema is coming from ResultSet cached in the statement handle.
-      // We don't want to generate the schema again for every batch since it
-      // will remain the same.
-      std::shared_ptr<arrow::Schema> schema = stmt_handle.GetArrowSchema();
-      StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> record_batch_status =
-          GetArrowRecordBatch(row.arrow_record_batch(), schema);
-      if (!record_batch_status) {
-        return record_batch_status.GetStatusRecord();
-      }
-      // We are reading ResultSet from the stmt_handle because we want to
-      // preserve the previous state like `num_rows_fetched_yet`.
-      ResultSet& result_set = stmt_handle.GetResultSet();
-      // To have SQLFetch read the rows from the start, we are setting the
-      // cursor to default.
-      result_set.cursor = -1;
-      return ProcessRecordBatch(schema, *record_batch_status, result_set);
-    } else {
-      return StatusRecord{
-          SQLStates::k_HY000(),
-          "Internal Error: cannot find arrow record batch to process!"};
-    }
-  } else {
+    pending_batches.push_back(*read_row_status);
+
+    // Add a small delay to prevent "GRPC_CALL_ERROR_TOO_MANY_OPERATIONS"
+    // which can occur if we read from the stream too aggressively in a tight loop.
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  if (pending_batches.empty()) {
     stmt_handle.ClearReadRowsStream();
     stmt_handle.ClearReadRowsIterator();
     LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
     return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
   }
+
+  // 2. Process batches in parallel
+  std::vector<std::future<StatusRecordOr<ResultSet>>> futures;
+  futures.reserve(pending_batches.size());
+
+  for (const auto& batch : pending_batches) {
+    // Launch async task to process each batch
+    futures.push_back(std::async(
+        std::launch::async,
+        [batch, schema]() -> StatusRecordOr<ResultSet> {
+          if (!batch.has_arrow_record_batch()) {
+            return StatusRecord{
+                SQLStates::k_HY000(),
+                "Internal Error: cannot find arrow record batch to process!"};
+          }
+
+          StatusRecordOr<std::shared_ptr<arrow::RecordBatch>>
+              record_batch_status =
+                  GetArrowRecordBatch(batch.arrow_record_batch(), schema);
+          if (!record_batch_status) {
+            return record_batch_status.GetStatusRecord();
+          }
+
+          // Create a local ResultSet for this thread
+          ResultSet local_result_set;
+          StatusRecord status = ProcessRecordBatch(schema, *record_batch_status,
+                                                   local_result_set);
+          if (!status.ok()) {
+            return status;
+          }
+          return local_result_set;
+        }));
+  }
+
+  // 3. Merge results into the main StatementHandle ResultSet
+  ResultSet& main_result_set = stmt_handle.GetResultSet();
+  // Clear existing rows to act as a fresh buffer for the next fetch
+  main_result_set.rows.clear();
+
+  for (auto& f : futures) {
+    auto result = f.get();
+    if (!result) {
+      return result.GetStatusRecord();
+    }
+    ResultSet& local_rs = *result;
+    // Append the processed rows from the thread-local ResultSet to the main one
+    main_result_set.rows.insert(
+        main_result_set.rows.end(),
+        std::make_move_iterator(local_rs.rows.begin()),
+        std::make_move_iterator(local_rs.rows.end()));
+  }
+
+  // To have SQLFetch read the rows from the start, we are setting the
+  // cursor to default.
+  main_result_set.cursor = -1;
+
   return StatusRecord::Ok();
 }
 
+
+// ... [FetchBQDataReadArrow and subsequent functions remain unchanged] ...
 StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
                                   TableReference& table_ref) {
   std::string project_id = table_ref.project_id;
@@ -755,6 +814,7 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
 
 #endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 
+// ... [Remaining functions FetchBQData, FetchNextPageResultSet, FetchNextPageOfQueryResults remain unchanged] ...
 // TODO(b/388947009): Add unit tests for this function
 StatusRecordOr<DSResults> FetchBQData(
     StatementHandle& stmt_handle, PostQueryRequest const& post_query_request,
