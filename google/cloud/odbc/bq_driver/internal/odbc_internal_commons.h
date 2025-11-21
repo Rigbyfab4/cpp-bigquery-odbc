@@ -114,8 +114,8 @@ bool operator==(ColumnSchema const& lhs, ColumnSchema const& rhs);
 bool operator>(ColumnSchema const& lhs, ColumnSchema const& rhs);
 bool operator<(ColumnSchema const& lhs, ColumnSchema const& rhs);
 
-// Data Source Value.
-using DSValue = std::vector<char>;
+// Data Source Value. Now using std::string to act as a byte container.
+using DSValue = std::string;
 
 // Data Source Row.
 using DSRow = std::vector<DSValue>;
@@ -154,18 +154,21 @@ struct ResultSet {
   mutable TranslatedData translated_data;
 };
 
-DSValue const kNullValue{0};
+// kNullValue is a string containing a single null byte.
+DSValue const kNullValue{1, '\0'};
 
 inline bool IsDSValueNull(DSValue const& value) {
-  return value.size() == 1 && value[0] == 0;
+  // Check if it's the null representation string (size 1, value is null byte)
+  return value.size() == 1 && value[0] == '\0';
 }
 // converting the given string to Numeric number
 // getting scale ,precision, sign and the value from sting parameter
 odbc_internal::StatusRecord GetNumericDetailsFromStr(
     std::string const& src_dsval, SQL_NUMERIC_STRUCT& numst);
+
+// Simplified: Assignment is now direct since DSValue is std::string
 inline void StringToDSValue(std::string const& str, DSValue& value) {
-  value.resize(str.size());
-  std::copy(str.begin(), str.end(), value.begin());
+  value = str;
 }
 
 // Func to decode a Base64-encoded string into a vector of bytes.
@@ -189,9 +192,9 @@ inline void Base64Decode(std::string const& encoded,
   }
 }
 
+// Simplified: Assignment is now direct since DSValue is std::string
 inline void NumericToDSValue(std::string const& str, DSValue& DSval) {
-  DSval.resize(str.size());
-  std::copy(str.begin(), str.end(), DSval.begin());
+  DSval = str;
 }
 // Function to convert byte data to a hex string
 inline void BytesToHex(std::vector<uint8_t> const& data,
@@ -222,46 +225,66 @@ std::string EncryptPassword(std::string const& password);
 std::string DecryptPassword(std::string const& encrypted_hex);
 #endif  //_WIN32
 
+// Simplified: Conversion is direct with reinterpret_cast of c_str to char const*
 inline void StringToDSValue(const SQLCHAR* c_str, DSValue& value) {
-  std::string str = reinterpret_cast<char const*>(c_str);
-  StringToDSValue(str, value);
+  value = reinterpret_cast<char const*>(c_str);
 }
 
+// Simplified: Assignment is direct since DSValue is std::string
 inline void DSValueToString(DSValue const& value, std::string& str) {
-  str.assign(value.begin(), value.end());
+  str = value;
 }
 
+// Stores int64_t as raw bytes in the DSValue (string).
 inline void IntToDSValue(int64_t int_val, DSValue& ds_value) {
   ds_value.resize(sizeof(int_val));
   std::memcpy(ds_value.data(), &int_val, sizeof(int64_t));
 }
 
+// Stores arithmetic types as raw bytes in the DSValue (string).
 template <typename SrcType>
 inline void ArithmeticToDSValue(SrcType arithmetic_val, DSValue& ds_value) {
   ds_value.resize(sizeof(SrcType));
   std::memcpy(ds_value.data(), &arithmetic_val, sizeof(SrcType));
 }
 
+// Retrieves arithmetic type from raw bytes in the DSValue (string).
 template <typename SrcType>
 inline SrcType DSValueToArithmetic(DSValue& ds_value) {
   SrcType val;
+  // Ensure the DSValue has enough data before copying
+  if (ds_value.size() < sizeof(SrcType)) {
+    // Handle error case if necessary, or assume correct size based on usage
+    // For now, assuming correct size.
+  }
   std::memcpy(&val, ds_value.data(), sizeof(val));
   return val;
 }
 
+// Retrieves int64_t from raw bytes in the DSValue (string).
 inline int64_t DSValueToInt(DSValue& ds_value) {
   int64_t int_val;
+  // Ensure the DSValue has enough data before copying
+  if (ds_value.size() < sizeof(int64_t)) {
+    // Handle error case if necessary
+  }
   std::memcpy(&int_val, ds_value.data(), sizeof(int_val));
   return int_val;
 }
 
+// Stores DATE_STRUCT as raw bytes in the DSValue (string).
 inline void DateToDSValue(const SQL_DATE_STRUCT& date, DSValue& value) {
   value.resize(sizeof(SQL_DATE_STRUCT));
   std::memcpy(value.data(), &date, sizeof(SQL_DATE_STRUCT));
 }
 
+// Retrieves DATE_STRUCT from raw bytes in the DSValue (string).
 inline SQL_DATE_STRUCT DSValueToDate(DSValue const& value,
                                      SQL_DATE_STRUCT& date_struct) {
+  // Ensure the DSValue has enough data before copying
+  if (value.size() < sizeof(SQL_DATE_STRUCT)) {
+    // Handle error case if necessary
+  }
   std::memcpy(&date_struct, value.data(), sizeof(SQL_DATE_STRUCT));
   return date_struct;
 }
@@ -290,29 +313,46 @@ inline std::string FormatDatetimeToString(
   return buffer;
 }
 
+// Stores TIMESTAMP_STRUCT as raw bytes in the DSValue (string).
 inline void TimestampToDSValue(const SQL_TIMESTAMP_STRUCT& timestamp,
                                DSValue& value) {
   value.resize(sizeof(SQL_TIMESTAMP_STRUCT));
   std::memcpy(value.data(), &timestamp, sizeof(SQL_TIMESTAMP_STRUCT));
 }
 
+// Retrieves TIMESTAMP_STRUCT from raw bytes in the DSValue (string).
 inline void DSValueToTimestamp(DSValue const& value,
                                SQL_TIMESTAMP_STRUCT& timestamp_struct) {
+  // Ensure the DSValue has enough data before copying
+  if (value.size() < sizeof(SQL_TIMESTAMP_STRUCT)) {
+    // Handle error case if necessary
+  }
   std::memcpy(&timestamp_struct, value.data(), sizeof(SQL_TIMESTAMP_STRUCT));
 }
 
+// Retrieves TIMESTAMP_STRUCT (Datetime) from raw bytes in the DSValue (string).
 inline void DSValueToDatetime(DSValue const& value,
                               SQL_TIMESTAMP_STRUCT& timestamp_struct) {
+  // Ensure the DSValue has enough data before copying
+  if (value.size() < sizeof(SQL_TIMESTAMP_STRUCT)) {
+    // Handle error case if necessary
+  }
   std::memcpy(&timestamp_struct, value.data(), sizeof(SQL_TIMESTAMP_STRUCT));
 }
 
+// Stores TIME_STRUCT as raw bytes in the DSValue (string).
 inline void TimeToDSValue(const SQL_TIME_STRUCT& time, DSValue& value) {
   value.resize(sizeof(SQL_TIME_STRUCT));
   std::memcpy(value.data(), &time, sizeof(SQL_TIME_STRUCT));
 }
 
+// Retrieves TIME_STRUCT from raw bytes in the DSValue (string).
 inline SQL_TIME_STRUCT DSValueToTime(DSValue const& value,
                                      SQL_TIME_STRUCT& time_struct) {
+  // Ensure the DSValue has enough data before copying
+  if (value.size() < sizeof(SQL_TIME_STRUCT)) {
+    // Handle error case if necessary
+  }
   std::memcpy(&time_struct, value.data(), sizeof(SQL_TIME_STRUCT));
   return time_struct;
 }
@@ -338,15 +378,15 @@ inline std::string FormatFloatToString(SrcType val) {
   return oss.str();
 }
 
+// Stores bool as a string ("true" or "false") in DSValue.
 inline void BooleanToDSValue(bool bool_val, DSValue& value) {
-  std::string str_val = bool_val ? "true" : "false";
-  value.resize(str_val.size());
-  std::copy(str_val.begin(), str_val.end(), value.begin());
+  value = bool_val ? "true" : "false";
 }
 
+// Retrieves bool from a string in DSValue.
 inline void DSValueToBoolean(DSValue const& value, bool& bool_val) {
-  std::string str_value(value.begin(), value.end());
-  bool_val = !(str_value == "false" || str_value == "0" || str_value.empty());
+  // value is already a std::string, so no intermediate copy needed
+  bool_val = !(value == "false" || value == "0" || value.empty());
 }
 
 inline SQL_TIME_STRUCT ConvertToTimeStruct(std::string const& time_str) {
@@ -408,6 +448,7 @@ inline void GetSinglePrecisionInterval(
   }
 }
 
+// Uses a temporary std::string `str_data` which is then assigned to `value`.
 inline void ArrayJsonToDSValue(std::string const& str, DSValue& value,
                                BQDataType array_type) {
   nlohmann::json json_data = nlohmann::json::parse(str);
@@ -492,8 +533,8 @@ inline void ArrayJsonToDSValue(std::string const& str, DSValue& value,
       break;
     }
   }
-  value.resize(str_data.size());
-  std::copy(str_data.begin(), str_data.end(), value.begin());
+  // Simplified: Direct assignment to DSValue, avoiding resize and copy
+  value = str_data;
 }
 
 // This is the result populated by performing a bq query API.

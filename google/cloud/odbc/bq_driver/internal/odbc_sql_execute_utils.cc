@@ -410,8 +410,10 @@ StatusRecord ProcessRecordBatch(
           if (str_arr->IsNull(row)) {
             result_set.rows[row][col_i] = kNullValue;
           } else {
-            StringToDSValue(str_arr->GetString(row),
-                            result_set.rows[row][col_i]);
+            // OPTIMIZATION: Avoids copy by using GetView() to construct the
+            // DSValue (std::string) directly from the Arrow buffer pointer/length.
+            auto view = str_arr->GetView(row);
+            result_set.rows[row][col_i] = DSValue(view.data(), view.size());
           }
         }
         break;
@@ -422,6 +424,8 @@ StatusRecord ProcessRecordBatch(
           if (bool_arr->IsNull(row)) {
             result_set.rows[row][col_i] = kNullValue;
           } else {
+            // Necessary copy: bool value must be converted to the string literal
+            // "true" or "false" for storage.
             BooleanToDSValue(bool_arr->Value(row), result_set.rows[row][col_i]);
           }
         }
@@ -433,8 +437,10 @@ StatusRecord ProcessRecordBatch(
           if (bin_arr->IsNull(row)) {
             result_set.rows[row][col_i] = kNullValue;
           } else {
-            StringToDSValue(bin_arr->GetString(row),
-                            result_set.rows[row][col_i]);
+            // OPTIMIZATION: Avoids copy by using GetView() to construct the
+            // DSValue (std::string) directly from the Arrow buffer pointer/length.
+            auto view = bin_arr->GetView(row);
+            result_set.rows[row][col_i] = DSValue(view.data(), view.size());
           }
         }
         break;
@@ -458,7 +464,7 @@ StatusRecord ProcessRecordBatch(
             return StatusRecord{SQLStates::k_HY000(),
                                 "Internal Error: Unable to parse scalar"};
           }
-          std::string data = scalar_res.ValueOrDie()->ToString();
+          std::string data = scalar_res.ValueOrDie()->ToString();  // <-- Copy 1
 
           DSValue& row_val = result_set.rows[row][col_i];
 
@@ -468,11 +474,13 @@ StatusRecord ProcessRecordBatch(
                   ConvertStringToTimestampStruct(data);
               if (!time_struct_status)
                 return time_struct_status.GetStatusRecord();
+              // Necessary Copy 2: Copying the bytes of the SQL_TIMESTAMP_STRUCT
               TimestampToDSValue(*time_struct_status, row_val);
               break;
             }
             case arrow::Type::TIME64: {
               SQL_TIME_STRUCT t_data = ConvertToTimeStruct(data);
+              // Necessary Copy 2: Copying the bytes of the SQL_TIME_STRUCT
               TimeToDSValue(t_data, row_val);
               break;
             }
@@ -480,6 +488,7 @@ StatusRecord ProcessRecordBatch(
               StatusRecordOr<SQL_DATE_STRUCT> date_struct =
                   ConvertStringToDateStruct(data);
               if (!date_struct.Ok()) return date_struct.GetStatusRecord();
+              // Necessary Copy 2: Copying the bytes of the SQL_TIME_STRUCT
               DateToDSValue(*date_struct, row_val);
               break;
             }
@@ -488,16 +497,16 @@ StatusRecord ProcessRecordBatch(
                 auto pos = data.find('[');
                 if (pos != std::string::npos) data = data.substr(pos);
               }
-              StringToDSValue(data, row_val);
+              row_val = data; // <-- Copy 2 (assignment from data)
               break;
             }
             case arrow::Type::DECIMAL128:
             case arrow::Type::DECIMAL256: {
-              NumericToDSValue(data, row_val);
+              NumericToDSValue(data, row_val); // <-- Copy 2 (assignment from data)
               break;
             }
             default: {
-              StringToDSValue(data, row_val);
+              row_val = data; // <-- Copy 2 (assignment from data)
               break;
             }
           }
@@ -564,12 +573,13 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
       // cursor to default.
       result_set.cursor = -1;
       // auto start_time_process = std::chrono::high_resolution_clock::now();
-      auto ret = ProcessRecordBatch(schema, *record_batch_status, result_set);
+      // auto ret = ProcessRecordBatch(schema, *record_batch_status, result_set);
       // auto end_time_process = std::chrono::high_resolution_clock::now();
       // g_total_process_batch_time += (end_time_process - start_time_process);
       // auto process_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(g_total_process_batch_time);
       // std::cout << "Total time for ProcessRecordBatch: " << process_time_ms.count() << " ms\n";
-      return ret;
+      // return ret;
+      return ProcessRecordBatch(schema, *record_batch_status, result_set);
     } else {
       return StatusRecord{
           SQLStates::k_HY000(),
