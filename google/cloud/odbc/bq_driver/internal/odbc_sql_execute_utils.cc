@@ -353,26 +353,33 @@ StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> GetArrowRecordBatch(
   return record_batch;
 }
 
-StatusRecord ProcessRecordBatch(
+StatusRecord ProcessRecordBatchToVector(
     std::shared_ptr<arrow::Schema> schema,
-    std::shared_ptr<arrow::RecordBatch> record_batch, ResultSet& result_set) {
-  int num_rows = record_batch->num_rows();
-  int num_columns = record_batch->num_columns();
+    std::shared_ptr<arrow::RecordBatch> record_batch,
+    std::vector<DSRow>& out_rows) {
+  const int64_t num_rows = record_batch->num_rows();
+  if (num_rows == 0) {
+    return StatusRecord::Ok();
+  }
+  const int num_cols = record_batch->num_columns();
 
-  int old_row_count = result_set.rows.size();
-  result_set.rows.resize(num_rows);
-  // Resize inner column vectors ONLY for new rows.
-  // Existing rows (indices 0 to old_row_count-1) retain their capacity and
-  // size.
-  for (int i = old_row_count; i < num_rows; ++i) {
-    result_set.rows[i].resize(num_columns);
+  // 1. Pre-allocate vector memory to avoid reallocations during insertion
+  // The `out_rows` vector should be empty coming in, or we append to it.
+  // Here we assume we are appending or filling.
+  size_t start_row_index = out_rows.size();
+  out_rows.resize(start_row_index + num_rows);
+
+  // 2. Initialize the DSRow (vector of DSValue) for each new row
+  // We do this first so we can access [row][col] directly in the loops below.
+  for (size_t i = start_row_index; i < out_rows.size(); ++i) {
+    out_rows[i].resize(num_cols);
   }
 
   // Column-Oriented Processing:
   // Arrow is columnar. Accessing data column-by-column allows us to cast the
   // array type ONCE per column, rather than performing type checks and
   // GetScalar() allocations for every single cell.
-  for (int col_i = 0; col_i < num_columns; ++col_i) {
+  for (int col_i = 0; col_i < num_cols; ++col_i) {
     auto column = record_batch->column(col_i);
     auto type_id = column->type_id();
 
@@ -383,11 +390,11 @@ StatusRecord ProcessRecordBatch(
       case arrow::Type::INT64: {
         auto int_arr = std::static_pointer_cast<arrow::Int64Array>(column);
         for (int64_t row = 0; row < num_rows; ++row) {
+          DSValue& cell = out_rows[start_row_index + row][col_i];
           if (int_arr->IsNull(row)) {
-            result_set.rows[row][col_i] = kNullValue;
+            cell = kNullValue;
           } else {
-            ArithmeticToDSValue<SQLBIGINT>(int_arr->Value(row),
-                                           result_set.rows[row][col_i]);
+            ArithmeticToDSValue<SQLBIGINT>(int_arr->Value(row), cell);
           }
         }
         break;
@@ -395,11 +402,11 @@ StatusRecord ProcessRecordBatch(
       case arrow::Type::DOUBLE: {
         auto dbl_arr = std::static_pointer_cast<arrow::DoubleArray>(column);
         for (int64_t row = 0; row < num_rows; ++row) {
+          DSValue& cell = out_rows[start_row_index + row][col_i];
           if (dbl_arr->IsNull(row)) {
-            result_set.rows[row][col_i] = kNullValue;
+            cell = kNullValue;
           } else {
-            ArithmeticToDSValue<SQLDOUBLE>(dbl_arr->Value(row),
-                                           result_set.rows[row][col_i]);
+            ArithmeticToDSValue<SQLDOUBLE>(dbl_arr->Value(row), cell);
           }
         }
         break;
@@ -407,11 +414,11 @@ StatusRecord ProcessRecordBatch(
       case arrow::Type::STRING: {
         auto str_arr = std::static_pointer_cast<arrow::StringArray>(column);
         for (int64_t row = 0; row < num_rows; ++row) {
+           DSValue& cell = out_rows[start_row_index + row][col_i];
           if (str_arr->IsNull(row)) {
-            result_set.rows[row][col_i] = kNullValue;
+            DSValue& cell = out_rows[start_row_index + row][col_i];
           } else {
-            StringToDSValue(str_arr->GetString(row),
-                            result_set.rows[row][col_i]);
+            StringToDSValue(str_arr->GetString(row), cell);
           }
         }
         break;
@@ -419,10 +426,11 @@ StatusRecord ProcessRecordBatch(
       case arrow::Type::BOOL: {
         auto bool_arr = std::static_pointer_cast<arrow::BooleanArray>(column);
         for (int64_t row = 0; row < num_rows; ++row) {
+          DSValue& cell = out_rows[start_row_index + row][col_i];
           if (bool_arr->IsNull(row)) {
-            result_set.rows[row][col_i] = kNullValue;
+            cell = kNullValue;
           } else {
-            BooleanToDSValue(bool_arr->Value(row), result_set.rows[row][col_i]);
+            BooleanToDSValue(bool_arr->Value(row), cell);
           }
         }
         break;
@@ -430,11 +438,11 @@ StatusRecord ProcessRecordBatch(
       case arrow::Type::BINARY: {
         auto bin_arr = std::static_pointer_cast<arrow::BinaryArray>(column);
         for (int64_t row = 0; row < num_rows; ++row) {
+          DSValue& cell = out_rows[start_row_index + row][col_i];
           if (bin_arr->IsNull(row)) {
-            result_set.rows[row][col_i] = kNullValue;
+            cell = kNullValue;
           } else {
-            StringToDSValue(bin_arr->GetString(row),
-                            result_set.rows[row][col_i]);
+            StringToDSValue(bin_arr->GetString(row), cell);
           }
         }
         break;
@@ -445,8 +453,9 @@ StatusRecord ProcessRecordBatch(
       // helpers (ConvertStringTo...)
       default: {
         for (int64_t row = 0; row < num_rows; ++row) {
+          DSValue& cell = out_rows[start_row_index + row][col_i];
           if (column->IsNull(row)) {
-            result_set.rows[row][col_i] = kNullValue;
+            cell = kNullValue;
             continue;
           }
 
@@ -460,27 +469,25 @@ StatusRecord ProcessRecordBatch(
           }
           std::string data = scalar_res.ValueOrDie()->ToString();
 
-          DSValue& row_val = result_set.rows[row][col_i];
-
           switch (type_id) {
             case arrow::Type::TIMESTAMP: {
               StatusRecordOr<SQL_TIMESTAMP_STRUCT> time_struct_status =
                   ConvertStringToTimestampStruct(data);
               if (!time_struct_status)
                 return time_struct_status.GetStatusRecord();
-              TimestampToDSValue(*time_struct_status, row_val);
+              TimestampToDSValue(*time_struct_status, cell);
               break;
             }
             case arrow::Type::TIME64: {
               SQL_TIME_STRUCT t_data = ConvertToTimeStruct(data);
-              TimeToDSValue(t_data, row_val);
+              TimeToDSValue(t_data, cell);
               break;
             }
             case arrow::Type::DATE32: {
               StatusRecordOr<SQL_DATE_STRUCT> date_struct =
                   ConvertStringToDateStruct(data);
               if (!date_struct.Ok()) return date_struct.GetStatusRecord();
-              DateToDSValue(*date_struct, row_val);
+              DateToDSValue(*date_struct, cell);
               break;
             }
             case arrow::Type::LIST: {
@@ -488,16 +495,16 @@ StatusRecord ProcessRecordBatch(
                 auto pos = data.find('[');
                 if (pos != std::string::npos) data = data.substr(pos);
               }
-              StringToDSValue(data, row_val);
+              StringToDSValue(data, cell);
               break;
             }
             case arrow::Type::DECIMAL128:
             case arrow::Type::DECIMAL256: {
-              NumericToDSValue(data, row_val);
+              NumericToDSValue(data, cell);
               break;
             }
             default: {
-              StringToDSValue(data, row_val);
+              StringToDSValue(data, cell);
               break;
             }
           }
@@ -509,63 +516,32 @@ StatusRecord ProcessRecordBatch(
   return StatusRecord::Ok();
 }
 
+// REFACTORED: ReadNextResultsFromStream
 StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
-  std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
-      stmt_handle.GetReadRowsStream();
-  if (!optional_stream.has_value()) {
-    return StatusRecord{SQLStates::k_HY000(),
-                        "Internal Error: No HTAPI read stream found!!"};
+  ArrowPrefetcher* prefetcher = stmt_handle.GetArrowPrefetcher();
+  if (!prefetcher) {
+    return StatusRecord{SQLStates::k_HY000(), "Internal Error: Arrow prefetcher not initialized!"};
   }
-  auto& read_rows_stream = *optional_stream;
-  auto& optional_it = stmt_handle.GetReadRowsIterator();
-  if (!optional_it.has_value()) {
-    // Initialize iterator to begin() and store it.
-    auto it = read_rows_stream.begin();
-    optional_it = std::move(it);
-  } else {
-    // Advance the stored iterator.
-    // The previous call processed the element at the iterator,
-    // so we increment it to move to the next element.
-    ++(*optional_it);
-    // Irrespective of any errors, if the iterator hasn't reached the end, we
-    // want to cache it
-    stmt_handle.SetReadRowsIterator(*optional_it);
+
+  // Blocking Pop from the queue
+  PrefetchedBatch batch = prefetcher->GetNextBatch();
+
+  if (!batch.status.ok()) {
+    stmt_handle.ClearArrowPrefetcher(); // Stop on error
+    return batch.status;
   }
-  auto& it = *optional_it;
-  if (it != read_rows_stream.end()) {
-    auto const& read_row_status = *it;
-    if (!read_row_status) {
-      return StatusRecord::ConvertFrom(read_row_status.status());
-    }
-    ReadRowsResponse row = *read_row_status;
-    if (row.has_arrow_record_batch()) {
-      // The schema is coming from ResultSet cached in the statement handle.
-      // We don't want to generate the schema again for every batch since it
-      // will remain the same.
-      std::shared_ptr<arrow::Schema> schema = stmt_handle.GetArrowSchema();
-      StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> record_batch_status =
-          GetArrowRecordBatch(row.arrow_record_batch(), schema);
-      if (!record_batch_status) {
-        return record_batch_status.GetStatusRecord();
-      }
-      // We are reading ResultSet from the stmt_handle because we want to
-      // preserve the previous state like `num_rows_fetched_yet`.
-      ResultSet& result_set = stmt_handle.GetResultSet();
-      // To have SQLFetch read the rows from the start, we are setting the
-      // cursor to default.
-      result_set.cursor = -1;
-      return ProcessRecordBatch(schema, *record_batch_status, result_set);
-    } else {
-      return StatusRecord{
-          SQLStates::k_HY000(),
-          "Internal Error: cannot find arrow record batch to process!"};
-    }
-  } else {
-    stmt_handle.ClearReadRowsStream();
-    stmt_handle.ClearReadRowsIterator();
+
+  if (batch.is_eos) {
+    stmt_handle.ClearArrowPrefetcher();
     LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
     return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
   }
+
+  // Success: Move rows into ResultSet
+  ResultSet& result_set = stmt_handle.GetResultSet();
+  result_set.rows = std::move(batch.rows);
+  result_set.cursor = -1;
+
   return StatusRecord::Ok();
 }
 
@@ -613,10 +589,14 @@ StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
     read_rows_request.set_read_stream(read_stream_name);
 
     // Before we call ReadNextResultsFromStream, we are caching the stream
-    StreamRange<google::cloud::bigquery::storage::v1::ReadRowsResponse>
-        read_rows_stream =
-            bq_client->GetReadRowsStream(read_rows_request, options);
-    stmt_handle.SetReadRowsStream(std::move(read_rows_stream));
+    StreamRange<google::cloud::bigquery::storage::v1::ReadRowsResponse> read_rows_stream = bq_client->GetReadRowsStream(read_rows_request, options);
+    // Initialize and Start Prefetcher
+    // We move the stream into the prefetcher immediately.
+    auto prefetcher = std::make_unique<ArrowPrefetcher>(std::move(read_rows_stream), schema);
+    prefetcher->Start();
+    stmt_handle.SetArrowPrefetcher(std::move(prefetcher));
+
+    // Fetch the first batch to populate the initial result set
     return ReadNextResultsFromStream(stmt_handle);
   }
 

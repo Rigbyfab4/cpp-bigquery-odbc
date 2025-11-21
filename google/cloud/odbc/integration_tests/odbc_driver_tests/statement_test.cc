@@ -517,7 +517,7 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
     connection_string =
         kDefaultConnectionString +
         ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
-    limit = "500";
+    limit = "100000";
   }
   EXPECT_EQ(Connect(connection_string, conn), SQL_SUCCESS);
 
@@ -525,12 +525,12 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
   // The values follow this pattern: col<col_index>_row<row_index>
   std::string query =
       "SELECT * EXCEPT (index) FROM ODBC_HTAPI_TESTING.300_columns_string "
-      "ORDER BY index LIMIT " +
+      "ORDER BY index DESC LIMIT " +
       limit + ";";
   // The table name here doesn't matter because we didn't create one.
   Table table("Random_table_name");
   RowWiseResults const& results = table.Fetch(conn, query);
-  int const expected_num_rows = limit == "3000" ? 3000 : 500;
+  int const expected_num_rows = limit == "3000" ? 3000 : 100000;
   int const expected_num_cols = 300;
   ASSERT_EQ(results.size(), expected_num_rows) << "Row count mismatch.";
   for (int i = 0; i < expected_num_rows; ++i) {
@@ -540,7 +540,7 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
     for (int j = 0; j < expected_num_cols; ++j) {
       // Construct the expected string: "col<j>_row<i>"
       std::string expected_value =
-          "col" + std::to_string(j) + "_row" + std::to_string(i);
+          "col" + std::to_string(j) + "_row" + std::to_string(1000000 - i);
       ASSERT_TRUE(row.count(j))
           << "Row " << i << ": Missing expected column with index " << j;
       ASSERT_EQ(row.at(j), expected_value)
