@@ -212,6 +212,12 @@ SQLRETURN InsertStatementWithoutBindParameter(
   return status;
 }
 
+std::chrono::duration<double, std::micro> Table::total_exec_direct_time = std::chrono::duration<double, std::micro>::zero();
+int Table::exec_direct_call_count = 0;
+std::chrono::duration<double, std::micro> Table::total_fetch_loop_time = std::chrono::duration<double, std::micro>::zero();
+int Table::fetch_loop_call_count = 0;
+
+// Assuming you have defined the static members as shown above.
 RowWiseResults Table::Fetch(std::shared_ptr<ODBCHandles> const& conn,
                             std::string query) {
   if (query.empty()) {
@@ -219,15 +225,27 @@ RowWiseResults Table::Fetch(std::shared_ptr<ODBCHandles> const& conn,
   }
   SQLRETURN status;
 
+  // --- Measurement Start: SQLExecDirect ---
+  auto start_exec_direct = std::chrono::high_resolution_clock::now();
+  
   status = SQLExecDirect(
       conn->hstmt,
       const_cast<SQLCHAR*>(reinterpret_cast<const SQLCHAR*>(query.c_str())),
       SQL_NTS);
+      
+  auto end_exec_direct = std::chrono::high_resolution_clock::now();
+  // Accumulate time and count
+  Table::total_exec_direct_time += end_exec_direct - start_exec_direct;
+  Table::exec_direct_call_count++;
+  // --- Measurement End: SQLExecDirect ---
+  
   CheckError(status, "SQLExecDirect", conn);
 
   SQLSMALLINT num_cols;
   status = SQLNumResultCols(conn->hstmt, &num_cols);  // No ANSI version.
   CheckError(status, "SQLNumResultCols", conn);
+
+  // ... (SQLBindCol loop remains the same) ...
 
   std::vector<TestingDataBuffer> cols(num_cols);
   for (int i = 0; i < num_cols; i++) {
@@ -238,28 +256,73 @@ RowWiseResults Table::Fetch(std::shared_ptr<ODBCHandles> const& conn,
   }
 
   RowWiseResults results;
+
+  // --- Measurement Start: SQLFetch Loop ---
+  auto start_fetch_loop = std::chrono::high_resolution_clock::now();
+
   // Read all the rows using SQLFetch
   while (true) {
     status = SQLFetch(conn->hstmt);  // No ansi version.
     if (status == SQL_NO_DATA) {
       break;
     }
+    // ... (Error checking and data processing remains the same) ...
     if (!SQL_SUCCEEDED(status)) {
       CheckError(status, "SQLFetch", conn);
       break;
     }
-    Row row;
-    for (int i_c = 0; i_c < num_cols; i_c++) {
-      SQLLEN data_len = cols[i_c].str_len;
-      if (data_len == -1) {
-        continue;
+    bool read_values = true;
+    // SACHIN:: Disabling for better perf benchmarking
+    if(read_values) {
+      Row row;
+      for (int i_c = 0; i_c < num_cols; i_c++) {
+        SQLLEN data_len = cols[i_c].str_len;
+        if (data_len == -1) {
+          continue;
+        }
+        row[i_c] = std::string(reinterpret_cast<char*>(cols[i_c].target_value),
+                               data_len);
       }
-      row[i_c] = std::string(reinterpret_cast<char*>(cols[i_c].target_value),
-                             data_len);
+      results.emplace_back(row);
     }
-    results.emplace_back(row);
   }
+
+  auto end_fetch_loop = std::chrono::high_resolution_clock::now();
+  // Accumulate time and count (The fetch loop runs once per call to Fetch)
+  Table::total_fetch_loop_time += end_fetch_loop - start_fetch_loop;
+  Table::fetch_loop_call_count++;
+  // --- Measurement End: SQLFetch Loop ---
+
   return results;
+}
+
+void Table::PrintAverageTimes() {
+    std::cout << "\n=== Average ODBC Call Times ===" << std::endl;
+    std::cout << std::fixed << std::setprecision(3);
+
+    double avg_total_time = 0;
+
+    // Average for SQLExecDirect
+    if (Table::exec_direct_call_count > 0) {
+        double avg_exec_direct = Table::total_exec_direct_time.count() /(Table::exec_direct_call_count*1000000);
+        std::cout << "* SQLExecDirect (Total Calls: " << Table::exec_direct_call_count << "): " 
+                  << avg_exec_direct << " s (seconds)" << std::endl;
+        avg_total_time += avg_exec_direct;
+    } else {
+        std::cout << "* SQLExecDirect: Not called." << std::endl;
+    }
+
+    // Average for SQLFetch Loop
+    if (Table::fetch_loop_call_count > 0) {
+        double avg_fetch_loop = Table::total_fetch_loop_time.count() /(Table::fetch_loop_call_count*1000000);
+        std::cout << "* SQLFetch Loop (Total Calls: " << Table::fetch_loop_call_count << "): "
+                  << avg_fetch_loop << " s (seconds)" << std::endl;
+        avg_total_time += avg_fetch_loop;
+    } else {
+        std::cout << "* SQLFetch Loop: Not called." << std::endl;
+    }
+    std::cout << "* Total time on average: " << avg_total_time << " s (seconds)" << std::endl;
+    std::cout << "===============================" << std::endl << std::endl;
 }
 
 std::shared_ptr<Results> FetchDirect(std::shared_ptr<ODBCHandles> const& conn,
