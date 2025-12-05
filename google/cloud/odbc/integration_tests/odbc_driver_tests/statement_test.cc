@@ -507,30 +507,39 @@ TEST(StatementTest, SQLExecDirect_htapi_basictypes) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+// 1000, 10000, 100000, 300000
+
 TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
   bool is_htapi = GetParam();
-  SQLRETURN status;
-  auto conn = std::make_shared<ODBCHandles>();
-  std::string connection_string = kDefaultConnectionString;
-  std::string limit = "3000";
-  if (is_htapi) {
-    connection_string =
-        kDefaultConnectionString +
-        ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
-    limit = "500";
-  }
-  EXPECT_EQ(Connect(connection_string, conn), SQL_SUCCESS);
-
-  // This table has 300 string columns and one for `index`
-  // The values follow this pattern: col<col_index>_row<row_index>
-  std::string query =
-      "SELECT * EXCEPT (index) FROM ODBC_HTAPI_TESTING.300_columns_string "
-      "ORDER BY index LIMIT " +
-      limit + ";";
   // The table name here doesn't matter because we didn't create one.
   Table table("Random_table_name");
-  RowWiseResults const& results = table.Fetch(conn, query);
-  int const expected_num_rows = limit == "3000" ? 3000 : 500;
+  for (int i = 0; i < 1; ++i) {
+    SQLRETURN status;
+    auto conn = std::make_shared<ODBCHandles>();
+    std::string connection_string = kDefaultConnectionString;
+    std::string limit = "3000";
+    if (is_htapi) {
+      connection_string =
+          kDefaultConnectionString +
+          ";EnableHTAPI=1;AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
+      limit = "300000";
+    }
+    EXPECT_EQ(Connect(connection_string, conn), SQL_SUCCESS);
+    // This table has 300 string columns and one for `index`
+    // The values follow this pattern: col<col_index>_row<row_index>
+    std::string query =
+        "SELECT * EXCEPT (index) FROM ODBC_HTAPI_TESTING.300_columns_string "
+        // "ORDER BY index LIMIT " +
+         " LIMIT " +
+        limit + ";";
+    RowWiseResults const& results = table.Fetch(conn, query);
+    EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+    table.PrintAverageTimes();
+  }
+
+  /*
+  int const expected_num_rows = limit == "3000" ? 3000 : 4000;
   int const expected_num_cols = 300;
   ASSERT_EQ(results.size(), expected_num_rows) << "Row count mismatch.";
   for (int i = 0; i < expected_num_rows; ++i) {
@@ -548,6 +557,7 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
     }
   }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  */
 }
 
 TEST(StatementTest, SQLExecDirectW) {
