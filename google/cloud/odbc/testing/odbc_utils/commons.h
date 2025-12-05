@@ -538,6 +538,16 @@ class Table {
     wtable_name_ = wtable_name;
   };
 
+  // Static members for timing
+  static std::chrono::duration<double, std::micro> total_exec_direct_time;
+  static int exec_direct_call_count;
+
+  static std::chrono::duration<double, std::micro> total_fetch_loop_time;
+  static int fetch_loop_call_count;
+
+  // A helper function to print the averages
+  static void PrintAverageTimes();
+
   void Create(std::shared_ptr<ODBCHandles> const& conn,
               std::string const& schema_str = "(Column INT64)",
               bool use_ansi = false);
