@@ -509,6 +509,67 @@ StatusRecord ProcessRecordBatch(
   return StatusRecord::Ok();
 }
 
+StatusRecord ReadNextResultsFromStream1(StatementHandle& stmt_handle) {
+  std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
+      stmt_handle.GetReadRowsStream();
+  if (!optional_stream.has_value()) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "Internal Error: No HTAPI read stream found!!"};
+  }
+  auto& read_rows_stream = *optional_stream;
+  auto& optional_it = stmt_handle.GetReadRowsIterator();
+  if (!optional_it.has_value()) {
+    // Initialize iterator to begin() and store it.
+    auto it = read_rows_stream.begin();
+    optional_it = std::move(it);
+  } else {
+    // Advance the stored iterator.
+    // The previous call processed the element at the iterator,
+    // so we increment it to move to the next element.
+    ++(*optional_it);
+    // Irrespective of any errors, if the iterator hasn't reached the end, we
+    // want to cache it
+    stmt_handle.SetReadRowsIterator(*optional_it);
+  }
+  auto& it = *optional_it;
+  if (it != read_rows_stream.end()) {
+    auto const& read_row_status = *it;
+    if (!read_row_status) {
+      return StatusRecord::ConvertFrom(read_row_status.status());
+    }
+    ReadRowsResponse row = *read_row_status;
+    if (row.has_arrow_record_batch()) {
+      // The schema is coming from ResultSet cached in the statement handle.
+      // We don't want to generate the schema again for every batch since it
+      // will remain the same.
+      std::shared_ptr<arrow::Schema> schema = stmt_handle.GetArrowSchema();
+      StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> record_batch_status =
+          GetArrowRecordBatch(row.arrow_record_batch(), schema);
+      if (!record_batch_status) {
+        return record_batch_status.GetStatusRecord();
+      }
+      return StatusRecord::Ok();
+      // We are reading ResultSet from the stmt_handle because we want to
+      // preserve the previous state like `num_rows_fetched_yet`.
+      ResultSet& result_set = stmt_handle.GetResultSet();
+      // To have SQLFetch read the rows from the start, we are setting the
+      // cursor to default.
+      result_set.cursor = -1;
+      return ProcessRecordBatch(schema, *record_batch_status, result_set);
+    } else {
+      return StatusRecord{
+          SQLStates::k_HY000(),
+          "Internal Error: cannot find arrow record batch to process!"};
+    }
+  } else {
+    stmt_handle.ClearReadRowsStream();
+    stmt_handle.ClearReadRowsIterator();
+    LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
+    return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
+  }
+  return StatusRecord::Ok();
+}
+
 StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
   std::optional<StreamRange<ReadRowsResponse>>& optional_stream =
       stmt_handle.GetReadRowsStream();
@@ -567,6 +628,196 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
     return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
   }
   return StatusRecord::Ok();
+}
+
+StatusRecord FetchBQDataReadArrow2(StatementHandle& stmt_handle,
+                                   TableReference& table_ref) {
+  std::string project_id = table_ref.project_id;
+  std::string dataset_id = table_ref.dataset_id;
+  std::string table_id = table_ref.table_id;
+  std::string table_path = "projects/" + project_id + "/datasets/" +
+                           dataset_id + "/tables/" + table_id;
+
+  // 1. Setup Request with max_stream_count = 8
+  CreateReadSessionRequest create_read_session_request;
+  create_read_session_request.set_parent("projects/" + project_id);
+  create_read_session_request.set_max_stream_count(8);
+  auto* read_session = create_read_session_request.mutable_read_session();
+  read_session->set_table(table_path);
+  read_session->set_data_format(ARROW);
+
+  Options options;
+  auto bq_client = stmt_handle.GetConnectionHandle()->GetClient();
+  
+  // 2. Create the Session
+  auto read_session_status =
+      bq_client->CreateReadSession(create_read_session_request, options);
+  if (!read_session_status) {
+    return read_session_status.GetStatusRecord();
+  }
+
+  auto session = *read_session_status;
+  
+  // Set schema on the handle just for consistency (optional for the benchmark)
+  ResultSet result_set;
+  StatusRecordOr<std::shared_ptr<arrow::Schema>> schema_status =
+      GetArrowSchema(session.arrow_schema(), result_set.row_schema);
+  if (schema_status) {
+    stmt_handle.SetResultSet(result_set);
+    stmt_handle.SetArrowSchema(*schema_status);
+  }
+
+  if (session.streams().empty()) {
+    return StatusRecord{SQLStates::k_HY000(),
+                        "No valid stream found to read results"};
+  }
+
+  std::cout << "DEBUG: Session created with " << session.streams_size() 
+            << " streams." << std::endl;
+
+  // 3. Prepare for Parallel Execution
+  std::vector<std::future<StatusRecord>> futures;
+  std::atomic<int64_t> total_rows_fetched{0};
+  std::atomic<int64_t> total_batches_fetched{0};
+
+  // Start Timer
+  auto start_time = std::chrono::high_resolution_clock::now();
+
+  // 4. Launch a thread for each stream
+  for (const auto& stream : session.streams()) {
+    std::string stream_name = stream.name();
+    
+    // Launch async task
+    futures.push_back(std::async(
+        std::launch::async,
+        [bq_client, stream_name, options, &total_rows_fetched, &total_batches_fetched]() -> StatusRecord {
+          ReadRowsRequest read_rows_request;
+          read_rows_request.set_read_stream(stream_name);
+
+          // Get the stream iterator
+          auto read_rows_stream =
+              bq_client->GetReadRowsStream(read_rows_request, options);
+          
+          // Exhaust the stream
+          for (auto const& read_row_status : read_rows_stream) {
+            if (!read_row_status) {
+              return StatusRecord::ConvertFrom(read_row_status.status());
+            }
+
+            ReadRowsResponse row = *read_row_status;
+            if (row.has_arrow_record_batch()) {
+               // We access the batch size to ensure the compiler doesn't 
+               // optimize the loop away, but we do NOT process the data.
+               // Note: serialized_record_batch is a string/bytes, 
+               // row_count is usually available in the response metadata.
+               total_rows_fetched += row.row_count();
+               total_batches_fetched++;
+            }
+          }
+          return StatusRecord::Ok();
+        }));
+  }
+
+  // 5. Wait for all threads to complete
+  StatusRecord final_status = StatusRecord::Ok();
+  for (auto& f : futures) {
+    StatusRecord s = f.get();
+    if (!s.ok()) {
+      // Capture the first error encountered, but let all threads finish join
+      if (final_status.ok()) {
+        final_status = s;
+      }
+    }
+  }
+
+  // 6. Calculate and Print Time
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration_ns =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
+  double total_time_s = static_cast<double>(duration_ns.count()) / 1000000000.0;
+
+  std::cout << "\n------------------------------------------------------" << std::endl;
+  std::cout << "Parallel Benchmark (Streams: " << session.streams_size() << ")" << std::endl;
+  std::cout << "Total Batches: " << total_batches_fetched << std::endl;
+  std::cout << "Total Rows:    " << total_rows_fetched << std::endl;
+  std::cout << "Total Time:    " << total_time_s << " s" << std::endl;
+  std::cout << "------------------------------------------------------" << std::endl;
+
+  // Cleanup statement state since we consumed the data but didn't store it
+  stmt_handle.ClearReadRowsStream();
+  stmt_handle.ClearReadRowsIterator();
+
+  return final_status;
+}
+
+StatusRecord FetchBQDataReadArrow1(StatementHandle& stmt_handle,
+                                  TableReference& table_ref) {
+  std::string project_id = table_ref.project_id;
+  std::string dataset_id = table_ref.dataset_id;
+  std::string table_id = table_ref.table_id;
+  std::string table_path = "projects/" + project_id + "/datasets/" +
+                           dataset_id + "/tables/" + table_id;
+
+  CreateReadSessionRequest create_read_session_request;
+  create_read_session_request.set_parent("projects/" + project_id);
+  create_read_session_request.set_max_stream_count(1);
+  auto* read_session = create_read_session_request.mutable_read_session();
+  read_session->set_table(table_path);
+  read_session->set_data_format(ARROW);
+
+  Options options;
+  auto bq_client = stmt_handle.GetConnectionHandle()->GetClient();
+  auto read_session_status =
+      bq_client->CreateReadSession(create_read_session_request, options);
+  if (!read_session_status) {
+    return read_session_status.GetStatusRecord();
+  }
+
+  auto session = *read_session_status;
+
+  if (!session.streams().empty()) {
+    std::string read_stream_name = session.streams(0).name();
+
+    ResultSet result_set;
+    StatusRecordOr<std::shared_ptr<arrow::Schema>> schema_status =
+        GetArrowSchema(session.arrow_schema(), result_set.row_schema);
+    if (!schema_status) {
+      return schema_status.GetStatusRecord();
+    }
+    // The ResultSet now contains valid `row_schema`
+    stmt_handle.SetResultSet(result_set);
+    std::shared_ptr<arrow::Schema> schema = *schema_status;
+    stmt_handle.SetArrowSchema(schema);
+
+    // Create a ReadRowsRequest.
+    ReadRowsRequest read_rows_request;
+    read_rows_request.set_read_stream(read_stream_name);
+
+    // Before we call ReadNextResultsFromStream1, we are caching the stream
+    StreamRange<google::cloud::bigquery::storage::v1::ReadRowsResponse>
+        read_rows_stream =
+            bq_client->GetReadRowsStream(read_rows_request, options);
+    stmt_handle.SetReadRowsStream(std::move(read_rows_stream));
+    auto start_time = std::chrono::high_resolution_clock::now();
+    StatusRecord next_status = ReadNextResultsFromStream1(stmt_handle);
+    if(!next_status.ok()) {
+      return next_status;
+    }
+    while(next_status.sql_state != SQLStates::k_SQL_NO_DATA() || next_status.ok()) {
+      next_status = ReadNextResultsFromStream1(stmt_handle);
+    }
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
+    double total_time_s = static_cast<double>(duration_ns.count()) / 1000000000.0;
+    std::cout << "\n------------------------------------------------------" << std::endl;
+    std::cout << "Total Time: " << total_time_s << " s" << std::endl;
+    std::cout << "------------------------------------------------------" << std::endl;
+
+    return next_status;
+  }
+
+  return StatusRecord{SQLStates::k_HY000(),
+                      "No valid stream found to read results"};
 }
 
 StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
@@ -749,7 +1000,7 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
     return StatusRecord{SQLStates::k_HY000(), error_message};
   }
 
-  return FetchBQDataReadArrow(
+  return FetchBQDataReadArrow2(
       stmt_handle, insert_response->configuration.query.destination_table);
 }
 

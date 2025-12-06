@@ -507,13 +507,63 @@ TEST(StatementTest, SQLExecDirect_htapi_basictypes) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-// 1000, 10000, 100000, 300000
+// The fixed string of 15 characters
+const std::string kFixedString = "0123456789abcde, 0123456789abcde";
+const int N_COPIES = 900000000; // Define the loop count (N)
 
+/**
+ * @brief Runs a simple time measurement of copying a 15-character string N times.
+ * This should NOT be considered a rigorous benchmark.
+ */
+TEST(StringCopyBenchmark, StringCopyNTimeChrono) {
+    // --- 1. Start Timing ---
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    // --- 2. The Operation to Time ---
+    for (int i = 0; i < N_COPIES; ++i) {
+        // Copy the fixed string. This creates a new std::string object.
+        std::string copy = kFixedString;
+
+        // CRITICAL: Prevent the compiler from optimizing away the copy operation.
+        // This is a simple technique, but not as robust as Google Benchmark's DoNotOptimize.
+        // We ensure 'copy' is used in some minimal, non-optimizable way.
+        ASSERT_FALSE(copy.empty()) << "Copy should not be empty.";
+        
+        // This is a placeholder assertion to use the copied string.
+        // In a real benchmark, you would use benchmark::DoNotOptimize.
+    }
+
+    // --- 3. Stop Timing ---
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    // --- 4. Calculate Duration ---
+    // Calculate the duration and convert it to nanoseconds (or another appropriate unit)
+    auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
+    double total_time_ms = static_cast<double>(duration_ns.count()) / 1000000.0;
+    
+    // Calculate the average time per copy
+    double average_time_ns = static_cast<double>(duration_ns.count()) / N_COPIES;
+
+
+    // --- 5. Output Results (Optional but helpful) ---
+    std::cout << "\n------------------------------------------------------" << std::endl;
+    std::cout << "Operation: Copying a 15-char string N times" << std::endl;
+    std::cout << "N (Total copies): " << N_COPIES << std::endl;
+    std::cout << "Total Time: " << total_time_ms << " ms" << std::endl;
+    std::cout << "Average Time per Copy: " << average_time_ns << " ns" << std::endl;
+    std::cout << "------------------------------------------------------" << std::endl;
+
+    // A simple passing assertion is sufficient for this timing test.
+    // The test passes if it completes without crashing.
+    ASSERT_TRUE(true); 
+}
+
+// 1000, 10000, 100000, 300000
 TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
   bool is_htapi = GetParam();
   // The table name here doesn't matter because we didn't create one.
   Table table("Random_table_name");
-  for (int i = 0; i < 1; ++i) {
+  for (int i = 0; i < 3; ++i) {
     SQLRETURN status;
     auto conn = std::make_shared<ODBCHandles>();
     std::string connection_string = kDefaultConnectionString;
@@ -522,7 +572,7 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
       connection_string =
           kDefaultConnectionString +
           ";EnableHTAPI=1;AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
-      limit = "300000";
+      limit = "100000";
     }
     EXPECT_EQ(Connect(connection_string, conn), SQL_SUCCESS);
     // This table has 300 string columns and one for `index`

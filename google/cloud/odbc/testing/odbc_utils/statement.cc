@@ -232,14 +232,13 @@ RowWiseResults Table::Fetch(std::shared_ptr<ODBCHandles> const& conn,
       conn->hstmt,
       const_cast<SQLCHAR*>(reinterpret_cast<const SQLCHAR*>(query.c_str())),
       SQL_NTS);
+  CheckError(status, "SQLExecDirect", conn);
       
   auto end_exec_direct = std::chrono::high_resolution_clock::now();
   // Accumulate time and count
   Table::total_exec_direct_time += end_exec_direct - start_exec_direct;
   Table::exec_direct_call_count++;
   // --- Measurement End: SQLExecDirect ---
-  
-  CheckError(status, "SQLExecDirect", conn);
 
   SQLSMALLINT num_cols;
   status = SQLNumResultCols(conn->hstmt, &num_cols);  // No ANSI version.

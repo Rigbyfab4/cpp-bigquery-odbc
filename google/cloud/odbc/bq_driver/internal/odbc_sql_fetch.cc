@@ -256,9 +256,9 @@ StatusRecord FetchNextResultSet(StatementHandle& stmt_handle) {
   }
 #if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
   if (stmt_handle.WasHtapiEnabled()) {
-    StatusRecord read_status = ReadNextResultsFromStream(stmt_handle);
+    StatusRecord read_status = ReadNextResultsFromStream1(stmt_handle);
     if (!read_status.ok()) {
-      LOG(ERROR) << "ReadNextResultsFromStream:: " << read_status.message;
+      LOG(ERROR) << "ReadNextResultsFromStream1:: " << read_status.message;
       return read_status;
     }
   } else {

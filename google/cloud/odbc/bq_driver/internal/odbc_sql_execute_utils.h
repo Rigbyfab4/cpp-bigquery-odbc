@@ -66,6 +66,7 @@ odbc_internal::StatusRecordOr<DSResults> ExecuteScript(
  * @brief Reads the next set of rows from the stream cached in the statement
  * handle
  */
+StatusRecord ReadNextResultsFromStream1(StatementHandle& stmt_handle);
 StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle);
 
 #endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
