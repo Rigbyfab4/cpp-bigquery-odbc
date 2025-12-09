@@ -70,7 +70,7 @@ else
       fi
       unzip -q "$INSTALLER" -d "$WORKDIR"
       ;;
-    *.tar.gz|*.tgz)
+    *.tar.gz | *.tgz)
       tar -xzf "$INSTALLER" -C "$WORKDIR"
       ;;
     *)
@@ -157,13 +157,13 @@ else
   i=1
   for d in "${SIMBA_DSNS[@]}"; do
     echo "  $i) $d"
-    i=$((i+1))
+    i=$((i + 1))
   done
 
   while true; do
     read -rp "Select the DSN to migrate: " choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#SIMBA_DSNS[@]} ]; then
-      SELECTED_DSN="${SIMBA_DSNS[$((choice-1))]}"
+      SELECTED_DSN="${SIMBA_DSNS[$((choice - 1))]}"
       break
     fi
     echo "Invalid selection. Try again."
@@ -195,7 +195,7 @@ update_dsn_inplace() {
     }
     print
   }
-  ' "$TMP_ODBC" > "${TMP_ODBC}.new" && mv "${TMP_ODBC}.new" "$TMP_ODBC"
+  ' "$TMP_ODBC" >"${TMP_ODBC}.new" && mv "${TMP_ODBC}.new" "$TMP_ODBC"
 }
 
 create_dsn_copy() {
@@ -213,7 +213,7 @@ create_dsn_copy() {
     if($0==s){in=1; print; next}
     if(in==1 && $0~/^\[/){exit}
     if(in==1) print
-  }' "$TMP_ODBC" > "${TMP_ODBC}.${orig}.section" || true
+  }' "$TMP_ODBC" >"${TMP_ODBC}.${orig}.section" || true
 
   if [ ! -s "${TMP_ODBC}.${orig}.section" ]; then
     echo "Warning: Original section [$orig] not found; creating minimal section for $copyname"
@@ -221,7 +221,7 @@ create_dsn_copy() {
       echo "[$copyname]"
       echo "Description=$newdesc"
       echo "Driver=$newdrv"
-    } >> "$TMP_ODBC"
+    } >>"$TMP_ODBC"
     return
   fi
 
@@ -234,7 +234,7 @@ create_dsn_copy() {
     if($0 ~ /^Description=/){ print "Description=" desc; next }
     if($0 ~ /^Driver=/){ print "Driver=" drv; next }
     print
-  }' "${TMP_ODBC}.${orig}.section" >> "$TMP_ODBC"
+  }' "${TMP_ODBC}.${orig}.section" >>"$TMP_ODBC"
 
   rm -f "${TMP_ODBC}.${orig}.section"
   echo "Created DSN copy: [$copyname]"
@@ -259,7 +259,7 @@ for dsn in "${SIMBA_DSNS[@]}"; do
         }
       }
       print
-    }' "$TMP_ODBC" > "${TMP_ODBC}.tmp" && mv "${TMP_ODBC}.tmp" "$TMP_ODBC"
+    }' "$TMP_ODBC" >"${TMP_ODBC}.tmp" && mv "${TMP_ODBC}.tmp" "$TMP_ODBC"
 
     update_dsn_inplace "$dsn" "$NEW_DRV" "$NEW_DESC"
     echo "Replaced DSN: [$dsn]"
@@ -285,7 +285,7 @@ for dsn in "${SIMBA_DSNS[@]}"; do
     END{
       if(in_ods==1 && printed==0) print addeddsn "=" newname
     }
-    ' "$TMP_ODBC" > "${TMP_ODBC}.tmp" && mv "${TMP_ODBC}.tmp" "$TMP_ODBC"
+    ' "$TMP_ODBC" >"${TMP_ODBC}.tmp" && mv "${TMP_ODBC}.tmp" "$TMP_ODBC"
 
     echo "Created DSN copy: [$newdsn]"
   fi
