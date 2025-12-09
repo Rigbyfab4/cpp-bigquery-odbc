@@ -1,3 +1,4 @@
+#!/bin/bash
 # Migration script for Linux/MacOS ODBC DSNs
 # - Migrates from "Simba Google BigQuery ODBC Connector"
 # - to       "Google ODBC Driver for Google BigQuery"
@@ -6,7 +7,6 @@
 #     migrate.sh copy   <installer.zip>
 #     migrate.sh replace <installer.zip>
 
-#!/bin/bash
 set -euo pipefail
 
 usage() {
