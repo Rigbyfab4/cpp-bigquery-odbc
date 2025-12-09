@@ -33,7 +33,7 @@ if [ "$MODE" != "copy" ] && [ "$MODE" != "replace" ]; then
   exit 1
 fi
 
-# Resolve odbc.ini location
+# Resolve odbc.ini location (env first, then /etc/odbc.ini)
 if [ -n "${ODBCINI-}" ]; then
   ODBCINI_PATH="$ODBCINI"
 elif [ -f "/etc/odbc.ini" ]; then
@@ -55,20 +55,32 @@ echo "Installer input: $INSTALLER"
 WORKDIR=""
 CLEANUP=0
 
-# Extract installer
+# Prepare installer extraction if necessary
 if [ -d "$INSTALLER" ]; then
+  echo "Installer is a directory: $INSTALLER"
   WORKDIR="$(realpath "$INSTALLER")"
 else
   WORKDIR="$(mktemp -d)"
   CLEANUP=1
   case "$INSTALLER" in
-    *.zip) unzip -q "$INSTALLER" -d "$WORKDIR" ;;
-    *.tar.gz|*.tgz) tar -xzf "$INSTALLER" -C "$WORKDIR" ;;
-    *) echo "ERROR: Installer must be directory, .zip or .tar.gz/tgz"; exit 1 ;;
+    *.zip)
+      if ! command -v unzip >/dev/null 2>&1; then
+        echo "ERROR: unzip is required to extract zip archives."
+        exit 1
+      fi
+      unzip -q "$INSTALLER" -d "$WORKDIR"
+      ;;
+    *.tar.gz|*.tgz)
+      tar -xzf "$INSTALLER" -C "$WORKDIR"
+      ;;
+    *)
+      echo "ERROR: Installer must be a directory, .zip, or .tar.gz/.tgz"
+      exit 1
+      ;;
   esac
 fi
 
-# Locate lib
+# Find lib/ folder in extracted tree
 LIBDIR=""
 if [ -d "$WORKDIR/lib" ]; then
   LIBDIR="$WORKDIR/lib"
@@ -82,10 +94,10 @@ if [ -z "$LIBDIR" ] || [ ! -d "$LIBDIR" ]; then
   exit 1
 fi
 
-# Driver file
+# Find driver file (prefer .so, else .dylib)
 NEW_DRIVER_SRC="$(find "$LIBDIR" -maxdepth 1 -type f -name "*.so" -print -quit || true)"
 if [ -z "$NEW_DRIVER_SRC" ]; then
-  NEW_DRIVER_SRC="$(find "$LIBDIR" -maxdepth 1 -type f -name "*.dylib" -print -quit || true)"
+  NEW_DRIVER_SRC="$(find "$LIBDIR" -maxdepth 1 -type f -name "*.dylib" -print-quit || true)"
 fi
 
 if [ -z "$NEW_DRIVER_SRC" ]; then
@@ -102,6 +114,7 @@ DRIVER_BASENAME="$(basename "$NEW_DRIVER_SRC")"
 DEST_DRIVER_PATH="$DEST_DIR/$DRIVER_BASENAME"
 
 if [ ! -w "$DEST_DIR" ]; then
+  echo "Copying driver to $DEST_DIR with sudo..."
   sudo cp -f "$NEW_DRIVER_SRC" "$DEST_DRIVER_PATH"
   sudo chmod 644 "$DEST_DRIVER_PATH"
 else
@@ -114,11 +127,9 @@ echo "Driver copied to: $DEST_DRIVER_PATH"
 TS="$(date +%Y%m%d%H%M%S)"
 ODBC_BAK="${ODBCINI_PATH}.bak.${TS}"
 cp -a "$ODBCINI_PATH" "$ODBC_BAK"
-echo "Backup created: $ODBC_BAK"
+echo "Backup of odbc.ini saved to: $ODBC_BAK"
 
-# ----------------------------------------------------------------------------------------
-#  MINIMAL CHANGE: Detect Simba DSNs and prompt user if >1
-# ----------------------------------------------------------------------------------------
+# Detect Simba DSNs in [ODBC Data Sources]
 SIMBA_DSNS=()
 while IFS= read -r line; do
   trimmed="$(echo "$line" | sed -e 's/^[ \t]*//' -e 's/[ \t]*$//')"
@@ -126,25 +137,31 @@ while IFS= read -r line; do
     name="${trimmed%%=*}"
     SIMBA_DSNS+=("$name")
   fi
-done < <(
-  awk '/^\[ODBC Data Sources\]/{flag=1; next} /^\[/{flag=0} flag{print}' "$ODBCINI_PATH"
-)
+done < <(awk '/^\[ODBC Data Sources\]/{flag=1; next} /^\[/{flag=0} flag{print}' "$ODBCINI_PATH" || true)
 
+echo "Detected Simba DSN(s): ${SIMBA_DSNS[*]}"
+
+##############################################################################
+# ★★★ MINIMAL CHANGE: Ask user which DSN to migrate if multiple exist ★★★
+##############################################################################
 if [ ${#SIMBA_DSNS[@]} -eq 0 ]; then
   echo "No Simba DSNs found. Exiting."
+  [ "$CLEANUP" -eq 1 ] && rm -rf "$WORKDIR"
   exit 0
+
 elif [ ${#SIMBA_DSNS[@]} -eq 1 ]; then
   SELECTED_DSN="${SIMBA_DSNS[0]}"
+
 else
   echo "Multiple Simba DSNs detected:"
   i=1
   for d in "${SIMBA_DSNS[@]}"; do
-    echo " $i) $d"
+    echo "  $i) $d"
     i=$((i+1))
   done
 
   while true; do
-    read -rp "Enter the number of the DSN to migrate: " choice
+    read -rp "Select the DSN to migrate: " choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#SIMBA_DSNS[@]} ]; then
       SELECTED_DSN="${SIMBA_DSNS[$((choice-1))]}"
       break
@@ -154,40 +171,140 @@ else
 fi
 
 echo "Selected DSN: $SELECTED_DSN"
-SIMBA_DSNS=("$SELECTED_DSN")   # override with single selection
-# ----------------------------------------------------------------------------------------
+
+# Override the array so downstream code behaves unchanged
+SIMBA_DSNS=("$SELECTED_DSN")
+##############################################################################
 
 TMP_ODBC="$(mktemp)"
 cp "$ODBCINI_PATH" "$TMP_ODBC"
 
-# Functions (unchanged)
-update_dsn_inplace() { ... }   # <-- UNCHANGED (your original code)
-create_dsn_copy() { ... }      # <-- UNCHANGED (your original code)
+# Replace driver & description inside a DSN section
+update_dsn_inplace() {
+  target="$1"
+  newdrv="$2"
+  newdesc="$3"
+  awk -v section="$target" -v drv="$newdrv" -v desc="$newdesc" '
+  BEGIN { in_section=0 }
+  {
+    if ($0 ~ ("^\\[" section "\\]$")) { print; in_section=1; next }
+    if ($0 ~ /^\[/ && in_section==1) { in_section=0 }
+    if (in_section==1) {
+      if ($0 ~ /^Description=/) { print "Description=" desc; next }
+      if ($0 ~ /^Driver=/) { print "Driver=" drv; next }
+    }
+    print
+  }
+  ' "$TMP_ODBC" > "${TMP_ODBC}.new" && mv "${TMP_ODBC}.new" "$TMP_ODBC"
+}
+
+create_dsn_copy() {
+  orig="$1"
+  copyname="${orig}_google"
+  newdrv="$2"
+  newdesc="$3"
+
+  if awk -v s="[$copyname]" 'BEGIN{found=0} $0==s{found=1} END{exit !found}' "$TMP_ODBC"; then
+    echo "Note: $copyname already exists; skipping creation."
+    return
+  fi
+
+  awk -v s="[$orig]" 'BEGIN{in=0} {
+    if($0==s){in=1; print; next}
+    if(in==1 && $0~/^\[/){exit}
+    if(in==1) print
+  }' "$TMP_ODBC" > "${TMP_ODBC}.${orig}.section" || true
+
+  if [ ! -s "${TMP_ODBC}.${orig}.section" ]; then
+    echo "Warning: Original section [$orig] not found; creating minimal section for $copyname"
+    {
+      echo "[$copyname]"
+      echo "Description=$newdesc"
+      echo "Driver=$newdrv"
+    } >> "$TMP_ODBC"
+    return
+  fi
+
+  awk -v orig="$orig" -v copy="$copyname" -v drv="$newdrv" -v desc="$newdesc" '
+  NR==1{
+    if($0 ~ ("^\\[" orig "\\]$")){print "[" copy "]"} else {print}
+    next
+  }
+  {
+    if($0 ~ /^Description=/){ print "Description=" desc; next }
+    if($0 ~ /^Driver=/){ print "Driver=" drv; next }
+    print
+  }' "${TMP_ODBC}.${orig}.section" >> "$TMP_ODBC"
+
+  rm -f "${TMP_ODBC}.${orig}.section"
+  echo "Created DSN copy: [$copyname]"
+}
 
 NEW_DESC="Google ODBC Driver for Google BigQuery DSN"
 NEW_DRV="$DEST_DRIVER_PATH"
 NEW_DRIVER_NAME="Google ODBC Driver for Google BigQuery"
 
-# Process selected DSN (unchanged)
+# Update DSNs
 for dsn in "${SIMBA_DSNS[@]}"; do
   if [ "$MODE" = "replace" ]; then
-    ... # unchanged code
+    awk -v dsn="$dsn" -v newname="$NEW_DRIVER_NAME" '
+    BEGIN { in_ods=0 }
+    {
+      if ($0 ~ /^\[ODBC Data Sources\]/){ print; in_ods=1; next }
+      if ($0 ~ /^\[/ && $0 !~ /^\[ODBC Data Sources\]/){ in_ods=0 }
+      if(in_ods==1){
+        if($0 ~ ("^"dsn"[ \t]*=")){
+          print dsn "=" newname
+          next
+        }
+      }
+      print
+    }' "$TMP_ODBC" > "${TMP_ODBC}.tmp" && mv "${TMP_ODBC}.tmp" "$TMP_ODBC"
+
+    update_dsn_inplace "$dsn" "$NEW_DRV" "$NEW_DESC"
+    echo "Replaced DSN: [$dsn]"
+
   else
-    ... # unchanged code
+    create_dsn_copy "$dsn" "$NEW_DRV" "$NEW_DESC"
+    newdsn="${dsn}_google"
+
+    awk -v original="$dsn" -v addeddsn="$newdsn" -v newname="$NEW_DRIVER_NAME" '
+    BEGIN{ in_ods=0; printed=0 }
+    {
+      if($0 ~ /^\[ODBC Data Sources\]/){ print; in_ods=1; next }
+      if($0 ~ /^\[/ && $0 !~ /^\[ODBC Data Sources\]/){
+        if(in_ods==1 && printed==0){
+          print addeddsn "=" newname
+          printed=1
+        }
+        in_ods=0
+      }
+      if(in_ods==1){ print; next }
+      print
+    }
+    END{
+      if(in_ods==1 && printed==0) print addeddsn "=" newname
+    }
+    ' "$TMP_ODBC" > "${TMP_ODBC}.tmp" && mv "${TMP_ODBC}.tmp" "$TMP_ODBC"
+
+    echo "Created DSN copy: [$newdsn]"
   fi
 done
 
-# Write final file (unchanged)
+# Write output back
 if [ -w "$ODBCINI_PATH" ]; then
   mv "$TMP_ODBC" "$ODBCINI_PATH"
 else
+  echo "Updating $ODBCINI_PATH with sudo..."
   sudo mv "$TMP_ODBC" "$ODBCINI_PATH"
-  sudo chmod 644 "$ODBCINI_PATH"
+  sudo chown root:root "$ODBCINI_PATH" || true
+  sudo chmod 644 "$ODBCINI_PATH" || true
 fi
 
-echo "Updated odbc.ini successfully."
-echo "Backup: $ODBC_BAK"
-echo "Done."
+echo "Updated odbc.ini successfully: $ODBCINI_PATH"
+echo "Backup retained at: $ODBC_BAK"
+echo "Driver in use: $NEW_DRV"
+echo "Mode finished: $MODE"
 
 [ "$CLEANUP" -eq 1 ] && rm -rf "$WORKDIR"
 
