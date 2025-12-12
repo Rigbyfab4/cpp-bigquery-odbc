@@ -18,7 +18,7 @@
 <#
 Migration script for Windows ODBC DSNs
 - Migrates from "Simba ODBC Driver for Google Bigquery"
-- to       "Google Bigquery Driver"
+- to       "ODBC Driver for BigQuery"
 
 Usage:
     migrate.ps1 -Mode copy -DriverInstaller "GoogleBigQueryODBC.msi"
@@ -35,9 +35,9 @@ param(
 )
 
 $SimbaDriverName  = "Simba ODBC Driver for Google Bigquery"
-$GoogleDriverName = "Google Bigquery Driver"
+$GoogleDriverName = "ODBC Driver for BigQuery"
 
-Write-Host "=== Installing Google Bigquery Driver ==="
+Write-Host "=== Installing ODBC Driver for BigQuery ==="
 Start-Process "msiexec.exe" -ArgumentList "/i `"$DriverInstaller`" /quiet /norestart" -Wait
 Write-Host "=== Driver installation complete ===`n"
 

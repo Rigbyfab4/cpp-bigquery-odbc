@@ -16,7 +16,7 @@
 
 # Migration script for Linux/MacOS ODBC DSNs
 # - Migrates from "Simba Google BigQuery ODBC Connector"
-# - to       "Google ODBC Driver for Google BigQuery"
+# - to       "ODBC Driver for BigQuery"
 
 # Usage:
 #     migrate.sh copy   <installer.zip>
@@ -255,9 +255,9 @@ create_dsn_copy() {
   echo "Created DSN copy: [$copyname]"
 }
 
-NEW_DESC="Google ODBC Driver for Google BigQuery DSN"
+NEW_DESC="ODBC Driver for BigQuery DSN"
 NEW_DRV="$DEST_DRIVER_PATH"
-NEW_DRIVER_NAME="Google ODBC Driver for Google BigQuery"
+NEW_DRIVER_NAME="ODBC Driver for BigQuery"
 
 # Update DSNs
 for dsn in "${SIMBA_DSNS[@]}"; do
