@@ -315,7 +315,7 @@ TEST(CatalogTest, SQLTables) {
                                           "ODBC_SQLTables1_TEST_2",
                                           "ODBC_SQLTables1_TEST_3"};
   for (auto const& name : table_names) {
-    Table(kCatalogFnsDataset + "." + name).Create(conn);
+    Table(kDatasetName + "." + name).Create(conn);
   }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
@@ -338,7 +338,11 @@ TEST(CatalogTest, SQLTables) {
     EXPECT_EQ(kCatalogName, result.description.value());
   }
   EXPECT_EQ(table_names.size(), count_tables) << "Not all tables were found";
-
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  for (auto const& name : table_names) {
+    Table(kDatasetName + "." + name).Drop(conn);
+  }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
@@ -351,7 +355,7 @@ TEST(CatalogTest, SQLTablesA) {
                                           "ODBC_SQLTablesAnsi_TEST_2",
                                           "ODBC_SQLTableAnsi_TEST_3"};
   for (auto const& name : table_names) {
-    Table(kCatalogFnsDataset + "." + name).Create(conn);
+    Table(kDatasetName + "." + name).Create(conn);
   }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
@@ -374,7 +378,11 @@ TEST(CatalogTest, SQLTablesA) {
     EXPECT_EQ(kCatalogName, result.description.value());
   }
   EXPECT_EQ(table_names.size(), count_tables) << "Not all tables were found";
-
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  for (auto const& name : table_names) {
+    Table(kDatasetName + "." + name).Drop(conn);
+  }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
@@ -470,7 +478,7 @@ TEST(CatalogTest, SQLTables_WithFiltering) {
       "ODBC_SQLTables_SQLTables_WithFiltering_1",
       "ODBC_SQLTables_SQLTables_WithFiltering_2"};
   for (auto const& name : table_names) {
-    Table(kCatalogFnsDataset + "." + name).Create(conn);
+    Table(kDatasetName + "." + name).Create(conn);
   }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
@@ -499,7 +507,11 @@ TEST(CatalogTest, SQLTables_WithFiltering) {
     EXPECT_EQ(result.project_name.value(), result.description.value());
   }
   EXPECT_EQ(table_names.size(), count_tables) << "Not all tables were found";
-
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  for (auto const& name : table_names) {
+    Table(kDatasetName + "." + name).Drop(conn);
+  }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
@@ -571,7 +583,7 @@ TEST(CatalogTest, SQLTables_MetadataId_True) {
       "ODBC_SQLTables_SQLTables_MetadataId_True_1",
       "odbc_sqltables_sqltables_metadataid_true_1"};
   for (auto const& name : table_names) {
-    Table(kCatalogFnsDataset + "." + name).Create(conn);
+    Table(kDatasetName + "." + name).Create(conn);
   }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
@@ -598,7 +610,11 @@ TEST(CatalogTest, SQLTables_MetadataId_True) {
     EXPECT_EQ(result.project_name.value(), result.description.value());
   }
   EXPECT_EQ(table_names.size(), count_tables) << "Not all tables were found";
-
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+  for (auto const& name : table_names) {
+    Table(kDatasetName + "." + name).Drop(conn);
+  }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
