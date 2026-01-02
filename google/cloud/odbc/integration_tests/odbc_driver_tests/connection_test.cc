@@ -828,12 +828,13 @@ TEST(ConnectionTest, SQLSetConnectAttrA_DeleteString) {
 
 // Helper to verify SQLWCHAR data platform-independently.
 // handles Windows (2-byte char) and Linux (4-byte char) correctly.
-void VerifyTruncatedSQLWCHAR(void* buf, SQLLEN actual_len_bytes, std::string expected_ascii) {
-
+void VerifyTruncatedSQLWCHAR(void* buf, SQLLEN actual_len_bytes,
+                             std::string expected_ascii) {
   SQLLEN expected_bytes = expected_ascii.size() * sizeof(SQLWCHAR);
-  
-  EXPECT_EQ(actual_len_bytes, expected_bytes) 
-      << "Length mismatch! Expected " << expected_bytes << " bytes but got " << actual_len_bytes;
+
+  EXPECT_EQ(actual_len_bytes, expected_bytes)
+      << "Length mismatch! Expected " << expected_bytes << " bytes but got "
+      << actual_len_bytes;
 
   SQLWCHAR* wbuf = reinterpret_cast<SQLWCHAR*>(buf);
   for (size_t i = 0; i < expected_ascii.size(); ++i) {
@@ -876,7 +877,7 @@ TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
   status = SQLGetData(conn->hstmt, 1, SQL_C_WCHAR, wchar_buf, sizeof(wchar_buf),
                       &wchar_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
-  
+
   VerifyTruncatedSQLWCHAR(wchar_buf, wchar_len, "Hell");
 
   // Verify SQL_C_SLONG (Int) No Truncation
