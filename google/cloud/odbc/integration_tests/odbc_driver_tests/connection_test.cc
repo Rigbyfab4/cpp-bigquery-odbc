@@ -824,8 +824,25 @@ TEST(ConnectionTest, SQLSetConnectAttrA_DeleteString) {
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
 #ifdef BQ_DRIVER_INTEGRATION_TESTS
+
+// Helper function to verify UTF-16LE bytes regardless of platform wchar_t size.
+void VerifyUtf16Truncation(void* buf, SQLLEN actual_len_bytes, std::string expected_ascii) {
+  SQLLEN expected_bytes = expected_ascii.size() * 2;
+  EXPECT_EQ(actual_len_bytes, expected_bytes) 
+      << "Length mismatch! Expected " << expected_bytes << " bytes but got " << actual_len_bytes;
+
+  std::vector<uint8_t> expected_data;
+  expected_data.reserve(expected_bytes);
+  for (char c : expected_ascii) {
+    expected_data.push_back(static_cast<uint8_t>(c)); 
+    expected_data.push_back(0x00);                    
+  }
+
+  int cmp = std::memcmp(buf, expected_data.data(), expected_bytes);
+  EXPECT_EQ(cmp, 0) << "Content mismatch! Buffer does not contain expected UTF-16LE bytes.";
+}
+
 TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
   SQLRETURN status;
   auto conn = std::make_shared<ODBCHandles>();
@@ -861,8 +878,7 @@ TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
                       &wchar_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
   
-  EXPECT_EQ(std::wstring(reinterpret_cast<wchar_t*>(wchar_buf)), L"Hell");
-  EXPECT_EQ(wchar_len, 4 * sizeof(SQLWCHAR)); 
+  VerifyUtf16Truncation(wchar_buf, wchar_len, "Hell");
 
   // Verify SQL_C_SLONG (Int) No Truncation
   SQLINTEGER int_val = 0;
@@ -931,8 +947,7 @@ TEST(ConnectionTest, SQLFetch_VerifyTruncationBehavior) {
   EXPECT_EQ(char_len, 4);
 
   // SQL_C_WCHAR Truncation
-  EXPECT_EQ(std::wstring(reinterpret_cast<wchar_t*>(wchar_buf)), L"Hell");
-  EXPECT_EQ(wchar_len, 4 * sizeof(SQLWCHAR));
+  VerifyUtf16Truncation(wchar_buf, wchar_len, "Hell");
 
   // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
@@ -990,8 +1005,7 @@ TEST(ConnectionTest, SQLFetchScroll_VerifyTruncationBehavior) {
   EXPECT_EQ(char_len, 4);
 
   // SQL_C_WCHAR Truncation
-  EXPECT_EQ(std::wstring(reinterpret_cast<wchar_t*>(wchar_buf)), L"Hell");
-  EXPECT_EQ(wchar_len, 4 * sizeof(SQLWCHAR));
+  VerifyUtf16Truncation(wchar_buf, wchar_len, "Hell");
 
   // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
