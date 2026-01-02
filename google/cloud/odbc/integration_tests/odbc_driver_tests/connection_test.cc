@@ -860,8 +860,9 @@ TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
   status = SQLGetData(conn->hstmt, 1, SQL_C_WCHAR, wchar_buf, sizeof(wchar_buf),
                       &wchar_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
-  EXPECT_EQ(std::wstring(wchar_buf), L"Hell");
-  EXPECT_EQ(wchar_len, 8);  // 4 characters * 2 bytes
+  
+  EXPECT_EQ(std::wstring(reinterpret_cast<wchar_t*>(wchar_buf)), L"Hell");
+  EXPECT_EQ(wchar_len, 4 * sizeof(SQLWCHAR)); 
 
   // Verify SQL_C_SLONG (Int) No Truncation
   SQLINTEGER int_val = 0;
@@ -930,8 +931,8 @@ TEST(ConnectionTest, SQLFetch_VerifyTruncationBehavior) {
   EXPECT_EQ(char_len, 4);
 
   // SQL_C_WCHAR Truncation
-  EXPECT_EQ(std::wstring(wchar_buf), L"Hell");
-  EXPECT_EQ(wchar_len, 8);  // 4 * 2 bytes
+  EXPECT_EQ(std::wstring(reinterpret_cast<wchar_t*>(wchar_buf)), L"Hell");
+  EXPECT_EQ(wchar_len, 4 * sizeof(SQLWCHAR));
 
   // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
@@ -989,8 +990,8 @@ TEST(ConnectionTest, SQLFetchScroll_VerifyTruncationBehavior) {
   EXPECT_EQ(char_len, 4);
 
   // SQL_C_WCHAR Truncation
-  EXPECT_EQ(std::wstring(wchar_buf), L"Hell");
-  EXPECT_EQ(wchar_len, 8);  // 4 * 2 bytes
+  EXPECT_EQ(std::wstring(reinterpret_cast<wchar_t*>(wchar_buf)), L"Hell");
+  EXPECT_EQ(wchar_len, 4 * sizeof(SQLWCHAR));
 
   // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
