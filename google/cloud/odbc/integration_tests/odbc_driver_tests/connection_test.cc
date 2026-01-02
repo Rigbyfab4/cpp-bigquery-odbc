@@ -826,21 +826,20 @@ TEST(ConnectionTest, SQLSetConnectAttrA_DeleteString) {
 }
 #ifdef BQ_DRIVER_INTEGRATION_TESTS
 
-// Helper function to verify UTF-16LE bytes regardless of platform wchar_t size.
-void VerifyUtf16Truncation(void* buf, SQLLEN actual_len_bytes, std::string expected_ascii) {
-  SQLLEN expected_bytes = expected_ascii.size() * 2;
+// Helper to verify SQLWCHAR data platform-independently.
+// handles Windows (2-byte char) and Linux (4-byte char) correctly.
+void VerifyTruncatedSQLWCHAR(void* buf, SQLLEN actual_len_bytes, std::string expected_ascii) {
+
+  SQLLEN expected_bytes = expected_ascii.size() * sizeof(SQLWCHAR);
+  
   EXPECT_EQ(actual_len_bytes, expected_bytes) 
       << "Length mismatch! Expected " << expected_bytes << " bytes but got " << actual_len_bytes;
 
-  std::vector<uint8_t> expected_data;
-  expected_data.reserve(expected_bytes);
-  for (char c : expected_ascii) {
-    expected_data.push_back(static_cast<uint8_t>(c)); 
-    expected_data.push_back(0x00);                    
+  SQLWCHAR* wbuf = reinterpret_cast<SQLWCHAR*>(buf);
+  for (size_t i = 0; i < expected_ascii.size(); ++i) {
+    EXPECT_EQ(wbuf[i], static_cast<SQLWCHAR>(expected_ascii[i]))
+        << "Character mismatch at index " << i;
   }
-
-  int cmp = std::memcmp(buf, expected_data.data(), expected_bytes);
-  EXPECT_EQ(cmp, 0) << "Content mismatch! Buffer does not contain expected UTF-16LE bytes.";
 }
 
 TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
@@ -878,7 +877,7 @@ TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
                       &wchar_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
   
-  VerifyUtf16Truncation(wchar_buf, wchar_len, "Hell");
+  VerifyTruncatedSQLWCHAR(wchar_buf, wchar_len, "Hell");
 
   // Verify SQL_C_SLONG (Int) No Truncation
   SQLINTEGER int_val = 0;
@@ -947,7 +946,7 @@ TEST(ConnectionTest, SQLFetch_VerifyTruncationBehavior) {
   EXPECT_EQ(char_len, 4);
 
   // SQL_C_WCHAR Truncation
-  VerifyUtf16Truncation(wchar_buf, wchar_len, "Hell");
+  VerifyTruncatedSQLWCHAR(wchar_buf, wchar_len, "Hell");
 
   // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
@@ -1005,7 +1004,7 @@ TEST(ConnectionTest, SQLFetchScroll_VerifyTruncationBehavior) {
   EXPECT_EQ(char_len, 4);
 
   // SQL_C_WCHAR Truncation
-  VerifyUtf16Truncation(wchar_buf, wchar_len, "Hell");
+  VerifyTruncatedSQLWCHAR(wchar_buf, wchar_len, "Hell");
 
   // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
@@ -1017,7 +1016,6 @@ TEST(ConnectionTest, SQLFetchScroll_VerifyTruncationBehavior) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
-
 TEST(ConnectionTest, SQLSetConnectAttr_Integer) {
   SQLULEN buf = SQL_ASYNC_ENABLE_ON;
   auto conn = std::make_shared<ODBCHandles>();
