@@ -22,13 +22,12 @@ namespace google::cloud::odbc_bq_driver_internal {
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 
-StatusRecord WriteToApplicationBuffer(
-    StatementHandle& stmt_handle,
-    DSValue const& ds_val,
-    BQDataType bq_data_type,
-    DescriptorRecord& app_desc_rec,
-    SQLLEN bind_offset,
-    SQLLEN bind_offset_ind) {
+StatusRecord WriteToApplicationBuffer(StatementHandle& stmt_handle,
+                                      DSValue const& ds_val,
+                                      BQDataType bq_data_type,
+                                      DescriptorRecord& app_desc_rec,
+                                      SQLLEN bind_offset,
+                                      SQLLEN bind_offset_ind) {
   SQLSMALLINT target_c_type = app_desc_rec.concise_type;
   SQLPOINTER app_buffer = app_desc_rec.data_ptr;
   SQLLEN app_buffer_len = app_desc_rec.octet_length;
@@ -46,7 +45,7 @@ StatusRecord WriteToApplicationBuffer(
   }
 
   if (IsDSValueNull(ds_val)) {
-        LOG(ERROR) << "WriteToApplicationBuffer:: Indicator variable required but "
+    LOG(ERROR) << "WriteToApplicationBuffer:: Indicator variable required but "
                   "not supplied for NULL data.";
     if (indicator_ptr == nullptr) {
       return {SQLStates::k_22002(),
@@ -57,17 +56,15 @@ StatusRecord WriteToApplicationBuffer(
   }
   // We need to reset the indicator_ptr once it has been set to SQL_NULL_DATA
   // for DSNullValues.
-SQLLEN max_len = 0;
-auto* conn = stmt_handle.GetConnectionHandle();
-if (conn != nullptr) {
-  max_len = conn->GetDsn().default_string_column_length;
-}
+  SQLLEN max_len = 0;
+  auto* conn = stmt_handle.GetConnectionHandle();
+  if (conn != nullptr) {
+    max_len = conn->GetDsn().default_string_column_length;
+  }
 
   DSValue effective_val = ds_val;
-  if (max_len > 0 &&
-      bq_data_type == BQDataType::kString &&
+  if (max_len > 0 && bq_data_type == BQDataType::kString &&
       (target_c_type == SQL_C_CHAR || target_c_type == SQL_C_WCHAR)) {
-
     if (effective_val.size() > static_cast<size_t>(max_len)) {
       effective_val.assign(effective_val.begin(),
                            effective_val.begin() + max_len);
@@ -165,8 +162,9 @@ SQLLEN GetElemSize(DescriptorRecord& app_desc_rec) {
   }
 }
 
-StatusRecord WriteDSRow(StatementHandle& stmt_handle,DSRow const& ds_row, RowSchema const& schema,
-                        DescriptorHandle& ard, int row_num) {
+StatusRecord WriteDSRow(StatementHandle& stmt_handle, DSRow const& ds_row,
+                        RowSchema const& schema, DescriptorHandle& ard,
+                        int row_num) {
   SQLLEN* bind_offset_ptr = ard.GetHeaderRecord().bind_offset_ptr;
   SQLLEN bind_offset = 0;
   if (bind_offset_ptr) {
@@ -199,13 +197,9 @@ StatusRecord WriteDSRow(StatementHandle& stmt_handle,DSRow const& ds_row, RowSch
       bq_data_type = BQDataType::kArray;
     }
 
-StatusRecord status_record = WriteToApplicationBuffer(
-    stmt_handle,
-    ds_val,
-    bq_data_type,
-    col_desc,
-    bind_offset + row_offset,
-    bind_offset + row_offset_ind);
+    StatusRecord status_record = WriteToApplicationBuffer(
+        stmt_handle, ds_val, bq_data_type, col_desc, bind_offset + row_offset,
+        bind_offset + row_offset_ind);
     if (!status_record.ok()) {
       LOG(ERROR) << "WriteDSRow::WriteToApplicationBuffer:: "
                  << status_record.message;
@@ -215,7 +209,8 @@ StatusRecord status_record = WriteToApplicationBuffer(
   return StatusRecord::Ok();
 }
 
-StatusRecord WriteRowset(StatementHandle& stmt_handle ,ResultSet const& result_set, int const rowset_size,
+StatusRecord WriteRowset(StatementHandle& stmt_handle,
+                         ResultSet const& result_set, int const rowset_size,
                          DescriptorHandle& ard, DescriptorHandle& ird) {
   if (rowset_size <= 0) {
     LOG(ERROR) << "WriteRowset:: rowset_size should not be <= 0";
@@ -231,7 +226,8 @@ StatusRecord WriteRowset(StatementHandle& stmt_handle ,ResultSet const& result_s
   for (int i = cursor; i < cursor + rowset_size && i < result_set.rows.size();
        i++, row_counter++) {
     StatusRecord status_record =
-        WriteDSRow(stmt_handle,result_set.rows[i], result_set.row_schema, ard, i - cursor);
+        WriteDSRow(stmt_handle, result_set.rows[i], result_set.row_schema, ard,
+                   i - cursor);
     if (!status_record.ok()) {
       LOG(ERROR) << "WriteRowset::WriteDSRow:: " << status_record.message;
       return status_record;

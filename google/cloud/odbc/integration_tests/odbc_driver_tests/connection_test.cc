@@ -834,7 +834,7 @@ TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
 
   ASSERT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
 
-  const char* query =
+  char const* query =
       "SELECT 'Hello, World!' AS str_col, "
       "123456 AS int_col, "
       "'BinaryData' AS bin_col";
@@ -848,7 +848,8 @@ TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
   // Verify SQL_C_CHAR Truncation (Should Truncate to 4 chars)
   SQLCHAR char_buf[64] = {0};
   SQLLEN char_len = 0;
-  status = SQLGetData(conn->hstmt, 1, SQL_C_CHAR, char_buf, sizeof(char_buf), &char_len);
+  status = SQLGetData(conn->hstmt, 1, SQL_C_CHAR, char_buf, sizeof(char_buf),
+                      &char_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
   EXPECT_STREQ(reinterpret_cast<char*>(char_buf), "Hell");
   EXPECT_EQ(char_len, 4);
@@ -856,22 +857,25 @@ TEST(ConnectionTest, SQLGetData_VerifyTruncationBehavior) {
   // Verify SQL_C_WCHAR Truncation (Should Truncate to 4 wchars)
   SQLWCHAR wchar_buf[64] = {0};
   SQLLEN wchar_len = 0;
-  status = SQLGetData(conn->hstmt, 1, SQL_C_WCHAR, wchar_buf, sizeof(wchar_buf), &wchar_len);
+  status = SQLGetData(conn->hstmt, 1, SQL_C_WCHAR, wchar_buf, sizeof(wchar_buf),
+                      &wchar_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
   EXPECT_EQ(std::wstring(wchar_buf), L"Hell");
-  EXPECT_EQ(wchar_len, 8); // 4 characters * 2 bytes
+  EXPECT_EQ(wchar_len, 8);  // 4 characters * 2 bytes
 
-  // Verify SQL_C_SLONG (Int) No Truncation 
+  // Verify SQL_C_SLONG (Int) No Truncation
   SQLINTEGER int_val = 0;
   SQLLEN int_len = 0;
-  status = SQLGetData(conn->hstmt, 2, SQL_C_SLONG, &int_val, sizeof(int_val), &int_len);
+  status = SQLGetData(conn->hstmt, 2, SQL_C_SLONG, &int_val, sizeof(int_val),
+                      &int_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
   EXPECT_EQ(int_val, 123456);
 
   // Verify SQL_C_BINARY No Truncation
   SQLCHAR bin_buf[64] = {0};
   SQLLEN bin_len = 0;
-  status = SQLGetData(conn->hstmt, 3, SQL_C_BINARY, bin_buf, sizeof(bin_buf), &bin_len);
+  status = SQLGetData(conn->hstmt, 3, SQL_C_BINARY, bin_buf, sizeof(bin_buf),
+                      &bin_len);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
   EXPECT_EQ(bin_len, 10);
   char const* expected_bin = "BinaryData";
@@ -888,7 +892,7 @@ TEST(ConnectionTest, SQLFetch_VerifyTruncationBehavior) {
 
   ASSERT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
 
-  const char* query =
+  char const* query =
       "SELECT 'Hello, World!' AS str_col, "
       "'Hello, World!' AS wstr_col, "
       "123456 AS int_col, "
@@ -909,21 +913,25 @@ TEST(ConnectionTest, SQLFetch_VerifyTruncationBehavior) {
   SQLCHAR bin_buf[64] = {0};
   SQLLEN bin_len = 0;
 
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 1, SQL_C_CHAR, char_buf, sizeof(char_buf), &char_len)));
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 2, SQL_C_WCHAR, wchar_buf, sizeof(wchar_buf), &wchar_len)));
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 3, SQL_C_SLONG, &int_val, sizeof(int_val), &int_len)));
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 4, SQL_C_BINARY, bin_buf, sizeof(bin_buf), &bin_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 1, SQL_C_CHAR, char_buf,
+                                       sizeof(char_buf), &char_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 2, SQL_C_WCHAR, wchar_buf,
+                                       sizeof(wchar_buf), &wchar_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 3, SQL_C_SLONG, &int_val,
+                                       sizeof(int_val), &int_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 4, SQL_C_BINARY, bin_buf,
+                                       sizeof(bin_buf), &bin_len)));
 
   status = SQLFetch(conn->hstmt);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
 
-  //SQL_C_CHAR Truncation
+  // SQL_C_CHAR Truncation
   EXPECT_STREQ(reinterpret_cast<char*>(char_buf), "Hell");
   EXPECT_EQ(char_len, 4);
 
   // SQL_C_WCHAR Truncation
   EXPECT_EQ(std::wstring(wchar_buf), L"Hell");
-  EXPECT_EQ(wchar_len, 8); // 4 * 2 bytes
+  EXPECT_EQ(wchar_len, 8);  // 4 * 2 bytes
 
   // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
@@ -943,7 +951,7 @@ TEST(ConnectionTest, SQLFetchScroll_VerifyTruncationBehavior) {
 
   ASSERT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
 
-  const char* query =
+  char const* query =
       "SELECT 'Hello, World!' AS str_col, "
       "'Hello, World!' AS wstr_col, "
       "123456 AS int_col, "
@@ -964,26 +972,30 @@ TEST(ConnectionTest, SQLFetchScroll_VerifyTruncationBehavior) {
   SQLCHAR bin_buf[64] = {0};
   SQLLEN bin_len = 0;
 
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 1, SQL_C_CHAR, char_buf, sizeof(char_buf), &char_len)));
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 2, SQL_C_WCHAR, wchar_buf, sizeof(wchar_buf), &wchar_len)));
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 3, SQL_C_SLONG, &int_val, sizeof(int_val), &int_len)));
-  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 4, SQL_C_BINARY, bin_buf, sizeof(bin_buf), &bin_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 1, SQL_C_CHAR, char_buf,
+                                       sizeof(char_buf), &char_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 2, SQL_C_WCHAR, wchar_buf,
+                                       sizeof(wchar_buf), &wchar_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 3, SQL_C_SLONG, &int_val,
+                                       sizeof(int_val), &int_len)));
+  ASSERT_TRUE(SQL_SUCCEEDED(SQLBindCol(conn->hstmt, 4, SQL_C_BINARY, bin_buf,
+                                       sizeof(bin_buf), &bin_len)));
 
   status = SQLFetchScroll(conn->hstmt, SQL_FETCH_NEXT, 0);
   ASSERT_TRUE(SQL_SUCCEEDED(status));
 
-  //SQL_C_CHAR Truncation
+  // SQL_C_CHAR Truncation
   EXPECT_STREQ(reinterpret_cast<char*>(char_buf), "Hell");
   EXPECT_EQ(char_len, 4);
 
-  //SQL_C_WCHAR Truncation
+  // SQL_C_WCHAR Truncation
   EXPECT_EQ(std::wstring(wchar_buf), L"Hell");
-  EXPECT_EQ(wchar_len, 8); // 4 * 2 bytes
+  EXPECT_EQ(wchar_len, 8);  // 4 * 2 bytes
 
-  //SQL_C_SLONG (Int) No Truncation
+  // SQL_C_SLONG (Int) No Truncation
   EXPECT_EQ(int_val, 123456);
 
-  //SQL_C_BINARY No Truncation
+  // SQL_C_BINARY No Truncation
   EXPECT_EQ(bin_len, 10);
   EXPECT_EQ(std::memcmp(bin_buf, "BinaryData", 10), 0);
 
