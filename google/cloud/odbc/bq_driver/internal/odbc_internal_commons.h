@@ -36,8 +36,8 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <wincrypt.h>
+#include <windows.h>
 #endif
 
 namespace google::cloud::odbc_bq_driver_internal {

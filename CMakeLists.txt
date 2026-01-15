@@ -27,11 +27,8 @@ project(
 set(PROJECT_VERSION_PRE_RELEASE "rc")
 
 if (WIN32)
-    add_compile_definitions(
-        NOMINMAX
-        WIN32_LEAN_AND_MEAN
-    )
-endif()
+    add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+endif ()
 
 include(CTest)
 
