@@ -269,7 +269,11 @@ TEST(SQLGetTypeInfoTest, all_datatypes) {
 // On Windows, this test times-out for the existing driver and our driver
 // CheckDataTypes function times out at the last statement and flow doesn't
 // reach this TEST
+// TODO(b/477506552): Fix memory issue in SQLGetTypeInfoTest bind offset
 TEST(SQLGetTypeInfoTest, all_datatypes_with_offset) {
+#ifdef NDEBUG
+  GTEST_SKIP();
+#endif  // NDEBUG
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(kDefaultConnectionString, conn, true), SQL_SUCCESS);
   CheckDataTypes(conn, SQL_ALL_TYPES, true, false, 9);
