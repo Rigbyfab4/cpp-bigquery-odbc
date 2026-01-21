@@ -22,7 +22,6 @@
 #include "google/cloud/odbc/internal/odbc_includes.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include <commdlg.h>
-#include <windows.h>
 
 namespace google::cloud::odbc_bq_driver_internal {
 // NEXTID:129

@@ -26,10 +26,6 @@ project(
     LANGUAGES CXX)
 set(PROJECT_VERSION_PRE_RELEASE "rc")
 
-if (WIN32)
-    add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
-endif ()
-
 include(CTest)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
