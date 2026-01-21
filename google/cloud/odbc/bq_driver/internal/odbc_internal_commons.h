@@ -35,10 +35,6 @@
 #include <string>
 #include <vector>
 
-#ifdef _WIN32
-#include <wincrypt.h>
-#endif
-
 namespace google::cloud::odbc_bq_driver_internal {
 
 // The Base64 character set
