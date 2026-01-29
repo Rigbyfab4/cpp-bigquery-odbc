@@ -94,6 +94,9 @@ class StatementHandle : public Handle {
   HandleType kType = HandleType::kStmtHandle;
 
   inline ConnectionHandle* GetConnectionHandle() { return conn_handle_; };
+  inline ConnectionHandle const* GetConnectionHandle() const {
+  return conn_handle_;
+}
 
   inline void SetCursorName(std::string& cursor_name) {
     cursor_name_ = cursor_name;

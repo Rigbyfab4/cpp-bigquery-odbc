@@ -22,7 +22,7 @@ namespace google::cloud::odbc_bq_driver_internal {
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 
-StatusRecord WriteToApplicationBuffer(StatementHandle& stmt_handle,
+StatusRecord WriteToApplicationBuffer(StatementHandle const& stmt_handle,
                                       DSValue const& ds_val,
                                       BQDataType bq_data_type,
                                       DescriptorRecord& app_desc_rec,
@@ -57,7 +57,7 @@ StatusRecord WriteToApplicationBuffer(StatementHandle& stmt_handle,
   // We need to reset the indicator_ptr once it has been set to SQL_NULL_DATA
   // for DSNullValues.
   SQLLEN max_len = 0;
-  auto* conn = stmt_handle.GetConnectionHandle();
+auto const* conn = stmt_handle.GetConnectionHandle();
   if (conn != nullptr) {
     max_len = conn->GetDsn().default_string_column_length;
   }
@@ -162,7 +162,7 @@ SQLLEN GetElemSize(DescriptorRecord& app_desc_rec) {
   }
 }
 
-StatusRecord WriteDSRow(StatementHandle& stmt_handle, DSRow const& ds_row,
+StatusRecord WriteDSRow(StatementHandle const& stmt_handle, DSRow const& ds_row,
                         RowSchema const& schema, DescriptorHandle& ard,
                         int row_num) {
   SQLLEN* bind_offset_ptr = ard.GetHeaderRecord().bind_offset_ptr;
@@ -209,7 +209,7 @@ StatusRecord WriteDSRow(StatementHandle& stmt_handle, DSRow const& ds_row,
   return StatusRecord::Ok();
 }
 
-StatusRecord WriteRowset(StatementHandle& stmt_handle,
+StatusRecord WriteRowset(StatementHandle const& stmt_handle,
                          ResultSet const& result_set, int const rowset_size,
                          DescriptorHandle& ard, DescriptorHandle& ird) {
   if (rowset_size <= 0) {
