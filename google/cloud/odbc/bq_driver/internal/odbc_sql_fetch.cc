@@ -57,7 +57,8 @@ StatusRecord WriteToApplicationBuffer(StatementHandle const& stmt_handle,
   // We need to reset the indicator_ptr once it has been set to SQL_NULL_DATA
   // for DSNullValues.
   SQLLEN max_len = 0;
-  auto const* conn = stmt_handle.GetConnectionHandle();
+  auto* conn = const_cast<StatementHandle&>(stmt_handle).GetConnectionHandle();
+
   if (conn != nullptr) {
     max_len = conn->GetDsn().default_string_column_length;
   }
