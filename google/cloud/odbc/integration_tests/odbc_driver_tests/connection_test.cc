@@ -20,18 +20,16 @@ namespace google::cloud::odbc_tests {
 using google::cloud::odbc_tests::SetAttributes;
 using ::testing::HasSubstr;
 
-// TODO(b/380186523): Need to fix the Driver Name for both Windows & Linux
 std::string GetDriverName() {
+#ifndef BQ_DRIVER_INTEGRATION_TESTS
 #ifdef _WIN32
   return "Simba ODBC Driver for Google BigQuery";
 #else
-#ifndef BQ_DRIVER_INTEGRATION_TESTS
   return "Simba Google BigQuery ODBC Connector";
+#endif /* _WIN32 */
 #else
   return "ODBC Driver for BigQuery";
-#endif
-
-#endif  // _WIN32
+#endif /* BQ_DRIVER_INTEGRATION_TESTS */
 }
 
 TEST(SQLGetInfo, CheckPositionalUpdate) {
@@ -1129,8 +1127,11 @@ TEST(ConnectionTest, SQLBrowseConnect_StringDataRightTruncated) {
                                  sizeof(in_conn_str), (SQLCHAR*)out_conn_str,
                                  sizeof(out_conn_str), &out_conn_str_len);
   EXPECT_EQ(status, SQL_NEED_DATA);
-
+#ifndef BQ_DRIVER_INTEGRATION_TESTS
   std::string const expected_conn_out_str = "DSN=Sampl";
+#else
+  std::string const expected_conn_out_str = "DSN=BigQu";
+#endif
   EXPECT_NE(out_conn_str_len, expected_conn_out_str.size());
 
 // TODO(b/382204927): SQLBrowseConnect API out_conn_str come as empty(Linux)
