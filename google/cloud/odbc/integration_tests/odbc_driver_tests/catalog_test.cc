@@ -1743,6 +1743,146 @@ TEST(SQLProcedures, ComplexFunction) {
   CleanupRoutine(conn, "DROP FUNCTION " + function_name);
 }
 
+TEST(CatalogTest, SQLTables_Filter_DefaultDataset_SchemaNull) {
+  auto conn = std::make_shared<ODBCHandles>();
+  std::string default_dataset = "ODBC_TEST_DATASET";
+
+  std::string base_conn_str =
+      kDefaultConnectionString + ";DefaultDataset=" + default_dataset;
+
+  // Filter OFF
+  std::string conn_str_unfiltered =
+      base_conn_str + ";FilterTablesOnDefaultDataset=0;";
+
+  ASSERT_EQ(Connect(conn_str_unfiltered, conn), SQL_SUCCESS);
+  SQLRETURN status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_METADATA_ID,
+                                    (SQLPOINTER)SQL_FALSE, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  std::vector<SQLTableResult> tables_unfiltered =
+      Catalog::GetTables(conn, kCatalogName, nullptr, nullptr, nullptr);
+  ASSERT_FALSE(tables_unfiltered.empty());
+
+  std::set<std::string> ds_unfiltered;
+  for (auto const& t : tables_unfiltered) {
+    if (t.dataset_name.has_value()) {
+      ds_unfiltered.insert(t.dataset_name.value());
+    }
+  }
+
+  EXPECT_GE(ds_unfiltered.size(), 1u);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  //  Filter ON
+  std::string conn_str_filtered =
+      base_conn_str + ";FilterTablesOnDefaultDataset=1;";
+
+  ASSERT_EQ(Connect(conn_str_filtered, conn), SQL_SUCCESS);
+  status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_METADATA_ID,
+                          (SQLPOINTER)SQL_FALSE, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  std::vector<SQLTableResult> tables_filtered =
+      Catalog::GetTables(conn, kCatalogName, nullptr, nullptr, nullptr);
+  ASSERT_FALSE(tables_filtered.empty());
+
+  std::set<std::string> ds_filtered;
+  for (auto const& t : tables_filtered) {
+    if (t.dataset_name.has_value()) {
+      ds_filtered.insert(t.dataset_name.value());
+    }
+  }
+
+  // Only default dataset expected
+  EXPECT_EQ(ds_filtered.size(), 1u);
+  EXPECT_EQ(*ds_filtered.begin(), default_dataset);
+
+  if (ds_unfiltered.size() > 1) {
+    EXPECT_LT(tables_filtered.size(), tables_unfiltered.size());
+  }
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
+// This test case currently crashes with the existing ODBC Driver for BigQuery
+// v3.1.6.1026. The crash occurs in SQLColumns when schema_name is NULL,
+// triggering an abort. This scenario works correctly in older versions
+// (e.g., 2.5.2.1004) and with our driver. We should re-enable or validate this
+// test case when we upgrade to a newer version of the existing driver or when
+// the issue is resolved.
+TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull) {
+  // TODO(b/485172463): Enable after the performance issue is resolved
+  GTEST_SKIP();
+  auto conn = std::make_shared<ODBCHandles>();
+  std::string default_dataset = "ODBC_TEST_DATASET";
+
+  std::string base_conn_str =
+      kDefaultConnectionString + ";DefaultDataset=" + default_dataset;
+
+  // Filter OFF  (FilterTablesOnDefaultDataset = 0)
+  std::string conn_str_unfiltered =
+      base_conn_str + ";FilterTablesOnDefaultDataset=0;";
+
+  ASSERT_EQ(Connect(conn_str_unfiltered, conn), SQL_SUCCESS);
+
+  SQLRETURN status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_METADATA_ID,
+                                    (SQLPOINTER)SQL_FALSE, 0);
+  CheckError(status, "SQLSetStmtAttr (unfiltered)", conn);
+
+  std::vector<SQLColumnsResult> results_unfiltered =
+      Catalog::GetColumns(conn, kCatalogName,
+                          /*schema_name=*/nullptr,
+                          /*table_name=*/nullptr,
+                          /*column_name=*/nullptr);
+
+  ASSERT_FALSE(results_unfiltered.empty());
+
+  std::set<std::string> ds_unfiltered;
+  for (auto const& r : results_unfiltered) {
+    ds_unfiltered.insert(r.dataset_name);
+  }
+
+  size_t count_unfiltered = results_unfiltered.size();
+  bool has_multiple_datasets = (ds_unfiltered.size() > 1);
+
+  EXPECT_TRUE(ds_unfiltered.find(default_dataset) != ds_unfiltered.end());
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+
+  // Filter ON  (FilterTablesOnDefaultDataset = 1)
+  std::string conn_str_filtered =
+      base_conn_str + ";FilterTablesOnDefaultDataset=1;";
+
+  ASSERT_EQ(Connect(conn_str_filtered, conn), SQL_SUCCESS);
+
+  status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_METADATA_ID,
+                          (SQLPOINTER)SQL_FALSE, 0);
+  CheckError(status, "SQLSetStmtAttr (filtered)", conn);
+
+  std::vector<SQLColumnsResult> results_filtered =
+      Catalog::GetColumns(conn, kCatalogName,
+                          /*schema_name=*/nullptr,
+                          /*table_name=*/nullptr,
+                          /*column_name=*/nullptr);
+
+  ASSERT_FALSE(results_filtered.empty());
+
+  std::set<std::string> ds_filtered;
+  for (auto const& r : results_filtered) {
+    ds_filtered.insert(r.dataset_name);
+  }
+
+  EXPECT_EQ(ds_filtered.size(), 1u);
+  EXPECT_EQ(*ds_filtered.begin(), default_dataset);
+
+  if (has_multiple_datasets) {
+    EXPECT_LT(results_filtered.size(), count_unfiltered);
+  }
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
+
 TEST(SQLProcedures, TableFunction) {
   auto conn = std::make_shared<ODBCHandles>();
   std::string routine_name = kDatasetWithTablePrefix + "TEST_TABLE_ROUTINE";
