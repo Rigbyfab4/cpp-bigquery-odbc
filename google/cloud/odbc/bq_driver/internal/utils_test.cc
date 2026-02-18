@@ -17,6 +17,7 @@
 #include "google/cloud/odbc/testing/utils/status_matchers.h"
 #include "google/cloud/internal/getenv.h"
 #include <gtest/gtest.h>
+#include <filesystem>
 #include <random>
 #include <regex>
 #include <thread>
@@ -30,6 +31,7 @@ using google::cloud::odbc_testing_utils::StatusRecordIs;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
 using ::testing::UnorderedElementsAre;
+namespace fs = std::filesystem;
 
 #ifdef _WIN32
 Section const kDsnSection{{"Description", "ODBC Driver for Google BigQuery 1"},
@@ -258,12 +260,40 @@ TEST(GetOdbcTraceConfigPath, GetGoogleODBCIniPath) {
       "GOOGLEBIGQUERYODBCINI");
 }
 
+TEST(GetDefaultPemFile, NonWinPemFile) {
+  Dl_info info{};
+  ASSERT_NE(dladdr(reinterpret_cast<void*>(&GetDefaultPemFile), &info), 0);
+
+  fs::path base = fs::path(info.dli_fname).parent_path();
+  fs::path expected = base / "roots.pem";
+
+  std::string actual = GetDefaultPemFile();
+  EXPECT_EQ(actual, expected.string());
+}
+
 #endif  // _WIN32
 
 #ifdef _WIN32
 TEST(GetOdbcTraceConfigPath, GetWinRegpath_64bit) {
   std::string actual = GetOdbcTraceConfigPath();
   EXPECT_EQ(actual, k_trace_reg_path);
+}
+
+TEST(GetDefaultPemFile, WinPemFilePath) {
+  HMODULE hm = nullptr;
+  ASSERT_TRUE(
+      GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                        reinterpret_cast<LPCSTR>(&GetDefaultPemFile), &hm));
+
+  char path[MAX_PATH];
+  ASSERT_NE(GetModuleFileNameA(hm, path, MAX_PATH), 0);
+
+  fs::path base = fs::path(path).parent_path();
+  fs::path expected = base / "assets" / "roots.pem";
+
+  std::string actual = GetDefaultPemFile();
+  EXPECT_EQ(actual, expected.string());
 }
 #endif  // _WIN32
 

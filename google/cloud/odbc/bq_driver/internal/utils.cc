@@ -27,10 +27,10 @@
 #ifdef _WIN32
 #include <uxtheme.h>                 // Required for SetWindowTheme
 #pragma comment(lib, "UxTheme.lib")  // Link UxTheme.lib
-#include <filesystem>
-namespace fs = std::filesystem;
 HINSTANCE g_hDllInstance = NULL;
 #endif
+#include <filesystem>
+namespace fs = std::filesystem;
 
 namespace google::cloud::odbc_bq_driver_internal {
 bool g_suppress_dropdown = false;
@@ -60,6 +60,36 @@ std::string GenerateRandomId(int length) {
     id[i] = kRandomIdChars[distrib(gen)];
   }
   return id;
+}
+
+std::string GetDefaultPemFile() {
+  fs::path base;
+#ifdef WIN32
+  HMODULE hm = nullptr;
+
+  if (!GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                             GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                         reinterpret_cast<LPCSTR>(&GetDefaultPemFile), &hm)) {
+    return {};
+  }
+
+  char path[MAX_PATH];
+  if (GetModuleFileNameA(hm, path, MAX_PATH) == 0) {
+    return {};
+  }
+
+  base = fs::path(path).parent_path();
+
+  return (base / "assets" / "roots.pem").string();
+#else
+  Dl_info info;
+  if (dladdr(reinterpret_cast<void*>(&GetDefaultPemFile), &info) == 0) {
+    return {};
+  }
+
+  base = fs::path(info.dli_fname).parent_path();
+  return (base / "roots.pem").string();
+#endif /* WIN32 */
 }
 
 std::string GenerateTableId() {

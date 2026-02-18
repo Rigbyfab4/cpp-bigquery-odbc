@@ -24,6 +24,8 @@
 #undef GetJob
 #include <winreg.h>
 extern HINSTANCE g_hDllInstance;
+#else
+#include <dlfcn.h>
 #endif  //_WIN32
 
 #include "google/cloud/odbc/internal/status_record_or.h"
@@ -334,6 +336,8 @@ odbc_internal::StatusRecord ValidateTableParameters(
 std::string GetPathToOdbcIni();
 
 std::string GetOdbcTraceConfigPath();
+
+std::string GetDefaultPemFile();
 
 inline std::string CastOdbcRegexToCppRegex(std::string const& str) {
   auto percent_filter_out =
