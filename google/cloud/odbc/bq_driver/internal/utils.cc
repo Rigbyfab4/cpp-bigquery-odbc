@@ -611,7 +611,8 @@ std::vector<std::string> SplitTableTypes(std::string const& table_types) {
   return types;
 }
 
-StatusRecordOr<std::string> Utf16ToUtf8(std::wstring const& utf_16_str) {
+odbc_internal::StatusRecordOr<std::string> Utf16ToUtf8(
+    std::wstring const& utf_16_str) {
   if (utf_16_str.empty()) {
     return std::string();
   }
@@ -674,7 +675,8 @@ StatusRecordOr<std::string> Utf16ToUtf8(std::wstring const& utf_16_str) {
 #endif
 }
 
-StatusRecordOr<std::wstring> Utf8ToUtf16(std::string const& utf_8_str) {
+odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
+    std::string const& utf_8_str) {
   if (utf_8_str.empty()) {
     return std::wstring();
   }
@@ -734,8 +736,8 @@ StatusRecordOr<std::wstring> Utf8ToUtf16(std::string const& utf_8_str) {
 #endif
 }
 
-StatusRecordOr<std::string> ConvertSQLWCHARToString(SQLWCHAR* in_str,
-                                                    SQLINTEGER in_str_len) {
+odbc_internal::StatusRecordOr<std::string> BqConvertSQLWCHARToString(
+    SQLWCHAR* in_str, SQLINTEGER in_str_len) {
   if (in_str == nullptr) {
     return StatusRecord{SQLStates::k_HY000(), "in_str string is empty/Null"};
   }
@@ -953,7 +955,7 @@ StatusRecord PopulateOutputConnectionString(SQLCHAR* out_conn_str,
 
 std::string Base64Encode(uint8_t const* data, int length) {
   std::string encoded_str;
-  int val = 0;
+  uint32_t val = 0;
   int val_b = -6;
   for (size_t i = 0; i < length; i++) {
     val = (val << 8) + data[i];
