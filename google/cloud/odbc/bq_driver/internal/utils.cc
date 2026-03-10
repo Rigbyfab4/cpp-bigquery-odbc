@@ -16,6 +16,7 @@
 #include <iconv.h>
 #endif  // LINUX
 
+#include "google/cloud/odbc/bq_client_interface/odbc_authentication.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/internal/getenv.h"
@@ -37,6 +38,11 @@ bool g_suppress_dropdown = false;
 using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecord;
 using ::google::cloud::odbc_internal::StatusRecordOr;
+#ifdef _WIN32
+using google::cloud::odbc_bigquery_client_interface::OauthMechanism;
+static std::string const kOAuthMechanism = "OAuthMechanism";
+static std::string const kKeyFilePath = "KeyFilePath";
+#endif
 
 #ifdef __APPLE__
 std::string const kFromCode = "UTF-32LE";
@@ -1172,5 +1178,97 @@ std::string GetLocationfromPSC(std::string const& psc) {
   }
   return location;
 }
+#ifdef _WIN32
+std::string BuildConnectionString(Section const& section) {
+  std::ostringstream ss;
+  for (auto const& [k, v] : section) {
+    if (!v.empty()) {
+      ss << k << "=" << v << ";";
+    }
+  }
+  return ss.str();
+}
 
+StatusRecord AllocateEnvAndDbc(SQLHENV& env, SQLHDBC& dbc) {
+  SQLRETURN rc = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
+  if (!SQL_SUCCEEDED(rc)) {
+    return {SQLStates::k_HY000(),
+            "Failed to allocate ODBC environment handle."};
+  }
+
+  rc = SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0);
+  if (!SQL_SUCCEEDED(rc)) {
+    SQLFreeHandle(SQL_HANDLE_ENV, env);
+    env = nullptr;
+    return {SQLStates::k_HY000(), "Failed to set ODBC environment attributes."};
+  }
+
+  rc = SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc);
+  if (!SQL_SUCCEEDED(rc)) {
+    SQLFreeHandle(SQL_HANDLE_ENV, env);
+    env = nullptr;
+    return {SQLStates::k_HY000(), "Failed to allocate ODBC connection handle."};
+  }
+  return StatusRecord::Ok();
+}
+
+StatusRecord ExtractOdbcError(SQLHANDLE handle, SQLSMALLINT handle_type) {
+  SQLCHAR sqlstate[6] = {};
+  SQLCHAR msg[1024] = {};
+  SQLINTEGER native = 0;
+  SQLSMALLINT len = 0;
+
+  SQLGetDiagRec(handle_type, handle, 1, sqlstate, &native, msg, sizeof(msg),
+                &len);
+
+  return {std::string(reinterpret_cast<char*>(sqlstate), 5),
+          std::string(reinterpret_cast<char*>(msg))};
+}
+
+StatusRecord CheckSqlInfo(SQLHDBC dbc, SQLUSMALLINT info_type,
+                          char const* name) {
+  SQLCHAR buf[256] = {};
+  SQLSMALLINT len = 0;
+
+  SQLRETURN rc = SQLGetInfo(dbc, info_type, buf, sizeof(buf), &len);
+  if (!SQL_SUCCEEDED(rc) || len == 0) {
+    return {SQLStates::k_HY000(), std::string("Failed to retrieve ") + name};
+  }
+  return StatusRecord::Ok();
+}
+
+StatusRecord NormalizeOAuthMechanism(Section& section) {
+  auto it = section.find(kOAuthMechanism);
+  if (it == section.end() || it->second.empty()) {
+    return {SQLStates::k_HY000(), "OAuthMechanism is missing or empty."};
+  }
+
+  std::string oauth_value;
+  if (it->second == "Service Authentication") {
+    if (section[kKeyFilePath].empty()) {
+      return {SQLStates::k_HY000(), "KeyFilePath is missing or empty."};
+    }
+    oauth_value = std::to_string(
+        static_cast<int>(OauthMechanism::kServiceAndUserAccount));
+  } else if (it->second == "Application Default Credentials") {
+    oauth_value =
+        std::to_string(static_cast<int>(OauthMechanism::kApplicationDefault));
+    section[kKeyFilePath].clear();
+  } else if (it->second == "External Account Authentication") {
+    if (section[kKeyFilePath].empty()) {
+      return {SQLStates::k_HY000(), "Config File Path is missing or empty."};
+    }
+    oauth_value =
+        std::to_string(static_cast<int>(OauthMechanism::kExternalUser));
+  } else {
+    return {SQLStates::k_HY000(),
+            "OAuthMechanism must be 'Service Authentication', "
+            "'Application Default Credentials', or "
+            "'External Account Authentication'."};
+  }
+
+  section[kOAuthMechanism] = oauth_value;
+  return StatusRecord::Ok();
+}
+#endif  // _WIN32
 }  // namespace google::cloud::odbc_bq_driver_internal

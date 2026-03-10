@@ -61,6 +61,7 @@ class DriverForm {
   HWND GetHwnd() const;
   void InitControls();
   void SetValues(Section const& attributes_map);
+  void ResetToDefaults();
   odbc_internal::StatusRecord IsValidEmail(std::string const& email);
   inline std::string const& GetDSN() const { return dsn_name_; }
 
@@ -78,10 +79,10 @@ class DriverForm {
   inline std::string const& GetMinTls() const { return min_tls_version_; }
   inline std::string const& GetDescription() const { return description_; }
   inline std::string const& GetLogLevel() const {
-    return LogTraceDialog::log_level_;
+    return LogTraceDialog::original_log_level;
   }
   inline std::string const& GetLogFilePath() const {
-    return LogTraceDialog::log_file_path_;
+    return LogTraceDialog::original_log_file_path;
   }
   inline std::string const& GetLogMaxFiles() const {
     return LogTraceDialog::max_files_;
@@ -89,8 +90,12 @@ class DriverForm {
   inline std::string const& GetLogMaxSize() const {
     return LogTraceDialog::max_size_;
   }
+
+  static void UpdateLastLoggingSavedValues();
+
   static odbc_internal::StatusRecord TestODBCConnection(
-      std::shared_ptr<odbc_bq_driver_internal::Section> const& section);
+      std::shared_ptr<odbc_bq_driver_internal::Section> const& section,
+      Section logging_section);
 
   static odbc_internal::StatusRecordOr<std::string> GetCatalogAndDataset(
       std::string const& action, std::string const& key_file_path,

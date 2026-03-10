@@ -23,11 +23,16 @@ using google::cloud::odbc_internal::StatusRecord;
 
 char const AdvanceOptions::CLASS_NAME[] = "AdvanceOptClass";
 
+std::string const kDefaultLanguageDialect = "GoogleSQL";
+std::string const kDefaultRowsPerBlock = "100000";
+std::string const kDefaultStringLength = "16384";
+std::string const kDefaultEncryptionType = "Google-managed encryption key";
+
 std::string AdvanceOptions::activation_threshold_;
 
 // Specifies the default SQL dialect used for queries.
 // The default is "Standard SQL", but it may be overridden by the user.
-std::string AdvanceOptions::language_dialect_ = "GoogleSQL";
+std::string AdvanceOptions::language_dialect_ = kDefaultLanguageDialect;
 std::string AdvanceOptions::adv_dataset_name_;
 
 // Default expiration time for temporary objects in milliseconds.
@@ -35,16 +40,17 @@ std::string AdvanceOptions::adv_dataset_name_;
 // It is used as a default configuration for temporary resource cleanup
 // in the existing driver, ensuring unused resources do not persist
 // indefinitely.
-std::string AdvanceOptions::temp_expiration_ = "3600000";
+std::string AdvanceOptions::temp_expiration_ =
+    kDefaultLargeResultsTableExpiration;
 std::string AdvanceOptions::encryption_key_;
 
 // Defines the number of rows per data block when fetching results.
 // Default is 100,000 rows per block as per existing driver.
-std::string AdvanceOptions::rows_per_block_ = "100000";
+std::string AdvanceOptions::rows_per_block_ = kDefaultRowsPerBlock;
 
 // Defines the default length of string columns in characters.
 // The default is 16,384 characters as per existing driver.
-std::string AdvanceOptions::default_string_length_ = "16384";
+std::string AdvanceOptions::default_string_length_ = kDefaultStringLength;
 std::string AdvanceOptions::session_location_;
 std::string AdvanceOptions::additional_projects_;
 std::string AdvanceOptions::query_properties_;
@@ -53,7 +59,7 @@ std::string AdvanceOptions::enable_session_;
 std::string AdvanceOptions::activation_threshold_checkbox_;
 std::string AdvanceOptions::allow_large_results_;
 std::string AdvanceOptions::use_default_large_results_;
-std::string AdvanceOptions::encryption_type_ = "Google-managed encryption key";
+std::string AdvanceOptions::encryption_type_ = kDefaultEncryptionType;
 
 std::string const kLanguageDialect = "SQLDialect";
 std::string const kLargeResultsDatasetId = "LargeResultsDatasetId";
@@ -692,6 +698,25 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
   use_default_large_results_ =
       GetValueOrDefault(attribute_map, kUseDefaultLargeResultsDataset);
   encryption_type_ = GetValueOrDefault(attribute_map, kEncryptionType);
+}
+
+void AdvanceOptions::ResetToDefaults() {
+  language_dialect_ = kDefaultLanguageDialect;
+  adv_dataset_name_.clear();
+  temp_expiration_ = kDefaultLargeResultsTableExpiration;
+  encryption_key_.clear();
+  rows_per_block_ = kDefaultRowsPerBlock;
+  default_string_length_ = kDefaultStringLength;
+  session_location_.clear();
+  additional_projects_.clear();
+  query_properties_.clear();
+  activation_threshold_.clear();
+  use_wchar_.clear();
+  enable_session_.clear();
+  activation_threshold_checkbox_.clear();
+  allow_large_results_.clear();
+  use_default_large_results_.clear();
+  encryption_type_ = kDefaultEncryptionType;
 }
 
 void AdvanceOptions::Show(HWND hwnd) {

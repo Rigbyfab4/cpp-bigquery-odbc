@@ -26,12 +26,15 @@ std::string const kLogOff = "LOG_OFF";
 std::string const kLogError = "LOG_ERROR";
 std::string const kLogInfo = "LOG_INFO";
 std::string const kLogWarning = "LOG_WARNING";
+std::string const kDefaultMaxFiles = "50";
+std::string const kDefaultMaxSize = "20";
+Section LogTraceDialog::last_log_saved_values_;
 std::string LogTraceDialog::log_level_ = kLogOff;
 std::string LogTraceDialog::log_file_path_;
 std::string LogTraceDialog::original_log_level;
 std::string LogTraceDialog::original_log_file_path;
-std::string LogTraceDialog::max_files_ = "50";
-std::string LogTraceDialog::max_size_ = "20";
+std::string LogTraceDialog::max_files_ = kDefaultMaxFiles;
+std::string LogTraceDialog::max_size_ = kDefaultMaxSize;
 int const kBtnWidth = 66;
 int const kBtnHeight = 16;
 int const kComboBoxWidth = 202;
@@ -83,6 +86,7 @@ int GetLogLevelIndex(std::string& log_level) {
 }
 
 void LogTraceDialog::SetValues(Section const& attributes_map) {
+  last_log_saved_values_ = attributes_map;
   if (attributes_map.count(kLogLevel) > 0) {
     if (attributes_map.at(kLogLevel) == "0") {
       log_level_ = kLogOff.c_str();
@@ -100,6 +104,15 @@ void LogTraceDialog::SetValues(Section const& attributes_map) {
       attributes_map.count(kLogPath) > 0 ? attributes_map.at(kLogPath) : "";
   max_files_ = GetValueOrDefault(attributes_map, kLogFileCount);
   max_size_ = GetValueOrDefault(attributes_map, kLogFileSize);
+}
+
+void LogTraceDialog::ResetToDefaults() {
+  log_level_ = kLogOff.c_str();
+  log_file_path_.clear();
+  original_log_level = log_level_;
+  original_log_file_path = log_file_path_;
+  max_files_ = kDefaultMaxFiles;
+  max_size_ = kDefaultMaxSize;
 }
 void LogTraceDialog::InitControls() {
   HFONT h_font =
@@ -476,11 +489,15 @@ LRESULT CALLBACK LogTraceDialog::LogTraceProc(HWND hwnd, UINT u_msg,
           break;
         }
         case kIdcLogBtnCancel:
+          original_log_level = log_level_;
+          original_log_file_path = log_file_path_;
           DestroyWindow(hwnd);
           break;
       }
       break;
     case WM_CLOSE: {
+      original_log_level = log_level_;
+      original_log_file_path = log_file_path_;
       DestroyWindow(hwnd);
       return 0;
     }

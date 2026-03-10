@@ -18,6 +18,9 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_conn_handle.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_info.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_tables.h"
+#include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
+#include "google/cloud/odbc/bq_driver/odbc_connection.h"
+#include "google/cloud/odbc/bq_driver/odbc_windows.h"
 #include <commctrl.h>
 #include <regex>
 #include <shellapi.h>
@@ -27,11 +30,13 @@ namespace google::cloud::odbc_bq_driver_internal {
 using google::cloud::odbc_bigquery_client_interface::Oauth;
 using google::cloud::odbc_bigquery_client_interface::OauthMechanism;
 using google::cloud::odbc_bigquery_client_interface::ODBCBQClient;
+using google::cloud::odbc_bq_driver::SQLDriverConnectInternal;
 using google::cloud::odbc_bq_driver_internal::Authentication;
 using google::cloud::odbc_bq_driver_internal::GetResultSetForDatasets;
 using google::cloud::odbc_bq_driver_internal::GetResultSetForProjects;
 using google::cloud::odbc_bq_driver_internal::ResultSet;
 using google::cloud::odbc_bq_driver_internal::Section;
+using google::cloud::odbc_bq_driver_internal::UpdateTraceOption;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
@@ -40,14 +45,18 @@ char const DriverForm::CLASS_NAME[] = "DriverFormClass";
 
 std::string DriverForm::dsn_name_;
 std::string DriverForm::key_file_path_;
+std::string const kDefaultEncryptData = "For Current User Only";
+std::string const kDefaultMinTlsVersion = "1.2";
+
 std::string DriverForm::o_auth_mechanism_ = "Service Authentication";
 std::string DriverForm::catalog_;
 std::string DriverForm::dataset_;
-std::string DriverForm::encrypt_data_ = "For Current User Only";
-std::string DriverForm::min_tls_version_ = "1.2";
+std::string DriverForm::encrypt_data_ = kDefaultEncryptData;
+std::string DriverForm::min_tls_version_ = kDefaultMinTlsVersion;
 std::string DriverForm::trusted_cert_ = GetRootsPemPath();
 std::string DriverForm::description_;
 Section DriverForm::last_saved_values_;
+std::string const kDefaultOAuth = "Service Authentication";
 std::string const kDsnName = "DSN";
 std::string const kEmail = "Email";
 std::string const kOAuthMechanism = "OAuthMechanism";
@@ -76,100 +85,84 @@ int const KOptionsBtnHeight = 105;
 int const KGroupBoxWidth = 470;
 int const KGroupBoxHeight = 129;
 
-StatusRecord ConnectUsingRegistryDsn(Authentication auth) {
-  StatusRecordOr<std::shared_ptr<ODBCBQClient>> response =
-      ODBCBQClient::CreateBQClient(auth.oauth);
-  if (!response) {
-    return response.GetStatusRecord();
-  }
-  auto client = *response;
-
-  StatusRecordOr<AccessToken> access_token_resp = client->GetOAuth2Token();
-  if (!access_token_resp) {
-    return access_token_resp.GetStatusRecord();
-  }
-  return StatusRecord::Ok();
-}
-Authentication CreateAuthentication(Section& dsn_section) {
-  Authentication auth;
-  int auth_int;
-  try {
-    auth_int = stoi(dsn_section[kOAuthMechanism]);
-  } catch (std::exception const& ex) {
-    auth_int = 0;
-  }
-  auth.oauth.auth_mechanism = static_cast<OauthMechanism>(auth_int);
-  // TODO(b/385136383): DSN section entries should be capitalized
-  // to be consistent with ConnectionHandle::SetUp function.
-  auth.oauth.credentials_file_path = dsn_section[kKeyFilePath];
-  // TODO(b/385136383): DSN section entries should be capitalized to be
-  // consistent with ConnectionHandle::SetUp function.
-  auth.refresh_token = dsn_section[kRefreshToken];
-  return auth;
-}
-
 StatusRecord DriverForm::TestODBCConnection(
-    std::shared_ptr<Section> const& section) {
+    std::shared_ptr<Section> const& section, Section logging_section) {
   if (!section) {
-    return StatusRecord{SQLStates::k_HY000(), "The provided section is null."};
+    return {SQLStates::k_HY000(), "The provided section is null."};
   }
 
-  if (section->find(kOAuthMechanism) == section->end() ||
-      (*section)[kOAuthMechanism].empty()) {
-    return StatusRecord{SQLStates::k_HY000(),
-                        "OAuthMechanism is missing or empty."};
+  // Normalize OAuth
+  if (auto status = NormalizeOAuthMechanism(*section); !status.ok()) {
+    return status;
   }
 
-  std::string oauth_mechanism = (*section)[kOAuthMechanism];
-  std::string oauth_value;
+  std::optional<int> log_level;
+  std::optional<std::string> log_path;
+  std::optional<int> log_file_count;
+  std::optional<int> log_file_size;
 
-  if (oauth_mechanism == "Service Authentication") {
-    if (section->find(kKeyFilePath) == section->end() ||
-        (*section)[kKeyFilePath].empty()) {
-      return StatusRecord{SQLStates::k_HY000(),
-                          "KeyFilePath is missing or empty."};
+  auto safe_stoi = [](std::string const& value,
+                      std::optional<int> fallback =
+                          std::nullopt) -> std::optional<int> {
+    if (value.empty()) return fallback;
+    try {
+      return std::stoi(value);
+    } catch (std::exception const&) {
+      return fallback;
     }
-    oauth_value = std::to_string(
-        static_cast<int>(OauthMechanism::kServiceAndUserAccount));
-  } else if (oauth_mechanism == "Application Default Credentials") {
-    oauth_value =
-        std::to_string(static_cast<int>(OauthMechanism::kApplicationDefault));
-    (*section)[kKeyFilePath] = "";
-  } else if (oauth_mechanism == "External Account Authentication") {
-    if (section->find(kKeyFilePath) == section->end() ||
-        (*section)[kKeyFilePath].empty()) {
-      return StatusRecord{SQLStates::k_HY000(),
-                          "Config File Path is missing or empty."};
-    }
-    oauth_value =
-        std::to_string(static_cast<int>(OauthMechanism::kExternalUser));
+  };
 
-  } else {
-    return StatusRecord{SQLStates::k_HY000(),
-                        "OAuthMechanism must be 'Service Authentication', "
-                        "'Application Default Credentials', or "
-                        "'External Account Authentication'."};
+  log_level = safe_stoi(logging_section[kLogLevel], 0);
+  log_path = logging_section[kLogPath];
+  log_file_count = safe_stoi(logging_section[kLogFileCount]);
+  log_file_size = safe_stoi(logging_section[kLogFileSize]);
+
+  UpdateTraceOption(log_level, log_path, log_file_size, log_file_count);
+  // Build connection string
+  std::string conn_string = BuildConnectionString(*section);
+
+  // Allocate ODBC handles
+  SQLHENV env = nullptr;
+  SQLHDBC dbc = nullptr;
+
+  if (auto status = AllocateEnvAndDbc(env, dbc); !status.ok()) {
+    return status;
   }
 
-  (*section)[kOAuthMechanism] = oauth_value;
+  SQLRETURN rc = SQLDriverConnectInternal(
+      dbc, nullptr,
+      reinterpret_cast<SQLCHAR*>(const_cast<char*>(conn_string.c_str())),
+      SQL_NTS, nullptr, 0, nullptr, SQL_DRIVER_COMPLETE);
 
-  std::string key_file_path = (*section)[kKeyFilePath];
-  std::string key_file_path_up;
-  for (char ch : key_file_path) {
-    if (ch == '\\') {
-      key_file_path_up += "\\\\";
-    } else {
-      key_file_path_up += ch;
-    }
+  if (!SQL_SUCCEEDED(rc)) {
+    auto err = ExtractOdbcError(dbc, SQL_HANDLE_DBC);
+    SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+    SQLFreeHandle(SQL_HANDLE_ENV, env);
+    return err;
   }
 
-  Authentication auth = CreateAuthentication(*section);
-
-  auto ret = ConnectUsingRegistryDsn(auth);
-
-  if (!ret.ok()) {
-    return StatusRecord{SQLStates::k_HY000(), ret.message};
+  // Check driver version
+  if (auto status = CheckSqlInfo(dbc, SQL_DRIVER_VER, "Driver Version");
+      !status.ok()) {
+    SQLDisconnect(dbc);
+    SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+    SQLFreeHandle(SQL_HANDLE_ENV, env);
+    return status;
   }
+
+  // Check supported ODBC version
+  if (auto status = CheckSqlInfo(dbc, SQL_DRIVER_ODBC_VER, "ODBC Version");
+      !status.ok()) {
+    SQLDisconnect(dbc);
+    SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+    SQLFreeHandle(SQL_HANDLE_ENV, env);
+    return status;
+  }
+
+  // Cleanup
+  SQLDisconnect(dbc);
+  SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+  SQLFreeHandle(SQL_HANDLE_ENV, env);
 
   return StatusRecord::Ok();
 }
@@ -177,6 +170,63 @@ StatusRecord DriverForm::TestODBCConnection(
 bool containsAlphanumeric(std::string const& str) {
   return std::any_of(str.begin(), str.end(),
                      [](unsigned char c) { return std::isalnum(c); });
+}
+
+std::string ConvertLogLevelForConnection(std::string const& log_level) {
+  if (log_level.empty()) return "";
+  return google::cloud::odbc_bq_driver::ConvertLogLevel(log_level);
+}
+
+std::string ConvertLanguageDialectForConnection(std::string const& dialect) {
+  if (dialect.empty()) return "";
+  if (dialect == "GoogleSQL") return "1";
+  if (dialect == "LegacySQL") return "0";
+  return "";
+}
+
+static Section BuildTestConnectionAttributes(
+    char const* key_buffer, char const* auth_buffer, char const* catalog_buffer,
+    char const* dataset_buffer, char const* encrypt_buffer,
+    char const* min_tls_buffer, char const* trusted_cert_buffer,
+    char const* description_buffer, ProxyOptions const& proxy_form,
+    AdvanceOptions const& adv_form) {
+  Section attributes_map;
+  attributes_map[kKeyFilePath] = key_buffer;
+  attributes_map[kOAuthMechanism] = auth_buffer;
+  attributes_map[kCatalog] = catalog_buffer;
+  attributes_map[kDataset] = dataset_buffer;
+  attributes_map[kEncryptData] = encrypt_buffer;
+  attributes_map[kMinTlsVersion] = min_tls_buffer;
+  attributes_map[kTrustedCerts] = trusted_cert_buffer;
+  attributes_map[kDescription] = description_buffer;
+  attributes_map["ProxyEnable"] = proxy_form.GetProxyCheck();
+  attributes_map["ProxyHost"] = proxy_form.GetProxyHost();
+  attributes_map["ProxyPort"] = proxy_form.GetProxyPort();
+  attributes_map["ProxyUid"] = proxy_form.GetProxyUsername();
+  attributes_map["ProxyPwd"] = proxy_form.GetProxyPass();
+  attributes_map["SQLDialect"] =
+      ConvertLanguageDialectForConnection(adv_form.GetLanguageDialect());
+  attributes_map["LargeResultsDatasetId"] = adv_form.GetDatasetName();
+  attributes_map["KMSKeyName"] = adv_form.GetEncryptionKey();
+  attributes_map["RowsFetchedPerBlock"] = adv_form.GetRowsPerBlock();
+  attributes_map["DefaultStringColumnLength"] =
+      adv_form.GetDefaultStringLength();
+  attributes_map["LargeResultsTempTableExpirationTime"] =
+      adv_form.GetTempTableExpiration();
+  attributes_map["SessionLocation"] = adv_form.GetSessionLocation();
+  attributes_map["AdditionalProjects"] = adv_form.GetAdditionalProjects();
+  attributes_map["QueryProperties"] = adv_form.GetQueryProperties();
+  attributes_map["HTAPI_ActivationThreshold"] =
+      adv_form.GetActivationThreshold();
+  attributes_map["UseWVarChar"] = adv_form.GetUseWchar();
+  attributes_map["EnableSession"] = adv_form.GetEnableSession();
+  attributes_map["AllowHtapiForLargeResults"] =
+      adv_form.GetActivationThresholdCheckbox();
+  attributes_map["AllowLargeResults"] = adv_form.GetAllowLargeResults();
+  attributes_map["UseDefaultLargeResultsDataset"] =
+      adv_form.GetUseDefaultLargeResults();
+  attributes_map["EncryptionType"] = adv_form.GetEncryptionType();
+  return attributes_map;
 }
 
 StatusRecordOr<std::string> DriverForm::GetCatalogAndDataset(
@@ -250,6 +300,20 @@ int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE h_prev_instance,
   return 0;
 }
 
+void DriverForm::UpdateLastLoggingSavedValues() {
+  LogTraceDialog::original_log_level =
+      LogTraceDialog::last_log_saved_values_[kLogLevel];
+
+  LogTraceDialog::original_log_file_path =
+      LogTraceDialog::last_log_saved_values_[kLogPath];
+
+  LogTraceDialog::max_size_ =
+      LogTraceDialog::last_log_saved_values_[kLogFileSize];
+
+  LogTraceDialog::max_files_ =
+      LogTraceDialog::last_log_saved_values_[kLogFileCount];
+}
+
 HWND DriverForm::GetHwnd() const { return m_hwnd; }
 DriverForm::DriverForm(HWND parent_hwnd)
     : m_hwnd(NULL), m_parent_hwnd(parent_hwnd) {}
@@ -313,6 +377,22 @@ void DriverForm::SetValues(Section const& attributes_map) {
   } else {
     o_auth_mechanism_ = "";
   }
+}
+
+void DriverForm::ResetToDefaults() {
+  last_saved_values_.clear();
+  dsn_name_.clear();
+  key_file_path_.clear();
+  catalog_.clear();
+  dataset_.clear();
+  description_.clear();
+  o_auth_mechanism_ = kDefaultOAuth;
+  encrypt_data_ = kDefaultEncryptData;
+  min_tls_version_ = kDefaultMinTlsVersion;
+  trusted_cert_ = GetRootsPemPath();
+  log_trace_dialog_.ResetToDefaults();
+  proxy_options_.ResetToDefaults();
+  adv_options_.ResetToDefaults();
 }
 
 HFONT CreateCustomFont(int font_size) {
@@ -975,14 +1055,52 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           char auth_buffer[256];
           GetWindowText(h_auth_box, auth_buffer, sizeof(auth_buffer));
 
-          Section attributes_map;
-          attributes_map[kDsnName] = dsn_buffer;
-          attributes_map[kKeyFilePath] = key_buffer;
-          attributes_map[kOAuthMechanism] = auth_buffer;
-          attributes_map[kDataset] = dataset_;
+          HWND h_catalog_box = GetDlgItem(hwnd, kIdcCatlogBOX);
+          char catalog_buffer[256];
+          GetWindowText(h_catalog_box, catalog_buffer, sizeof(catalog_buffer));
 
-          auto status =
-              TestODBCConnection(std::make_shared<Section>(attributes_map));
+          HWND h_dataset_box = GetDlgItem(hwnd, kIdcDatasetBOX);
+          char dataset_buffer[256];
+          GetWindowText(h_dataset_box, dataset_buffer, sizeof(dataset_buffer));
+
+          HWND h_encrypt_combo_box = GetDlgItem(hwnd, kIdcEncryptDataComboBox);
+          char encrypt_buffer[256];
+          GetWindowText(h_encrypt_combo_box, encrypt_buffer,
+                        sizeof(encrypt_buffer));
+
+          HWND h_min_tls_box = GetDlgItem(hwnd, kIdcMinTLSComboBox);
+          char min_tls_buffer[256];
+          GetWindowText(h_min_tls_box, min_tls_buffer, sizeof(min_tls_buffer));
+
+          HWND h_trusted_cert_box = GetDlgItem(hwnd, kIdcTrustedCertEdit);
+          char trusted_cert_buffer[256];
+          GetWindowText(h_trusted_cert_box, trusted_cert_buffer,
+                        sizeof(trusted_cert_buffer));
+
+          HWND h_description_box = GetDlgItem(hwnd, kIdcDescriptionEdit);
+          char description_buffer[256];
+          GetWindowText(h_description_box, description_buffer,
+                        sizeof(description_buffer));
+
+          ProxyOptions proxy_form;
+          AdvanceOptions adv_form;
+          DriverForm driver_form;
+
+          auto attributes_map = BuildTestConnectionAttributes(
+              key_buffer, auth_buffer, catalog_buffer, dataset_buffer,
+              encrypt_buffer, min_tls_buffer, trusted_cert_buffer,
+              description_buffer, proxy_form, adv_form);
+
+          Section logging_section;
+          logging_section["LogLevel"] =
+              ConvertLogLevelForConnection(driver_form.GetLogLevel());
+          logging_section["LogPath"] = driver_form.GetLogFilePath();
+          logging_section["LogFileCount"] = driver_form.GetLogMaxFiles();
+          logging_section["LogFileSize"] = driver_form.GetLogMaxSize();
+
+          auto status = TestODBCConnection(
+              std::make_shared<Section>(std::move(attributes_map)),
+              logging_section);
           if (status.ok()) {
             std::string message_text =
                 "SUCCESS!\n\nSuccessfully connected to data source!\n\n";
@@ -1114,6 +1232,7 @@ LRESULT CALLBACK DriverForm::WindowProc(HWND hwnd, UINT u_msg, WPARAM w_param,
           ProxyOptions proxy_form = ProxyOptions();
           adv_form.SetValues(last_saved_values_);
           proxy_form.SetValues(last_saved_values_);
+          DriverForm::UpdateLastLoggingSavedValues();
           DestroyWindow(hwnd);
         }
       }

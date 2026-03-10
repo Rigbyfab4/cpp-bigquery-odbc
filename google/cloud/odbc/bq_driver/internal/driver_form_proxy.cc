@@ -22,8 +22,10 @@ namespace google::cloud::odbc_bq_driver_internal {
 
 char const ProxyOptions::CLASS_NAME[] = "ProxyOptClass";
 
+std::string const kDefaultProxyCheck = "0";
+
 // Default proxy checkbox value
-std::string ProxyOptions::proxy_check_ = "0";
+std::string ProxyOptions::proxy_check_ = kDefaultProxyCheck;
 std::string ProxyOptions::proxy_host_;
 std::string ProxyOptions::proxy_username_;
 std::string ProxyOptions::proxy_port_;
@@ -70,7 +72,6 @@ ProxyOptions::~ProxyOptions() {
 }
 
 void ProxyOptions::InitControls() {
-  LOG(INFO) << "ProxyOptions::InitControls:: Initializing proxy form controls.";
   HFONT h_font =
       CreateFont(-10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                  OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
@@ -216,7 +217,6 @@ void ProxyOptions::Show(HWND hwnd) {
                               NULL, g_hDllInstance, this);
 
   if (proxy_hwnd) {
-    LOG(INFO) << "ProxyOptions::Show:: Window created successfully.";
     InitControls();
     ShowWindow(proxy_hwnd, SW_SHOW);
     UpdateWindow(proxy_hwnd);
@@ -252,13 +252,31 @@ void ProxyOptions::SetValues(Section const& attribute_map) {
   proxy_host_ = GetValueOrDefault(attribute_map, kProxyHost);
   proxy_port_ = GetValueOrDefault(attribute_map, kProxyPort);
   proxy_username_ = GetValueOrDefault(attribute_map, kProxyUsername);
-  proxy_pwd_enc_ =
+  auto decrypted_password =
       DecryptPassword(GetValueOrDefault(attribute_map, kProxyPassEncryption));
+  if (decrypted_password) {
+    proxy_pwd_enc_ = *decrypted_password;
+  } else {
+    proxy_pwd_enc_.clear();
+  }
   saved_proxy_check_ = proxy_check_;
   saved_proxy_host_ = proxy_host_;
   saved_proxy_port_ = proxy_port_;
   saved_proxy_username_ = proxy_username_;
   saved_proxy_pwd_enc_ = proxy_pwd_enc_;
+}
+
+void ProxyOptions::ResetToDefaults() {
+  proxy_check_ = kDefaultProxyCheck;
+  proxy_host_.clear();
+  proxy_port_.clear();
+  proxy_username_.clear();
+  proxy_pwd_enc_.clear();
+  saved_proxy_check_ = proxy_check_;
+  saved_proxy_host_.clear();
+  saved_proxy_port_.clear();
+  saved_proxy_username_.clear();
+  saved_proxy_pwd_enc_.clear();
 }
 
 LRESULT CALLBACK ProxyOptions::ProxyOptProc(HWND hwnd, UINT msg, WPARAM w_param,
@@ -385,8 +403,6 @@ LRESULT CALLBACK ProxyOptions::ProxyOptProc(HWND hwnd, UINT msg, WPARAM w_param,
             is_valid_port = (port >= 0 && port < kMaxPortNumber);
           }
           if (!is_valid_port) {
-            LOG(ERROR) << "ProxyOptions::ProxyOptProc:: Invalid port entered: '"
-                       << temp_port << "'.";
             std::string error_msg =
                 "[Google][BigQuery] (1060) Invalid port: '" + temp_port +
                 "'.\nValid values are in the range [0, 65535].";
