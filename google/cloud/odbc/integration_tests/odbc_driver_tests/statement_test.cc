@@ -468,8 +468,7 @@ TEST(StatementTest, SQLExecDirect_htapi_basictypes) {
   SQLRETURN status;
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(
-      Connect(kDefaultConnectionString +
-                  ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0",
+      Connect(kDefaultConnectionString,
               conn),
       SQL_SUCCESS);
   std::string query =
@@ -481,7 +480,7 @@ TEST(StatementTest, SQLExecDirect_htapi_basictypes) {
       R"(NUMERIC '12345.6789' AS numeric_col,)"
       R"(BIGNUMERIC '9876543210987654321.123456789012345678' AS bignumeric_col,)"
       R"(PARSE_JSON('{"name": "John", "age": 30}') AS json_col,)"
-      R"(TIMESTAMP '2025-11-12 23:22:27.500' AS timestamp_col,)"
+      R"(TIMESTAMP '2025-11-12 23:22:27.123456789123' AS timestamp_col,)"
       R"(TIME(DATETIME '2024-06-01 12:34:56') AS time_col,)"
       R"(DATETIME(TIMESTAMP '2024-05-01 08:00:00') AS datetime_col,)"
       R"(DATE '2023-04-01' AS date_col,)"
