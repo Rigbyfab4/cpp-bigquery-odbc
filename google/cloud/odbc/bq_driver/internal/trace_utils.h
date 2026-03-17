@@ -102,8 +102,8 @@ struct TraceOptions {
   bool logging_enabled;
   bool is_file_closed;
   int log_level{0};
-  int max_file_count{50};  // max number of log files (50).
-  int max_file_size{20};   // max file size of a single file(20 MB)
+  int max_file_count{50};   // max number of log files (50).
+  int max_file_size{2000};  // max file size of a single file(2000 KB)
   int max_threads{8};
   int current_file_index{0};
   std::string log_path;
@@ -144,6 +144,7 @@ class FileLogSink : public absl::LogSink {
 
   std::shared_ptr<TraceOptions> opts_;
   std::string current_file_;
+  std::size_t current_file_size_;
   std::mutex log_mutex_;
   FILE* fp_ = nullptr;
 };
@@ -163,10 +164,9 @@ void UpdateTraceOption(std::optional<int> log_level,
                        std::optional<int> log_file_size,
                        std::optional<int> log_file_count);
 
-bool CanWriteToFile(std::string const& log_file, std::size_t new_log_size,
-                    std::uintmax_t max_file_size_bytes);
-
 std::string GetLogFileWithIndex(std::string const& log_path);
+std::string GetFormattedMsg(absl::LogEntry const& entry);
+
 ////////////////////////////////////////////////////////////////////
 // Additional Helper methods for validating and formatting strings
 // based on parameter types.

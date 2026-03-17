@@ -27,7 +27,7 @@ std::string const kLogError = "LOG_ERROR";
 std::string const kLogInfo = "LOG_INFO";
 std::string const kLogWarning = "LOG_WARNING";
 std::string const kDefaultMaxFiles = "50";
-std::string const kDefaultMaxSize = "20";
+std::string const kDefaultMaxSize = "2000";
 Section LogTraceDialog::last_log_saved_values_;
 std::string LogTraceDialog::log_level_ = kLogOff;
 std::string LogTraceDialog::log_file_path_;
@@ -165,7 +165,7 @@ void LogTraceDialog::InitControls() {
 
   // Max File Size (MB) Label and Edit Box
   HWND h_max_size_label =
-      CreateLabel(parent_hwnd, "Max file size (MB):", KAxisX, KAxisY + 125,
+      CreateLabel(parent_hwnd, "Max file size (KB):", KAxisX, KAxisY + 125,
                   KLabelWidth + 60, kLabelHeight, 0);
   SendMessage(h_max_size_label, WM_SETFONT, (WPARAM)h_font, TRUE);
 
