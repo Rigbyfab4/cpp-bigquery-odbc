@@ -22,7 +22,7 @@ RUN apt-get update && \
         build-essential \
         # Dependency for arrow
         bison \
-        clang-12 \
+          clang-12 \
         lld-12 \
         cmake \
         curl \
@@ -61,7 +61,7 @@ RUN apt-get update && \
         apt-utils \
         ca-certificates \
         apt-transport-https \
-        clang-tidy-12
+             clang-tidy-12
 
 # Needed for the existing driver v3.1.2.1004+
 RUN locale-gen en_US.UTF-8
@@ -98,11 +98,11 @@ RUN pip3 install --require-hashes --no-deps -r /var/tmp/ci/requirements.txt
 # image smaller (and with fewer layers)
 
 WORKDIR /var/tmp/build/abseil-cpp
-RUN curl -fsSL https://github.com/abseil/abseil-cpp/archive/20240722.0.tar.gz | \
+RUN curl -fsSL https://github.com/abseil/abseil-cpp/archive/20250512.0.tar.gz | \
     tar -xzf - --strip-components=1 && \
     cmake \
       -DCMAKE_BUILD_TYPE="Release" \
-       -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_STANDARD=17 \
       -DABSL_BUILD_TESTING=OFF \
       -DABSL_PROPAGATE_CXX_STD=ON \
       -DBUILD_SHARED_LIBS=yes \
@@ -173,3 +173,12 @@ RUN echo 'Verifying glibc version...'
 RUN dpkg -l libc6
 RUN if [ $(ldd --version | grep GLIBC | awk '{print $5}') -lt 2.17 ] ; \
     then echo 'glibc version is < 2.17: exiting...' ; exit 1 ; fi
+
+# ------------------------------------------------------------
+# FIX: Provide missing patch for google-cloud-cpp Bazel build
+# ------------------------------------------------------------
+WORKDIR /workspace
+
+RUN mkdir -p bazel && \
+    curl -fsSL https://raw.githubusercontent.com/googleapis/google-cloud-cpp/main/bazel/remove_upb_c_rules.patch \
+    -o bazel/remove_upb_c_rules.patch
