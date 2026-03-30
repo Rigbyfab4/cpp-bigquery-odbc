@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "google/cloud/bigquery/v2/minimal/internal/job_client.h"
-#include "google/cloud/internal/absl_str_cat_quiet.h"
 #include "google/cloud/internal/getenv.h"
 #include <gtest/gtest.h>
+#include <sstream>
 
 namespace google::cloud::odbc_testing_client_library_utils {
 
@@ -52,8 +52,11 @@ StatusOr<std::string> InsertJob(JobClient job_client) {
   Job job;
   JobConfiguration job_configuration;
   JobConfigurationQuery job_configuration_query;
-  std::string table_name = absl::StrCat(*dataset_id, ".", *table_id);
-  job_configuration_query.query = absl::StrCat("SELECT * FROM ", table_name);
+  std::ostringstream oss;
+  oss << *dataset_id << "." << *table_id;
+  std::string table_name = oss.str();
+
+  job_configuration_query.query = "SELECT * FROM " + table_name;
   job_configuration.query = job_configuration_query;
   job.configuration = job_configuration;
   InsertJobRequest request;
