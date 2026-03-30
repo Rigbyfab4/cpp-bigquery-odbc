@@ -135,13 +135,14 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
   std::string temp_expiration = GetValueOrDefault(section, temp_expiration_key);
   std::string session_location =
       GetValueOrDefault(section, session_location_key);
+  std::string max_threads = GetValueOrDefault(section, max_threads_key);
   std::string additional_projects =
       GetValueOrDefault(section, additional_projects_key);
   std::string query_properties =
       GetValueOrDefault(section, query_properties_key);
   std::string activation_threshold =
       GetValueOrDefault(section, activation_threshold_key);
-  std::string use_wchar = GetValueOrDefault(section, use_wchar_key);
+  // std::string use_wchar = GetValueOrDefault(section, use_wchar_key);
   std::string enable_session = GetValueOrDefault(section, enable_session_key);
   std::string htapi_activation_threshold_check =
       GetValueOrDefault(section, htapi_activation_threshold_check_key);
@@ -183,8 +184,9 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
         {additional_projects_key, additional_projects},
         {query_properties_key, query_properties},
         {activation_threshold_key, activation_threshold},
-        {use_wchar_key, use_wchar},
+        // {use_wchar_key, use_wchar},
         {enable_session_key, enable_session},
+        {max_threads_key, max_threads},
         {htapi_activation_threshold_check_key,
          htapi_activation_threshold_check},
         {allow_large_results_key, allow_large_results},
@@ -240,8 +242,9 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
     additional_projects = advance_form.GetAdditionalProjects();
     query_properties = advance_form.GetQueryProperties();
     activation_threshold = advance_form.GetActivationThreshold();
-    use_wchar = advance_form.GetUseWchar();
+    // use_wchar = advance_form.GetUseWchar();
     enable_session = advance_form.GetEnableSession();
+    max_threads = advance_form.GetMaxThreads();
     htapi_activation_threshold_check =
         advance_form.GetActivationThresholdCheckbox();
     allow_large_results = advance_form.GetAllowLargeResults();
