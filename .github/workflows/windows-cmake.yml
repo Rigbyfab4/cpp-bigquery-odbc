@@ -24,6 +24,7 @@ jobs:
         msvc: [ msvc-2022 ]
         arch: [ x64, x86 ]
         shard: [ BqDriver ]
+        shard: [ BqDriver ]
     env:
       DRIVER_ARCH: ${{ matrix.arch }}
       BUILD_SHARD: ${{ matrix.shard }}
@@ -34,6 +35,7 @@ jobs:
       VCPKG_BINARY_SOURCES: x-gcs,gs://gha-cache-cpp-bigquery-odbc/vcpkg-cache/${{ matrix.msvc }},readwrite
       VCPKG_TRIPLET: ${{ matrix.arch }}-windows
     steps:
+    - uses: actions/checkout@v4
     - uses: actions/checkout@v4
       with:
         ref: ${{ inputs.checkout-ref }}
@@ -229,19 +231,6 @@ jobs:
           mv "$f" "$MSI_DIR/ODBCDriverforBigQuery_windows_${DRIVER_ARCH}_${{ steps.version.outputs.version }}.msi"
         done
 
-    - name: Attest build provenance
-      uses: actions/attest-build-provenance@v2
-      with:
-        subject-path: ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/ODBCDriverforBigQuery_windows_${{ matrix.arch }}_${{ steps.version.outputs.version }}.msi
-
-    - name: Release Driver
-      uses: softprops/action-gh-release@v2
-      with:
-        files: ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/*_${{ env.DRIVER_ARCH }}_${{ steps.version.outputs.version }}.msi
-        overwrite_files: true
-        name: "ODBC Driver for BigQuery (${{ env.DRIVER_ARCH }})"
-        body: "Windows release build for architecture: **${{ env.DRIVER_ARCH }}**"
-
     - name: Upload MSI to GCS
       shell: pwsh
       env:
@@ -253,7 +242,7 @@ jobs:
         $MSI_DIR = "ci/installer/ODBCDriverForBigQuery/bin/Release/en-us"
         $MSI_FILE = "ODBCDriverforBigQuery_windows_$($env:DRIVER_ARCH)_${{ steps.version.outputs.version }}.msi"
 
-        Write-Output "Uploading $MSI_FILE to gs://$env:GCS_BUCKET/odbc-windows/$arch/ ..."
+        Write-Output "Uploading $MSI_FILE to gs://$env:GCS_BUCKET/odbc/ ..."
         gsutil -m cp `
           "$MSI_DIR/$MSI_FILE" `
-          "gs://$env:GCS_BUCKET/odbc-windows/$arch/$MSI_FILE"
+          "gs://$env:GCS_BUCKET/odbc/$arch/$MSI_FILE"
