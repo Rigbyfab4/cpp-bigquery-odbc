@@ -41,7 +41,7 @@ StatusRecordOr<Table> GetTable(TableClient& table_client,
   GetTableRequest request;
   request.set_project_id(project_id);
   request.set_dataset_id(dataset_id);
-  request.set_table_id(table_id);
+  request.set_table_id(UrlEncodeSegment(table_id));
   request.set_selected_fields(table_filter.selected_fields);
   request.set_view(table_filter.view);
 

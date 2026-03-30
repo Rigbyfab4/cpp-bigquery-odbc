@@ -1812,14 +1812,21 @@ TEST(CatalogTest, SQLTables_Filter_DefaultDataset_SchemaNull) {
 // (e.g., 2.5.2.1004) and with our driver. We should re-enable or validate this
 // test case when we upgrade to a newer version of the existing driver or when
 // the issue is resolved.
-TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull) {
+TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull_TableWithSpace) {
   // TODO(b/485172463): Enable after the performance issue is resolved
-  GTEST_SKIP();
   auto conn = std::make_shared<ODBCHandles>();
   std::string default_dataset = "ODBC_TEST_DATASET";
 
   std::string base_conn_str =
       kDefaultConnectionString + ";DefaultDataset=" + default_dataset;
+
+  std::string table_name = "Test Table12";
+  std::string quoted_table = "`" + default_dataset + "." + table_name + "`";
+  ASSERT_EQ(Connect(base_conn_str, conn), SQL_SUCCESS);
+
+  Table table(quoted_table);
+  table.Create(conn, "(id INT64, name STRING)");
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Filter OFF  (FilterTablesOnDefaultDataset = 0)
   std::string conn_str_unfiltered =
@@ -1848,6 +1855,18 @@ TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull) {
   bool has_multiple_datasets = (ds_unfiltered.size() > 1);
 
   EXPECT_TRUE(ds_unfiltered.find(default_dataset) != ds_unfiltered.end());
+
+  bool found_unfiltered = false;
+  for (auto const& r : results_unfiltered) {
+    if (r.table_name == table_name) {
+      found_unfiltered = true;
+      break;
+    }
+  }
+
+  EXPECT_TRUE(found_unfiltered)
+      << "Table with space not found in unfiltered results";
+
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
   // Filter ON  (FilterTablesOnDefaultDataset = 1)
@@ -1880,8 +1899,23 @@ TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull) {
     EXPECT_LT(results_filtered.size(), count_unfiltered);
   }
 
+  bool found_filtered = false;
+  for (auto const& r : results_filtered) {
+    if (r.table_name == table_name) {
+      found_filtered = true;
+      break;
+    }
+  }
+
+  EXPECT_TRUE(found_filtered)
+      << "Table with space not found in filtered results";
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  ASSERT_EQ(Connect(base_conn_str, conn), SQL_SUCCESS);
+  table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 TEST(SQLProcedures, TableFunction) {
