@@ -1821,7 +1821,7 @@ TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull_TableWithSpace) {
       kDefaultConnectionString + ";DefaultDataset=" + default_dataset;
 
   std::string table_name = "Test Table12";
-  std::string quoted_table = "`" + default_dataset + "." + table_name + "`";
+  std::string quoted_table = "`" + kDatasetWithTablePrefix + table_name + "`";
   ASSERT_EQ(Connect(base_conn_str, conn), SQL_SUCCESS);
 
   Table table(quoted_table);
@@ -1858,7 +1858,7 @@ TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull_TableWithSpace) {
 
   bool found_unfiltered = false;
   for (auto const& r : results_unfiltered) {
-    if (r.table_name == table_name) {
+    if (r.table_name.find(table_name) != std::string::npos) {
       found_unfiltered = true;
       break;
     }
@@ -1901,7 +1901,7 @@ TEST(CatalogTest, SQLColumns_Filter_DefaultDataset_SchemaNull_TableWithSpace) {
 
   bool found_filtered = false;
   for (auto const& r : results_filtered) {
-    if (r.table_name == table_name) {
+    if (r.table_name.find(table_name) != std::string::npos) {
       found_filtered = true;
       break;
     }
