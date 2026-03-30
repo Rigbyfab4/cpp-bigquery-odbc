@@ -26,7 +26,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//google/cloud/odbc/bq_client_interface:odbc_bq_client_interface",
-        "@com_google_cloud_cpp//google/cloud:common",
         "@com_google_cloud_cpp//:experimental-bigquery-rest",
         "@com_google_googletest//:gtest",
     ],
