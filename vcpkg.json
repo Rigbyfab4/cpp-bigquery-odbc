@@ -1,6 +1,6 @@
 {
   "name": "cpp-bigquery-odbc-development",
-  "builtin-baseline": "6f29f12e82a8293156836ad81cc9bf5af41fe836",
+  "builtin-baseline": "52f5569a8e867859fac967c1e3f10ca0a8a3cc39",
   "description": "Describes the vcpkg dependencies for vcpkg development.",
   "homepage": "https://github.com/googleapis/cpp-bigquery-odbc",
   "license": "Apache-2.0",
