@@ -91,7 +91,12 @@ RUN curl -fsSL https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz | \
     rm -rf /tmp/m4
 
 ENV VCPKG_ROOT=/vcpkg
-RUN git clone https://github.com/microsoft/vcpkg $VCPKG_ROOT
+ENV VCPKG_DEFAULT_TRIPLET=arm64-linux
+ENV VCPKG_HOST_TRIPLET=arm64-linux
+
+COPY ./etc/vcpkg-version.txt /tmp/vcpkg-version.txt
+RUN VCPKG_VERSION=$(cat /tmp/vcpkg-version.txt) && \
+    git clone --branch $VCPKG_VERSION https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
 WORKDIR $VCPKG_ROOT
 RUN ./bootstrap-vcpkg.sh -disableMetrics
 

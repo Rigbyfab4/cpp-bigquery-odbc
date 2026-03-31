@@ -32,6 +32,8 @@ export VCPKG_MAX_CONCURRENCY="${JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="${JOBS}"
 export VCPKG_DISABLE_METRICS=1
 export VCPKG_FEATURE_FLAGS=manifests,versions
+export VCPKG_DEFAULT_TRIPLET=arm64-linux
+export VCPKG_HOST_TRIPLET=arm64-linux
 export CMAKE_MAKE_PROGRAM=/usr/bin/ninja
 export PATH=/usr/bin:$PATH
 
@@ -48,11 +50,13 @@ export CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX=${TRIGGER_NAME//[-:;.,?]/_}_${BRANCH_
 export ODBCINSTINI=/opt/odbc-driver/odbcinst.ini
 export ODBCINI=/opt/odbc-driver/odbc.ini
 
-io::run cmake -B "$BUILD_DIR" \
+io::run cmake \
   "${cmake_args[@]}" \
   -GNinja \
   -DCMAKE_MAKE_PROGRAM=/usr/bin/ninja \
   -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=arm64-linux \
+  -DVCPKG_HOST_TRIPLET=arm64-linux \
   -DCMAKE_CXX_STANDARD=17 \
   -DODBC_INTEGRATION_TESTING=ON \
   -DBQ_DRIVER_INTEGRATION_TESTS=ON \
