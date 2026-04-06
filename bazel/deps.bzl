@@ -54,15 +54,7 @@ def cpp_bigquery_odbc_development_deps(name = None):
     )
 
     # Load Abseil
-    maybe(
-        http_archive,
-        name = "com_google_absl",
-        urls = [
-            "https://github.com/abseil/abseil-cpp/archive/20250512.0.tar.gz",
-        ],
-        sha256 = "7262daa7c1711406248c10f41026d685e88223bc92817d16fb93c19adb57f669",
-        strip_prefix = "abseil-cpp-20250512.0",
-    )
+
 def cpp_bigquery_odbc_deps(name = None):
     """Loads dependencies need to compile the cpp-bigquery-odbc libraries.
 
