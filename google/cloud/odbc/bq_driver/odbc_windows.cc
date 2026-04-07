@@ -33,6 +33,8 @@ using google::cloud::odbc_bq_driver_internal::GetPathToOdbcIni;
 using google::cloud::odbc_bq_driver_internal::GetSectionWin;
 using google::cloud::odbc_bq_driver_internal::GetUpperStr;
 using google::cloud::odbc_bq_driver_internal::GetValueOrDefault;
+using google::cloud::odbc_bq_driver_internal::kDefaultMaxFiles;
+using google::cloud::odbc_bq_driver_internal::kDefaultMaxSize;
 using google::cloud::odbc_bq_driver_internal::kLogFileCount;
 using google::cloud::odbc_bq_driver_internal::kLogFileSize;
 using google::cloud::odbc_bq_driver_internal::kLogLevel;
@@ -102,10 +104,7 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
   StatusRecordOr<Section> status_or_section = ParseConnectionString(attribute);
   Section section = *status_or_section;
 
-  std::string dsn_value = GetValueOrDefault(section, dsn_key);
-  if (dsn_value.empty()) {
-    dsn_value = "Default DSN";
-  }
+  std::string dsn_value = GetValueOrDefault(section, dsn_key, kDefaultDsnValue);
 
   std::string dsn_name;
   std::string key_file_path = GetValueOrDefault(section, key_file_path_key);
@@ -118,24 +117,27 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
   std::string min_tls_version = GetValueOrDefault(section, min_tls_key);
   std::string description = GetValueOrDefault(section, description_key);
   std::string log_level =
-      ConvertLogLevel(GetValueOrDefault(section, kLogLevel).empty()
-                          ? "0"
-                          : GetValueOrDefault(section, kLogLevel));
+      ConvertLogLevel(GetValueOrDefault(section, kLogLevel, kDefaultLogLevel));
   std::string log_file = GetValueOrDefault(section, kLogPath);
-  std::string log_max_files = GetValueOrDefault(section, kLogFileCount);
-  std::string log_max_size = GetValueOrDefault(section, kLogFileSize);
+  std::string log_max_files =
+      GetValueOrDefault(section, kLogFileCount, kDefaultMaxFiles);
+  std::string log_max_size =
+      GetValueOrDefault(section, kLogFileSize, kDefaultMaxSize);
   std::string language_dialect =
       ConvertLanguageDialect(GetValueOrDefault(section, sql_dialect_key));
-  std::string large_dataset_name =
-      GetValueOrDefault(section, large_results_dataset_key);
+  std::string large_dataset_name = GetValueOrDefault(
+      section, large_results_dataset_key, kDefaultLargeDatasetName);
   std::string encryption_key_value = GetValueOrDefault(section, encryption_key);
-  std::string rows_per_block = GetValueOrDefault(section, rows_per_block_key);
-  std::string default_string_length =
-      GetValueOrDefault(section, default_string_length_key);
-  std::string temp_expiration = GetValueOrDefault(section, temp_expiration_key);
+  std::string rows_per_block =
+      GetValueOrDefault(section, rows_per_block_key, kDefaultRowsPerBlock);
+  std::string default_string_length = GetValueOrDefault(
+      section, default_string_length_key, kDefaultStringLength);
+  std::string temp_expiration =
+      GetValueOrDefault(section, temp_expiration_key, kDefaultTempExpiration);
   std::string session_location =
       GetValueOrDefault(section, session_location_key);
-  std::string max_threads = GetValueOrDefault(section, max_threads_key);
+  std::string max_threads =
+      GetValueOrDefault(section, max_threads_key, kDefaultMaxThreads);
   std::string additional_projects =
       GetValueOrDefault(section, additional_projects_key);
   std::string query_properties =

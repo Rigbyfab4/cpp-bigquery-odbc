@@ -28,6 +28,7 @@ std::string const kDefaultLanguageDialect = "GoogleSQL";
 std::string const kDefaultRowsPerBlock = "100000";
 std::string const kDefaultStringLength = "16384";
 std::string const kDefaultEncryptionType = "Google-managed encryption key";
+std::string const kDefaultLargeResultsDatasetId = "_odbc_temp_tables";
 
 std::string AdvanceOptions::activation_threshold_;
 
@@ -734,14 +735,18 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
   } else {
     language_dialect_ = "";
   }
-  adv_dataset_name_ = GetValueOrDefault(attribute_map, kLargeResultsDatasetId);
+  adv_dataset_name_ = GetValueOrDefault(attribute_map, kLargeResultsDatasetId,
+                                        kDefaultLargeResultsDatasetId);
   encryption_key_ = GetValueOrDefault(attribute_map, kEncryptionKey);
-  rows_per_block_ = GetValueOrDefault(attribute_map, kRowsFetchedPerBlock);
-  default_string_length_ =
-      GetValueOrDefault(attribute_map, kDefaultStringColumnLength);
+  rows_per_block_ = GetValueOrDefault(attribute_map, kRowsFetchedPerBlock,
+                                      kDefaultRowsPerBlock);
+  default_string_length_ = GetValueOrDefault(
+      attribute_map, kDefaultStringColumnLength, kDefaultStringLength);
   temp_expiration_ =
-      GetValueOrDefault(attribute_map, kLargeResultsTempTableExpirationTime);
-  max_threads_ = GetValueOrDefault(attribute_map, kMaxThreads);
+      GetValueOrDefault(attribute_map, kLargeResultsTempTableExpirationTime,
+                        kDefaultLargeResultsTableExpiration);
+  max_threads_ = GetValueOrDefault(attribute_map, kMaxThreads,
+                                   std::to_string(kDefaultMaxThreads));
   session_location_ = GetValueOrDefault(attribute_map, kSessionLocation);
   additional_projects_ = GetValueOrDefault(attribute_map, kAdditionalProjects);
   query_properties_ = GetValueOrDefault(attribute_map, kQueryProperties);
@@ -760,7 +765,7 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
 
 void AdvanceOptions::ResetToDefaults() {
   language_dialect_ = kDefaultLanguageDialect;
-  adv_dataset_name_.clear();
+  adv_dataset_name_ = kDefaultLargeResultsDatasetId;
   temp_expiration_ = kDefaultLargeResultsTableExpiration;
   encryption_key_.clear();
   rows_per_block_ = kDefaultRowsPerBlock;
