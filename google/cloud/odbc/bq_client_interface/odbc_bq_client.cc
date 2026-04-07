@@ -19,6 +19,7 @@
 #include "google/cloud/odbc/bq_client_interface/projects.h"
 #include "google/cloud/odbc/bq_client_interface/storage.h"
 #include "google/cloud/odbc/bq_client_interface/tables.h"
+#include "google/cloud/odbc/bq_client_interface/utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "google/cloud/odbc/internal/version.h"
 #include "google/cloud/completion_queue.h"
@@ -28,6 +29,7 @@
 #include <absl/log/log.h>
 #include <grpcpp/security/tls_credentials_options.h>
 #include <algorithm>
+#include <regex>
 
 namespace google::cloud::odbc_bigquery_client_interface {
 
@@ -96,8 +98,17 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
     options.set<google::cloud::CARootsFilePathOption>(pem_file);
   }
 
+  auto partner_token_or =
+      ::google::cloud::odbc_bigquery_client_interface::ParsePartnerToken(
+          oauth.partner_token);
+  if (!partner_token_or) {
+    LOG(ERROR) << "CreateBQClient::ParsePartnerToken:: "
+               << partner_token_or.GetStatusRecord().message;
+    return partner_token_or.GetStatusRecord();
+  }
+  std::string partner_token = *partner_token_or;
   options.set<google::cloud::UserAgentProductsOption>(
-      {"Google-Bigquery-ODBC/" + std::string(DRIVER_VERSION)});
+      {"Google-Bigquery-ODBC/" + std::string(DRIVER_VERSION) + partner_token});
 
   StatusRecordOr<std::shared_ptr<Credentials>> credentials =
       CreateCredentials(oauth, options);
@@ -157,8 +168,8 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
   read_options.set<GrpcCompletionQueueOption>(cq);
 
   grpc::ChannelArguments channel_arguments;
-  channel_arguments.SetUserAgentPrefix("Google-Bigquery-ODBC/" +
-                                       std::string(DRIVER_VERSION));
+  channel_arguments.SetUserAgentPrefix(
+      "Google-Bigquery-ODBC/" + std::string(DRIVER_VERSION) + partner_token);
   channel_arguments.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS,
                            std::chrono::minutes(1).count());
   channel_arguments.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS,

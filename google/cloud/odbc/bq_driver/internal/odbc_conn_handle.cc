@@ -203,6 +203,7 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   if (dsn_.byoid_token_url.empty()) {
     dsn_.byoid_token_url = kDefaultTokenUrl;
   }
+  dsn_.partner_token = dsn_section["PARTNERTOKEN"];
 }
 
 ConnectionHandle::ConnectionHandle(ConnectionHandle const& connectionHandle)

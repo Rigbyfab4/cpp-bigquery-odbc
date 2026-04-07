@@ -88,6 +88,7 @@ Authentication CreateAuth(Dsn const& dsn) {
   auth.oauth.psc = dsn.psc;
   auth.oauth.tpc.enable_tpc = dsn.enable_tpc;
   auth.oauth.tpc.universe_domain = dsn.universe_domain;
+  auth.oauth.partner_token = dsn.partner_token;
   return auth;
 }
 

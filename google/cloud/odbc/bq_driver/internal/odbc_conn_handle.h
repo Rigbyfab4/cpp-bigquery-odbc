@@ -103,6 +103,7 @@ struct Dsn {
   std::string psc;
   bool enable_tpc;
   std::string universe_domain;
+  std::string partner_token;
 };
 
 class EnvironmentHandle;

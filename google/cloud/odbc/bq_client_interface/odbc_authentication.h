@@ -85,6 +85,7 @@ struct Oauth {
   std::string kms_key_name;
   std::string psc;
   TPC tpc;
+  std::string partner_token;
 };
 
 // Returns true if all required BYOID properties are set.
