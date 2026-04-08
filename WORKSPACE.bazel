@@ -26,5 +26,20 @@ bazel_skylib_workspace()
 
 # Dependencies for google_cloud_cpp
 
-load("@com_google_cloud_cpp//:bazel/deps.bzl", "google_cloud_cpp_deps")
-google_cloud_cpp_deps()
+load("@com_google_cloud_cpp//bazel:workspace0.bzl", "gl_cpp_workspace0")
+gl_cpp_workspace0()
+
+load("@com_google_cloud_cpp//bazel:workspace1.bzl", "gl_cpp_workspace1")
+gl_cpp_workspace1()
+
+load("@com_google_cloud_cpp//bazel:workspace2.bzl", "gl_cpp_workspace2")
+gl_cpp_workspace2()
+
+load("@com_google_cloud_cpp//bazel:workspace3.bzl", "gl_cpp_workspace3")
+gl_cpp_workspace3()
+
+load("@com_google_cloud_cpp//bazel:workspace4.bzl", "gl_cpp_workspace4")
+gl_cpp_workspace4()
+
+load("@com_google_cloud_cpp//bazel:workspace5.bzl", "gl_cpp_workspace5")
+gl_cpp_workspace5()
