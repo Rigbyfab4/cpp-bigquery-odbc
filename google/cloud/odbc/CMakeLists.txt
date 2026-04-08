@@ -19,12 +19,6 @@ project(cpp-bigquery-odbc-bq-driver LANGUAGES CXX)
 
 include(FetchContent)
 
-FetchContent_Declare(
-    absl
-    URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.2.tar.gz
-)
-FetchContent_MakeAvailable(absl)
-
 if (MSVC)
     foreach (lang C CXX)
         set(CMAKE_${lang}_FLAGS_INIT "/MT")
@@ -48,49 +42,6 @@ set(BUILD_SHARED_LIBS OFF)
 # we need to forces OpenTelemetry to use the C++17 Standard Library (STL)
 # implementation for variants and optionals.
 add_definitions(-DOPENTELEMETRY_STL_VERSION=2017)
-# We need googletest for all our tests target.
-find_package(GTest CONFIG QUIET)
-if (NOT GTest_FOUND)
-    FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/v1.15.2.tar.gz)
-    # For Windows: Prevent overriding the parent project's compiler/linker
-    # settings
-    set(gtest_force_shared_crt
-        ON
-        CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
-else ()
-    find_package(GTest CONFIG REQUIRED)
-endif ()
-
-# find_package(absl CONFIG REQUIRED)
-
-
-if (ODBC_UNIT_TESTING AND NOT MSVC AND NOT APPLE)
-    FetchContent_Declare(
-        fuzztest
-        URL "https://github.com/google/fuzztest/archive/refs/tags/2024-10-28.tar.gz"
-    )
-    set(FUZZTEST_USE_EXTERNAL_ABSL
-        ON
-        CACHE BOOL "" FORCE)
-    set(FUZZTEST_USE_EXTERNAL_RE2
-        ON
-        CACHE BOOL "" FORCE)
-    set(FUZZTEST_USE_EXTERNAL_GTEST
-        ON
-        CACHE BOOL "" FORCE)
-
-    FetchContent_MakeAvailable(fuzztest)
-endif ()
-
-# Arrow is not supported on 32-bit systems
-if (CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT NO_ARROW)
-    find_package(Arrow REQUIRED)
-else ()
-    add_compile_definitions(NO_ARROW=1)
-endif ()
 
 # Fetching dependencies from google-cloud-cpp
 find_package(google_cloud_cpp_bigquery_rest CONFIG QUIET)
@@ -117,6 +68,51 @@ else ()
     find_package(google_cloud_cpp_resourcemanager REQUIRED)
     find_package(google_cloud_cpp_serviceusage REQUIRED)
 endif ()
+
+# We need googletest for all our tests target.
+find_package(GTest CONFIG QUIET)
+if (NOT GTest_FOUND)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/v1.15.2.tar.gz)
+    # For Windows: Prevent overriding the parent project's compiler/linker
+    # settings
+    set(gtest_force_shared_crt
+        ON
+        CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+else ()
+    find_package(GTest CONFIG REQUIRED)
+endif ()
+
+find_package(absl CONFIG REQUIRED)
+
+if (ODBC_UNIT_TESTING)
+    FetchContent_Declare(
+        fuzztest
+        URL "https://github.com/google/fuzztest/archive/refs/tags/2024-10-28.tar.gz"
+    )
+    set(FUZZTEST_USE_EXTERNAL_ABSL
+        ON
+        CACHE BOOL "" FORCE)
+    set(FUZZTEST_USE_EXTERNAL_RE2
+        ON
+        CACHE BOOL "" FORCE)
+    set(FUZZTEST_USE_EXTERNAL_GTEST
+        ON
+        CACHE BOOL "" FORCE)
+
+    FetchContent_MakeAvailable(fuzztest)
+endif ()
+
+# Arrow is not supported on 32-bit systems
+if (CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT NO_ARROW)
+    find_package(Arrow REQUIRED)
+else ()
+    add_compile_definitions(NO_ARROW=1)
+endif ()
+
+
 
 # Restore the original BUILD_SHARED_LIBS value
 set(BUILD_SHARED_LIBS ${ORIGINAL_BUILD_SHARED_LIBS})
