@@ -98,13 +98,14 @@ RUN cmake --install build
 # use `absl::any`, `absl::string_view`, and `absl::variant`. See
 # [abseil/abseil-cpp#696] for more information.
 WORKDIR /var/tmp/build/abseil-cpp
-RUN curl -fsSL https://github.com/abseil/abseil-cpp/archive/20230802.0.tar.gz | \
+RUN curl -fsSL https://github.com/abseil/abseil-cpp/archive/20250512.0.tar.gz | \
     tar -xzf - --strip-components=1 && \
     cmake \
       -DCMAKE_BUILD_TYPE="Release" \
       -DABSL_BUILD_TESTING=OFF \
       -DABSL_PROPAGATE_CXX_STD=ON \
       -DBUILD_SHARED_LIBS=yes \
+      -Dprotobuf_ABSL_PROVIDER=module \
       -S . -B cmake-out -GNinja && \
     cmake --build cmake-out --target install && \
     ldconfig && \
@@ -167,7 +168,7 @@ RUN curl -fsSL https://github.com/nlohmann/json/archive/v3.11.2.tar.gz | \
 # We need to install a version of Protobuf that is recent enough to support the
 # Google Cloud Platform proto files:
 WORKDIR /var/tmp/build/protobuf
-RUN curl -fsSL https://github.com/protocolbuffers/protobuf/archive/v23.2.tar.gz | \
+RUN curl -fsSL https://github.com/protocolbuffers/protobuf/archive/v25.3.tar.gz | \
     tar -xzf - --strip-components=1 && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
@@ -189,7 +190,7 @@ RUN curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.5.4/sccac
     chmod +x /usr/local/bin/sccache
 
 WORKDIR /var/tmp/build/grpc
-RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.55.0.tar.gz | \
+RUN curl -fsSL https://github.com/grpc/grpc/archive/v1.63.2.tar.gz | \
     tar -xzf - --strip-components=1 && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
