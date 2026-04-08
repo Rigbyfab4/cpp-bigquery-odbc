@@ -58,22 +58,27 @@ else ()
     find_package(GTest CONFIG REQUIRED)
 endif ()
 
-find_package(absl CONFIG REQUIRED)
+# find_package(absl CONFIG REQUIRED)
+FetchContent_Declare(
+    absl
+    URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.2.tar.gz
+)
+FetchContent_MakeAvailable(absl)
 
 if (ODBC_UNIT_TESTING AND NOT MSVC AND NOT APPLE)
     FetchContent_Declare(
         fuzztest
         URL "https://github.com/google/fuzztest/archive/refs/tags/2024-10-28.tar.gz"
     )
-    # set(FUZZTEST_USE_EXTERNAL_ABSL
-    #     ON
-    #     CACHE BOOL "" FORCE)
-    # set(FUZZTEST_USE_EXTERNAL_RE2
-    #     ON
-    #     CACHE BOOL "" FORCE)
-    # set(FUZZTEST_USE_EXTERNAL_GTEST
-    #     ON
-    #     CACHE BOOL "" FORCE)
+    set(FUZZTEST_USE_EXTERNAL_ABSL
+        ON
+        CACHE BOOL "" FORCE)
+    set(FUZZTEST_USE_EXTERNAL_RE2
+        ON
+        CACHE BOOL "" FORCE)
+    set(FUZZTEST_USE_EXTERNAL_GTEST
+        ON
+        CACHE BOOL "" FORCE)
 
     FetchContent_MakeAvailable(fuzztest)
 endif ()
