@@ -19,6 +19,12 @@ project(cpp-bigquery-odbc-bq-driver LANGUAGES CXX)
 
 include(FetchContent)
 
+FetchContent_Declare(
+    absl
+    URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.2.tar.gz
+)
+FetchContent_MakeAvailable(absl)
+
 if (MSVC)
     foreach (lang C CXX)
         set(CMAKE_${lang}_FLAGS_INIT "/MT")
@@ -59,11 +65,7 @@ else ()
 endif ()
 
 # find_package(absl CONFIG REQUIRED)
-FetchContent_Declare(
-    absl
-    URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.2.tar.gz
-)
-FetchContent_MakeAvailable(absl)
+
 
 if (ODBC_UNIT_TESTING AND NOT MSVC AND NOT APPLE)
     FetchContent_Declare(
