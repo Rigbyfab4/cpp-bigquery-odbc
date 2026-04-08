@@ -60,23 +60,23 @@ endif ()
 
 find_package(absl CONFIG REQUIRED)
 
-# if (ODBC_UNIT_TESTING)
-#     FetchContent_Declare(
-#         fuzztest
-#         URL "https://github.com/google/fuzztest/archive/refs/tags/2024-10-28.tar.gz"
-#     )
-#     set(FUZZTEST_USE_EXTERNAL_ABSL
-#         ON
-#         CACHE BOOL "" FORCE)
-#     set(FUZZTEST_USE_EXTERNAL_RE2
-#         ON
-#         CACHE BOOL "" FORCE)
-#     set(FUZZTEST_USE_EXTERNAL_GTEST
-#         ON
-#         CACHE BOOL "" FORCE)
+if (ODBC_UNIT_TESTING AND NOT MSVC AND NOT APPLE)
+    FetchContent_Declare(
+        fuzztest
+        URL "https://github.com/google/fuzztest/archive/refs/tags/2024-10-28.tar.gz"
+    )
+    set(FUZZTEST_USE_EXTERNAL_ABSL
+        ON
+        CACHE BOOL "" FORCE)
+    set(FUZZTEST_USE_EXTERNAL_RE2
+        ON
+        CACHE BOOL "" FORCE)
+    set(FUZZTEST_USE_EXTERNAL_GTEST
+        ON
+        CACHE BOOL "" FORCE)
 
-#     FetchContent_MakeAvailable(fuzztest)
-# endif ()
+    FetchContent_MakeAvailable(fuzztest)
+endif ()
 
 # Arrow is not supported on 32-bit systems
 if (CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT NO_ARROW)
