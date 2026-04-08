@@ -65,15 +65,15 @@ if (ODBC_UNIT_TESTING AND NOT MSVC AND NOT APPLE)
         fuzztest
         URL "https://github.com/google/fuzztest/archive/refs/tags/2024-10-28.tar.gz"
     )
-    set(FUZZTEST_USE_EXTERNAL_ABSL
-        ON
-        CACHE BOOL "" FORCE)
-    set(FUZZTEST_USE_EXTERNAL_RE2
-        ON
-        CACHE BOOL "" FORCE)
-    set(FUZZTEST_USE_EXTERNAL_GTEST
-        ON
-        CACHE BOOL "" FORCE)
+    # set(FUZZTEST_USE_EXTERNAL_ABSL
+    #     ON
+    #     CACHE BOOL "" FORCE)
+    # set(FUZZTEST_USE_EXTERNAL_RE2
+    #     ON
+    #     CACHE BOOL "" FORCE)
+    # set(FUZZTEST_USE_EXTERNAL_GTEST
+    #     ON
+    #     CACHE BOOL "" FORCE)
 
     FetchContent_MakeAvailable(fuzztest)
 endif ()
