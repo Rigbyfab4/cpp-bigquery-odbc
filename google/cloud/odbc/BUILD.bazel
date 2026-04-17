@@ -16,15 +16,6 @@ licenses(["notice"])  # Apache v2
 
 package(default_visibility = ["//visibility:private"])
 
-WINDOWS_ONLY_TESTS = [
-    "bq_driver/internal/driver_adv_opt_form_test.cc",
-    "bq_driver/internal/driver_form_proxy_test.cc",
-    "bq_driver/internal/driver_form_test.cc",
-    "bq_driver/internal/driver_log_form_test.cc",
-]
-
-WINDOWS_DRIVER_UTILS_TESTS = "bq_driver/odbc_windows_test.cc"
-
 # Define a config_setting for Windows
 config_setting(
     name = "windows",
@@ -72,6 +63,8 @@ cc_library(
     ],
 )
 
+WINDOWS_ONLY_TESTS = ("bq_driver/internal/driver_form_test.cc", "bq_driver/internal/driver_log_form_test.cc", "bq_driver/internal/driver_form_proxy_test.cc", "bq_driver/internal/driver_adv_opt_form_test.cc")
+
 [cc_test(
     name = driver_internal_utils_test.replace("/", "_").replace(".cc", ""),
     srcs = select({
@@ -88,6 +81,7 @@ cc_library(
         "//google/cloud/odbc/testing:google_cloud_odbc_testing_bq_driver_utils",
         "//google/cloud/odbc/testing:google_cloud_odbc_testing_utils",
         "@com_google_googletest//:gtest_main",
+        "@com_google_fuzztest//fuzztest",
     ],
 ) for driver_internal_utils_test in glob(["bq_driver/internal/*_test.cc"])]
 
@@ -106,6 +100,8 @@ cc_library(
     ],
 )
 
+WINDOWS_DRIVER_UTILS_TESTS = "bq_driver/odbc_windows_test.cc"
+
 [cc_test(
     name = driver_utils_test.replace("/", "_").replace(".cc", ""),
     srcs = select({
@@ -121,5 +117,6 @@ cc_library(
         "//google/cloud/odbc/testing:google_cloud_odbc_testing_bq_driver_utils",
         "//google/cloud/odbc/testing:google_cloud_odbc_testing_utils",
         "@com_google_googletest//:gtest_main",
+        "@com_google_fuzztest//fuzztest",
     ],
 ) for driver_utils_test in glob(["bq_driver/*_test.cc"])]
