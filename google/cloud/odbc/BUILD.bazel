@@ -16,6 +16,15 @@ licenses(["notice"])  # Apache v2
 
 package(default_visibility = ["//visibility:private"])
 
+WINDOWS_ONLY_TESTS = [
+    "bq_driver/internal/driver_adv_opt_form_test.cc",
+    "bq_driver/internal/driver_form_proxy_test.cc",
+    "bq_driver/internal/driver_form_test.cc",
+    "bq_driver/internal/driver_log_form_test.cc",
+]
+
+WINDOWS_DRIVER_UTILS_TESTS = "bq_driver/odbc_windows_test.cc"
+
 # Define a config_setting for Windows
 config_setting(
     name = "windows",
