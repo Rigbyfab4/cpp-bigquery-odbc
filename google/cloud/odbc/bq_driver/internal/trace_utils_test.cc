@@ -13,14 +13,17 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
+#include "google/cloud/odbc/bq_client_interface/setenv.h"
 #include "google/cloud/odbc/testing/utils/status_matchers.h"
 #include "google/cloud/internal/getenv.h"
 #include <absl/log/log.h>
 #include <absl/strings/str_format.h>
 #include <gtest/gtest.h>
+#include <sys/stat.h>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
+using ::google::cloud::odbc_bigquery_client_interface::SetEnv;
 using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecordOr;
 using google::cloud::odbc_testing_utils::StatusRecordIs;
@@ -64,15 +67,10 @@ void UpdateTraceConfig(std::string const& odbc_trace_config,
                        std::string const& log_level,
                        std::string const& log_file_count,
                        std::string const& log_file_size) {
-  // Ensure parent directory exists
-  std::filesystem::create_directories(
-      std::filesystem::path(odbc_trace_config).parent_path());
   std::unordered_map<std::string, std::string> kv;
-  std::string line;
-
-  if (std::filesystem::exists(odbc_trace_config)) {
-    std::ifstream input(odbc_trace_config);
-    ASSERT_TRUE(input.is_open());
+  std::ifstream input(odbc_trace_config);
+  if (input.is_open()) {
+    std::string line;
 
     while (std::getline(input, line)) {
       if (line == "[Driver]" || line.empty()) {
@@ -126,11 +124,11 @@ TEST(GetAbslSeverity, InvalidAbslSeverity) {
 
 TEST(GetLogFileWithIndex, CustomLogPath) {
   std::string log_path = "/custom/path/to/log/file";
-  std::string expected =
-      "/custom/path/to/log/file/" + kLogTraceFileName + "_0.log";
+  std::string expected = "/custom/path/to/log/file/" + kLogTraceFileName + "_";
 
   auto actual = GetLogFileWithIndex(log_path);
-  EXPECT_EQ(actual, expected);
+  EXPECT_TRUE(absl::StartsWith(actual, expected));
+  EXPECT_TRUE(absl::EndsWith(actual, ".log"));
 }
 
 TEST(ClearOldLogFiles, WhenMaxFileCountIsOne) {
@@ -193,31 +191,53 @@ TEST(TraceLoggingFile, TraceOptionsCheckLogFileCountAndLogFileSize) {
   EXPECT_EQ(6, (*test_opts_file)->max_file_size);
 }
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if defined(__linux__)
 TEST(TraceLoggingFile, VerifyTraceLogFileAndLogFileCount) {
-  auto odbc_ini_path = GetOdbcTraceConfigPath();
+  // original config
+  auto original_ini_path = GetOdbcTraceConfigPath();
 
-  auto const* log_file_count = "2";
-  auto const* log_file_size = "1";
-  auto const* log_path = "/tmp";
+  int const log_file_count = 2;
+  int const log_file_size = 1024;
 
-  UpdateTraceConfig(odbc_ini_path, log_path, "3", log_file_count,
-                    log_file_size);
+  // Unique test dir
+  auto test_prefix =
+      google::cloud::internal::GetEnv("CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX")
+          .value_or("default");
+  std::string log_path = "/tmp/" + test_prefix;
+  mkdir(log_path.c_str(), 0777);
 
-  auto trace_opts_file = TraceOptions::CreateTraceOptionsFile(odbc_ini_path);
+  // create ini file
+  std::string ini_path = log_path + "/googlebigqueryodbc.ini";
+  std::ofstream file(ini_path);
+  ASSERT_TRUE(file.is_open());
+  file.close();
+
+  // override env var to use test config
+  SetEnv("GOOGLEBIGQUERYODBCINI", ini_path);
+
+  auto curr_ini_path = GetOdbcTraceConfigPath();
+  UpdateTraceConfig(curr_ini_path, log_path, "3",
+                    std::to_string(log_file_count),
+                    std::to_string(log_file_size));
+
+  auto trace_opts_file = TraceOptions::CreateTraceOptionsFile(curr_ini_path);
   EXPECT_TRUE(trace_opts_file);
 
   auto logging_init = TraceOptions::InitializeLogging();
   EXPECT_TRUE(logging_init);
 
-  for (int i = 0; i < 40; ++i) {
+  // generate logs
+  std::string chunk(500000, 'A');
+  for (int i = 0; i < 100; ++i) {
     LOG(INFO) << "This is log INFO testing message. ";
+    LOG(INFO) << chunk;
     LOG(WARNING) << "This is log WARNING testing message. ";
     LOG(ERROR) << "This is log ERROR testing message. ";
   }
+
   // validate multiple log files existed
   std::vector<std::string> log_files;
-  for (int i = 0; i < std::stoi(log_file_count); ++i) {
+  for (int i = 0; i < log_file_count; ++i) {
     std::string file =
         absl::StrFormat("%s/%s_%d.log", log_path, kLogTraceFileName, i);
     if (std::filesystem::exists(file)) {
@@ -226,22 +246,22 @@ TEST(TraceLoggingFile, VerifyTraceLogFileAndLogFileCount) {
   }
 
   // Should have atleast 2 files if rotation worked
-  EXPECT_LE(log_files.size(), std::stoi(log_file_count));
+  EXPECT_EQ(log_files.size(), log_file_count);
   // First file must be max_file_size (1MB)
-  EXPECT_LE(std::filesystem::file_size(log_files[0]), 1 * 1024 * 1024);
+  EXPECT_LE(std::filesystem::file_size(log_files[0]), log_file_size * 1024);
   // Second file must exist and be smaller
   if (log_files.size() > 1) {
     EXPECT_GT(std::filesystem::file_size(log_files[1]), 0);
   }
-  // Delete the created log files
-  for (auto const& file : log_files) {
-    std::error_code ec;
-    std::filesystem::remove(file, ec);
+
+  // Delete the test log dir
+  if (absl::StartsWith(log_path, "/tmp/")) {
+    std::filesystem::remove_all(log_path);
   }
-  // disable logging
-  UpdateTraceConfig(odbc_ini_path, log_path, "0", "0", "0");
+  // Restore original env var
+  SetEnv("GOOGLEBIGQUERYODBCINI", original_ini_path);
 }
-#endif /* !defined(_WIN32) && !defined(__APPLE__) */
+#endif /* defined(__linux__) */
 
 #ifdef WIN32
 // TODO(b/375112496) enable this function after trace registry work is done

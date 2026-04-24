@@ -565,7 +565,6 @@ LRESULT CALLBACK CheckboxSubclassProc(HWND hwnd, UINT msg, WPARAM w_param,
 StatusRecordOr<std::shared_ptr<Sections>> ParseConfig(
     std::string const& file_path) {
   std::ifstream is(file_path);
-  is.exceptions(std::ios::badbit);  // Minimal error handling
   Sections sections;
   if (is.is_open()) {
     std::string line;
@@ -595,9 +594,10 @@ StatusRecordOr<std::shared_ptr<Sections>> ParseConfig(
         }
       }
     }
-    return std::make_shared<Sections>(sections);
+  } else {
+    return std::make_shared<Sections>();
   }
-  return std::make_shared<Sections>();
+  return std::make_shared<Sections>(sections);
 }
 
 #endif  //_WIN32

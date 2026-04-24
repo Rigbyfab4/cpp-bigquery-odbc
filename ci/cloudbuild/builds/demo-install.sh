@@ -22,7 +22,7 @@ source module ci/install-dependencies.sh
 source module ci/cloudbuild/builds/lib/cmake.sh
 source module ci/cloudbuild/builds/lib/unit-tests.sh
 source module ci/lib/io.sh
-cp ci/gha/builds/lib/google.googlebigqueryodbc.ini /opt/google.googlebigqueryodbc.ini
+cp ci/gha/builds/release/googlebigqueryodbc.ini /opt/googlebigqueryodbc.ini
 
 cmake_config_testing_details=(
   # -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
@@ -47,7 +47,7 @@ cmake --build cmake-out -- -j "$(nproc)"
 cmake --build cmake-out --target install
 ## [DONE packaging.md]
 
-export GOOGLEBIGQUERYODBCINI=/opt/google.googlebigqueryodbc.ini
+export GOOGLEBIGQUERYODBCINI=/opt/googlebigqueryodbc.ini
 mapfile -t ctest_args < <(ctest::common_args)
 # I am unable to upgrade coreutils on Centos 7. So,
 # `env -C cmake-out ctest "${ctest_args[@]}"` throws

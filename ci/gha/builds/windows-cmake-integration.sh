@@ -101,5 +101,12 @@ fi
 
 TIMEFORMAT="==> 🕑 CMake test done in %R seconds"
 time {
-  io::run ctest "${ctest_args[@]}" --test-dir "${CMAKE_OUT}" -LE integration-test
+  # The driver reads tracing config from registry only at process startup.
+  # If CheckTraceLogFileExist runs later in the same ctest process, the driver
+  # never reloads the registry and the test fails. So run it separately first.
+  io::run ctest "${ctest_args[@]}" --test-dir "${CMAKE_OUT}" -R "ConnectionTest.CheckTraceLogFileExist" -LE integration-test
+
+  # Run remaining tests in parallel
+  io::run ctest "${ctest_args[@]}" --test-dir "${CMAKE_OUT}" -j -E "ConnectionTest.CheckTraceLogFileExist" -LE integration-test
+
 }

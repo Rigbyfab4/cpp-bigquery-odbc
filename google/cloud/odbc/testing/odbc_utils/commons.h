@@ -56,6 +56,16 @@ bool const kIsWin32 = true;
 bool const kIsWin32 = false;
 #endif
 
+#ifdef _WIN64
+// 64-bit
+inline std::string k_trace_reg_path =
+    R"(SOFTWARE\\Google\\ODBC Driver for BigQuery)";
+#else
+// 32-bit
+inline std::string k_trace_reg_path =
+    R"(SOFTWARE\\WOW6432Node\\Google\\ODBC Driver for BigQuery)";
+#endif /* _WIN64 */
+
 bool const kIsUnixODBC =
     google::cloud::internal::GetEnv("UNIXODBC_INSTALLED").value_or("false") ==
     "true";
@@ -773,6 +783,10 @@ void BindStdColumns(std::shared_ptr<ODBCHandles> const& conn,
                     TestingDataBuffer* columns);
 
 void CleanupODBCHandles(ODBCHandles& conn, bool need_env_handle_freed = true);
+
+void UpdateTraceConfig(std::string const& odbc_trace_config,
+                       std::string const& log_path,
+                       std::string const& log_level);
 
 std::string Utf16ToUtf8(std::wstring const& utf_16_str,
                         unsigned int code_page = 65001 /* UTF-8 */);

@@ -36,6 +36,12 @@ mapfile -t ctest_args < <(ctest::common_args)
 if [[ "$MATRIX_OS" == "macos-14" ]]; then
   TIMEFORMAT="==> 🕑 CMake test done in %R seconds"
   time {
-    io::run ctest "${ctest_args[@]}" --test-dir cmake-out -LE integration-test
+    # The driver reads tracing config from registry only at process startup.
+    # If CheckTraceLogFileExist runs later in the same ctest process, the driver
+    # never reloads the registry and the test fails. So run it separately first.
+    io::run ctest "${ctest_args[@]}" --test-dir cmake-out -R "ConnectionTest.CheckTraceLogFileExist" -LE integration-test
+
+    # Run remaining tests in parallel
+    io::run ctest "${ctest_args[@]}" --test-dir cmake-out -j -E "ConnectionTest.CheckTraceLogFileExist" -LE integration-test
   }
 fi

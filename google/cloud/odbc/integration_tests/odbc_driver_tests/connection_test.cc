@@ -19,6 +19,7 @@
 namespace google::cloud::odbc_tests {
 using google::cloud::odbc_tests::SetAttributes;
 using ::testing::HasSubstr;
+namespace fs = std::filesystem;
 
 std::string GetDriverName() {
 #ifndef BQ_DRIVER_INTEGRATION_TESTS
@@ -30,47 +31,6 @@ std::string GetDriverName() {
 #else
   return "ODBC Driver for BigQuery";
 #endif /* BQ_DRIVER_INTEGRATION_TESTS */
-}
-
-void UpdateTraceConfig(std::string const& odbc_trace_config,
-                       std::string const& log_path,
-                       std::string const& log_level) {
-  // Ensure parent directory exists
-  std::filesystem::create_directories(
-      std::filesystem::path(odbc_trace_config).parent_path());
-  std::unordered_map<std::string, std::string> kv;
-  std::string line;
-
-  if (std::filesystem::exists(odbc_trace_config)) {
-    std::ifstream input(odbc_trace_config);
-    ASSERT_TRUE(input.is_open());
-
-    while (std::getline(input, line)) {
-      if (line == "[Driver]" || line.empty()) {
-        continue;
-      }
-      auto pos = line.find('=');
-      if (pos != std::string::npos) {
-        std::string key = line.substr(0, pos);
-        std::string val = line.substr(pos + 1);
-        kv[key] = val;
-      }
-    }
-    input.close();
-  }
-
-  // Update trace config
-  kv["LogPath"] = log_path;
-  kv["LogLevel"] = log_level;
-
-  std::ofstream output(odbc_trace_config, std::ios::trunc);
-  ASSERT_TRUE(output.is_open());
-
-  output << "[Driver]\n";
-  for (auto const& [k, v] : kv) {
-    output << k << "=" << v << "\n";
-  }
-  output.close();
 }
 
 TEST(SQLGetInfo, CheckPositionalUpdate) {
@@ -1617,28 +1577,31 @@ TEST(ConnectionTest, CheckTraceLogFileExist) {
 
 #ifdef _WIN32
   log_path = "C:\\b";
-  log_file = log_path + "\\odbcdriverforbigquery_0.log";
-  auto conn_str =
-      kDefaultConnectionString + ";LogPath=" + log_path + ";LogLevel=3";
-#elif defined(__APPLE__)
-  log_path = "/tmp";
-  log_file = log_path + "/odbcdriverforbigquery_0.log";
-  auto conn_str =
-      kDefaultConnectionString + ";LogPath=" + log_path + ";LogLevel=3";
+  auto odbc_ini_path = k_trace_reg_path;
+#else
+#if defined(__APPLE__)
+  log_path = "/Users/runner/work/connection";
 #else
   log_path = "/tmp";
-  log_file = log_path + "/odbcdriverforbigquery_0.log";
-
+#endif /* __APPLE__ */
   auto odbc_ini = google::cloud::internal::GetEnv("GOOGLEBIGQUERYODBCINI");
   auto odbc_ini_path = odbc_ini.value_or("");
-  UpdateTraceConfig(odbc_ini_path, log_path, "3");
-  auto const& conn_str = kDefaultConnectionString;
 #endif /* _WIN32 */
 
+  fs::path log_file_path = fs::path(log_path) / "odbcdriverforbigquery_0.log";
+  log_file = log_file_path.string();
   // Remove existing file
-  if (fs::exists(log_file)) {
-    fs::remove(log_file);
+  for (auto const& entry : fs::directory_iterator(log_path)) {
+    auto const& path = entry.path();
+    std::string filename = path.filename().string();
+    if (filename.rfind("odbcdriverforbigquery_", 0) == 0 &&
+        path.extension() == ".log") {
+      fs::remove(path);
+    }
   }
+
+  auto const& conn_str = kDefaultConnectionString;
+  UpdateTraceConfig(odbc_ini_path, log_path, "3");
 
   auto conn = std::make_shared<ODBCHandles>();
   EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
@@ -1662,10 +1625,8 @@ TEST(ConnectionTest, CheckTraceLogFileExist) {
       content.find("SQLFreeHandle:: DBC handle is free") != std::string::npos;
   EXPECT_TRUE(contains_text);
 
-#if !defined(_WIN32) && !defined(__APPLE__)
   // Disable tracing for non windows
   UpdateTraceConfig(odbc_ini_path, log_path, "0");
-#endif /* defined(_WIN32) || defined(__APPLE__) */
 }
 
 #endif  // BQ_DRIVER_INTEGRATION_TESTS

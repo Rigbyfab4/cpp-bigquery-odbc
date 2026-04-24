@@ -23,6 +23,7 @@ namespace google::cloud::odbc_tests {
 
 using ::google::cloud::internal::ExponentialBackoffPolicy;
 using ms = std::chrono::milliseconds;
+namespace fs = std::filesystem;
 
 #ifdef __APPLE__
 std::string const kFromCode = "UTF-32LE";
@@ -1936,6 +1937,69 @@ void CleanupODBCHandles(ODBCHandles& conn, bool need_env_handle_freed) {
       conn.henv = nullptr;
     }
   }
+}
+
+void UpdateTraceConfig(std::string const& odbc_trace_config,
+                       std::string const& log_path,
+                       std::string const& log_level) {
+#ifdef _WIN32
+  HKEY hKey = nullptr;
+  std::string reg_path = odbc_trace_config + "\\Driver";
+  LONG status = RegCreateKeyExA(HKEY_LOCAL_MACHINE, reg_path.c_str(), 0, NULL,
+                                REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL,
+                                &hKey, NULL);
+  if (status != ERROR_SUCCESS) {
+    return;
+  }
+  auto SetRegString = [&](char const* name, std::string const& value) {
+    RegSetValueExA(hKey, name, 0, REG_SZ,
+                   reinterpret_cast<const BYTE*>(value.c_str()),
+                   static_cast<DWORD>(value.size() + 1));
+  };
+  SetRegString("LogPath", log_path);
+  SetRegString("LogLevel", log_level);
+
+  RegCloseKey(hKey);
+#else
+  fs::path config_path(odbc_trace_config);
+  fs::path parent_dir = config_path.parent_path();
+
+  if (!parent_dir.empty() && (!fs::exists(parent_dir)) ||
+      !fs::is_directory(parent_dir)) {
+    return;
+  }
+
+  std::unordered_map<std::string, std::string> kv;
+  std::ifstream input(odbc_trace_config);
+  if (input.is_open()) {
+    std::string line;
+    while (std::getline(input, line)) {
+      if (line == "[Driver]" || line.empty()) {
+        continue;
+      }
+      auto pos = line.find('=');
+      if (pos != std::string::npos) {
+        std::string key = line.substr(0, pos);
+        std::string val = line.substr(pos + 1);
+        kv[key] = val;
+      }
+    }
+    input.close();
+  }
+
+  // Update trace config
+  kv["LogPath"] = log_path;
+  kv["LogLevel"] = log_level;
+
+  std::ofstream output(odbc_trace_config, std::ios::trunc);
+  ASSERT_TRUE(output.is_open());
+
+  output << "[Driver]\n";
+  for (auto const& [k, v] : kv) {
+    output << k << "=" << v << "\n";
+  }
+  output.close();
+#endif /* _WIN32 */
 }
 
 }  // namespace google::cloud::odbc_tests
