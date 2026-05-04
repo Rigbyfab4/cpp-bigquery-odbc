@@ -1031,12 +1031,100 @@ bool IsInfoTypeString(SQLUSMALLINT InfoType) {
   }
 }
 
-std::regex BuildRegex(std::string filter_pattern, SQLULEN metadata_id) {
-  if (metadata_id == SQL_TRUE) {
-    RTrim(filter_pattern);
-    return std::regex(filter_pattern, std::regex_constants::icase);
+// Translate an ODBC LIKE pattern into a C++ regex pattern.
+//
+// ODBC pattern semantics (per ODBC spec):
+//   '%'  -> any sequence of characters (regex ".*")
+//   '_'  -> any single character (regex ".")
+//   '\X' -> literal X (the backslash is the escape; consumed in output)
+//   any other char -> emitted as-is
+//
+// History: this used to be three chained `std::regex_replace` calls. That was
+// fragile because it depended on the platform's <regex> back-end being able
+// to compile small patterns like `^%|([^\\])%`. On hosts with stripped
+// locale data (notably the SAP HANA SDA dpserver process when launched by
+// <sid>adm with a minimal LC_* env), one of those `std::regex` constructions
+// throws — and the exception unwinds across the ODBC ABI boundary, aborting
+// the driver process with no error to the caller. We replace it with a
+// manual single-pass loop that has no regex dependency, no allocations
+// beyond the result string, and no failure modes other than std::bad_alloc
+// (which is also caught below for safety).
+std::string CastOdbcRegexToCppRegex(std::string const& str) {
+  LOG(INFO) << "CastOdbcRegexToCppRegex:: Start (input='" << str
+            << "', length=" << str.size() << ")";
+  try {
+    std::string result;
+    // Worst case: every character becomes ".*" (2 chars). Reserve up front.
+    result.reserve(str.size() * 2);
+    for (size_t i = 0; i < str.size(); ++i) {
+      char c = str[i];
+      if (c == '\\') {
+        if (i + 1 < str.size()) {
+          // Escape: emit the next char literally, consume both the
+          // backslash and the following char from the input.
+          result.push_back(str[i + 1]);
+          ++i;
+        }
+        // else: lone trailing backslash — drop it. The previous
+        // regex-based implementation removed all stray backslashes at the
+        // end of processing, so this matches that behavior.
+      } else if (c == '%') {
+        result.append(".*");
+      } else if (c == '_') {
+        result.push_back('.');
+      } else {
+        result.push_back(c);
+      }
+    }
+    LOG(INFO) << "CastOdbcRegexToCppRegex:: end; result='" << result
+              << "' (length=" << result.size() << ")";
+    return result;
+  } catch (std::exception const& e) {
+    LOG(ERROR) << "CastOdbcRegexToCppRegex:: std::exception caught: what='"
+               << e.what() << "'";
+    throw;
+  } catch (...) {
+    LOG(ERROR) << "CastOdbcRegexToCppRegex:: unknown exception caught";
+    throw;
   }
-  return std::regex(CastOdbcRegexToCppRegex(filter_pattern));
+}
+
+std::regex BuildRegex(std::string filter_pattern, SQLULEN metadata_id) {
+  LOG(INFO) << "BuildRegex:: Start (filter_pattern='" << filter_pattern
+            << "', length=" << filter_pattern.size()
+            << ", metadata_id=" << metadata_id << ")";
+  // Catch and log std::regex_error to convert what would be an uncaught
+  // exception (process abort) into a diagnosable log line. We then rethrow
+  // so the caller's behavior is unchanged for legitimate failures, but the
+  // stack trace becomes visible in the trace file.
+  try {
+    if (metadata_id == SQL_TRUE) {
+      RTrim(filter_pattern);
+      LOG(INFO) << "BuildRegex:: literal-match path, after RTrim='"
+                << filter_pattern << "'";
+      auto r = std::regex(filter_pattern, std::regex_constants::icase);
+      LOG(INFO) << "BuildRegex:: end (literal-match)";
+      return r;
+    }
+    LOG(INFO) << "BuildRegex:: invoking CastOdbcRegexToCppRegex";
+    std::string cpp_pattern = CastOdbcRegexToCppRegex(filter_pattern);
+    LOG(INFO) << "BuildRegex:: CastOdbcRegexToCppRegex returned '"
+              << cpp_pattern << "' (length=" << cpp_pattern.size() << ")";
+    auto r = std::regex(cpp_pattern);
+    LOG(INFO) << "BuildRegex:: end (pattern-match)";
+    return r;
+  } catch (std::regex_error const& e) {
+    LOG(ERROR) << "BuildRegex:: std::regex_error caught: code="
+               << static_cast<int>(e.code()) << " what='" << e.what() << "'";
+    throw;
+  } catch (std::exception const& e) {
+    LOG(ERROR) << "BuildRegex:: std::exception caught: what='" << e.what()
+               << "'";
+    throw;
+  } catch (...) {
+    LOG(ERROR) << "BuildRegex:: unknown exception caught";
+    throw;
+  }
 }
 
 StatusRecord ValidateTableParameters(const SQLCHAR* catalog_name,

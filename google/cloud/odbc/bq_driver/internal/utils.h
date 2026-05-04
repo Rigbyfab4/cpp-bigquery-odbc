@@ -389,13 +389,11 @@ std::string GetOdbcTraceConfigPath();
 
 std::string GetDefaultPemFile();
 
-inline std::string CastOdbcRegexToCppRegex(std::string const& str) {
-  auto percent_filter_out =
-      std::regex_replace(str, std::regex("^%|([^\\\\])%"), "$1.*");
-  auto underscore_filter_out = std::regex_replace(
-      percent_filter_out, std::regex("^_|([^\\\\])_"), "$1.");
-  return std::regex_replace(underscore_filter_out, std::regex("\\\\"), "");
-}
+// Defined out-of-line in utils.cc so the body can carry granular logging
+// and try/catch around each std::regex_replace step. The internals are
+// platform-sensitive (libstdc++/libc++ regex back-ends differ) so failures
+// here have surfaced as silent process aborts on some hosts.
+std::string CastOdbcRegexToCppRegex(std::string const& str);
 
 std::vector<std::string> SplitTableTypes(std::string const& table_types);
 
