@@ -105,7 +105,7 @@ jobs:
       id: version
       shell: bash
       run: |
-        TAG=0.2.3
+        TAG=0.9.3
         VERSION=${TAG#v}
         echo "Tag version: $VERSION"
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
