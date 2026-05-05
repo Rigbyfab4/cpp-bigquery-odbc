@@ -24,7 +24,7 @@ jobs:
         msvc: [ msvc-2022 ]
         arch: [ x64, x86 ]
         shard: [ BqDriver ]
-        shard: [ BqDriver ]
+
     env:
       DRIVER_ARCH: ${{ matrix.arch }}
       BUILD_SHARD: ${{ matrix.shard }}
