@@ -2175,16 +2175,14 @@ void NormalizeDatetimeRange(std::string& src_str) {
   }
 }
 
-// Manual parser for "[YYYY-MM-DD, YYYY-MM-DD)" — replaces the std::regex
-// `\[(\d{4})-(\d{2})-(\d{2}), (\d{4})-(\d{2})-(\d{2})\)` which used to throw
-// std::regex_error on the SAP HANA host's libc++ and abort the driver process.
-// The format is exactly 24 bytes; same byte positions every time.
+// Manual parser for "[YYYY-MM-DD, YYYY-MM-DD)". Used in place of a small
+// std::regex because libstdc++/libc++ regex DFA initialization could throw
+// across the ODBC ABI boundary on some hosts and abort the driver process.
+// The format is exactly 24 bytes wide; same byte positions every time.
 static bool IsDateRangeFormat(std::string const& s) {
   if (s.size() != 24) return false;
   if (s.front() != '[' || s.back() != ')') return false;
   auto d = [](char c) { return c >= '0' && c <= '9'; };
-  // [YYYY-MM-DD, YYYY-MM-DD)
-  //  1234 56 78 9012 34 56 7  (1-based char positions for clarity)
   return d(s[1]) && d(s[2]) && d(s[3]) && d(s[4]) && s[5] == '-' &&
          d(s[6]) && d(s[7]) && s[8] == '-' && d(s[9]) && d(s[10]) &&
          s[11] == ',' && s[12] == ' ' &&
@@ -2192,10 +2190,9 @@ static bool IsDateRangeFormat(std::string const& s) {
          d(s[18]) && d(s[19]) && s[20] == '-' && d(s[21]) && d(s[22]);
 }
 
-// Manual parser for the datetime range regex
-//   ^\[(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?\s*,\s*
-//     (\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?\)$
-// Same motivation as IsDateRangeFormat: the std::regex form crashed on HANA.
+// Manual parser for "[YYYY-MM-DDTHH:MM:SS[.fraction], YYYY-MM-DDTHH:MM:SS
+// [.fraction])" with optional whitespace around the comma. Same motivation as
+// IsDateRangeFormat above.
 static bool IsDatetimeRangeFormat(std::string const& s) {
   if (s.size() < 2 || s.front() != '[' || s.back() != ')') return false;
   auto d = [](char c) { return c >= '0' && c <= '9'; };
@@ -2246,14 +2243,10 @@ StatusRecord ConvertFromRangeDSValue(DSValue const& src_dsval,
   if (buffer_length < 0) {
     return StatusRecord{SQLStates::k_HY090(), "Buffer length is negative"};
   }
-  // The two checks below used to call std::regex_match on
-  //   `\[(\d{4})-(\d{2})-(\d{2}), (\d{4})-(\d{2})-(\d{2})\)`
-  // and the longer datetime variant. Constructing those std::regex objects
-  // crashed inside libc++ on the SAP HANA SDA host (locale data / regex DFA
-  // initialization), which abort()ed the driver. The manual scanners above
-  // accept the exact same set of strings and never throw.
-  bool is_datetime_range = IsDatetimeRangeFormat(src_str);
+  // Example: [2024-10-10, 2024-10-11)
   bool is_date_range = IsDateRangeFormat(src_str);
+  // Example: [2024-02-20T12:30:45, 2024-03-20T14:15:30.000425)
+  bool is_datetime_range = IsDatetimeRangeFormat(src_str);
 
   if (is_datetime_range) {
     NormalizeDatetimeRange(src_str);
@@ -2261,7 +2254,7 @@ StatusRecord ConvertFromRangeDSValue(DSValue const& src_dsval,
     auto status = ConvertRangeToTimestampFormat(src_str);
     if (!status.ok()) {
       return status;
-    }
+    } 
   }
 
   switch (dest_data.type) {
@@ -2269,8 +2262,6 @@ StatusRecord ConvertFromRangeDSValue(DSValue const& src_dsval,
       return StringValueToOutputBufferResponse(src_str.c_str(), dest_data);
     }
     case SQL_C_BINARY: {
-      // Same regex-defusing as above: replace std::regex_match with our
-      // manual IsDateRangeFormat scanner.
       if (!IsDateRangeFormat(src_str)) {
 // Existing Driver returns timestamp range in case of binary conversion in the
 // format "[value, value) " on windows
