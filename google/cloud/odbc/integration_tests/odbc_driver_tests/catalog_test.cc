@@ -1979,6 +1979,91 @@ TEST(SQLColumns, Check_SQLColumnsDescriptors) {
   }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+TEST(PerformanceTest, Query_NewTimestampTable_Timing_Breakdown2) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  // 🔹 Append HTAPI parameters to the base connection string
+  std::string conn_string = std::string(kDefaultConnectionString) + 
+                            ";AllowHtapiForLargeResults=1;";
+
+  // 🔹 Print the connection string
+  std::cout << "\n=== Test Configuration ===\n";
+  std::cout << "Connection String: " << conn_string << "\n";
+  std::cout << "==========================\n\n";
+
+  // Step 1: Connect (Using the explicitly configured string)
+  // Note: Cast to whatever type your Connect() function expects, usually (SQLCHAR*) or (const char*)
+ ASSERT_EQ(Connect(conn_string.c_str(), conn), SQL_SUCCESS);
+
+  // Step 2: Query (FIXED)
+  std::string query = "SELECT * FROM kirltest.new_timestamp_table LIMIT 100000";
+
+  // 🔹 Step 3: Prepare timing
+  auto prepare_start = std::chrono::steady_clock::now();
+
+  SQLRETURN ret = SQLPrepare(
+      conn->hstmt,
+      (SQLCHAR*)query.c_str(),
+      SQL_NTS);
+
+  auto prepare_end = std::chrono::steady_clock::now();
+
+  ASSERT_EQ(ret, SQL_SUCCESS);
+
+  // 🔹 Step 4: Execute timing
+  auto exec_start = std::chrono::steady_clock::now();
+
+  ret = SQLExecute(conn->hstmt);
+  if (ret != SQL_SUCCESS) {
+  SQLCHAR sqlstate[6], message[256];
+  SQLINTEGER native_error;
+  SQLSMALLINT text_length;
+
+  SQLGetDiagRec(SQL_HANDLE_STMT, conn->hstmt, 1,
+                sqlstate, &native_error,
+                message, sizeof(message), &text_length);
+
+  std::cout << "SQLExecute Error: " << message << std::endl;
+}
+
+  auto exec_end = std::chrono::steady_clock::now();
+
+  ASSERT_EQ(ret, SQL_SUCCESS);
+  
+
+  // 🔹 Step 5: Fetch timing
+  auto fetch_start = std::chrono::steady_clock::now();
+
+  SQLRETURN fetch_ret;
+  int row_count = 0;
+
+  while ((fetch_ret = SQLFetch(conn->hstmt)) == SQL_SUCCESS) {
+    row_count++;
+  }
+
+  auto fetch_end = std::chrono::steady_clock::now();
+
+  // 🔹 Step 6: Calculate durations
+  auto prepare_time =
+      std::chrono::duration_cast<std::chrono::milliseconds>(prepare_end - prepare_start);
+
+  auto exec_time =
+      std::chrono::duration_cast<std::chrono::milliseconds>(exec_end - exec_start);
+
+  auto fetch_time =
+      std::chrono::duration_cast<std::chrono::milliseconds>(fetch_end - fetch_start);
+
+  // 🔹 Step 7: Output
+  std::cout << "Prepare time: " << prepare_time.count() << " ms\n";
+  std::cout << "Execution time: " << exec_time.count() << " ms\n";
+  std::cout << "Fetch time: " << fetch_time.count() << " ms\n";
+  std::cout << "Rows fetched: " << row_count << std::endl;
+
+  // 🔹 Step 8: Validation
+  EXPECT_TRUE(fetch_ret == SQL_NO_DATA || fetch_ret == SQL_SUCCESS);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
 
 TEST(SQLTables, Check_SQLTablesDescriptors) {
   auto conn = std::make_shared<ODBCHandles>();
