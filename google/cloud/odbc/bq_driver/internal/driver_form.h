@@ -52,6 +52,7 @@ static int const kIdcDriveScopeCheckbox = 125;
 static int const kIdcSystemTrustStoreCheckbox = 126;
 static int const kIdcHyperlink3 = 127;
 static int const kIdcKeyFileHeader = 128;
+static int const kIdcBillingProjectBOX = 129;
 
 class DriverForm {
  public:
@@ -115,6 +116,7 @@ class DriverForm {
   static std::string o_auth_mechanism_;
   static std::string dataset_;
   static std::string catalog_;
+  static std::string billing_project_;
   static std::string encrypt_data_;
   static std::string min_tls_version_;
   static std::string trusted_cert_;

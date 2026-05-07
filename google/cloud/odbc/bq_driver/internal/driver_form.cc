@@ -50,6 +50,7 @@ std::string const kDefaultMinTlsVersion = "1.2";
 
 std::string DriverForm::o_auth_mechanism_ = "Service Authentication";
 std::string DriverForm::catalog_;
+std::string DriverForm::billing_project_;
 std::string DriverForm::dataset_;
 std::string DriverForm::encrypt_data_ = kDefaultEncryptData;
 std::string DriverForm::min_tls_version_ = kDefaultMinTlsVersion;
@@ -63,6 +64,7 @@ std::string const kOAuthMechanism = "OAuthMechanism";
 std::string const kKeyFilePath = "KeyFilePath";
 std::string const kCatalog = "Catalog";
 std::string const kDataset = "DefaultDataset";
+std::string const kBillingProject = "BillingProject";
 std::string const kEncryptData = "EncryptData";
 std::string const kDescription = "Description";
 std::string const kMinTlsVersion = "Min_TLS";
@@ -264,7 +266,7 @@ StatusRecordOr<std::string> DriverForm::GetCatalogAndDataset(
   ODBCBQClient& bq_client = **bq_client_ptr;
 
   StatusRecordOr<ResultSet> result_set_status;
-  if (action == "Catalog") {
+  if (action == "Catalog" || action == "BillingProject") {
     result_set_status = GetResultSetForProjects(bq_client, metadata_id);
   } else if (action == "DefaultDataset") {
     result_set_status =
@@ -368,6 +370,7 @@ void DriverForm::SetValues(Section const& attributes_map) {
   dsn_name_ = GetValueOrDefault(attributes_map, kDsnName);
   key_file_path_ = GetValueOrDefault(attributes_map, kKeyFilePath);
   catalog_ = GetValueOrDefault(attributes_map, kCatalog);
+  billing_project_ = GetValueOrDefault(attributes_map, kBillingProject);
   dataset_ = GetValueOrDefault(attributes_map, kDataset);
   encrypt_data_ = GetValueOrDefault(attributes_map, kEncryptData);
   description_ = GetValueOrDefault(attributes_map, kDescription);
@@ -396,6 +399,7 @@ void DriverForm::ResetToDefaults() {
   catalog_.clear();
   dataset_.clear();
   description_.clear();
+  billing_project_.clear();
   o_auth_mechanism_ = kDefaultOAuth;
   encrypt_data_ = kDefaultEncryptData;
   min_tls_version_ = kDefaultMinTlsVersion;
@@ -568,6 +572,17 @@ void DriverForm::InitControls() {
   SendMessage(h_dataset_box, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(m_hwnd, kIdcDatasetBOX), ComboBoxSubclassProc, 0,
                     0);
+
+  HWND h_billing_project_header =
+      CreateLabel(m_hwnd, "Billing Project:", kAxisX, kAxisY + 458, kLabelWidth,
+                  kLabelHeight, WS_VISIBLE | SS_LEFT);
+  SendMessage(h_billing_project_header, WM_SETFONT, (WPARAM)h_font, TRUE);
+  HWND h_billing_project_box =
+      CreateComboBox(m_hwnd, kAxisX + 170, kAxisY + 458, kEditComboBoxWidth,
+                     kComboBoxHeight, kIdcCatlogBOX);
+  SendMessage(h_billing_project_box, WM_SETFONT, (WPARAM)h_font, TRUE);
+  SetWindowSubclass(GetDlgItem(m_hwnd, kIdcBillingProjectBOX), ComboBoxSubclassProc, 0,
+                    0);
   // TODO(b/497725655): Enable UI feature after public release
   // HWND h_gcp_parent_folder_header =
   //     CreateLabel(m_hwnd, "GCP parent folder:", kAxisX, kAxisY + 441,
@@ -654,6 +669,7 @@ void DriverForm::InitControls() {
   SetWindowText(h_key_file_edit, key_file_path_.c_str());
   SetWindowText(h_catalog_box, catalog_.c_str());
   SetWindowText(h_dataset_box, dataset_.c_str());
+  SetWindowText(h_billing_project_box, billing_project_.c_str());
   SetWindowText(h_auth_combo_box, o_auth_mechanism_.c_str());
   SetWindowText(h_description_edit, description_.c_str());
   SetWindowText(h_trusted_cert_edit, trusted_cert_.c_str());
