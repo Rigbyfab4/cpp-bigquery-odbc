@@ -1984,7 +1984,7 @@ TEST(PerformanceTest, Query_NewTimestampTable_Timing_Breakdown2) {
 
   // 🔹 Append HTAPI parameters to the base connection string
   std::string conn_string = std::string(kDefaultConnectionString) + 
-                            ";AllowHtapiForLargeResults=1;AllowHtapiForLargeResults=1;";
+                            ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=1";
 
   // 🔹 Print the connection string
   std::cout << "\n=== Test Configuration ===\n";
