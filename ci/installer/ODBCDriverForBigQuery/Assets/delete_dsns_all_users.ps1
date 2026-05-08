@@ -1,34 +1,32 @@
 param (
-    [string]$DriverName = "ODBC Driver for BigQuery"
+    [string]$DriverName = "ODBC Driver for BigQuery",
+    [ValidateSet("x86", "x64")]
+    [string]$Platform = "x64"
 )
 
-# Get all user SIDs under HKEY_USERS, excluding system _Classes keys
-$all_sids = Get-ChildItem "Registry::HKEY_USERS" | Where-Object {
-    $_.Name -notmatch "_Classes$"
+function Get-UserDsnRoot {
+    param (
+        [string]$Sid,
+        [string]$Platform
+    )
+
+    if ($Platform -eq "x86") {
+        return "Registry::HKEY_USERS\$Sid\Software\WOW6432Node\ODBC\ODBC.INI"
+    }
+
+    return "Registry::HKEY_USERS\$Sid\Software\ODBC\ODBC.INI"
 }
 
-foreach ($sid_entry in $all_sids) {
-    $sid = ($sid_entry.Name -split '\\')[-1]  # Extract SID
+function Get-SystemDsnRoot {
+    param (
+        [string]$Platform
+    )
 
-    $dsn_path_root = "Registry::HKEY_USERS\$sid\Software\ODBC\ODBC.INI"
-    $odbc_sources_path = "$dsn_path_root\ODBC Data Sources"
-
-    if (Test-Path $odbc_sources_path) {
-        try {
-            $dsns = Get-ItemProperty -Path $odbc_sources_path
-            foreach ($property in $dsns.PSObject.Properties) {
-                $name = $property.Name
-                if ($name -notmatch "^PS.*") {
-                    $driver = $property.Value
-
-                    # Delete DSN-specific registry entries
-                    Remove-Item -Path "$dsn_path_root\$name" -Recurse -Force -ErrorAction SilentlyContinue
-                    Remove-ItemProperty -Path $odbc_sources_path -Name $name -ErrorAction SilentlyContinue
-                }
-            }
-        } catch {
-        }
+    if ($Platform -eq "x86") {
+        return "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\ODBC\ODBC.INI"
     }
+
+    return "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\ODBC\ODBC.INI"
 }
 
 function Load_UserHive {
@@ -70,7 +68,7 @@ foreach ($user in $user_profiles) {
 
 foreach ($sid in $sids) {
     $sid_name = $sid.PSChildName
-    $user_dsn_root = "Registry::HKEY_USERS\$sid_name\Software\ODBC\ODBC.INI"
+    $user_dsn_root = Get-UserDsnRoot -Sid $sid_name -Platform $Platform
     $odbc_sources_path = "$user_dsn_root\ODBC Data Sources"
 
     if (Test-Path $odbc_sources_path) {
@@ -94,8 +92,7 @@ foreach ($sid in $sids) {
 }
 
 $registry_paths = @(
-    "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\ODBC\ODBC.INI",                      # 64-bit system DSNs
-    "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\ODBC\ODBC.INI"          # 32-bit system DSNs
+    Get-SystemDsnRoot -Platform $Platform
 )
 
 foreach ($dsn_root in $registry_paths) {
