@@ -242,21 +242,6 @@ StatusRecord StatementHandle::PrepareQuery(std::string const& query) {
   }
 
   if (!conn_handle.GetDsn().is_bq_legacy_sql) {
-
-    std::string pos_str = R"(\?)";
-    std::string named_str = R"([:@]\w+)";
-  
-    // Initialize the regex objects using the strings
-    std::regex positional_pattern(pos_str);
-    std::regex named_pattern(named_str);
-  
-    // Stream the strings (not the std::regex objects) to the logger
-    LOG(INFO) << "prepare query:: " 
-              << pos_str << " " << query;
-    
-    LOG(INFO) << "prepare named_pattern query:: " 
-              << named_str << " " << query;
-  
     // Manual scan for `?` (POSITIONAL) and `[:@]\w+` (NAMED) parameter
     // markers. The previous std::regex_search-based implementation could
     // throw std::regex_error inside libstdc++/libc++ DFA initialization on
