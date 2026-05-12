@@ -1,5 +1,10 @@
 param (
-    [string]$DriverName = "ODBC Driver for BigQuery"
+    [string]$DriverName = "ODBC Driver for BigQuery",
+    [string]$DriverPath = "",
+    [string[]]$SystemDsnRoots = @(
+        "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\ODBC\ODBC.INI",
+        "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\ODBC\ODBC.INI"
+    )
 )
 
 # Get all user SIDs under HKEY_USERS, excluding system _Classes keys
@@ -21,9 +26,12 @@ foreach ($sid_entry in $all_sids) {
                 if ($name -notmatch "^PS.*") {
                     $driver = $property.Value
 
-                    # Delete DSN-specific registry entries
-                    Remove-Item -Path "$dsn_path_root\$name" -Recurse -Force -ErrorAction SilentlyContinue
-                    Remove-ItemProperty -Path $odbc_sources_path -Name $name -ErrorAction SilentlyContinue
+                    $dsn_driver_path = (Get-ItemProperty -Path "$dsn_path_root\$name" -Name "Driver" -ErrorAction SilentlyContinue).Driver
+                    if ($driver -eq $DriverName -and $dsn_driver_path -eq $DriverPath) {
+                        # Delete DSN-specific registry entries
+                        Remove-Item -Path "$dsn_path_root\$name" -Recurse -Force -ErrorAction SilentlyContinue
+                        Remove-ItemProperty -Path $odbc_sources_path -Name $name -ErrorAction SilentlyContinue
+                    }
                 }
             }
         } catch {
@@ -82,7 +90,8 @@ foreach ($sid in $sids) {
 
     foreach ($dsn in $sources) {
         $driver = $sources_key.GetValue($dsn)
-        if ($driver -eq $DriverName) {
+        $dsn_driver_path = (Get-ItemProperty -Path "$user_dsn_root\$dsn" -Name "Driver" -ErrorAction SilentlyContinue).Driver
+        if ($driver -eq $DriverName -and $dsn_driver_path -eq $DriverPath) {
             Remove-Item -Path "$user_dsn_root\$dsn" -Recurse -Force -ErrorAction SilentlyContinue
             Remove-ItemProperty -Path $odbc_sources_path -Name $dsn -ErrorAction SilentlyContinue
         }
