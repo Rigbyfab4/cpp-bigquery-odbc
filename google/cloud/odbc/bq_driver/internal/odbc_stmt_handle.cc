@@ -242,33 +242,22 @@ StatusRecord StatementHandle::PrepareQuery(std::string const& query) {
   }
 
   if (!conn_handle.GetDsn().is_bq_legacy_sql) {
-    // Manual scan for `?` (POSITIONAL) and `[:@]\w+` (NAMED) parameter
-    // markers. The previous std::regex_search-based implementation could
-    // throw std::regex_error inside libstdc++/libc++ DFA initialization on
-    // some host environments and unwind across the ODBC ABI boundary.
-    bool has_positional = false;
-    bool has_named = false;
-    for (size_t i = 0; i < query.size(); ++i) {
-      char c = query[i];
-      if (c == '?') {
-        has_positional = true;
-      } else if ((c == ':' || c == '@') && i + 1 < query.size()) {
-        char next = query[i + 1];
-        bool is_word_char = (next >= 'a' && next <= 'z') ||
-                            (next >= 'A' && next <= 'Z') ||
-                            (next >= '0' && next <= '9') || next == '_';
-        if (is_word_char) has_named = true;
-      }
-      if (has_positional && has_named) break;
-    }
-    if (has_positional) {
+
+    LOG(INFO) << "insert positional_pattern:: ";
+    std::regex positional_pattern(R"(\?)");
+    std::regex named_pattern(R"([:@]\w+)");
+    LOG(INFO) << "insert positional_pattern after:: ";
+    // Check for positional parameters
+    if (std::regex_search(query, positional_pattern)) {
       req.configuration.query.parameter_mode = "POSITIONAL";
     }
-    if (has_named) {
+    LOG(INFO) << "insert positional_pattern after: sec: ";
+    // Check for named parameters
+    if (std::regex_search(query, named_pattern)) {
       req.configuration.query.parameter_mode = "NAMED";
     }
   }
-
+  LOG(INFO) << "insert positional_pattern after: sectwo: ";
   std::vector<ConnectionProperty> combined_properties =
       conn_handle.GetDsn().connection_properties;
 
