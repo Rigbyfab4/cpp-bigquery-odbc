@@ -59,8 +59,84 @@ using google::cloud::odbc_internal::StatusRecordOr;
 using ::google::cloud::serviceusage_v1::MakeServiceUsageConnection;
 using ::google::cloud::serviceusage_v1::ServiceUsageClient;
 
-namespace {
+#ifdef _WIN32
+#include <wincrypt.h>
+#include <windows.h>
 
+odbc_internal::StatusRecordOr<std::string> ExportWindowsSystemCertsToPem() {
+  char temp_path[MAX_PATH];
+  GetTempPathA(MAX_PATH, temp_path);
+  std::string pem_file = std::string(temp_path) + "bqca_roots.pem";
+
+  WIN32_FILE_ATTRIBUTE_DATA file_info;
+  if (GetFileAttributesExA(pem_file.c_str(), GetFileExInfoStandard,
+                           &file_info)) {
+    if (file_info.nFileSizeHigh > 0 || file_info.nFileSizeLow > 0) {
+      return pem_file;
+    }
+  }
+
+  LOG(INFO)
+      << "ExportWindowsSystemCertsToPem:: Calling CertOpenSystemStoreA...";
+  HCERTSTORE h_store = CertOpenSystemStoreA(NULL, "ROOT");
+  if (!h_store) {
+    LOG(ERROR) << "Failed to open Windows ROOT certificate store.";
+    return odbc_internal::StatusRecord{
+        odbc_internal::SQLStates::k_HY000(),
+        "Failed to open Windows ROOT certificate store."};
+  }
+
+  PCCERT_CONTEXT p_context = nullptr;
+  std::string pem_data;
+
+  while ((p_context = CertEnumCertificatesInStore(h_store, p_context)) !=
+         nullptr) {
+    DWORD size = 0;
+    if (!CryptBinaryToStringA(p_context->pbCertEncoded,
+                              p_context->cbCertEncoded,
+                              CRYPT_STRING_BASE64HEADER, NULL, &size)) {
+      continue;
+    }
+
+    std::vector<char> buffer(size);
+    if (CryptBinaryToStringA(p_context->pbCertEncoded, p_context->cbCertEncoded,
+                             CRYPT_STRING_BASE64HEADER, buffer.data(), &size)) {
+      pem_data.append(buffer.data());
+      pem_data.append("\n");
+    }
+  }
+
+  CertCloseStore(h_store, 0);
+
+  HANDLE h_file = CreateFileA(pem_file.c_str(), GENERIC_WRITE, 0, NULL,
+                              CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+  if (h_file == INVALID_HANDLE_VALUE) {
+    LOG(ERROR) << "Failed to create .pem file.";
+    return odbc_internal::StatusRecord{odbc_internal::SQLStates::k_HY000(),
+                                       "Failed to create .pem file."};
+  }
+
+  DWORD bytes_written = 0;
+  BOOL ok =
+      WriteFile(h_file, pem_data.data(), static_cast<DWORD>(pem_data.size()),
+                &bytes_written, NULL);
+
+  CloseHandle(h_file);
+
+  if (!ok || bytes_written != pem_data.size()) {
+    LOG(ERROR) << "Failed to write certificate data to .pem file.";
+    return odbc_internal::StatusRecord{
+        odbc_internal::SQLStates::k_HY000(),
+        "Failed to write certificate data to .pem file."};
+  }
+
+  return pem_file;
+}
+
+#endif
+
+namespace {
 google::cloud::ProxyConfig CreateProxyConfig(std::string hostname,
                                              std::string port,
                                              std::string username,
@@ -82,6 +158,29 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
   // 1. Initialize Options and set Proxy/SSL settings FIRST
   google::cloud::Options options;
 
+  std::string pem_file = oauth.ssl_credentials.pem_root_certs;
+#ifdef _WIN32
+  bool use_system_trust_store = oauth.ssl_credentials.use_system_trust_store;
+  std::string pem_path;
+  if (use_system_trust_store == true) {
+    auto pem_path_or = ExportWindowsSystemCertsToPem();
+    if (!pem_path_or) {
+      return pem_path_or.GetStatusRecord();
+    }
+    pem_path = *pem_path_or;
+    options.set<google::cloud::CARootsFilePathOption>(pem_path);
+  } else {
+    if (!pem_file.empty()) {
+      options.set<google::cloud::CARootsFilePathOption>(pem_file);
+    }
+  }
+#else
+  // NON-WINDOWS (Linux, Mac): UseSystemTrustStore is ignored
+  if (!pem_file.empty()) {
+    options.set<google::cloud::CARootsFilePathOption>(pem_file);
+  }
+#endif
+
   // Set Proxy
   options.set<google::cloud::ProxyOption>(
       ProxyConfig()
@@ -90,11 +189,6 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
           .set_username(oauth.proxy_options.username)
           .set_password(oauth.proxy_options.password)
           .set_scheme("http"));
-
-  std::string pem_file = oauth.ssl_credentials.pem_root_certs;
-  if (!pem_file.empty()) {
-    options.set<google::cloud::CARootsFilePathOption>(pem_file);
-  }
 
   options.set<google::cloud::UserAgentProductsOption>(
       {"Google-Bigquery-ODBC/" + std::string(DRIVER_VERSION)});
@@ -174,14 +268,30 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
 
   read_options.set<google::cloud::GrpcChannelArgumentsNativeOption>(
       std::move(channel_arguments));
+  grpc::SslCredentialsOptions ssl_opts;
 
-  if (!pem_file.empty()) {
-    grpc::SslCredentialsOptions ssl_opts;
+#ifdef _WIN32
+  if (use_system_trust_store) {
+    auto pem_path_or = ExportWindowsSystemCertsToPem();
+    if (!pem_path_or) {
+      return pem_path_or.GetStatusRecord();
+    }
+    std::string pem_path = *pem_path_or;
+    ssl_opts.pem_root_certs = pem_path;
+    auto ssl_creds = grpc::SslCredentials(ssl_opts);
+    read_options.set<google::cloud::GrpcCredentialOption>(ssl_creds);
+  } else if (!pem_file.empty()) {
     ssl_opts.pem_root_certs = pem_file;
     auto ssl_creds = grpc::SslCredentials(ssl_opts);
     read_options.set<google::cloud::GrpcCredentialOption>(ssl_creds);
   }
-
+#else
+  if (!pem_file.empty()) {
+    ssl_opts.pem_root_certs = pem_file;
+    auto ssl_creds = grpc::SslCredentials(ssl_opts);
+    read_options.set<google::cloud::GrpcCredentialOption>(ssl_creds);
+  }
+#endif
   BigQueryReadClient bigquery_read_client =
       BigQueryReadClient(MakeBigQueryReadConnection(read_options));
 

@@ -15,6 +15,8 @@
 #include "google/cloud/odbc/bq_client_interface/odbc_bq_client.h"
 #include "google/cloud/odbc/testing/utils/status_matchers.h"
 #include <gtest/gtest.h>
+#include <filesystem>
+#include <fstream>
 
 namespace google::cloud::odbc_bigquery_client_interface {
 
@@ -34,4 +36,39 @@ TEST(ODBCBQClient, CreateBQClientFailsWithInvalidCredentials) {
 
   EXPECT_THAT(odbc_bq_client, expected_status);
 }
+
+#ifdef _WIN32
+static std::string ReadFile(std::string const& path) {
+  std::ifstream file(path, std::ios::binary);
+  return std::string((std::istreambuf_iterator<char>(file)),
+                     std::istreambuf_iterator<char>());
+}
+
+TEST(ExportWindowsSystemCertsToPemTest, PemContainsCertificateMarkers) {
+  // Call the function
+  auto result = ExportWindowsSystemCertsToPem();
+  ASSERT_STATUS_RECORD_OK(result);
+
+  // Extract the path from the StatusRecordOr
+  std::string pem_path = *result;
+
+  ASSERT_FALSE(pem_path.empty());
+  ASSERT_TRUE(std::filesystem::exists(pem_path))
+      << "PEM file should exist at " << pem_path;
+  ASSERT_EQ(std::filesystem::path(pem_path).extension(), ".pem");
+
+  std::string contents = ReadFile(pem_path);
+  ASSERT_FALSE(contents.empty()) << "PEM file should not be empty";
+  ASSERT_NE(contents.find("BEGIN CERTIFICATE"), std::string::npos)
+      << "PEM should contain BEGIN CERTIFICATE";
+  ASSERT_NE(contents.find("END CERTIFICATE"), std::string::npos)
+      << "PEM should contain END CERTIFICATE";
+
+  // Cleanup: Since the filename is now fixed/cached, remove it after the test
+  // so the next run validates the generation logic again rather than just the
+  // cache check.
+  std::filesystem::remove(pem_path);
+}
+
+#endif
 }  // namespace google::cloud::odbc_bigquery_client_interface
