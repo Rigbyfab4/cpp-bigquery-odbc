@@ -102,12 +102,7 @@ foreach ($sid in $sids) {
     }
 }
 
-$registry_paths = @(
-    "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\ODBC\ODBC.INI",                      # 64-bit system DSNs
-    "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\ODBC\ODBC.INI"          # 32-bit system DSNs
-)
-
-foreach ($dsn_root in $registry_paths) {
+foreach ($dsn_root in $SystemDsnRoots) {
     $sources_path = "$dsn_root\ODBC Data Sources"
 
     if (Test-Path $sources_path) {
