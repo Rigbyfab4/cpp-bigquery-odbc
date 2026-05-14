@@ -107,7 +107,6 @@ jobs:
         arch: ${{ matrix.arch }}
 
     - name: Build cpp-bigquery-odbc
-      if: env.BUILD_SHARD == 'BqDriver'
       shell: bash
       run: |
         export VCPKG_ROOT="${TEMP}/.build/vcpkg"
@@ -130,8 +129,19 @@ jobs:
         fi
 
         echo "Using VCPKG_TRIPLET=${VCPKG_TRIPLET}"
-        version=${{ env.ODBC_GOOGLE_DRIVER_VERSION }}
+
+        version="${ODBC_GOOGLE_DRIVER_VERSION}"
         echo "Building version: $version"
+
+        # Initialize args array
+        args=()
+
+        if [ "$BUILD_SHARD" = "Core" ]; then
+          args+=("-DBQ_DRIVER_INTEGRATION_TESTS=OFF")
+        else
+          args+=("-DBQ_DRIVER_INTEGRATION_TESTS=ON")
+        fi
+
         cmake -S . -B build \
           -G Ninja \
           -DBUILD_SHARED_LIBS=ON \
@@ -142,8 +152,9 @@ jobs:
           -DODBC_UNIT_TESTING=OFF \
           -DODBC_INTEGRATION_TESTING=ON \
           -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF \
-          -DBQ_DRIVER_INTEGRATION_TESTS=ON \
-          -DPROJECT_VERSION="${version}"
+          -DPROJECT_VERSION="${version}" \
+          "${args[@]}"
+
         cmake --build build --config Debug --parallel 16
 
     - name: Copy built DLLs to installer directory
@@ -279,13 +290,13 @@ jobs:
         if [ "${{ matrix.arch }}" == "x86" ]; then
           sed -i '/"arrow",/d' vcpkg.json
         fi
-        if [ "$BUILD_SHARD" == "BqDriver" ]; then
-          echo "Running BqDriver tests using ctest..."
+        if [ "$BUILD_SHARD" == "Core" ]; then
+          export ODBC_TESTS_DSN="SampleDSN"
+          export ODBC_TRANSACTIONS_TESTS_DSN="ODBCTransactionsTestsDSN"
+        else
           export ODBC_TESTS_DSN="BigQuery DSN"
           export ODBC_TRANSACTIONS_TESTS_DSN="ODBCGoogleTransactionsTestsDSN"
+        fi
           cd build
           ctest --output-on-failure --parallel 16
-        else
-          echo "Running Core tests using existing script..."
-          ci/gha/builds/windows-cmake-integration.sh
-        fi
+
