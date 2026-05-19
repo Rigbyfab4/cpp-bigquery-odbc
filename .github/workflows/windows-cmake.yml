@@ -29,6 +29,7 @@ jobs:
     env:
       DRIVER_ARCH: ${{ matrix.arch }}
       BUILD_SHARD: ${{ matrix.shard }}
+      ODBC_GOOGLE_DRIVER_VERSION: 1.1.0
       SCCACHE_GCS_BUCKET: gha-cache-cpp-bigquery-odbc
       SCCACHE_GCS_KEY_PREFIX: sccache/${{ matrix.msvc }}/${{ matrix.arch}}
       SCCACHE_GCS_RW_MODE: READ_WRITE
@@ -55,10 +56,88 @@ jobs:
       uses: lukka/get-cmake@latest
       with:
         cmakeVersion: "3.29.0"
-    - name: Download and Install ODBC Driver
+    - name: Dynamic Configuration
+      id: dynamic
+      shell: bash
+      run: |
+        echo "vcpkg-version=$(cat ci/etc/vcpkg-version.txt)" >> "${GITHUB_OUTPUT}"
+    - name: Download and Install sccache
+      working-directory: "${{runner.temp}}"
+      shell: bash
+      run: |
+        mkdir -p /c/Users/runneradmin/.cargo/bin
+        curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.9.1/sccache-v0.9.1-x86_64-pc-windows-msvc.tar.gz | \
+          tar -zxf - --strip-components=1
+        chmod +x sccache.exe
+        mv sccache.exe /c/Users/runneradmin/.cargo/bin
+    - name: Ensure .NET Framework 4.5 or higher is installed
+      shell: powershell
+      run: |
+        Write-Output "Checking for .NET Framework 4.5 or higher..."
+        $key = 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full'
+        $release = (Get-ItemProperty -Path $key -Name Release -ErrorAction SilentlyContinue).Release
+        if ($release -ge 378389) {
+            Write-Output ".NET Framework 4.5 or higher is already installed (Release version: $release)."
+        }
+        else {
+            Write-Output "Installing .NET Framework 4.8..."
+            choco install netfx-4.8 -y
+        }
+
+    - name: Install WiX Toolset 3.11
+      run: |
+        choco install wixtoolset -y
+
+    - name: Download and Install vcpkg
+      shell: bash
+      run: |
+        cd "${TEMP}"
+        mkdir .build
+        cd .build
+        git clone --branch ${{ steps.dynamic.outputs.vcpkg-version }} https://github.com/microsoft/vcpkg.git
+        ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+    # go/github-actions#gha-bestpractices explains why we use a SHA instead of
+    # a named version for this runner. We could avoid using this runner with the
+    # ideas from:
+    #   https://github.com/microsoft/vswhere/wiki/Find-VC
+    # Note that in other runners the publisher is GitHub. If we trust GitHub
+    # to run the VM, we should trust their runners.
+    - uses: ilammy/msvc-dev-cmd@cec98b9d092141f74527d0afa6feb2af698cfe89 # @v1.21.1
+      with:
+        arch: ${{ matrix.arch }}
+
+    - name: Build cpp-bigquery-odbc
+      shell: bash
+      run: |
+        export VCPKG_ROOT="${TEMP}/.build/vcpkg"
+        export CLOUDSDK_PYTHON="${{ steps.py311.outputs.python-path }}"
+        export CMAKE_OUT="c:/b"
+
+        # TODO(b/513099808): Re-enable after fixing intermittent GCS I/O errors causing flaky builds.
+        export SCCACHE_IGNORE_SERVER_IO_ERROR=1
+        unset SCCACHE_GCS_BUCKET SCCACHE_GCS_KEY_PREFIX SCCACHE_GCS_RW_MODE
+
+        export MSVC_VERSION="${{ matrix.msvc }}"
+        export BRANCH_IDENTIFIER=$(echo "${{ github.ref_name }}" | tr '[:punct:]' '_')
+
+        # We don't want to install 'arrow' in x86 because it is not supported
+        if [ "${{ matrix.arch }}" == "x86" ]; then
+          sed -i '/"arrow",/d' vcpkg.json
+        fi
+
+        ci/gha/builds/windows-cmake-integration.sh
+
+    - name: Build and Upload Windows Installer
+      if: env.BUILD_SHARD == 'BqDriver'
+      shell: pwsh
+      run: |
+        .\ci\gha\builds\lib\build-installer.ps1
+
+    - name: Download and Install the ODBC Driver
       shell: powershell
       run: |
         .\ci\gha\builds\lib\odbc-driver-install.ps1
+
     - name: Run DSN Creation Script
       shell: powershell
       run: |
@@ -78,38 +157,7 @@ jobs:
         Write-Output "Running DSN creation script from $regFilePath ..."
         reg import $regFilePath
         Write-Output "DSN creation completed."
-    - name: Dynamic Configuration
-      id: dynamic
-      shell: bash
-      run: |
-        echo "vcpkg-version=$(cat ci/etc/vcpkg-version.txt)" >> "${GITHUB_OUTPUT}"
-    - name: Download and Install sccache
-      working-directory: "${{runner.temp}}"
-      shell: bash
-      run: |
-        mkdir -p /c/Users/runneradmin/.cargo/bin
-        curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.9.1/sccache-v0.9.1-x86_64-pc-windows-msvc.tar.gz | \
-          tar -zxf - --strip-components=1
-        chmod +x sccache.exe
-        mv sccache.exe /c/Users/runneradmin/.cargo/bin
-    - name: Download and Install vcpkg
-      shell: bash
-      run: |
-        cd "${TEMP}"
-        mkdir .build
-        cd .build
-        git clone --branch ${{ steps.dynamic.outputs.vcpkg-version }} https://github.com/microsoft/vcpkg.git
-        ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
-    # go/github-actions#gha-bestpractices explains why we use a SHA instead of
-    # a named version for this runner. We could avoid using this runner with the
-    # ideas from:
-    #   https://github.com/microsoft/vswhere/wiki/Find-VC
-    # Note that in other runners the publisher is GitHub. If we trust GitHub
-    # to run the VM, we should trust their runners.
-    - uses: ilammy/msvc-dev-cmd@cec98b9d092141f74527d0afa6feb2af698cfe89 # @v1.21.1
-      with:
-        arch: ${{ matrix.arch }}
-    - name: Build cpp-bigquery-odbc
+    - name: Running testcases
       shell: bash
       run: |
         export VCPKG_ROOT="${TEMP}/.build/vcpkg"
@@ -126,4 +174,12 @@ jobs:
         if [ "${{ matrix.arch }}" == "x86" ]; then
           sed -i '/"arrow",/d' vcpkg.json
         fi
-        ci/gha/builds/windows-cmake-integration.sh
+        if [ "$BUILD_SHARD" == "Core" ]; then
+          export ODBC_TESTS_DSN="SampleDSN"
+          export ODBC_TRANSACTIONS_TESTS_DSN="ODBCTransactionsTestsDSN"
+        else
+          export ODBC_TESTS_DSN="BigQuery DSN"
+          export ODBC_TRANSACTIONS_TESTS_DSN="ODBCGoogleTransactionsTestsDSN"
+        fi
+          cd c:/b
+          ctest --output-on-failure --parallel 16

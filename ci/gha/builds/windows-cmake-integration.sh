@@ -76,7 +76,7 @@ TIMEFORMAT="==> 🕑 CMake configuration done in %R seconds"
 time {
   # Always run //google/cloud:status_test in case the list of targets has
   # no unit tests.
-  io::run cmake "${args[@]}" "${vcpkg_args[@]}" -DCMAKE_CXX_STANDARD=20
+  io::run cmake "${args[@]}" "${vcpkg_args[@]}" -DCMAKE_CXX_STANDARD=17
 }
 
 if command -v sccache >/dev/null 2>&1; then
@@ -89,17 +89,4 @@ time {
   # Always run //google/cloud:status_test in case the list of targets has
   # no unit tests.
   io::run cmake --build "${CMAKE_OUT}" --parallel 16
-}
-
-if [ "$BUILD_SHARD" == "BqDriver" ] && [ "$DRIVER_ARCH" == "x64" ]; then
-  cp "${CMAKE_OUT}"/google/cloud/odbc/google_cloud_odbc_bq_driver.dll "C:\Program Files\ODBC Driver for BigQuery\google_cloud_odbc_bq_driver.dll"
-fi
-
-if [ "$BUILD_SHARD" == "BqDriver" ] && [ "$DRIVER_ARCH" == "x86" ]; then
-  cp "${CMAKE_OUT}"/google/cloud/odbc/google_cloud_odbc_bq_driver.dll "C:\Program Files (x86)\ODBC Driver for BigQuery\google_cloud_odbc_bq_driver.dll"
-fi
-
-TIMEFORMAT="==> 🕑 CMake test done in %R seconds"
-time {
-  io::run ctest "${ctest_args[@]}" --test-dir "${CMAKE_OUT}" -LE integration-test
 }
