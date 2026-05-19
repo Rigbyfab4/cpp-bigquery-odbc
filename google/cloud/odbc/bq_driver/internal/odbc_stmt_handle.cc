@@ -22,7 +22,6 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_transactions.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
-#include <regex>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
@@ -242,25 +241,10 @@ StatusRecord StatementHandle::PrepareQuery(std::string const& query) {
   }
 
   if (!conn_handle.GetDsn().is_bq_legacy_sql) {
-    // Manual scan for `?` (POSITIONAL) and `[:@]\w+` (NAMED) parameter
-    // markers. The previous std::regex_search-based implementation could
-    // throw std::regex_error inside libstdc++/libc++ DFA initialization on
-    // some host environments and unwind across the ODBC ABI boundary.
-    bool has_positional = false;
-    bool has_named = false;
-    for (size_t i = 0; i < query.size(); ++i) {
-      char c = query[i];
-      if (c == '?') {
-        has_positional = true;
-      } else if ((c == ':' || c == '@') && i + 1 < query.size()) {
-        char next = query[i + 1];
-        bool is_word_char = (next >= 'a' && next <= 'z') ||
-                            (next >= 'A' && next <= 'Z') ||
-                            (next >= '0' && next <= '9') || next == '_';
-        if (is_word_char) has_named = true;
-      }
-      if (has_positional && has_named) break;
-    }
+    // Detect POSITIONAL (`?`) and NAMED (`[:@]\w+`) parameter markers using
+    // RE2 instead of a manual character scan.
+    bool has_positional = re2::RE2::PartialMatch(query, R"(\?)");
+    bool has_named = re2::RE2::PartialMatch(query, R"([:@]\w+)");
     if (has_positional) {
       req.configuration.query.parameter_mode = "POSITIONAL";
     }

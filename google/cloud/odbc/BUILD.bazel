@@ -59,6 +59,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/time/internal/cctz:time_zone",
+        "@com_googlesource_code_re2//:re2",
         "@com_google_cloud_cpp//:experimental-bigquery-rest",  # We need this dependency to use 'options' from client libraries
     ],
 )

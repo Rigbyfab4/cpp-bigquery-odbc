@@ -2190,63 +2190,19 @@ void NormalizeDatetimeRange(std::string& src_str) {
   }
 }
 
-// Manual parser for "[YYYY-MM-DD, YYYY-MM-DD)". Used in place of a small
-// std::regex because libstdc++/libc++ regex DFA initialization could throw
-// across the ODBC ABI boundary on some hosts and abort the driver process.
-// The format is exactly 24 bytes wide; same byte positions every time.
+// Checks if s matches the fixed format "[YYYY-MM-DD, YYYY-MM-DD)".
 static bool IsDateRangeFormat(std::string const& s) {
-  if (s.size() != 24) return false;
-  if (s.front() != '[' || s.back() != ')') return false;
-  auto d = [](char c) { return c >= '0' && c <= '9'; };
-  return d(s[1]) && d(s[2]) && d(s[3]) && d(s[4]) && s[5] == '-' && d(s[6]) &&
-         d(s[7]) && s[8] == '-' && d(s[9]) && d(s[10]) && s[11] == ',' &&
-         s[12] == ' ' && d(s[13]) && d(s[14]) && d(s[15]) && d(s[16]) &&
-         s[17] == '-' && d(s[18]) && d(s[19]) && s[20] == '-' && d(s[21]) &&
-         d(s[22]);
+  static re2::RE2 const kRe(
+      R"(\[\d{4}-\d{2}-\d{2}, \d{4}-\d{2}-\d{2}\))");
+  return re2::RE2::FullMatch(s, kRe);
 }
 
-// Manual parser for "[YYYY-MM-DDTHH:MM:SS[.fraction], YYYY-MM-DDTHH:MM:SS
-// [.fraction])" with optional whitespace around the comma. Same motivation as
-// IsDateRangeFormat above.
+// Checks if s matches "[YYYY-MM-DDTHH:MM:SS[.fraction], YYYY-MM-DDTHH:MM:SS
+// [.fraction])" with optional whitespace around the comma.
 static bool IsDatetimeRangeFormat(std::string const& s) {
-  if (s.size() < 2 || s.front() != '[' || s.back() != ')') return false;
-  auto d = [](char c) { return c >= '0' && c <= '9'; };
-  auto ws = [](char c) { return c == ' ' || c == '\t'; };
-
-  // Parse one "YYYY-MM-DDTHH:MM:SS[.fraction]" starting at pos. Advances pos.
-  auto parse_dt = [&](size_t& pos) -> bool {
-    if (pos + 19 > s.size()) return false;
-    if (!(d(s[pos]) && d(s[pos + 1]) && d(s[pos + 2]) && d(s[pos + 3])))
-      return false;
-    if (s[pos + 4] != '-') return false;
-    if (!(d(s[pos + 5]) && d(s[pos + 6]))) return false;
-    if (s[pos + 7] != '-') return false;
-    if (!(d(s[pos + 8]) && d(s[pos + 9]))) return false;
-    if (s[pos + 10] != 'T') return false;
-    if (!(d(s[pos + 11]) && d(s[pos + 12]))) return false;
-    if (s[pos + 13] != ':') return false;
-    if (!(d(s[pos + 14]) && d(s[pos + 15]))) return false;
-    if (s[pos + 16] != ':') return false;
-    if (!(d(s[pos + 17]) && d(s[pos + 18]))) return false;
-    pos += 19;
-    // Optional `.` + one-or-more digits.
-    if (pos < s.size() && s[pos] == '.') {
-      ++pos;
-      size_t start = pos;
-      while (pos < s.size() && d(s[pos])) ++pos;
-      if (pos == start) return false;  // need at least one digit
-    }
-    return true;
-  };
-
-  size_t pos = 1;  // after '['
-  if (!parse_dt(pos)) return false;
-  while (pos < s.size() && ws(s[pos])) ++pos;
-  if (pos >= s.size() || s[pos] != ',') return false;
-  ++pos;
-  while (pos < s.size() && ws(s[pos])) ++pos;
-  if (!parse_dt(pos)) return false;
-  return pos == s.size() - 1 && s[pos] == ')';
+  static re2::RE2 const kRe(
+      R"(\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?\s*,\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?\))");
+  return re2::RE2::FullMatch(s, kRe);
 }
 
 StatusRecord ConvertFromRangeDSValue(DSValue const& src_dsval,

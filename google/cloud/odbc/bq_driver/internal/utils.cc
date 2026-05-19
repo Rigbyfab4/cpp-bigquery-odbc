@@ -1016,11 +1016,9 @@ bool IsInfoTypeString(SQLUSMALLINT InfoType) {
 //   '\X' -> literal X (the backslash is the escape; consumed in output)
 //   any other char -> emitted as-is
 //
-// Implemented as a manual single-pass loop rather than chained
-// std::regex_replace calls: on some host libstdc++/libc++ builds the
-// regex DFA initialization could throw and unwind across the ODBC ABI
-// boundary, aborting the driver. The manual loop has no <regex>
-// dependency.
+// Implemented as a manual single-pass loop producing an RE2-compatible
+// pattern. RE2 is used instead of std::regex to avoid DFA initialization
+// crashes in libstdc++/libc++ on certain hosts (e.g. SAP HANA).
 std::string CastOdbcRegexToCppRegex(std::string const& str) {
   std::string result;
   // Worst case: every character becomes ".*" (2 chars).
@@ -1048,12 +1046,15 @@ std::string CastOdbcRegexToCppRegex(std::string const& str) {
   return result;
 }
 
-std::regex BuildRegex(std::string filter_pattern, SQLULEN metadata_id) {
+std::unique_ptr<re2::RE2> BuildRegex(std::string filter_pattern,
+                                     SQLULEN metadata_id) {
   if (metadata_id == SQL_TRUE) {
     RTrim(filter_pattern);
-    return std::regex(filter_pattern, std::regex_constants::icase);
+    re2::RE2::Options opts;
+    opts.set_case_sensitive(false);
+    return std::make_unique<re2::RE2>(filter_pattern, opts);
   }
-  return std::regex(CastOdbcRegexToCppRegex(filter_pattern));
+  return std::make_unique<re2::RE2>(CastOdbcRegexToCppRegex(filter_pattern));
 }
 
 StatusRecord ValidateTableParameters(const SQLCHAR* catalog_name,
