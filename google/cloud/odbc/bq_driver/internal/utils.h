@@ -387,7 +387,8 @@ std::string CastOdbcRegexToCppRegex(std::string const& str);
 
 std::vector<std::string> SplitTableTypes(std::string const& table_types);
 
-std::unique_ptr<re2::RE2> BuildRegex(std::string filter_pattern, SQLULEN metadata_id);
+std::unique_ptr<re2::RE2> BuildRegex(std::string filter_pattern,
+                                     SQLULEN metadata_id);
 
 inline bool IsSearchPatternArgument(std::string const& arg) {
   return (absl::StrContains(arg, "_") || absl::StrContains(arg, "%") ||

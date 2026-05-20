@@ -2192,8 +2192,7 @@ void NormalizeDatetimeRange(std::string& src_str) {
 
 // Checks if s matches the fixed format "[YYYY-MM-DD, YYYY-MM-DD)".
 static bool IsDateRangeFormat(std::string const& s) {
-  static re2::RE2 const kRe(
-      R"(\[\d{4}-\d{2}-\d{2}, \d{4}-\d{2}-\d{2}\))");
+  static re2::RE2 const kRe(R"(\[\d{4}-\d{2}-\d{2}, \d{4}-\d{2}-\d{2}\))");
   return re2::RE2::FullMatch(s, kRe);
 }
 
