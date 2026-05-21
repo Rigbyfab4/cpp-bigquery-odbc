@@ -68,7 +68,8 @@ StatusRecordOr<std::vector<std::string>> GetFilteredProjectIds(
     ODBCBQClient& bq_client, std::string const& projects_filter,
     SQLULEN metadata_id) {
   std::vector<std::string> project_ids;
-  auto filter_regex = BuildRegex(projects_filter, metadata_id);
+  std::unique_ptr<re2::RE2> filter_regex =
+      BuildRegex(projects_filter, metadata_id);
   // For now, we use default options.
   // We can set timeout here as needed later.
   Options options;
@@ -92,7 +93,8 @@ StatusRecordOr<std::vector<std::string>> GetFilteredDatasetIds(
     ODBCBQClient& bq_client, std::string const& project_id,
     std::string const& datasets_filter, SQLULEN metadata_id) {
   std::vector<std::string> dataset_ids;
-  auto filter_regex = BuildRegex(datasets_filter, metadata_id);
+  std::unique_ptr<re2::RE2> filter_regex =
+      BuildRegex(datasets_filter, metadata_id);
   // For now, we use default options.
   // We can set timeout here as needed later.
   Options options;
