@@ -383,22 +383,36 @@ StatusRecordOr<std::vector<Table>> FetchBQTablesData(
     StatementHandle& stmt_handle, std::string const& catalog,
     std::string const& dataset_pattern, std::string const& table_pattern,
     SQLULEN metadata_id) {
+    
+  // --- BENCHMARK START: Entire Function ---
+  auto start_total = std::chrono::high_resolution_clock::now();
+  
+  // Helper to easily print total time on any return path
+  auto print_total_time = [&start_total](const std::string& exit_point) {
+    auto end_total = std::chrono::high_resolution_clock::now();
+    auto el_total = std::chrono::duration_cast<std::chrono::milliseconds>(end_total - start_total).count();
+    std::cout << "[BENCHMARK] FetchBQTablesData (Total - " << exit_point << "): " << el_total << " ms\n";
+  };
+
   std::vector<Table> result;
   if (catalog.empty()) {
     LOG(ERROR)
         << "FetchBQTablesData:: Catalog cannot be empty for BQ Data source.";
+    print_total_time("Early Exit: Empty Catalog");
     return StatusRecord{SQLStates::k_HY000(),
                         "Catalog cannot be empty for BQ Data source"};
   }
   if (dataset_pattern.empty()) {
     LOG(ERROR) << "FetchBQTablesData:: Dataset pattern cannot be empty for BQ "
                   "Data source.";
+    print_total_time("Early Exit: Empty Dataset Pattern");
     return StatusRecord{SQLStates::k_HY000(),
                         "Dataset pattern cannot be empty for BQ Data source"};
   }
   if (table_pattern.empty()) {
     LOG(ERROR) << "FetchBQTablesData:: Table pattern cannot be empty for BQ "
                   "Data source.";
+    print_total_time("Early Exit: Empty Table Pattern");
     return StatusRecord{SQLStates::k_HY000(),
                         "Table pattern cannot be empty for BQ Data source"};
   }
@@ -406,6 +420,7 @@ StatusRecordOr<std::vector<Table>> FetchBQTablesData(
   if (!conn_handle.IsConnected()) {
     LOG(ERROR)
         << "FetchBQTablesData:: Connection to the data source is broken.";
+    print_total_time("Early Exit: Broken Connection");
     return StatusRecord{SQLStates::k_08S01(),
                         "Connection to the data source is broken"};
   }
@@ -413,16 +428,28 @@ StatusRecordOr<std::vector<Table>> FetchBQTablesData(
   if (!bq_client) {
     LOG(ERROR) << "FetchBQTablesData:: Invalid or null BQ Client within the "
                   "connection handle.";
+    print_total_time("Early Exit: Null BQ Client");
     return StatusRecord{
         SQLStates::k_HY000(),
         "Invalid or null BQ Client within the connection handle"};
   }
+  
   // Get Datasets based on search pattern in the dataset argument
+  // --- BENCHMARK START: GetFilteredDatasetIds ---
+  auto start_datasets = std::chrono::high_resolution_clock::now();
+  
   StatusRecordOr<std::vector<std::string>> datasets_status =
       GetFilteredDatasetIds(*bq_client, catalog, dataset_pattern, metadata_id);
+      
+  auto end_datasets = std::chrono::high_resolution_clock::now();
+  std::cout << "[BENCHMARK] FetchBQTablesData -> GetFilteredDatasetIds: " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_datasets - start_datasets).count() << " ms\n";
+  // --- BENCHMARK END ---
+
   if (!datasets_status) {
     LOG(ERROR) << "FetchBQTablesData::GetFilteredDatasetIds:: "
                << datasets_status.GetStatusRecord().message;
+    print_total_time("Early Exit: GetFilteredDatasetIds Error");
     return datasets_status.GetStatusRecord();
   }
 
@@ -451,6 +478,7 @@ StatusRecordOr<std::vector<Table>> FetchBQTablesData(
   // dataset, then table metadata retrieval.
   auto trace_option = TraceOptions::GetTraceOption();
   if (trace_option == nullptr || trace_option->max_threads <= 0) {
+    print_total_time("Early Exit: Invalid MaxThreads");
     return StatusRecord{SQLStates::k_HY000(),
                         "MaxThreads must be configured with a positive value"};
   }
@@ -476,13 +504,23 @@ StatusRecordOr<std::vector<Table>> FetchBQTablesData(
     return batch;
   };
 
+  // --- BENCHMARK START: ExecuteParallelTasks (GetFilteredTables) ---
+  auto start_exec_tables = std::chrono::high_resolution_clock::now();
+
   auto dataset_tables_results_or =
       ExecuteParallelTasks<DatasetTaskInput, DatasetTablesBatch>(
           max_threads, dataset_tasks, fetch_tables_for_dataset_task);
+          
+  auto end_exec_tables = std::chrono::high_resolution_clock::now();
+  std::cout << "[BENCHMARK] FetchBQTablesData -> ExecuteParallelTasks(GetFilteredTables): " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_exec_tables - start_exec_tables).count() << " ms\n";
+  // --- BENCHMARK END ---
+
   if (!dataset_tables_results_or) {
     LOG(ERROR)
         << "FetchBQTablesData::ExecuteParallelTasks(GetFilteredTables):: "
         << dataset_tables_results_or.GetStatusRecord().message;
+    print_total_time("Early Exit: ExecuteParallelTasks(GetFilteredTables) Error");
     return dataset_tables_results_or.GetStatusRecord();
   }
 
@@ -524,12 +562,22 @@ StatusRecordOr<std::vector<Table>> FetchBQTablesData(
         IndexedTable{task_input.index, std::move(*bq_table_status)});
   };
 
+  // --- BENCHMARK START: ExecuteParallelTasks (FetchBQTableData) ---
+  auto start_exec_table_data = std::chrono::high_resolution_clock::now();
+
   auto table_results_or =
       ExecuteParallelTasks<TableTaskInput, optional<IndexedTable>>(
           max_threads, table_tasks, fetch_table_task);
+          
+  auto end_exec_table_data = std::chrono::high_resolution_clock::now();
+  std::cout << "[BENCHMARK] FetchBQTablesData -> ExecuteParallelTasks(FetchBQTableData): " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end_exec_table_data - start_exec_table_data).count() << " ms\n";
+  // --- BENCHMARK END ---
+
   if (!table_results_or) {
     LOG(ERROR) << "FetchBQTablesData::ExecuteParallelTasks:: "
                << table_results_or.GetStatusRecord().message;
+    print_total_time("Early Exit: ExecuteParallelTasks(FetchBQTableData) Error");
     return table_results_or.GetStatusRecord();
   }
 
@@ -552,6 +600,10 @@ StatusRecordOr<std::vector<Table>> FetchBQTablesData(
   for (auto& indexed_table : indexed_tables) {
     result.push_back(std::move(indexed_table.table));
   }
+  
+  // Entire function success exit
+  print_total_time("Success");
+  
   return result;
 }
 }  // namespace google::cloud::odbc_bq_driver_internal

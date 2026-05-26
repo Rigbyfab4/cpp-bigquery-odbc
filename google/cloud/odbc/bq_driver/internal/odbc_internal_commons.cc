@@ -827,7 +827,25 @@ StatusRecordOr<PostQueryResults> PostQueryWithoutResults(
   }
   // For now , we use default options.
   // We can set timeout here as needed later.
+
+  // --- BENCHMARK START: PostQuery (Client Library Call) ---
+  auto start_post_query = std::chrono::high_resolution_clock::now();
+
   auto pq_status = bq_client->PostQuery(post_query_request, options);
+
+  // --- BENCHMARK END: PostQuery (Client Library Call) ---
+  auto end_post_query = std::chrono::high_resolution_clock::now();
+  auto elapsed_post_query = std::chrono::duration_cast<std::chrono::milliseconds>(end_post_query - start_post_query);
+  
+  // ADDED: Static variable to track cumulative time across function calls
+  static long long cumulative_post_query_ms = 0;
+  cumulative_post_query_ms += elapsed_post_query.count();
+  
+  // UPDATED: Debugging statement to print both current and cumulative time
+  std::cout << "[BENCHMARK] PostQueryWithoutResults -> bq_client->PostQuery: " 
+            << elapsed_post_query.count() << " ms | Cumulative: " 
+            << cumulative_post_query_ms << " ms\n";
+
   if (!pq_status) {
     LOG(ERROR) << "PostQueryWithoutResults::PostQuery:: "
                << pq_status.GetStatusRecord().message;

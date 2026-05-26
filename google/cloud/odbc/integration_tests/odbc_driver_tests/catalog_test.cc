@@ -1805,6 +1805,117 @@ TEST(CatalogTest, SQLTables_Filter_DefaultDataset_SchemaNull) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(CatalogTest, SQLTables_FullCatalogEnumeration_WildcardCatalog) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  // Power BI commonly sends CatalogName="%"
+  // during initial metadata discovery.
+  std::string catalog_pattern = "%";
+
+  std::string conn_str =
+      kDefaultConnectionString +
+      ";FilterTablesOnDefaultDataset=0;";
+
+  ASSERT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
+
+  SQLRETURN status = SQLSetStmtAttr(conn->hstmt,
+                                    SQL_ATTR_METADATA_ID,
+                                    (SQLPOINTER)SQL_FALSE,
+                                    0);
+
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  auto start_enum =
+      std::chrono::high_resolution_clock::now();
+
+  std::vector<SQLTableResult> tables =
+      Catalog::GetTables(
+          conn,
+          catalog_pattern.c_str(),
+          nullptr,
+          nullptr,
+          nullptr);
+
+  auto end_enum =
+      std::chrono::high_resolution_clock::now();
+
+  auto elapsed_enum =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          end_enum - start_enum);
+
+  std::cout << "[BENCHMARK] Catalog::GetTables "
+            << "(Full Catalog Enumeration using Catalog='%') : "
+            << elapsed_enum.count()
+            << " ms" << std::endl;
+
+  ASSERT_FALSE(tables.empty());
+
+  // Validate that at least one dataset/schema is returned
+  std::set<std::string> discovered_datasets;
+
+  for (auto const& table : tables) {
+    if (table.dataset_name.has_value()) {
+      discovered_datasets.insert(table.dataset_name.value());
+    }
+  }
+
+  EXPECT_GE(discovered_datasets.size(), 1u);
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+TEST(CatalogTest, SQLColumns_WildcardColumnSearch) {
+  auto conn = std::make_shared<ODBCHandles>();
+
+  std::string dataset = "kirltest";
+  std::string table_name = "new_timestamp_table";
+
+  // Matches:
+  // timestamp_col_1
+  // timestamp_col_2
+  // ...
+  std::string column_pattern = "%timestamp%";
+
+  std::string conn_str =
+      kDefaultConnectionString +
+      ";DefaultDataset=" + dataset + ";";
+
+  ASSERT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
+
+  auto start =
+      std::chrono::high_resolution_clock::now();
+
+  std::vector<SQLColumnsResult> columns =
+      Catalog::GetColumns(
+          conn,
+          kCatalogName,
+          dataset.c_str(),
+          table_name.c_str(),
+          column_pattern.c_str());
+
+  auto end =
+      std::chrono::high_resolution_clock::now();
+
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          end - start);
+
+  std::cout << "[BENCHMARK] Catalog::GetColumns "
+            << "(Wildcard Column Search) : "
+            << elapsed.count()
+            << " ms" << std::endl;
+
+  ASSERT_FALSE(columns.empty());
+
+  for (auto const& column : columns) {
+    EXPECT_EQ(column.dataset_name, dataset);
+    EXPECT_EQ(column.table_name, table_name);
+
+    EXPECT_NE(column.column_name.find("timestamp"),
+              std::string::npos);
+  }
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
 #ifdef BQ_DRIVER_INTEGRATION_TESTS
 // This test case currently crashes with the existing ODBC Driver for BigQuery
 // v3.1.6.1026. The crash occurs in SQLColumns when schema_name is NULL,
