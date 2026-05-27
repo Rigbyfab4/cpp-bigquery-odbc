@@ -68,6 +68,10 @@ std::string GenerateRandomId(int length) {
   return id;
 }
 
+bool ParseBoolVal(const std::string val){
+  return absl::EqualsIgnoreCase(val, "true") || val == "1";
+}
+
 std::string GetDefaultPemFile() {
   fs::path base;
 #ifdef WIN32

@@ -4271,4 +4271,26 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(StatementTest, Verify_IgnoreTransaction){
+  auto conn = std::make_shared<ODBCHandles>();
+  std::string conn_str = kDefaultConnectionString + ";IgnoreTransactions=0";
+  std::string table_name = kDatasetWithTablePrefix + "ODBC_VERIFY_IGNORE_TRANSACTIONS";
+  
+  EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
+ std::string qry =
+      "BEGIN TRANSACTION; "
+      "CREATE OR REPLACE TABLE " + table_name +
+      " (IntegerField INT64, StringField STRING); "
+      "INSERT INTO " + table_name +
+      " VALUES (1, 'sampledata'); "
+      "COMMIT TRANSACTION;";
+
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR*)qry.c_str(), SQL_NTS);
+  EXPECT_EQ(status, SQL_SUCCESS);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS); 
+
+  // EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
+  // auto qry = 
+
+}
 }  // namespace google::cloud::odbc_tests

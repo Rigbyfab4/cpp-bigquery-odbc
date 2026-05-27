@@ -88,11 +88,7 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   dsn_.catalog = dsn_section["CATALOG"];
   dsn_.default_dataset = dsn_section["DEFAULTDATASET"];
   std::string filter_tables = dsn_section["FILTERTABLESONDEFAULTDATASET"];
-  if (!filter_tables.empty()) {
-    GetUpperStr(filter_tables);
-    dsn_.filter_tables_on_default_dataset =
-        (filter_tables != "0" && filter_tables != "FALSE");
-  }
+  dsn_.filter_tables_on_default_dataset = ParseBoolVal(filter_tables);
   dsn_.list_projects_parent = dsn_section["LISTPROJECTSPARENT"];
   dsn_.dsn_name = dsn_name;
   dsn_.key_file_path = dsn_section["KEYFILEPATH"];
@@ -100,10 +96,10 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   dsn_.email = dsn_section["EMAIL"];
   dsn_.refresh_token = dsn_section["REFRESHTOKEN"];
   std::string sql_dialect = dsn_section["SQLDIALECT"];
-  dsn_.is_bq_legacy_sql = (sql_dialect == "0");
+  dsn_.is_bq_legacy_sql = ParseBoolVal(sql_dialect);
   std::string sessions_enabled = dsn_section["ENABLESESSION"];
   dsn_.sessions_enabled =
-      (!sessions_enabled.empty() && sessions_enabled != "0");
+      ParseBoolVal(sessions_enabled);
   std::string max_row_fetched = dsn_section["ROWSFETCHEDPERBLOCK"];
   if (!max_row_fetched.empty()) {
     auto status = ParseStringToInteger(max_row_fetched);
@@ -111,6 +107,10 @@ void ConnectionHandle::SetUp(Section& dsn_section,
       dsn_.row_fetched_per_block = status.GetValue();
     }
   }
+
+  std::string ignore_transactions = dsn_section["IGNORETRANSACTIONS"];
+  dsn_.ignore_transactions = ParseBoolVal(ignore_transactions);
+
   std::string string_column_length = dsn_section["DEFAULTSTRINGCOLUMNLENGTH"];
   if (!string_column_length.empty()) {
     auto status = ParseStringToInteger(string_column_length);
@@ -121,9 +121,10 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   // Disable query cache if CACHEQUERY is set to "false" or "0" in the DSN
   // section.
   std::string query_cache = dsn_section["USEQUERYCACHE"];
-  if (query_cache == "false" || query_cache == "0") {
-    dsn_.is_query_cache = false;
-  }
+  dsn_.is_query_cache = ParseBoolVal(query_cache);
+  // if (query_cache == "false" || query_cache == "0") {
+  //   dsn_.is_query_cache = false;
+  // }
 
   std::string connection_properties = dsn_section["QUERYPROPERTIES"];
   auto parse_result = ParseQueryProperties(connection_properties);
@@ -151,14 +152,14 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   dsn_.session_location = dsn_section["SESSIONLOCATION"];
   dsn_.additional_projects = dsn_section["ADDITIONALPROJECTS"];
   dsn_.psc = dsn_section["PRIVATESERVICECONNECTURIS"];
-  dsn_.enable_tpc =
-      dsn_section["ENABLETPC"] == "1" || dsn_section["ENABLETPC"] == "true";
+  std::string enable_tpc = dsn_section["ENABLETPC"];
+  dsn_.enable_tpc = ParseBoolVal(enable_tpc);
   dsn_.universe_domain = dsn_section["UNIVERSEDOMAIN"];
 
   // As with the existing driver, the default value of JobCreationMode is
   // '2'(JOB_CREATION_OPTIONAL)
   std::string job_creation_mode = dsn_section["JOBCREATIONMODE"];
-  dsn_.is_job_creation_required = (job_creation_mode == "1");
+  dsn_.is_job_creation_required = ParseBoolVal(job_creation_mode);
 
   if (attribute_str_values_.count(SQL_ATTR_CURRENT_CATALOG) == 0) {
     attribute_str_values_.insert({SQL_ATTR_CURRENT_CATALOG, dsn_.catalog});
@@ -168,13 +169,13 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   std::string use_default_large_results_dataset =
       dsn_section["USEDEFAULTLARGERESULTSDATASET"];
   dsn_.use_default_large_results_dataset =
-      (use_default_large_results_dataset != "0");
+      ParseBoolVal(use_default_large_results_dataset);
   dsn_.large_results_dataset_id = dsn_section["LARGERESULTSDATASETID"];
   if (dsn_.large_results_dataset_id.empty()) {
     dsn_.large_results_dataset_id = kDefaultDestDatasetId;
   }
   std::string allow_htapi = dsn_section["ALLOWHTAPIFORLARGERESULTS"];
-  dsn_.allow_htapi = (allow_htapi == "1");
+  dsn_.allow_htapi = ParseBoolVal(allow_htapi);
   dsn_.htapi_activation_threshold = dsn_section["HTAPI_ACTIVATIONTHRESHOLD"];
   if (dsn_.htapi_activation_threshold.empty()) {
     // This is the default value set on the windows configuration screen too.

@@ -84,6 +84,8 @@ std::string GenerateRandomId(int length = 16);
  */
 std::string GenerateTableId();
 
+bool ParseBoolVal(const std::string val);
+
 // Converts a stringified double value into an integral string.
 odbc_internal::StatusRecord DoubleStrToInt(std::string& double_str);
 
