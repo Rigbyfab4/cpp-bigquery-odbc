@@ -27,11 +27,11 @@ std::vector<std::string> const kAllTableTypes = {
 std::string const kMatchAll = "%";
 
 static std::map<std::string, ColumnSchema> const kSchema = {
-    {"TABLE_CAT", ColumnSchema{0, BQDataType::kString}},
-    {"TABLE_SCHEM", ColumnSchema{1, BQDataType::kString}},
-    {"TABLE_NAME", ColumnSchema{2, BQDataType::kString}},
+    {kTableCatColName, WithIndex(0, kTableCatSchema)},
+    {kTableSchemaColName, WithIndex(1, kTableSchemaSchema)},
+    {kTableNameColName, WithIndex(2, kTableNameSchema)},
     {"TABLE_TYPE", ColumnSchema{3, BQDataType::kString}},
-    {"REMARKS", ColumnSchema{4, BQDataType::kString}},
+    {kRemarksColName, WithIndex(4, kRemarksSchema)},
 };
 
 struct FilteredTableResponse {

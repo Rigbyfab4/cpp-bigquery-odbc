@@ -119,6 +119,27 @@ bool operator==(ColumnSchema const& lhs, ColumnSchema const& rhs);
 bool operator>(ColumnSchema const& lhs, ColumnSchema const& rhs);
 bool operator<(ColumnSchema const& lhs, ColumnSchema const& rhs);
 
+inline constexpr char const* kTableCatColName = "TABLE_CAT";
+inline constexpr char const* kTableSchemaColName = "TABLE_SCHEM";
+inline constexpr char const* kTableNameColName = "TABLE_NAME";
+inline constexpr char const* kRemarksColName = "REMARKS";
+inline constexpr char const* kColumnNameColName = "COLUMN_NAME";
+inline constexpr char const* kKeySeqColName = "KEY_SEQ";
+inline constexpr char const* kPkNameColName = "PK_NAME";
+
+inline constexpr ColumnSchema kTableCatSchema{0, BQDataType::kString};
+inline constexpr ColumnSchema kTableSchemaSchema{0, BQDataType::kString};
+inline constexpr ColumnSchema kTableNameSchema{0, BQDataType::kString};
+inline constexpr ColumnSchema kRemarksSchema{0, BQDataType::kString};
+inline constexpr ColumnSchema kColumnNameSchema{0, BQDataType::kString};
+inline constexpr ColumnSchema kKeySeqSchema{0, BQDataType::kInt64};
+inline constexpr ColumnSchema kPkNameSchema{0, BQDataType::kString};
+
+inline ColumnSchema WithIndex(int col_index, ColumnSchema base) {
+  base.col_index = col_index;
+  return base;
+}
+
 // Data Source Value.
 using DSValue = std::vector<char>;
 
