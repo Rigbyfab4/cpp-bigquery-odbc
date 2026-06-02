@@ -245,6 +245,27 @@ void SetWcharEncodingFromConfig(std::string const& value);
 // for that purpose.
 size_t WireWcharSize();
 
+// Writes src into dest using the correct wire encoding, truncating to fit
+// dest_bytes bytes (including space for a null terminator). dest_bytes must be
+// at least WireWcharSize(). When IsRuntimeWireUtf16Le() is true each wchar_t
+// is narrowed to uint16_t; otherwise it is cast to SQLWCHAR as-is.
+inline void WriteWideToWireBuffer(std::wstring const& src, void* dest,
+                                  size_t dest_bytes) {
+  size_t const wire_char_size = WireWcharSize();
+  if (!dest || dest_bytes < wire_char_size) return;
+  size_t const buf_chars = dest_bytes / wire_char_size;
+  size_t const count = std::min<size_t>(src.size(), buf_chars - 1);
+  if (IsRuntimeWireUtf16Le()) {
+    auto* d = static_cast<uint16_t*>(dest);
+    for (size_t i = 0; i < count; ++i) d[i] = static_cast<uint16_t>(src[i]);
+    d[count] = 0;
+  } else {
+    auto* d = static_cast<SQLWCHAR*>(dest);
+    for (size_t i = 0; i < count; ++i) d[i] = static_cast<SQLWCHAR>(src[i]);
+    d[count] = 0;
+  }
+}
+
 std::wstring SQLWcharToWstring(const SQLWCHAR* in_str);
 
 bool IsDiagIdentifierString(SQLSMALLINT DiagIdentifier);
