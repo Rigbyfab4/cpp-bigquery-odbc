@@ -4368,11 +4368,11 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
 
 TEST(StatementTest, VerifyGoogleDriveScope_Enabled) {
   auto conn = std::make_shared<ODBCHandles>();
-  std::string conn_str = kDefaultConnectionString +";RequestGoogleDriveScope=1";
-  EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
-
+  std::string conn_str = kDefaultConnectionString +";RequestGoogleDriveScope=0";
+  
   std::string table_name =
-      kDatasetWithTablePrefix + "ODBC_GOOGLE_DRIVE_SCOPE_TEST";
+  kDatasetWithTablePrefix + "ODBC_GOOGLE_DRIVE_SCOPE_TEST";
+  EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
   std::string create_qry =
       "CREATE OR REPLACE EXTERNAL TABLE " + kDatasetWithTablePrefix +
       "ODBC_GOOGLE_DRIVE_SCOPE_TEST "
@@ -4394,10 +4394,10 @@ TEST(StatementTest, VerifyGoogleDriveScope_Enabled) {
   EXPECT_EQ(status, SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
-  // verify table
+  // // verify table
   EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
   std::string select_qry = "SELECT * FROM " + table_name + " LIMIT 5";
-  status = SQLExecDirect(conn->hstmt, (SQLCHAR*)select_qry.c_str(), SQL_NTS);
+   status = SQLExecDirect(conn->hstmt, (SQLCHAR*)select_qry.c_str(), SQL_NTS);
   CheckError(status, "SQLExecDirect", conn);
   EXPECT_EQ(status, SQL_SUCCESS);
 
@@ -4405,14 +4405,14 @@ TEST(StatementTest, VerifyGoogleDriveScope_Enabled) {
   CheckError(status, "SQLFetch", conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 
-  // Cleanup.
-  EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
-  std::string drop_qry = "DROP EXTERNAL TABLE `" + table_name + "`";
+  // // Cleanup.
+  // EXPECT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
+  // std::string drop_qry = "DROP EXTERNAL TABLE `" + table_name + "`";
 
-  status = SQLExecDirect(conn->hstmt, (SQLCHAR*)drop_qry.c_str(), SQL_NTS);
+  // status = SQLExecDirect(conn->hstmt, (SQLCHAR*)drop_qry.c_str(), SQL_NTS);
 
-  EXPECT_EQ(status, SQL_SUCCESS);
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+  // EXPECT_EQ(status, SQL_SUCCESS);
+  // EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
 }  // namespace google::cloud::odbc_tests

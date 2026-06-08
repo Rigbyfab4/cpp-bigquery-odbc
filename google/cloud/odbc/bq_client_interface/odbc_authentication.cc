@@ -72,7 +72,6 @@ StatusRecordOr<std::shared_ptr<Credentials>> CreateServiceCredentials(
         "Service Account key file is empty or could not be read: " +
             credentials_file_path};
   }
-
   return ::google::cloud::MakeServiceAccountCredentials(contents, options);
 }
 
@@ -194,6 +193,7 @@ StatusRecordOr<AccessToken> GetOAuth2Token(
   auto self_signed_jwt_disabled = GetEnv(kSelfSignedJwtEnvVar);
   SetEnv(kSelfSignedJwtEnvVar, "true");
   StatusOr<AccessToken> access_token = generator->GetToken();
+  std::cout << "Access Token: " <<  access_token->token << std::endl;
   SetEnv(kSelfSignedJwtEnvVar, self_signed_jwt_disabled);
   return StatusRecordOr<AccessToken>::ConvertFromStatusOr(access_token);
 }
