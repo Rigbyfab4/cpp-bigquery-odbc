@@ -1246,6 +1246,7 @@ std::vector<BooleanBasicTestStruct> const kConversionFromBooleanTestData{
     {SQL_C_TYPE_DATE, "0", SQL_ERROR},
 };
 
+
 void TestTranslationsFromBoolean(std::shared_ptr<ODBCHandles> conn,
                                  std::string query) {
   SQLRETURN status;
