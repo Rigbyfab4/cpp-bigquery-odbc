@@ -4365,5 +4365,47 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+TEST(StatementTest, Performance_FetchKirlTestTable_HTAPI) {
+  auto conn = std::make_shared<ODBCHandles>();
+  
+  // Ensure HTAPI is explicitly enabled and forced for all queries by setting the threshold to 0
+  std::string connection_string = kDefaultConnectionString + ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0;";
+  
+  ASSERT_EQ(Connect(connection_string, conn), SQL_SUCCESS) << "Failed to connect to the database.";
+
+  // Target table specified by your senior, with the project explicitly included and limited to 10k rows
+  std::string query = "SELECT * FROM `bigquery-devtools-drivers.kirltest.new_timestamp_table` LIMIT 10000";
+
+  std::cout << "Executing query and fetching data..." << std::endl;
+
+  // Start the performance timer
+  auto start_time = std::chrono::steady_clock::now();
+
+  SQLRETURN ret = SQLExecDirect(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+  CheckError(ret, "SQLExecDirect", conn); // Matches the standard error checking in statement_test.cc
+
+  int row_count = 0;
+  
+  // Emulate Power BI's fetch loop to exhaust the HTAPI Arrow stream
+  while ((ret = SQLFetch(conn->hstmt)) == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) { 
+    row_count++;
+  }
+  
+  EXPECT_EQ(ret, SQL_NO_DATA) << "Fetch ended unexpectedly with return code: " << ret; 
+
+  // Stop the performance timer
+  auto end_time = std::chrono::steady_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+  // Print results clearly for comparison
+  std::cout << "---------------------------------------------------" << std::endl;
+  std::cout << "PERFORMANCE TEST RESULTS" << std::endl;
+  std::cout << "Target Table: bigquery-devtools-drivers.kirltest.new_timestamp_table" << std::endl;
+  std::cout << "Rows Fetched: " << row_count << std::endl;
+  std::cout << "Time Taken  : " << duration.count() << " ms" << std::endl;
+  std::cout << "---------------------------------------------------" << std::endl;
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS); //
+}
 
 }  // namespace google::cloud::odbc_tests
