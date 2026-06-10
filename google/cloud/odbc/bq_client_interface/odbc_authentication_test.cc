@@ -41,7 +41,7 @@ TEST(ServiceAuthentication, InvalidPathFileDoesNotExist) {
   std::string invalid_path = "non_existing_key.json";
 
   auto credentials =
-      CreateCredentials({OauthMechanism::kServiceAndUserAccount, invalid_path});
+      CreateCredentials({OauthMechanism::kServiceAccount, invalid_path});
 
   EXPECT_THAT(credentials,
               StatusRecordIs(odbc_internal::SQLStates::k_HY000(),
@@ -57,8 +57,27 @@ TEST(DefaultApplicationAuthentication, DefaultApplicationAuthentication) {
 }
 
 TEST(ServiceAuthentication, EmptyPath) {
+  auto credentials = CreateCredentials({OauthMechanism::kServiceAccount, ""});
+
+  EXPECT_THAT(credentials,
+              StatusRecordIs(odbc_internal::SQLStates::k_HY000(),
+                             HasSubstr("The path to the file can't be empty")));
+}
+
+TEST(UserAuthentication, InvalidPathFileDoesNotExist) {
+  std::string invalid_path = "non_existing_key.json";
+
   auto credentials =
-      CreateCredentials({OauthMechanism::kServiceAndUserAccount, ""});
+      CreateCredentials({OauthMechanism::kUserAccount, invalid_path});
+
+  EXPECT_THAT(credentials,
+              StatusRecordIs(
+                  odbc_internal::SQLStates::k_HY000(),
+                  testing::HasSubstr("Could not open User Account key file")));
+}
+
+TEST(UserAuthentication, EmptyPath) {
+  auto credentials = CreateCredentials({OauthMechanism::kUserAccount, ""});
 
   EXPECT_THAT(credentials,
               StatusRecordIs(odbc_internal::SQLStates::k_HY000(),

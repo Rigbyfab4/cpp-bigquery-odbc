@@ -17,6 +17,7 @@
 #include "google/cloud/odbc/internal/sql_state_constants.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "google/cloud/credentials.h"
+#include "google/cloud/internal/credentials_impl.h"
 #include "google/cloud/internal/getenv.h"
 #include "google/cloud/oauth2/access_token_generator.h"
 #include "google/cloud/status_or.h"
@@ -42,16 +43,8 @@ StatusRecordOr<std::shared_ptr<Credentials>> CreateServiceCredentials(
     return StatusRecord{SQLStates::k_HY000(),
                         "The path to the file can't be empty"};
   }
-  // Client libraries don't have a special function for user authentication.
-  // We use MakeGoogleDefaultCredentials() and override
-  // GOOGLE_APPLICATION_CREDENTIALS env var to point to the file with
-  // credentials. It works for both: user authentication and service
-  // authentication.
-  // https://github.com/googleapis/google-cloud-cpp/blob/main/google/cloud/credentials.h#L113
-  // Read the contents of the key file directly instead of setting an
-  // environment variable.
-  std::ifstream is(credentials_file_path);
-  if (!is) {
+  std::ifstream creds_stream(credentials_file_path);
+  if (!creds_stream) {
     LOG(ERROR) << "CreateServiceCredentials:: Could not open Service Account "
                   "key file: "
                << credentials_file_path;
@@ -60,7 +53,7 @@ StatusRecordOr<std::shared_ptr<Credentials>> CreateServiceCredentials(
         "Could not open Service Account key file: " + credentials_file_path};
   }
 
-  std::string contents((std::istreambuf_iterator<char>(is)),
+  std::string contents((std::istreambuf_iterator<char>(creds_stream)),
                        std::istreambuf_iterator<char>());
 
   if (contents.empty()) {
@@ -74,6 +67,41 @@ StatusRecordOr<std::shared_ptr<Credentials>> CreateServiceCredentials(
   }
 
   return ::google::cloud::MakeServiceAccountCredentials(contents, options);
+}
+
+StatusRecordOr<std::shared_ptr<Credentials>> CreateUserCredentials(
+    std::string const& credentials_file_path, Options const& options) {
+  if (credentials_file_path.empty()) {
+    LOG(ERROR) << "CreateUserCredentials:: The path to the file can't be empty";
+    return StatusRecord{SQLStates::k_HY000(),
+                        "The path to the file can't be empty"};
+  }
+
+  std::ifstream creds_stream(credentials_file_path);
+  if (!creds_stream) {
+    LOG(ERROR) << "CreateUserCredentials:: Could not open User Account "
+                  "key file: "
+               << credentials_file_path;
+    return StatusRecord{
+        SQLStates::k_HY000(),
+        "Could not open User Account key file: " + credentials_file_path};
+  }
+
+  std::string contents((std::istreambuf_iterator<char>(creds_stream)),
+                       std::istreambuf_iterator<char>());
+
+  if (contents.empty()) {
+    LOG(ERROR) << "CreateUserCredentials:: User Account key file is "
+                  "empty or could not be read: "
+               << credentials_file_path;
+    return StatusRecord{
+        SQLStates::k_HY000(),
+        "User Account key file is empty or could not be read: " +
+            credentials_file_path};
+  }
+
+  return ::google::cloud::internal::MakeUserAccountCredentials(contents,
+                                                               options);
 }
 
 StatusRecordOr<std::shared_ptr<Credentials>>
@@ -100,14 +128,14 @@ StatusRecordOr<std::shared_ptr<Credentials>> CreateExternalAuthCredentialsJSON(
   // link below:
   // https://github.com/googleapis/google-cloud-cpp/blob/d3104eff1632bc3793a29572315ec7e80b143746/google/cloud/internal/unified_rest_credentials.cc#L97
 
-  std::ifstream is(credentials_file_path);
-  if (!is) {
+  std::ifstream creds_stream(credentials_file_path);
+  if (!creds_stream) {
     return StatusRecord{
         SQLStates::k_HY000(),
         "Could not open External Account key file: " + credentials_file_path};
   }
 
-  std::string contents((std::istreambuf_iterator<char>(is)),
+  std::string contents((std::istreambuf_iterator<char>(creds_stream)),
                        std::istreambuf_iterator<char>());
 
   if (contents.empty()) {
@@ -166,8 +194,10 @@ CreateExternalAccountAuthenticationBYOID(Oauth const& oauth,
 StatusRecordOr<std::shared_ptr<Credentials>> CreateCredentials(
     Oauth const& oauth, Options const& options) {
   switch (oauth.auth_mechanism) {
-    case OauthMechanism::kServiceAndUserAccount:
+    case OauthMechanism::kServiceAccount:
       return CreateServiceCredentials(oauth.credentials_file_path, options);
+    case OauthMechanism::kUserAccount:
+      return CreateUserCredentials(oauth.credentials_file_path, options);
     case OauthMechanism::kApplicationDefault:
       return CreateApplicationDefaultCredentials(options);
     case OauthMechanism::kExternalUser: {
