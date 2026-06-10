@@ -159,6 +159,7 @@ jobs:
     - name: Running testcases
       shell: bash
       run: |
+        export GRPC_DNS_RESOLVER="native"
         export VCPKG_ROOT="${TEMP}/.build/vcpkg"
         export CLOUDSDK_PYTHON="${{ steps.py311.outputs.python-path }}"
         # Put the CMake output in a directory with more space and keep it short
