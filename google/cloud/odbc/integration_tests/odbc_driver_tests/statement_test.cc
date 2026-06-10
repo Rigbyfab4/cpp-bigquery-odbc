@@ -4368,6 +4368,14 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
 TEST(StatementTest, Performance_FetchKirlTestTable_HTAPI) {
   auto conn = std::make_shared<ODBCHandles>();
   
+  // Read the environment variable to explicitly log it in the GitHub Actions runner
+  char* dns_env = std::getenv("GRPC_DNS_RESOLVER");
+  std::string dns_resolver = dns_env ? std::string(dns_env) : "default (ares)";
+  
+  std::cout << "===================================================" << std::endl;
+  std::cout << "[ENV] GRPC_DNS_RESOLVER is currently set to: " << dns_resolver << std::endl;
+  std::cout << "===================================================" << std::endl;
+
   // Ensure HTAPI is explicitly enabled and forced for all queries by setting the threshold to 0
   std::string connection_string = kDefaultConnectionString + ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0;";
   
@@ -4382,7 +4390,7 @@ TEST(StatementTest, Performance_FetchKirlTestTable_HTAPI) {
   auto start_time = std::chrono::steady_clock::now();
 
   SQLRETURN ret = SQLExecDirect(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
-  CheckError(ret, "SQLExecDirect", conn); // Matches the standard error checking in statement_test.cc
+  CheckError(ret, "SQLExecDirect", conn);
 
   int row_count = 0;
   
@@ -4397,15 +4405,15 @@ TEST(StatementTest, Performance_FetchKirlTestTable_HTAPI) {
   auto end_time = std::chrono::steady_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 
-  // Print results clearly for comparison
+  // Print results clearly for the GitHub Actions log comparison
   std::cout << "---------------------------------------------------" << std::endl;
-  std::cout << "PERFORMANCE TEST RESULTS" << std::endl;
+  std::cout << "PERFORMANCE TEST RESULTS [" << dns_resolver << "]" << std::endl;
   std::cout << "Target Table: bigquery-devtools-drivers.kirltest.new_timestamp_table" << std::endl;
   std::cout << "Rows Fetched: " << row_count << std::endl;
   std::cout << "Time Taken  : " << duration.count() << " ms" << std::endl;
   std::cout << "---------------------------------------------------" << std::endl;
 
-  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS); //
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS); 
 }
 
 }  // namespace google::cloud::odbc_tests
