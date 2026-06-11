@@ -41,10 +41,6 @@ fi
 mapfile -t args < <(cmake::common_args "${CMAKE_OUT}")
 mapfile -t vcpkg_args < <(cmake::vcpkg_args)
 mapfile -t ctest_args < <(ctest::common_args)
-if [[ $# -gt 1 ]]; then
-  args+=("-DCMAKE_BUILD_TYPE=${1}")
-  shift
-fi
 if command -v sccache >/dev/null 2>&1; then
   args+=(
     # sccache requires specific workarounds with MSVC.
@@ -63,6 +59,7 @@ args+=("-DODBC_EXAMPLES=OFF")
 args+=("-DODBC_INTEGRATION_TESTING=ON")
 args+=("-DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF")
 args+=("-DODBC_UNIT_TESTING=OFF")
+args+=("-DCMAKE_BUILD_TYPE=Release")
 
 # We use our driver or the existing one based on BUILD_SHARD env
 if [ "$BUILD_SHARD" == "Core" ]; then
