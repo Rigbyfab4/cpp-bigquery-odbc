@@ -218,6 +218,7 @@ bool TraceOptions::InitializeLogging(bool is_trace_override) {
 
   if (!kTraceOptsFile.Ok()) return false;
   auto const& trace_opts = kTraceOptsFile.GetValue();
+  std::lock_guard<std::mutex> lk(mu_);
 
   // If logging is disabled, return false
   if (trace_opts->log_level <= 0) {

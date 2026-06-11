@@ -17,6 +17,9 @@
 #include "google/cloud/odbc/testing/odbc_utils/descriptor.h"
 #include "absl/strings/match.h"
 #include <gmock/gmock.h>
+#include <thread>
+#include <mutex>
+#include <vector>
 using ::testing::Contains;
 using ::testing::HasSubstr;
 
@@ -4406,6 +4409,78 @@ TEST(StatementTest, Performance_FetchKirlTestTable_HTAPI) {
   // =========================================================================
   // Intentionally fail the test so CTest prints the logs
   // =========================================================================
+  EXPECT_TRUE(false) << "INTENTIONAL FAILURE TO FORCE GITHUB ACTIONS TO PRINT THE LOGS";
+}
+
+TEST(StatementTest, Performance_FetchKirlTestTable_HTAPI2) {
+  char* dns_env = std::getenv("GRPC_DNS_RESOLVER");
+  std::string dns_resolver = dns_env ? std::string(dns_env) : "default (ares)";
+  
+  std::cout << "===================================================" << std::endl;
+  std::cout << "[ENV] GRPC_DNS_RESOLVER is currently set to: " << dns_resolver << std::endl;
+  std::cout << "===================================================" << std::endl;
+
+  int const num_threads = 5; // Emulate Power BI executing 5 visuals concurrently
+  std::vector<std::thread> threads;
+  std::mutex cout_mutex; // To keep console output from getting garbled
+
+  std::cout << "Spawning " << num_threads << " concurrent Power BI style connections..." << std::endl;
+
+  // Start the performance timer for the entire batch
+  auto start_time = std::chrono::steady_clock::now();
+
+  for (int i = 0; i < num_threads; ++i) {
+    threads.emplace_back([&, i]() {
+      auto conn = std::make_shared<ODBCHandles>();
+      
+      // Ensure HTAPI is explicitly enabled and forced for all queries
+      std::string connection_string = kDefaultConnectionString + ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0;";
+      
+      if (Connect(connection_string, conn) != SQL_SUCCESS) {
+        std::lock_guard<std::mutex> lock(cout_mutex);
+        std::cout << "[Thread " << i << "] Failed to connect to the database." << std::endl;
+        return;
+      }
+
+      // Limit reduced slightly to 2000 per thread so we don't hit GitHub Action timeouts 
+      // due to the massive CPU load of 5 threads doing Arrow conversions, while still isolating the DNS lock.
+      std::string query = "SELECT * FROM `bigquery-devtools-drivers.kirltest.new_timestamp_table` LIMIT 2000";
+
+      SQLRETURN ret = SQLExecDirect(conn->hstmt, (SQLCHAR*)query.c_str(), SQL_NTS);
+      
+      int row_count = 0;
+      if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) {
+        while ((ret = SQLFetch(conn->hstmt)) == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) { 
+          row_count++;
+        }
+      }
+
+      Disconnect(conn);
+
+      std::lock_guard<std::mutex> lock(cout_mutex);
+      std::cout << "[Thread " << i << "] Finished. Rows Fetched: " << row_count << std::endl;
+    });
+  }
+
+  // Wait for all Power BI threads to finish
+  for (auto& t : threads) {
+    if (t.joinable()) {
+      t.join();
+    }
+  }
+
+  // Stop the performance timer
+  auto end_time = std::chrono::steady_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+  // Print results clearly for the log comparison
+  std::cout << "---------------------------------------------------" << std::endl;
+  std::cout << "PERFORMANCE TEST RESULTS [" << dns_resolver << "]" << std::endl;
+  std::cout << "Concurrent Connections: " << num_threads << std::endl;
+  std::cout << "Target Table: bigquery-devtools-drivers.kirltest.new_timestamp_table" << std::endl;
+  std::cout << "Total Time Taken  : " << duration.count() << " ms" << std::endl;
+  std::cout << "---------------------------------------------------" << std::endl;
+
   EXPECT_TRUE(false) << "INTENTIONAL FAILURE TO FORCE GITHUB ACTIONS TO PRINT THE LOGS";
 }
 
