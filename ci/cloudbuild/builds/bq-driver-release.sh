@@ -101,6 +101,15 @@ io::run cp -v "/opt/odbc-driver/googlebigqueryodbc.ini" "${RELEASE_DIR}/googlebi
 # Copy root certificates
 io::run cp -v "/opt/odbc-driver/roots.pem" "${RELEASE_DIR}/roots.pem"
 
+io::log_h1 "Generating SBOM (Syft)"
+
+# Generate the SBOM for the workspace
+SBOM_NAME="odbc-driver.${VERSION}.spdx.json"
+io::run syft scan dir:. -o "spdx-json=${SBOM_NAME}"
+
+# Copy the SBOM into the release directory so it is included in the ZIP
+io::run cp -v "${SBOM_NAME}" "${RELEASE_DIR}/${SBOM_NAME}"
+
 # Create ZIP file
 ZIP_NAME="odbc-driver.${VERSION}.zip"
 cd "${RELEASE_DIR}"
@@ -110,5 +119,6 @@ io::log "ZIP package created: ${ZIP_NAME}"
 
 # Upload to GCS
 export GCS_BUCKET=bq_devtools_release_private
-io::log "Uploading ${ZIP_NAME} to gs://${GCS_BUCKET}/drivers/odbc/linux/"
+io::log "Uploading ${ZIP_NAME} and ${SBOM_NAME} to gs://${GCS_BUCKET}/drivers/odbc/linux/"
 io::run gsutil -m cp "${ZIP_NAME}" "gs://${GCS_BUCKET}/drivers/odbc/linux/"
+io::run gsutil -m cp "${SBOM_NAME}" "gs://${GCS_BUCKET}/drivers/odbc/linux/"

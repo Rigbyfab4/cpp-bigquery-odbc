@@ -148,15 +148,26 @@ jobs:
 
           echo "TAR package created: $TAR_NAME"
 
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.spdx.json
+
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.tar.gz
+          subject-path: |
+            ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.tar.gz
+            ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.spdx.json
 
-      - name: Upload TAR to GitHub Release
+      - name: Upload TAR and SBOM to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.tar.gz
+          files: |
+            ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.tar.gz
+            ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.spdx.json
 
     env:  
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

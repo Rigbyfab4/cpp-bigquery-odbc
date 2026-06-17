@@ -226,6 +226,27 @@ jobs:
           mv "$f" "$MSI_DIR/ODBCDriverforBigQuery_windows_${DRIVER_ARCH}_${{ steps.version.outputs.version }}.msi"
         done
 
+    - name: Generate SBOM (Microsoft SBOM Tool)
+      shell: pwsh
+      run: |
+        # Download the latest Windows release of the SBOM tool
+        Invoke-WebRequest -Uri "https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-win-x64.exe" -OutFile "sbom-tool.exe"
+
+        # Run the SBOM tool to scan the repository and build output
+        ./sbom-tool.exe generate `
+          -b "ci/installer/ODBCDriverForBigQuery/bin/Release/en-us" `
+          -bc . `
+          -pn "ODBC Driver for BigQuery" `
+          -pv "${{ steps.version.outputs.version }}" `
+          -ps "Google LLC" `
+          -nsb "https://github.com/googleapis/cpp-bigquery-odbc" `
+          -nsu "windows-${{ matrix.arch }}-${{ steps.version.outputs.version }}" `
+          -V Verbose
+
+        # Copy and rename the SBOM manifest to the MSI output directory
+        $MSI_DIR = "ci/installer/ODBCDriverForBigQuery/bin/Release/en-us"
+        Copy-Item -Path "$MSI_DIR/_manifest/spdx_2.2/manifest.spdx.json" -Destination "$MSI_DIR/ODBCDriverforBigQuery_windows_${{ matrix.arch }}_${{ steps.version.outputs.version }}.spdx.json"
+
     - name: Download and Install the ODBC Driver
       shell: powershell
       run: |
@@ -275,17 +296,21 @@ jobs:
     - name: Attest build provenance
       uses: actions/attest-build-provenance@v2
       with:
-        subject-path: ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/ODBCDriverforBigQuery_windows_${{ matrix.arch }}_${{ steps.version.outputs.version }}.msi
+        subject-path: |
+          ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/ODBCDriverforBigQuery_windows_${{ matrix.arch }}_${{ steps.version.outputs.version }}.msi
+          ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/ODBCDriverforBigQuery_windows_${{ matrix.arch }}_${{ steps.version.outputs.version }}.spdx.json
 
     - name: Release Driver
       uses: softprops/action-gh-release@v2
       with:
-        files: ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/*_${{ env.DRIVER_ARCH }}_${{ steps.version.outputs.version }}.msi
+        files: |
+          ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/*_${{ env.DRIVER_ARCH }}_${{ steps.version.outputs.version }}.msi
+          ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/*_${{ env.DRIVER_ARCH }}_${{ steps.version.outputs.version }}.spdx.json
         overwrite_files: true
         name: "ODBC Driver for BigQuery (${{ env.DRIVER_ARCH }})"
         body: "Windows release build for architecture: **${{ env.DRIVER_ARCH }}**"
 
-    - name: Upload MSI to GCS
+    - name: Upload MSI and SBOM to GCS
       shell: pwsh
       env:
         GCS_BUCKET: bq-dev-tools-testing-drivers
@@ -295,8 +320,12 @@ jobs:
 
         $MSI_DIR = "ci/installer/ODBCDriverForBigQuery/bin/Release/en-us"
         $MSI_FILE = "ODBCDriverforBigQuery_windows_$($env:DRIVER_ARCH)_${{ steps.version.outputs.version }}.msi"
+        $SBOM_FILE = "ODBCDriverforBigQuery_windows_$($env:DRIVER_ARCH)_${{ steps.version.outputs.version }}.spdx.json"
 
-        Write-Output "Uploading $MSI_FILE to gs://$env:GCS_BUCKET/odbc-windows/$arch/ ..."
+        Write-Output "Uploading $MSI_FILE and $SBOM_FILE to gs://$env:GCS_BUCKET/odbc-windows/$arch/ ..."
         gsutil -m cp `
           "$MSI_DIR/$MSI_FILE" `
           "gs://$env:GCS_BUCKET/odbc-windows/$arch/$MSI_FILE"
+        gsutil -m cp `
+          "$MSI_DIR/$SBOM_FILE" `
+          "gs://$env:GCS_BUCKET/odbc-windows/$arch/$SBOM_FILE"
