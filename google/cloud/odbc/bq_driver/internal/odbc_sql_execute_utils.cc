@@ -358,6 +358,7 @@ StatusRecordOr<std::shared_ptr<arrow::RecordBatch>> GetArrowRecordBatch(
   return record_batch;
 }
 
+
 StatusRecord ProcessRecordBatch(
     std::shared_ptr<arrow::Schema> schema,
     std::shared_ptr<arrow::RecordBatch> record_batch, ResultSet& result_set) {
