@@ -139,13 +139,12 @@ RUN curl -fsSL https://github.com/mozilla/sccache/releases/download/v0.5.4/sccac
     mv sccache /usr/local/bin/sccache && \
     chmod +x /usr/local/bin/sccache
 
-# Install syft from https://github.com/anchore/syft
-WORKDIR /var/tmp/syft
-RUN curl -fsSL https://github.com/anchore/syft/releases/download/v1.9.0/syft_1.9.0_linux_amd64.tar.gz | \
-    tar -zxf - && \
+# Install Microsoft SBOM Tool
+WORKDIR /var/tmp/sbom-tool
+RUN curl -fsSL -o sbom-tool https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-linux-x64 && \
     mkdir -p /usr/local/bin && \
-    mv syft /usr/local/bin/syft && \
-    chmod +x /usr/local/bin/syft
+    mv sbom-tool /usr/local/bin/sbom-tool && \
+    chmod +x /usr/local/bin/sbom-tool
 
 # Needed to use autoreconf
 WORKDIR /var/tmp/m4

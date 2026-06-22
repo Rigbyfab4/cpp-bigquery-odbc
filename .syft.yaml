@@ -18,3 +18,7 @@ exclude:
   - "./build/_deps/**"
   - "./build-out/_deps/**"
   - "./cmake-out/_deps/**"
+  - "**/share/googlebenchmark/tools/**"
+
+select-catalogers:
+  - "-python"

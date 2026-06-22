@@ -148,12 +148,27 @@ jobs:
 
           echo "TAR package created: $TAR_NAME"
 
-      - name: Generate SBOM (Syft)
-        uses: anchore/sbom-action@v0
-        with:
-          path: .
-          format: spdx-json
-          output-file: ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.spdx.json
+      - name: Generate SBOM (Microsoft SBOM Tool)
+        shell: bash
+        run: |
+          # Download the latest macOS release of the SBOM tool
+          curl -Lo sbom-tool https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-osx-x64
+          chmod +x sbom-tool
+
+          # Run the SBOM tool to scan the repository root
+          ./sbom-tool generate \
+            -b release_package \
+            -bc . \
+            -pn "ODBC Driver for BigQuery" \
+            -pv "${{ steps.version.outputs.version }}" \
+            -ps "Google LLC" \
+            -nsb "https://github.com/googleapis/cpp-bigquery-odbc" \
+            -nsu "macos-${{ steps.version.outputs.version }}" \
+            -cd "--DetectorsDisabled Pip,Poetry,Conda,Pipfile" \
+            -V Verbose
+
+          # Copy and rename the SBOM manifest to the release directory
+          cp release_package/_manifest/spdx_2.2/manifest.spdx.json ODBCDriverforBigQuery_macos_${{ steps.version.outputs.version }}.spdx.json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2

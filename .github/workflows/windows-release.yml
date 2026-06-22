@@ -242,7 +242,7 @@ jobs:
           -ps "Google LLC" `
           -nsb "https://github.com/googleapis/cpp-bigquery-odbc" `
           -nsu "windows-${{ matrix.arch }}-${{ steps.version.outputs.version }}" `
-          -cd "--DirectoryExclusionList **/.github/** --DirectoryExclusionList **/ci/** --DirectoryExclusionList **/build/_deps/** --DirectoryExclusionList **/build-out/_deps/** --DirectoryExclusionList **/cmake-out/_deps/**" `
+          -cd "--DirectoryExclusionList **/share/googlebenchmark/tools/** --DirectoryExclusionList **\share\googlebenchmark\tools\** --DirectoryExclusionList **/tools/** --DirectoryExclusionList **\tools\** --DetectorsDisabled Pip,Poetry,Conda,Pipfile" `
           -V Verbose
 
         # Copy and rename the SBOM manifest to the MSI output directory
