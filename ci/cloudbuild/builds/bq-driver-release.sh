@@ -103,7 +103,7 @@ io::run cp -v "/opt/odbc-driver/roots.pem" "${RELEASE_DIR}/roots.pem"
 
 io::log_h1 "Generating SBOM (Syft)"
 
-# Generate the SBOM for the workspace
+# Generate the SBOM for the workspace (automatically respects .syft.yaml exclusions)
 SBOM_NAME="odbc-driver.${VERSION}.spdx.json"
 io::run syft scan dir:. -o "spdx-json=${SBOM_NAME}"
 

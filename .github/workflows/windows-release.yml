@@ -233,6 +233,7 @@ jobs:
         Invoke-WebRequest -Uri "https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-win-x64.exe" -OutFile "sbom-tool.exe"
 
         # Run the SBOM tool to scan the repository and build output
+        # Excludes non-production directories (ci, .github, build, doc, bazel, etc.)
         ./sbom-tool.exe generate `
           -b "ci/installer/ODBCDriverForBigQuery/bin/Release/en-us" `
           -bc . `
@@ -241,6 +242,7 @@ jobs:
           -ps "Google LLC" `
           -nsb "https://github.com/googleapis/cpp-bigquery-odbc" `
           -nsu "windows-${{ matrix.arch }}-${{ steps.version.outputs.version }}" `
+          -cd "--DirectoryExclusionList **/.github/** --DirectoryExclusionList **/ci/** --DirectoryExclusionList **/build/_deps/** --DirectoryExclusionList **/build-out/_deps/** --DirectoryExclusionList **/cmake-out/_deps/**" `
           -V Verbose
 
         # Copy and rename the SBOM manifest to the MSI output directory
