@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+param (
+    [string]$LocalMsiPath = ""
+)
+
 # Variable Initialization (Similar to "declare -i" in bash)
 $CI_CLOUDBUILD_BUILDS_LIB_ODBC_DRIVER_INSTALL_SH__ = $null
 if (-not [string]::IsNullOrEmpty($env:CI_CLOUDBUILD_BUILDS_LIB_ODBC_DRIVER_INSTALL_SH__)) {
@@ -22,6 +26,18 @@ if (-not [string]::IsNullOrEmpty($env:CI_CLOUDBUILD_BUILDS_LIB_ODBC_DRIVER_INSTA
 # Include Guard (Similar to "if ((...)); then return 0; fi" in bash)
 if ($CI_CLOUDBUILD_BUILDS_LIB_ODBC_DRIVER_INSTALL_SH__ -ne $null -and ++$CI_CLOUDBUILD_BUILDS_LIB_ODBC_DRIVER_INSTALL_SH__ -ne 0) {
     return 0
+}
+
+if (-not [string]::IsNullOrEmpty($LocalMsiPath)) {
+    $installerPath = (Resolve-Path $LocalMsiPath).Path
+    $logFilePath = "msiexec_install.log"
+
+    Write-Output "Installing ODBC driver from local path: $installerPath ..."
+    Start-Process msiexec.exe -ArgumentList "/i `"$installerPath`" /qn /l*v `"$logFilePath`"" -Wait -NoNewWindow
+
+    Write-Output "Installation completed. Log contents:"
+    Get-Content $logFilePath | Write-Output
+    return
 }
 
 # Set Environment Variables
