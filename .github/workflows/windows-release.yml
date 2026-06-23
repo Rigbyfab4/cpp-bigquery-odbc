@@ -143,9 +143,9 @@ jobs:
           -DVCPKG_TARGET_TRIPLET="${VCPKG_TRIPLET}" \
           -DODBC_EXAMPLES=OFF \
           -DODBC_UNIT_TESTING=OFF \
-          -DODBC_INTEGRATION_TESTING=OFF \
+          -DODBC_INTEGRATION_TESTING=ON \
           -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF \
-          -DBQ_DRIVER_INTEGRATION_TESTS=OFF \
+          -DBQ_DRIVER_INTEGRATION_TESTS=ON \
           -DPROJECT_VERSION="${version}"
         cmake --build build --config Release --parallel 16
 
@@ -225,6 +225,52 @@ jobs:
         for f in "$MSI_DIR"/*.msi; do
           mv "$f" "$MSI_DIR/ODBCDriverforBigQuery_windows_${DRIVER_ARCH}_${{ steps.version.outputs.version }}.msi"
         done
+
+    - name: Download and Install the ODBC Driver
+      shell: powershell
+      run: |
+        $msiPath = "ci/installer/ODBCDriverForBigQuery/bin/Release/en-us/ODBCDriverforBigQuery_windows_${{ matrix.arch }}_${{ steps.version.outputs.version }}.msi"
+        .\ci\gha\builds\lib\odbc-driver-install.ps1 -LocalMsiPath $msiPath
+
+    - name: Run DSN Creation Script
+      shell: powershell
+      run: |
+        Write-Output "Downloading service account key from Secret Manager..."
+        $keyPath = "service_account_auth_keys.json"
+        gcloud secrets versions access latest --secret=service-account-auth-keys --out-file="$keyPath"
+        $absoluteKeyPath = (Resolve-Path -Path "$keyPath").Path
+        Write-Output "Downloaded service account key to: $absoluteKeyPath"
+
+        if (-not (Test-Path -Path "C:\b" -PathType Container)) {
+            New-Item -Path "C:\b" -ItemType Directory -Force
+        }
+        Copy-Item -Path $absoluteKeyPath -Destination "C:\b\service_account_auth_keys.json"
+
+        $arch = if ($env:DRIVER_ARCH -eq 'x64') { '64' } else { '32' }
+        $regFilePath = Join-Path $PWD.Path "ci\gha\builds\lib\system_dsn_setup_$arch.reg"
+        Write-Output "Running DSN creation script from $regFilePath ..."
+        reg import $regFilePath
+        Write-Output "DSN creation completed."
+
+    - name: Running testcases
+      shell: bash
+      run: |
+        export VCPKG_ROOT="${TEMP}/.build/vcpkg"
+        export CLOUDSDK_PYTHON="${{ steps.py311.outputs.python-path }}"
+        export MSVC_VERSION="${{ matrix.msvc }}"
+        export BRANCH_IDENTIFIER=$(echo "${{ github.ref_name }}" | tr '[:punct:]' '_')
+        export CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX="windows_${BRANCH_IDENTIFIER}_${MSVC_VERSION//[-:;.,?\/]/_}_${DRIVER_ARCH}_$BUILD_SHARD"
+        export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="C:\\b\\service_account_auth_keys.json"
+        export GOOGLE_APPLICATION_CREDENTIALS="C:\\b\\service_account_auth_keys.json"
+        if [ "$BUILD_SHARD" == "Core" ]; then
+          export ODBC_TESTS_DSN="SampleDSN"
+          export ODBC_TRANSACTIONS_TESTS_DSN="ODBCTransactionsTestsDSN"
+        else
+          export ODBC_TESTS_DSN="BigQuery DSN"
+          export ODBC_TRANSACTIONS_TESTS_DSN="ODBCGoogleTransactionsTestsDSN"
+        fi
+        cd build
+        ctest --output-on-failure --parallel 16
 
     - name: Attest build provenance
       uses: actions/attest-build-provenance@v2
