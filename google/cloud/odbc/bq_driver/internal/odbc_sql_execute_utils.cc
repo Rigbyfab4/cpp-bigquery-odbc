@@ -316,6 +316,11 @@ StatusRecordOr<std::shared_ptr<arrow::Schema>> GetArrowSchema(
       case arrow::Type::DECIMAL256:
         col_schema.col_type = BQDataType::kBigNumeric;
         break;
+      case arrow::Type::INTERVAL_MONTH_DAY_NANO:
+      case arrow::Type::INTERVAL_DAY_TIME:
+      case arrow::Type::INTERVAL_MONTHS:
+        col_schema.col_type = BQDataType::kInterval;
+        break;
       case arrow::Type::LIST:
         // For other datatypes within an array, we don't have any special
         // handling. Setting 'is_mode_repeated' is enough
@@ -327,7 +332,15 @@ StatusRecordOr<std::shared_ptr<arrow::Schema>> GetArrowSchema(
         col_schema.is_mode_repeated = true;
         break;
       case arrow::Type::STRUCT: {
-        col_schema.col_type = BQDataType::kString;
+        auto struct_type =
+            std::static_pointer_cast<arrow::StructType>(field->type());
+        auto fields = struct_type->fields();
+        if (fields.size() == 2 && fields[0]->name() == "start" &&
+            fields[1]->name() == "end") {
+          col_schema.col_type = BQDataType::kRange;
+          break;
+        }
+        col_schema.col_type = BQDataType::kStruct;
         break;
       }
       default:
@@ -438,12 +451,37 @@ StatusRecord ProcessRecordBatch(
           if (bin_arr->IsNull(row)) {
             result_set.rows[row][col_i] = kNullValue;
           } else {
-            StringToDSValue(bin_arr->GetString(row),
-                            result_set.rows[row][col_i]);
+            std::string bytes = bin_arr->GetString(row);
+            std::string base64 =
+                Base64Encode(reinterpret_cast<uint8_t const*>(bytes.data()),
+                             static_cast<int>(bytes.size()));
+            StringToDSValue(base64, result_set.rows[row][col_i]);
           }
         }
         break;
       }
+      case arrow::Type::STRUCT: {
+        auto struct_arr = std::static_pointer_cast<arrow::StructArray>(column);
+        auto struct_type =
+            std::static_pointer_cast<arrow::StructType>(struct_arr->type());
+
+        auto const& fields = struct_type->fields();
+        bool is_range = fields.size() == 2 && fields[0]->name() == "start" &&
+                        fields[1]->name() == "end";
+
+        for (int64_t row = 0; row < num_rows; ++row) {
+          if (struct_arr->IsNull(row)) {
+            result_set.rows[row][col_i] = kNullValue;
+            continue;
+          }
+
+          std::string value = is_range ? ArrowRangeToString(struct_arr, row)
+                                       : ArrowStructToString(struct_arr, row);
+          StringToDSValue(value, result_set.rows[row][col_i]);
+        }
+        break;
+      }
+
       // For complex types, we fall back to the existing logic but apply it
       // column-wise. We still avoid the GetScalar() overhead where possible,
       // but use ToString() to maintain compatibility with the existing parsing
@@ -473,6 +511,9 @@ StatusRecord ProcessRecordBatch(
                   ConvertStringToTimestampStruct(data);
               if (!time_struct_status)
                 return time_struct_status.GetStatusRecord();
+              if (data.back() != 'Z') {
+                result_set.row_schema[col_i].col_type = BQDataType::kDatetime;
+              }
               TimestampToDSValue(*time_struct_status, row_val);
               break;
             }
@@ -489,16 +530,14 @@ StatusRecord ProcessRecordBatch(
               break;
             }
             case arrow::Type::LIST: {
-              if (data.rfind("list<", 0) == 0) {
-                auto pos = data.find('[');
-                if (pos != std::string::npos) data = data.substr(pos);
-              }
-              StringToDSValue(data, row_val);
+              auto value = FormatArrowTypeToString(column, row, data);
+              StringToDSValue(value, row_val);
               break;
             }
             case arrow::Type::DECIMAL128:
             case arrow::Type::DECIMAL256: {
-              NumericToDSValue(data, row_val);
+              std::string trim_data = TrimTrailingZeros(data);
+              NumericToDSValue(trim_data, row_val);
               break;
             }
             default: {

@@ -4366,4 +4366,45 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(StatementTest, VerifyHTTPApi_WithUnsupportedDataType) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string const table_name =
+      "bigquery-devtools-drivers.DATATYPERANGETEST."
+      "VerifyHTTPApi_WithUnsupportedDataType";
+
+  std::string query =
+      "SELECT * FROM "
+      "`bigquery-devtools-drivers`.`INTEGRATION_TEST_FORMAT`.`all_bq_types` "
+      "LIMIT 1000";
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  EXPECT_EQ(SQL_SUCCESS, status);
+
+  SQLSMALLINT num_cols = 0;
+  SQLNumResultCols(conn->hstmt, &num_cols);
+
+  while (SQLFetch(conn->hstmt) == SQL_SUCCESS) {
+    for (SQLSMALLINT i = 1; i <= num_cols; ++i) {
+      char buf[512];
+      SQLLEN indicator;
+      status =
+          SQLGetData(conn->hstmt, i, SQL_C_CHAR, buf, sizeof(buf), &indicator);
+      if (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO) {
+        if (indicator == SQL_NULL_DATA) {
+        } else {
+          std::cout << buf;
+        }
+      } else {
+      }
+      std::cout << (i == num_cols ? "" : "\t| ");
+    }
+    std::cout << std::endl;
+  }
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 }  // namespace google::cloud::odbc_tests
