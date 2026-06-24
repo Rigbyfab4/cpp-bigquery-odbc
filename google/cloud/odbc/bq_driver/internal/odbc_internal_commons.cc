@@ -1290,6 +1290,141 @@ odbc_internal::StatusRecordOr<std::string> GetMissingAttributesStr(
   return StatusRecord::Ok();
 }
 
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
+                                    int64_t row, std::string const& data) {
+  auto list_type = std::static_pointer_cast<arrow::ListType>(column->type());
+  auto type_id = list_type->value_type()->id();
+  auto list_arr = std::static_pointer_cast<arrow::ListArray>(column);
+  int64_t start = list_arr->value_offset(row);
+  int64_t length = list_arr->value_length(row);
+
+  std::string value = "[";
+
+  auto add_sep = [&value](int64_t i) {
+    if (i > 0) value += ", ";
+  };
+
+  switch (type_id) {
+    case arrow::Type::BINARY: {
+      auto bin_arr =
+          std::static_pointer_cast<arrow::BinaryArray>(list_arr->values());
+      for (int64_t i = 0; i < length; ++i) {
+        add_sep(i);
+        std::string bytes = bin_arr->GetString(start + i);
+        std::string base64 =
+            Base64Encode(reinterpret_cast<uint8_t const*>(bytes.data()),
+                         static_cast<int>(bytes.size()));
+        value += base64;
+      }
+      break;
+    }
+    case arrow::Type::STRUCT: {
+      auto struct_type =
+          std::static_pointer_cast<arrow::StructType>(list_type->value_type());
+
+      auto const& fields = struct_type->fields();
+
+      bool is_range = fields.size() == 2 && fields[0]->name() == "start" &&
+                      fields[1]->name() == "end";
+
+      auto struct_arr =
+          std::static_pointer_cast<arrow::StructArray>(list_arr->values());
+
+      for (int64_t i = 0; i < length; ++i) {
+        add_sep(i);
+
+        value += is_range ? ArrowRangeToString(struct_arr, start + i)
+                          : ArrowStructToString(struct_arr, start + i);
+      }
+      break;
+    }
+    case arrow::Type::DECIMAL128:
+    case arrow::Type::DECIMAL256: {
+      auto format_decimal_array = [&](auto const& decimal_arr) {
+        for (int64_t i = 0; i < length; ++i) {
+          add_sep(i);
+
+          auto scalar = decimal_arr->GetScalar(start + i).ValueOrDie();
+
+          value += TrimTrailingZeros(scalar->ToString());
+        }
+        return value;
+      };
+
+      if (type_id == arrow::Type::DECIMAL128) {
+        auto decimal_arr = std::static_pointer_cast<arrow::Decimal128Array>(
+            list_arr->values());
+
+        return format_decimal_array(decimal_arr);
+      } else {
+        auto decimal_arr = std::static_pointer_cast<arrow::Decimal256Array>(
+            list_arr->values());
+
+        return format_decimal_array(decimal_arr);
+      }
+      break;
+    }
+    case arrow::Type::TIMESTAMP: {
+      auto timestamp_arr =
+          std::static_pointer_cast<arrow::TimestampArray>(list_arr->values());
+      for (int64_t i = 0; i < length; ++i) {
+        add_sep(i);
+        auto scalar = timestamp_arr->GetScalar(start + i).ValueOrDie();
+        auto time_struct = ConvertStringToTimestampStruct(scalar->ToString());
+        if (!time_struct) {
+          return time_struct.GetStatusRecord().message;
+        }
+
+        if (scalar->ToString().back() != 'Z') {
+          value += FormatDatetimeToString(*time_struct);
+        } else {
+          value += FormatTimestampToString(*time_struct);
+        }
+      }
+      break;
+    }
+    case arrow::Type::DATE32: {
+      auto date_arr =
+          std::static_pointer_cast<arrow::Date32Array>(list_arr->values());
+      for (int64_t i = 0; i < length; ++i) {
+        add_sep(i);
+        auto scalar = date_arr->GetScalar(start + i).ValueOrDie();
+        auto date_struct = ConvertStringToDateStruct(scalar->ToString());
+
+        auto date_str = FormatDateToString(*date_struct);
+        value += *date_str;
+      }
+      break;
+    }
+    case arrow::Type::TIME64: {
+      auto time_arr =
+          std::static_pointer_cast<arrow::Time64Array>(list_arr->values());
+      for (int64_t i = 0; i < length; ++i) {
+        add_sep(i);
+        auto scalar = time_arr->GetScalar(start + i).ValueOrDie();
+        auto time_struct = ConvertToTimeStruct(scalar->ToString());
+        auto time_str = FormatTimetoString(time_struct);
+        value += time_str;
+      }
+      break;
+    }
+    default: {
+      value = data;
+
+      if (value.rfind("list<", 0) == 0) {
+        auto pos = value.find('[');
+        if (pos != std::string::npos) {
+          value = value.substr(pos);
+        }
+      }
+      return value;
+    }
+  }
+  return value + "]";
+}
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+
 odbc_internal::StatusRecord ValidateAllowedAttributes(
     ConnectionHandle* conn_handle, Section const& attributes) {
   StatusRecord status_record = StatusRecord::Ok();

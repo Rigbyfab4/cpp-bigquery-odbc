@@ -323,6 +323,35 @@ inline void TimestampToDSValue(const SQL_TIMESTAMP_STRUCT& timestamp,
   std::memcpy(value.data(), &timestamp, sizeof(SQL_TIMESTAMP_STRUCT));
 }
 
+inline std::string TrimTrailingZeros(std::string value) {
+  auto dot_pos = value.find('.');
+
+  if (dot_pos == std::string::npos) {
+    return value;
+  }
+  while (!value.empty() && value.back() == '0') {
+    value.pop_back();
+  }
+  if (!value.empty() && value.back() == '.') {
+    value.pop_back();
+  }
+  return value;
+}
+
+inline void DatetimeToDSValue(const SQL_TIMESTAMP_STRUCT& datetime,
+                              DSValue& value) {
+  std::ostringstream ss;
+  ss << std::setfill('0') << std::setw(4) << datetime.year << "-"
+     << std::setw(2) << datetime.month << "-" << std::setw(2) << datetime.day
+     << "T" << std::setw(2) << datetime.hour << ":" << std::setw(2)
+     << datetime.minute << ":" << std::setw(2) << datetime.second;
+
+  if (datetime.fraction > 0) {
+    ss << "." << std::setw(6) << datetime.fraction;
+  }
+  StringToDSValue(ss.str(), value);
+}
+
 inline void DSValueToTimestamp(DSValue const& value,
                                SQL_TIMESTAMP_STRUCT& timestamp_struct) {
   std::memcpy(&timestamp_struct, value.data(), sizeof(SQL_TIMESTAMP_STRUCT));
@@ -434,6 +463,60 @@ inline void GetSinglePrecisionInterval(
       break;
   }
 }
+
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+inline std::string ArrowRangeToString(
+    std::shared_ptr<arrow::StructArray> const& struct_arr, int64_t row) {
+  auto start_scalar = struct_arr->field(0)->GetScalar(row);
+  auto end_scalar = struct_arr->field(1)->GetScalar(row);
+
+  return "[" + start_scalar.ValueOrDie()->ToString() + ", " +
+         end_scalar.ValueOrDie()->ToString() + ")";
+}
+
+inline std::string ArrowStructToString(
+    std::shared_ptr<arrow::StructArray> const& struct_arr, int64_t row) {
+  std::function<std::string(std::shared_ptr<arrow::Array> const&, int64_t)>
+      format_value;
+
+  format_value = [&format_value](std::shared_ptr<arrow::Array> const& array,
+                                 int64_t row) -> std::string {
+    if (array->IsNull(row)) {
+      return "null";
+    }
+
+    if (array->type_id() == arrow::Type::STRUCT) {
+      auto struct_arr = std::static_pointer_cast<arrow::StructArray>(array);
+
+      auto struct_type =
+          std::static_pointer_cast<arrow::StructType>(struct_arr->type());
+
+      std::string result = "{";
+
+      for (int i = 0; i < struct_type->num_fields(); ++i) {
+        if (i > 0) {
+          result += ",";
+        }
+
+        result += struct_type->field(i)->name();
+        result += ":";
+        result += format_value(struct_arr->field(i), row);
+      }
+
+      result += "}";
+      return result;
+    }
+
+    auto scalar = array->GetScalar(row);
+    return scalar.ok() ? scalar.ValueOrDie()->ToString() : "null";
+  };
+  return format_value(struct_arr, row);
+}
+
+std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
+                                    int64_t row, std::string const& data);
+
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 
 inline void ArrayJsonToDSValue(std::string const& str, DSValue& value,
                                BQDataType array_type) {

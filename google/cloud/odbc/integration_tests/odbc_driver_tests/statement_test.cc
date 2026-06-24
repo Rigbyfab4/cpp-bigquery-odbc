@@ -528,12 +528,10 @@ static RowWiseResults const kBasicTypesExpected{
         {6, "{\"age\":30,\"name\":\"John\"}"},
         {7, "2025-11-12 23:22:27.500000"},
         {8, kIsBqDriver ? "12:34:56" : "12:34:56.000000"},
-        {9, kIsBqDriver
-                ? (kIsWin32 ? "2024-05-01T08:00:00" : "2024-05-01 08:00:00")
-                : "2024-05-01 08:00:00.000000"},
+        {9, kIsBqDriver ? "2024-05-01T08:00:00" : "2024-05-01 08:00:00.000000"},
         {10, "2023-04-01"},
         {11, kIsBqDriver
-                 ? (kIsWin32 ? "[\"3\",\"4\",\"5\"]" : "[3, 4, 5]")
+                 ? "[3, 4, 5]"
                  : "{\"v\":[{\"v\":\"3\"},{\"v\":\"4\"},{\"v\":\"5\"}]}"},
     }},
 };
@@ -4363,6 +4361,47 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
   Table table(table_name);
   table.Drop(conn);
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST(StatementTest, VerifyHTTPApi_WithUnsupportedDataType) {
+  auto conn = std::make_shared<ODBCHandles>();
+  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  std::string const table_name =
+      "bigquery-devtools-drivers.DATATYPERANGETEST."
+      "VerifyHTTPApi_WithUnsupportedDataType";
+
+  std::string query =
+      "SELECT * FROM "
+      "`bigquery-devtools-drivers`.`INTEGRATION_TEST_FORMAT`.`all_bq_types` "
+      "LIMIT 1000";
+  char read_stmt[kBufferLength];
+  StrToChar(read_stmt, query);
+
+  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
+  EXPECT_EQ(SQL_SUCCESS, status);
+
+  SQLSMALLINT num_cols = 0;
+  SQLNumResultCols(conn->hstmt, &num_cols);
+
+  while (SQLFetch(conn->hstmt) == SQL_SUCCESS) {
+    for (SQLSMALLINT i = 1; i <= num_cols; ++i) {
+      char buf[512];
+      SQLLEN indicator;
+      status =
+          SQLGetData(conn->hstmt, i, SQL_C_CHAR, buf, sizeof(buf), &indicator);
+      if (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO) {
+        if (indicator == SQL_NULL_DATA) {
+        } else {
+          std::cout << buf;
+        }
+      } else {
+      }
+      std::cout << (i == num_cols ? "" : "\t| ");
+    }
+    std::cout << std::endl;
+  }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

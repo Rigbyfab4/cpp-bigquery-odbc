@@ -2011,6 +2011,7 @@ StatusRecord ConvertBytesToChar(DSValue const& conn_val,
     status_record =
         StatusRecord{SQLStates::k_01004(), "String data, right truncated"};
   } else {
+    std::memset(dest, 0, dest_data.buflen);
     std::memcpy(dest, conn_val.data(), conn_val.size());
     if (dest_data.result_len) {
       *dest_data.result_len = conn_val.size();
