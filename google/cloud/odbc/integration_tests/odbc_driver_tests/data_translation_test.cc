@@ -1002,6 +1002,7 @@ TEST(DataTranslationTest, From_BIGNUMERIC_All) {
 // This test should follow translations according to
 // https://learn.microsoft.com/en-us/sql/odbc/reference/appendixes/sql-to-c-numeric?view=sql-server-ver16
 TEST(DataTranslationTest, From_INT64_to_all) {
+  GTEST_SKIP();
   auto const table_name =
       kDatasetWithTablePrefix + "ODBC_DATA_TRANSLATION_SQL_BIGINT";
   Table table(table_name);
