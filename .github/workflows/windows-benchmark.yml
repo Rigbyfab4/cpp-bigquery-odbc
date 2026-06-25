@@ -1,0 +1,106 @@
+name: Windows-Benchmarks
+
+on:
+  workflow_call:
+    inputs:
+      checkout-ref:
+        required: true
+        description: "The ref we want to compile and test"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  run-benchmarks:
+    name: Run ODBC Performance Benchmarks
+    runs-on: windows-2022
+    env:
+      DRIVER_ARCH: x64
+      BUILD_SHARD: BqDriver
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      with:
+        ref: ${{ inputs.checkout-ref }}
+        
+    - uses: google-github-actions/auth@v2
+      with:
+        create_credentials_file: true
+        credentials_json: ${{ secrets.BUILD_CACHE_KEY }}
+        
+    - uses: actions/setup-python@v5
+      id: py311
+      with:
+        python-version: '3.11'
+        
+    - uses: google-github-actions/setup-gcloud@v2
+      env:
+        CLOUDSDK_PYTHON: ${{ steps.py311.outputs.python-path }}
+
+    - name: Install CMake
+      uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: "3.29.0"
+
+    - name: Download and Install vcpkg
+      shell: bash
+      run: |
+        cd "${TEMP}"
+        mkdir .build
+        cd .build
+        git clone https://github.com/microsoft/vcpkg.git
+        ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+    - name: Download Installer from GCS
+      shell: bash
+      run: |
+        mkdir -p installer_dl
+        # Download the MSI we just uploaded in the previous pipeline
+        gcloud storage cp gs://bq-dev-tools-testing-drivers/odbc-perf/installers/*.msi ./installer_dl/
+
+    - name: Install the ODBC Driver
+      shell: pwsh
+      run: |
+        $installer = Get-ChildItem -Path ".\installer_dl\*" -Include "*.msi" | Select-Object -First 1
+        Write-Output "Executing odbc-driver-install.ps1 with LocalMsiPath: $($installer.FullName)"
+        # Use your existing script's local install path feature
+        .\ci\gha\builds\lib\odbc-driver-install.ps1 -LocalMsiPath $($installer.FullName)
+
+    - name: Configure CMake and Build ONLY performance_test
+      shell: bash
+      run: |
+        export CMAKE_OUT="c:/b"
+        export VCPKG_ROOT="${TEMP}/.build/vcpkg"
+        
+        # Configure CMake to skip driver compilation and setup
+        cmake -S . -B $CMAKE_OUT \
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+          -DODBC_INTEGRATION_TESTING=ON \
+          -DODBC_EXAMPLES=ON \
+          -DBQ_DRIVER_INTEGRATION_TESTS=ON \
+          -DODBC_UNIT_TESTING=OFF \
+          -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF \
+          -DCMAKE_CXX_STANDARD=17 \
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static
+        
+        # Build ONLY the specific target
+        cmake --build $CMAKE_OUT --target performance_test --config Release --parallel 16
+
+    - name: Run Benchmarks & Save Output
+      shell: bash
+      run: |
+        export CMAKE_OUT="c:/b"
+        export RESULTS_FILE="performance_benchmark_results_${{ github.sha }}.txt"
+        
+        # Fetch auth keys for integration tests
+        gcloud secrets versions access latest --secret=service-account-auth-keys --out-file="service_account_auth_keys.json"
+        export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service_account_auth_keys.json"
+        export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="$(pwd)/service_account_auth_keys.json"
+        
+        echo "Running performance_test target..."
+        # Locate and run the built binary
+        EXE_PATH=$(find $CMAKE_OUT -name "performance_test.exe" | head -n 1)
+        $EXE_PATH > $RESULTS_FILE
+        
+        echo "Uploading results to GCS..."
+        gcloud storage cp $RESULTS_FILE gs://bq-dev-tools-testing-drivers/odbc-perf/results/

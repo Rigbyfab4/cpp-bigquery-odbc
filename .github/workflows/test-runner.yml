@@ -68,3 +68,12 @@ jobs:
     with:
       checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
     secrets: inherit
+  windows-benchmark:
+    name: Windows-Benchmark
+    if: |
+      github.event_name == 'push' || inputs.run_windows == true
+    needs: [pre-flight, windows-cmake]
+    uses: ./.github/workflows/windows-benchmark.yml
+    with:
+      checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
+    secrets: inherit
