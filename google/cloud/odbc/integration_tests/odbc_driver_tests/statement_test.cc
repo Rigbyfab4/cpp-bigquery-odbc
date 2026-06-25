@@ -531,10 +531,94 @@ static RowWiseResults const kBasicTypesExpected{
         {9, kIsBqDriver ? "2024-05-01T08:00:00" : "2024-05-01 08:00:00.000000"},
         {10, "2023-04-01"},
         {11, kIsBqDriver
-                 ? "[3, 4, 5]"
+                 ? (kIsWin32 ? "[\"3\",\"4\",\"5\"]" : "[3, 4, 5]")
                  : "{\"v\":[{\"v\":\"3\"},{\"v\":\"4\"},{\"v\":\"5\"}]}"},
     }},
 };
+
+static RowWiseResults const kBasicAllDataTypesWithHtapiExpected{{{
+    {0, "StringValue"},
+    {1, kIsBqDriver ? "Qnl0ZXNWYWx1ZQ==" : "427974657356616C7565"},
+    {2, "123"},
+    {3, "10.5"},
+    {4, kIsBqDriver ? "12345.67" : "12345.670000000"},
+    {5, kIsBqDriver
+            ? "98765432109876543210.123456789"
+            : "98765432109876543210.12345678900000000000000000000000000000"},
+    {6, kIsBqDriver ? "true" : "1"},
+    {7, kIsBqDriver ? "2023-07-28 12:30:00" : "2023-07-28 12:30:00.000000"},
+    {8, "2023-07-28"},
+    {9, kIsBqDriver ? "12:30:00" : "12:30:00.000000"},
+    {10, kIsBqDriver ? "2023-07-28T12:30:00" : "2023-07-28 12:30:00.000000"},
+    {11, "POINT(-74.006 40.7128)"},
+    {12, kIsBqDriver ? "{name:NameValue,recordNested:{lastName:LastNameValue}}"
+                     : "{\"v\":{\"f\":[{\"v\":\"NameValue\"},{\"v\":{\"f\":[{"
+                       "\"v\":\"LastNameValue\"}]}}]}}"},
+    {13, "[2023-01-01, 2023-12-01)"},
+    {14, "{\"key\":\"value\"}"},
+    {15, kIsBqDriver
+             ? "[abc, def, ghi]"
+             : "{\"v\":[{\"v\":\"abc\"},{\"v\":\"def\"},{\"v\":\"ghi\"}]}"},
+    {16,
+     kIsBqDriver
+         ? (kIsWin32 ? "[{\"value\":\"rec_val1\"}, {\"value\":\"rec_val2\"}]"
+                     : "[{value:rec_val1}, {value:rec_val2}]")
+         : "{\"v\":[{\"v\":{\"f\":[{\"v\":\"rec_val1\"}]}},{\"v\":{"
+           "\"f\":[{\"v\":\"rec_val2\"}]}}]}"},
+    {17,
+     kIsBqDriver
+         ? (kIsWin32 ? "[\"Ynl0ZTE=\", \"Ynl0ZTI=\"]" : "[Ynl0ZTE=, Ynl0ZTI=]")
+         : "{\"v\":[{\"v\":\"0x6279746531\"},{\"v\":\"0x6279746532\"}]}"},
+    {18, kIsBqDriver ? "[10, 20]" : "{\"v\":[{\"v\":\"10\"},{\"v\":\"20\"}]}"},
+    {19, kIsBqDriver
+             ? (kIsWin32 ? "[\"10.5\", \"20.5\"]" : "[10.5, 20.5]")
+             : "{\"v\":[{\"v\":\"10.500000000\"},{\"v\":\"20.500000000\"}]}"},
+    {20, kIsBqDriver
+             ? (kIsWin32 ? "[\"100.1\", \"200.2\"]" : "[100.1, 200.2]")
+             : "{\"v\":[{\"v\":\"100.10000000000000000000000000000000000000\"},"
+               "{\"v\":\"200.20000000000000000000000000000000000000\"}]}"},
+    {21, kIsBqDriver ? (kIsWin32 ? "[\"true\",\"false\"]" : "[true, false]")
+                     : "{\"v\":[{\"v\":\"1\"},{\"v\":\"0\"}]}"},
+    {22, kIsBqDriver
+             ? (kIsWin32 ? "[\"2023-01-01 01:00:00\",\"2023-01-01 02:00:00\"]"
+                         : "[2023-01-01 01:00:00, 2023-01-01 02:00:00]")
+             : "{\"v\":[{\"v\":\"2023-01-01 "
+               "01:00:00.000000\"},{\"v\":\"2023-01-01 02:00:00.000000\"}]}"},
+    {23, kIsBqDriver
+             ? (kIsWin32 ? "[\"2023-01-01\",\"2023-01-02\"]"
+                         : "[2023-01-01, 2023-01-02]")
+             : "{\"v\":[{\"v\":\"2023-01-01\"},{\"v\":\"2023-01-02\"}]}"},
+    {24,
+     kIsBqDriver
+         ? (kIsWin32 ? "[\"01:00:00\",\"02:00:00\"] " : "[01:00:00, 02:00:00]")
+         : "{\"v\":[{\"v\":\"01:00:00.000000\"},{\"v\":\"02:00:00.000000\"}]}"},
+    {25, kIsBqDriver
+             ? (kIsWin32 ? "[\"2023-01-01T01:00:00\",\"2023-01-01T02:00:00\"]"
+                         : "[2023-01-01T01:00:00, 2023-01-01T02:00:00]")
+             : "{\"v\":[{\"v\":\"2023-01-01 "
+               "01:00:00.000000\"},{\"v\":\"2023-01-01 02:00:00.000000\"}]}"},
+    {26, kIsBqDriver
+             ? (kIsWin32 ? "[\"POINT(1 1)\",\"POINT(2 2)\"]"
+                         : "[POINT(1 1), POINT(2 2)]")
+             : "{\"v\":[{\"v\":\"POINT(1 1)\"},{\"v\":\"POINT(2 2)\"}]}"},
+    {27,
+     kIsBqDriver
+         ? (kIsWin32
+                ? "[\"[2023-01-01, 2023-01-03)\",\"[2023-01-04, 2023-01-06)\"]"
+                : "[[2023-01-01, 2023-01-03), [2023-01-04, 2023-01-06)]")
+         : "{\"v\":[{\"v\":\"[2023-01-01, "
+           "2023-01-03)\"},{\"v\":\"[2023-01-04, 2023-01-06)\"}]}"},
+    {28, kIsBqDriver
+             ? (kIsWin32 ? "[\"{\\\"a\\\":1}\",\"{\\\"b\\\":2}\"]"
+                         : "[{\"a\":1}, {\"b\":2}]")
+             : "{\"v\":[{\"v\":\"{\\\"a\\\":1}\"},{\"v\":\"{\\\"b\\\":2}\"}]}"},
+    {29,
+     kIsBqDriver
+         ? (kIsWin32
+                ? "[\"[2023-01-01, 2023-01-03)\",\"[2023-01-04, 2023-01-06)\"] "
+                : "[1.1, 2.2]")
+         : "{\"v\":[{\"v\":\"1.1\"},{\"v\":\"2.2\"}]}"},
+}}};
 
 TEST(StatementTest, SQLExecDirect_htapi_basictypes_success) {
   auto conn = std::make_shared<ODBCHandles>();
@@ -4364,44 +4448,67 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
-TEST(StatementTest, VerifyHTTPApi_WithUnsupportedDataType) {
+TEST(StatementTest, VerifyHTTPApi_WithAllDataType) {
   auto conn = std::make_shared<ODBCHandles>();
-  EXPECT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
-
-  std::string const table_name =
-      "bigquery-devtools-drivers.DATATYPERANGETEST."
-      "VerifyHTTPApi_WithUnsupportedDataType";
+  auto conn_str = kDefaultConnectionString + ";AllowHtapiForLargeResults=1";
+  ASSERT_EQ(Connect(conn_str, conn), SQL_SUCCESS);
 
   std::string query =
       "SELECT * FROM "
       "`bigquery-devtools-drivers`.`INTEGRATION_TEST_FORMAT`.`all_bq_types` "
       "LIMIT 1000";
+
   char read_stmt[kBufferLength];
   StrToChar(read_stmt, query);
 
-  auto status = SQLExecDirect(conn->hstmt, (SQLCHAR*)read_stmt, SQL_NTS);
-  EXPECT_EQ(SQL_SUCCESS, status);
+  SQLRETURN status = SQLExecDirect(
+      conn->hstmt, reinterpret_cast<SQLCHAR*>(read_stmt), SQL_NTS);
+  ASSERT_EQ(status, SQL_SUCCESS);
 
   SQLSMALLINT num_cols = 0;
-  SQLNumResultCols(conn->hstmt, &num_cols);
+  status = SQLNumResultCols(conn->hstmt, &num_cols);
+  ASSERT_EQ(status, SQL_SUCCESS);
+
+  size_t row_idx = 0;
 
   while (SQLFetch(conn->hstmt) == SQL_SUCCESS) {
+    ASSERT_LT(row_idx, kBasicAllDataTypesWithHtapiExpected.size())
+        << "More rows returned than expected";
+
+    Row const& expected_row = kBasicAllDataTypesWithHtapiExpected[row_idx];
+
+    EXPECT_EQ(expected_row.size(), static_cast<size_t>(num_cols))
+        << "Expected column count does not match actual column count";
+
     for (SQLSMALLINT i = 1; i <= num_cols; ++i) {
-      char buf[512];
-      SQLLEN indicator;
+      char buf[512] = {0};
+      SQLLEN indicator = 0;
+
       status =
           SQLGetData(conn->hstmt, i, SQL_C_CHAR, buf, sizeof(buf), &indicator);
-      if (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO) {
-        if (indicator == SQL_NULL_DATA) {
-        } else {
-          std::cout << buf;
-        }
-      } else {
-      }
-      std::cout << (i == num_cols ? "" : "\t| ");
+
+      EXPECT_TRUE(status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO)
+          << "SQLGetData failed for column " << i;
+
+      std::string actual_value = (indicator == SQL_NULL_DATA) ? "NULL" : buf;
+
+      auto expected_it = expected_row.find(i - 1);
+
+      ASSERT_NE(expected_it, expected_row.end())
+          << "Missing expected value for column " << (i - 1);
+
+      EXPECT_EQ(actual_value, expected_it->second)
+          << "Mismatch at row " << row_idx << ", column " << i
+          << "\nExpected: " << expected_it->second
+          << "\nActual  : " << actual_value;
     }
-    std::cout << std::endl;
+
+    ++row_idx;
   }
+
+  EXPECT_EQ(row_idx, kBasicAllDataTypesWithHtapiExpected.size())
+      << "Unexpected number of rows returned";
+
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 

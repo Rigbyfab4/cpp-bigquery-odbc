@@ -1356,12 +1356,12 @@ std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
         auto decimal_arr = std::static_pointer_cast<arrow::Decimal128Array>(
             list_arr->values());
 
-        return format_decimal_array(decimal_arr);
+        format_decimal_array(decimal_arr);
       } else {
         auto decimal_arr = std::static_pointer_cast<arrow::Decimal256Array>(
             list_arr->values());
 
-        return format_decimal_array(decimal_arr);
+        format_decimal_array(decimal_arr);
       }
       break;
     }
@@ -1411,7 +1411,6 @@ std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
     }
     default: {
       value = data;
-
       if (value.rfind("list<", 0) == 0) {
         auto pos = value.find('[');
         if (pos != std::string::npos) {
