@@ -23,13 +23,13 @@
 #include "google/cloud/odbc/internal/sql_state_constants.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "absl/types/variant.h"
-// #if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 #include <arrow/api.h>
 #include <arrow/array.h>
 #include <arrow/io/memory.h>
 #include <arrow/ipc/api.h>
 #include <arrow/ipc/reader.h>
-// #endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 #include <chrono>
 #include <cstring>
 #include <sstream>
@@ -465,6 +465,7 @@ inline void GetSinglePrecisionInterval(
   }
 }
 
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 inline std::string ArrowRangeToString(
     std::shared_ptr<arrow::StructArray> const& struct_arr, int64_t row) {
   auto start_scalar = struct_arr->field(0)->GetScalar(row);
@@ -515,6 +516,8 @@ inline std::string ArrowStructToString(
 
 std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
                                     int64_t row, std::string const& data);
+
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 
 inline void ArrayJsonToDSValue(std::string const& str, DSValue& value,
                                BQDataType array_type) {

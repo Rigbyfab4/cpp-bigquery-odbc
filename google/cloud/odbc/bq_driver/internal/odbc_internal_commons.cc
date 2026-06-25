@@ -1290,6 +1290,7 @@ odbc_internal::StatusRecordOr<std::string> GetMissingAttributesStr(
   return StatusRecord::Ok();
 }
 
+#if (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
                                     int64_t row, std::string const& data) {
   auto list_type = std::static_pointer_cast<arrow::ListType>(column->type());
@@ -1422,6 +1423,7 @@ std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
   }
   return value + "]";
 }
+#endif  // (!defined(_WIN32) || defined(_WIN64)) && !defined(NO_ARROW)
 
 odbc_internal::StatusRecord ValidateAllowedAttributes(
     ConnectionHandle* conn_handle, Section const& attributes) {
