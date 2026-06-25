@@ -1418,7 +1418,7 @@ std::string FormatArrowTypeToString(std::shared_ptr<arrow::Array> const& column,
           value = value.substr(pos);
         }
       }
-      break;
+      return value;
     }
   }
   return value + "]";
