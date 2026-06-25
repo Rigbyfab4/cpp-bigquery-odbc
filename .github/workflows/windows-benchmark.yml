@@ -55,7 +55,6 @@ jobs:
       shell: bash
       run: |
         mkdir -p installer_dl
-        # Download the MSI we just uploaded in the previous pipeline
         gcloud storage cp gs://bq-dev-tools-testing-drivers/odbc-perf/installers/*.msi ./installer_dl/
 
     - name: Install the ODBC Driver
@@ -63,7 +62,6 @@ jobs:
       run: |
         $installer = Get-ChildItem -Path ".\installer_dl\*" -Include "*.msi" | Select-Object -First 1
         Write-Output "Executing odbc-driver-install.ps1 with LocalMsiPath: $($installer.FullName)"
-        # Use your existing script's local install path feature
         .\ci\gha\builds\lib\odbc-driver-install.ps1 -LocalMsiPath $($installer.FullName)
 
     - name: Configure CMake and Build ONLY performance_test
@@ -72,7 +70,6 @@ jobs:
         export CMAKE_OUT="c:/b"
         export VCPKG_ROOT="${TEMP}/.build/vcpkg"
         
-        # Configure CMake to skip driver compilation and setup
         cmake -S . -B $CMAKE_OUT \
           -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
           -DODBC_INTEGRATION_TESTING=ON \
@@ -83,24 +80,42 @@ jobs:
           -DCMAKE_CXX_STANDARD=17 \
           -DVCPKG_TARGET_TRIPLET=x64-windows-static
         
-        # Build ONLY the specific target
         cmake --build $CMAKE_OUT --target performance_test --config Release --parallel 16
+
+    - name: Configure System DSN for Benchmarks
+      shell: pwsh
+      run: |
+        Write-Output "Downloading service account key from Secret Manager..."
+        $keyPath = "service_account_auth_keys.json"
+        gcloud secrets versions access latest --secret=service-account-auth-keys --out-file="$keyPath"
+        $absoluteKeyPath = (Resolve-Path -Path "$keyPath").Path
+        
+        if (-not (Test-Path -Path "C:\b" -PathType Container)) {
+            New-Item -Path "C:\b" -ItemType Directory -Force
+        }
+        Copy-Item -Path $absoluteKeyPath -Destination "C:\b\service_account_auth_keys.json"
+
+        $arch = if ($env:DRIVER_ARCH -eq 'x64') { '64' } else { '32' }
+        $regFilePath = Join-Path $PWD.Path "ci\gha\builds\lib\system_dsn_setup_$arch.reg"
+        Write-Output "Running DSN creation script from $regFilePath ..."
+        reg import $regFilePath
+        Write-Output "DSN creation completed."
 
     - name: Run Benchmarks & Save Output
       shell: bash
       run: |
-        export CMAKE_OUT="c:/b"
-        export RESULTS_FILE="performance_benchmark_results_${{ github.sha }}.txt"
+        export RESULTS_FILE="performance_benchmark_results_${{ github.sha }}.txt"       
+        export GOOGLE_APPLICATION_CREDENTIALS="C:\\b\\service_account_auth_keys.json"
+        export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="C:\\b\\service_account_auth_keys.json"
         
-        # Fetch auth keys for integration tests
-        gcloud secrets versions access latest --secret=service-account-auth-keys --out-file="service_account_auth_keys.json"
-        export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service_account_auth_keys.json"
-        export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="$(pwd)/service_account_auth_keys.json"
+        export ODBC_TESTS_DSN="BigQuery DSN"
+        export ODBC_TRANSACTIONS_TESTS_DSN="ODBCGoogleTransactionsTestsDSN"
         
-        echo "Running performance_test target..."
-        # Locate and run the built binary
-        EXE_PATH=$(find $CMAKE_OUT -name "performance_test.exe" | head -n 1)
-        $EXE_PATH > $RESULTS_FILE
+        EXE_PATH="c:/b/google/cloud/odbc/integration_tests/Release/performance_test.exe"
+        
+        echo "Running performance benchmark executable..."
+        # Execute and capture both stdout and stderr to safely log any crashes
+        "$EXE_PATH" > "$RESULTS_FILE" 2>&1
         
         echo "Uploading results to GCS..."
-        gcloud storage cp $RESULTS_FILE gs://bq-dev-tools-testing-drivers/odbc-perf/results/
+        gcloud storage cp "$RESULTS_FILE" gs://bq-dev-tools-testing-drivers/odbc-perf/results/
