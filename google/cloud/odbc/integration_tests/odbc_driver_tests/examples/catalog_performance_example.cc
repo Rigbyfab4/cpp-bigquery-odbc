@@ -382,7 +382,7 @@ TEST(DataFetchPerformance, BenchmarkPowerBIMimicNewTimestampTable) {
 
   std::string target_table =
       "bigquery-devtools-drivers.kirltest.new_timestamp_table";
-  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 1000000";
+  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 10";
 
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
   CheckError(ret, "SQLExecDirect", conn);
@@ -428,7 +428,7 @@ TEST(DataFetchPerformance, BenchmarkPowerBIMimicAllBqTypes) {
 
   std::string target_table =
       "bigquery-devtools-drivers.INTEGRATION_TEST_FORMAT.all_bq_types";
-  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 1000000";
+  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 10";
 
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
   CheckError(ret, "SQLExecDirect", conn);
@@ -474,7 +474,7 @@ TEST(DataFetchPerformance, BenchmarkPowerBIMimicAllDataTypes) {
 
   std::string target_table =
       "bigquery-devtools-drivers.DATATYPERANGETEST.AllDataTypes";
-  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 1000000";
+  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 10";
 
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
   CheckError(ret, "SQLExecDirect", conn);

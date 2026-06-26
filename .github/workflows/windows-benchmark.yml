@@ -113,9 +113,17 @@ jobs:
         
         EXE_PATH="c:/b/google/cloud/odbc/integration_tests/Release/performance_test.exe"
         
-        echo "Running performance benchmark executable..."
-        # Execute and capture both stdout and stderr to safely log any crashes
-        "$EXE_PATH" > "$RESULTS_FILE" 2>&1
+        echo "Running performance benchmark executable..."     
+        set +e
+        # Execute and capture both stdout and stderr
+        "$EXE_PATH" > "$RESULTS_FILE" 2>&1   
+        TEST_EXIT_CODE=$?
+        set -e
         
         echo "Uploading results to GCS..."
         gcloud storage cp "$RESULTS_FILE" gs://bq-dev-tools-testing-drivers/odbc-perf/results/
+
+        if [ $TEST_EXIT_CODE -ne 0 ]; then
+          echo "ERROR: Benchmark executable failed with exit code $TEST_EXIT_CODE."
+          exit $TEST_EXIT_CODE
+        fi
