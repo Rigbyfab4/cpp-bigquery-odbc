@@ -16,6 +16,13 @@ on:
           description: 'Run Windows tests'
           type: boolean
           default: true
+        benchmark_driver:
+          description: 'Driver to Benchmark'
+          type: choice
+          options:
+            - BqDriver
+            - Core
+          default: BqDriver
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -68,6 +75,7 @@ jobs:
     with:
       checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
     secrets: inherit
+    
   windows-benchmark:
     name: Windows-Benchmark
     if: |
@@ -76,4 +84,5 @@ jobs:
     uses: ./.github/workflows/windows-benchmark.yml
     with:
       checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
+      build_shard: ${{ inputs.benchmark_driver || 'BqDriver' }}
     secrets: inherit
