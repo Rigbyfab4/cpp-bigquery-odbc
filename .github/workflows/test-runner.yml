@@ -16,13 +16,6 @@ on:
           description: 'Run Windows tests'
           type: boolean
           default: true
-        benchmark_driver:
-          description: 'Driver to Benchmark'
-          type: choice
-          options:
-            - BqDriver
-            - Core
-          default: BqDriver
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -59,6 +52,7 @@ jobs:
       id-token: write
       attestations: write
     # Logic: Run if it's a push OR if the manual checkbox was checked
+
     if: |
       github.event_name == 'push' || inputs.run_macos == true
     needs: [pre-flight]
@@ -84,5 +78,4 @@ jobs:
     uses: ./.github/workflows/windows-benchmark.yml
     with:
       checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
-      build_shard: ${{ inputs.benchmark_driver || 'BqDriver' }}
     secrets: inherit
