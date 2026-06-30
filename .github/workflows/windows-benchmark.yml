@@ -26,17 +26,17 @@ jobs:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       with:
         ref: ${{ inputs.checkout-ref }}
-        
+
     - uses: google-github-actions/auth@v2
       with:
         create_credentials_file: true
         credentials_json: ${{ secrets.BUILD_CACHE_KEY }}
-        
+
     - uses: actions/setup-python@v5
       id: py311
       with:
         python-version: '3.11'
-        
+
     - uses: google-github-actions/setup-gcloud@v2
       env:
         CLOUDSDK_PYTHON: ${{ steps.py311.outputs.python-path }}
@@ -79,13 +79,13 @@ jobs:
       run: |
         export CMAKE_OUT="c:/b"
         export VCPKG_ROOT="${TEMP}/.build/vcpkg"
-        
+
         if [ "$BUILD_SHARD" == "Core" ]; then
           BQ_TESTS_FLAG="OFF"
         else
           BQ_TESTS_FLAG="ON"
         fi
-        
+
         cmake -S . -B $CMAKE_OUT \
           -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
           -DCMAKE_BUILD_TYPE=Release \
@@ -96,7 +96,7 @@ jobs:
           -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF \
           -DCMAKE_CXX_STANDARD=17 \
           -DVCPKG_TARGET_TRIPLET=x64-windows-static
-        
+
         cmake --build $CMAKE_OUT --target performance_test --config Release --parallel 16
 
     - name: Configure System DSN for Benchmarks
@@ -106,7 +106,7 @@ jobs:
         $keyPath = "service_account_auth_keys.json"
         gcloud secrets versions access latest --secret=service-account-auth-keys --out-file="$keyPath"
         $absoluteKeyPath = (Resolve-Path -Path "$keyPath").Path
-        
+
         if (-not (Test-Path -Path "C:\b" -PathType Container)) {
             New-Item -Path "C:\b" -ItemType Directory -Force
         }
@@ -121,10 +121,10 @@ jobs:
     - name: Run Benchmarks & Save Output
       shell: bash
       run: |
-        export RESULTS_FILE="performance_benchmark_results_${{ github.sha }}_${BUILD_SHARD}.txt"       
+        export RESULTS_FILE="performance_benchmark_results_${{ github.sha }}_${BUILD_SHARD}.txt"
         export GOOGLE_APPLICATION_CREDENTIALS="C:\\b\\service_account_auth_keys.json"
         export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="C:\\b\\service_account_auth_keys.json"
-        
+
         if [ "$BUILD_SHARD" == "Core" ]; then
           export ODBC_TESTS_DSN="SampleDSN"
           export ODBC_TRANSACTIONS_TESTS_DSN="ODBCTransactionsTestsDSN"
@@ -132,15 +132,15 @@ jobs:
           export ODBC_TESTS_DSN="BigQuery DSN"
           export ODBC_TRANSACTIONS_TESTS_DSN="ODBCGoogleTransactionsTestsDSN"
         fi
-        
+
         EXE_PATH="c:/b/google/cloud/odbc/integration_tests/Release/performance_test.exe"
-        
+
         echo "Running performance benchmark executable against $BUILD_SHARD..."     
         set +e
-        "$EXE_PATH" > "$RESULTS_FILE" 2>&1   
+        "$EXE_PATH" > "$RESULTS_FILE" 2>&1
         TEST_EXIT_CODE=$?
         set -e
-        
+
         echo "Uploading results to GCS..."
         gcloud storage cp "$RESULTS_FILE" gs://bq-dev-tools-testing-drivers/odbc-perf/results/
 

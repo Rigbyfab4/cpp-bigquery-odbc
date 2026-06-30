@@ -427,8 +427,8 @@ TEST(DataFetchPerformance, BenchmarkPowerBIMimicAllBqTypes) {
       << "Failed to connect to the database.";
 
   std::string target_table =
-      "bigquery-devtools-drivers.INTEGRATION_TEST_FORMAT.all_bq_types";
-  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 10";
+      "bigquery-devtools-drivers.INTEGRATION_TEST_FORMAT.all_bq_types_2";
+  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 100000";
 
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
   CheckError(ret, "SQLExecDirect", conn);
@@ -473,8 +473,8 @@ TEST(DataFetchPerformance, BenchmarkPowerBIMimicAllDataTypes) {
       << "Failed to connect to the database.";
 
   std::string target_table =
-      "bigquery-devtools-drivers.DATATYPERANGETEST.AllDataTypes";
-  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 10";
+      "bigquery-devtools-drivers.DATATYPERANGETEST.AllDataTypes_2";
+  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 100000";
 
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
   CheckError(ret, "SQLExecDirect", conn);

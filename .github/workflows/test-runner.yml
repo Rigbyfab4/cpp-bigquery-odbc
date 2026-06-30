@@ -69,7 +69,7 @@ jobs:
     with:
       checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
     secrets: inherit
-    
+
   windows-benchmark:
     name: Windows-Benchmark
     if: |
