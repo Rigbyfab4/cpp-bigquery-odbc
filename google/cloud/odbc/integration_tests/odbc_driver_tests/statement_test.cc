@@ -4365,15 +4365,18 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
-
-class IgnoreTransactionsRollbackTest
+class IgnoreTransactionsTransactionTest
     : public ::testing::TestWithParam<
-          std::tuple<std::string, std::string, SQLBIGINT>> {};
+          std::tuple<std::string,     // IgnoreTransactions
+                     std::string,     // Table suffix
+                     SQLSMALLINT,     // SQL_COMMIT or SQL_ROLLBACK
+                     SQLBIGINT>> {};  // Expected row count
 
-TEST_P(IgnoreTransactionsRollbackTest, VerifyRollbackBehavior) {
+TEST_P(IgnoreTransactionsTransactionTest, VerifyTransactionBehavior) {
   auto conn = std::make_shared<ODBCHandles>();
 
-  auto const& [ignore_transactions, table_suffix, expected_count] = GetParam();
+  auto const& [ignore_transactions, table_suffix, completion_type,
+               expected_count] = GetParam();
 
   std::string conn_str = kDefaultConnectionString +
                          ";IgnoreTransactions=" + ignore_transactions +
@@ -4396,7 +4399,8 @@ TEST_P(IgnoreTransactionsRollbackTest, VerifyRollbackBehavior) {
   ASSERT_EQ(SQLExecDirect(conn->hstmt, (SQLCHAR*)insert_query.c_str(), SQL_NTS),
             SQL_SUCCESS);
 
-  ASSERT_EQ(SQLEndTran(SQL_HANDLE_DBC, conn->hdbc, SQL_ROLLBACK), SQL_SUCCESS);
+  ASSERT_EQ(SQLEndTran(SQL_HANDLE_DBC, conn->hdbc, completion_type),
+            SQL_SUCCESS);
 
   ASSERT_EQ(SQLSetConnectAttr(conn->hdbc, SQL_ATTR_AUTOCOMMIT,
                               (SQLPOINTER)SQL_AUTOCOMMIT_ON, 0),
@@ -4422,9 +4426,14 @@ TEST_P(IgnoreTransactionsRollbackTest, VerifyRollbackBehavior) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    IgnoreTransactionsRollback, IgnoreTransactionsRollbackTest,
-    ::testing::Values(std::make_tuple("0", "ODBC_IGNORE_TRANSACTIONS_OFF",
-                                      static_cast<SQLBIGINT>(0)),
-                      std::make_tuple("1", "ODBC_IGNORE_TRANSACTIONS_ON",
-                                      static_cast<SQLBIGINT>(1))));
+    IgnoreTransactionsTransaction, IgnoreTransactionsTransactionTest,
+    ::testing::Values(
+        std::make_tuple("0", "ODBC_IGNORE_TRANSACTIONS_OFF_ROLLBACK",
+                        SQL_ROLLBACK, static_cast<SQLBIGINT>(0)),
+        std::make_tuple("0", "ODBC_IGNORE_TRANSACTIONS_OFF_COMMIT", SQL_COMMIT,
+                        static_cast<SQLBIGINT>(1)),
+        std::make_tuple("1", "ODBC_IGNORE_TRANSACTIONS_ON_ROLLBACK",
+                        SQL_ROLLBACK, static_cast<SQLBIGINT>(1)),
+        std::make_tuple("1", "ODBC_IGNORE_TRANSACTIONS_ON_COMMIT", SQL_COMMIT,
+                        static_cast<SQLBIGINT>(1))));
 }  // namespace google::cloud::odbc_tests
