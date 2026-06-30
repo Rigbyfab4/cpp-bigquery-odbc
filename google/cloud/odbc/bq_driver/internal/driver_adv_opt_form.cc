@@ -29,7 +29,7 @@ std::string const kDefaultRowsPerBlock = "100000";
 std::string const kDefaultStringLength = "16384";
 std::string const kDefaultEncryptionType = "Google-managed encryption key";
 std::string const kDefaultLargeResultsDatasetId = "_odbc_temp_tables";
-
+std::string const kDefaultBooleanValue = "0";
 std::string AdvanceOptions::activation_threshold_;
 
 // Specifies the default SQL dialect used for queries.
@@ -57,7 +57,7 @@ std::string AdvanceOptions::session_location_;
 std::string AdvanceOptions::additional_projects_;
 std::string AdvanceOptions::query_properties_;
 std::string AdvanceOptions::use_wchar_;
-std::string AdvanceOptions::enable_session_;
+std::string AdvanceOptions::enable_session_ = kDefaultBooleanValue;
 std::string AdvanceOptions::activation_threshold_checkbox_;
 std::string AdvanceOptions::allow_large_results_;
 std::string AdvanceOptions::use_default_large_results_;
@@ -787,7 +787,7 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
       GetValueOrDefault(attribute_map, kActivationThreshold);
   // TODO(b/497725655): Enable UI feature after public release
   // use_wchar_ = GetValueOrDefault(attribute_map, kUseWChar);
-  enable_session_ = GetValueOrDefault(attribute_map, kSessionLocation);
+  enable_session_ = GetValueOrDefault(attribute_map, kEnableSession);
   activation_threshold_checkbox_ =
       GetValueOrDefault(attribute_map, kHTAPIActivationThresholdCheck);
   allow_large_results_ = GetValueOrDefault(attribute_map, kAllowLargeResults);
@@ -810,7 +810,7 @@ void AdvanceOptions::ResetToDefaults() {
   query_properties_.clear();
   activation_threshold_.clear();
   // use_wchar_.clear();
-  enable_session_.clear();
+  enable_session_ = kDefaultBooleanValue;
   activation_threshold_checkbox_.clear();
   allow_large_results_.clear();
   use_default_large_results_.clear();
