@@ -360,8 +360,8 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
       h_max_retries_edit, GWL_STYLE,
       GetWindowLongPtr(h_max_retries_edit, GWL_STYLE) | ES_RIGHT | ES_NUMBER);
   HWND h_variables_checkbox = CreateCheckBox(
-      adv_hwnd, "Use SQL_WVARCHAR instead of SQL_VARCHAR", kXAxis, kYAxis +
-      400, kWidth * 7, kHeight, kIdcVariableCheckbox);
+      adv_hwnd, "Use SQL_WVARCHAR instead of SQL_VARCHAR", kXAxis, kYAxis + 400,
+      kWidth * 7, kHeight, kIdcVariableCheckbox);
   CheckDlgButton(adv_hwnd, kIdcVariableCheckbox,
                  (use_wchar_ == "1") ? BST_CHECKED : BST_UNCHECKED);
   SendMessage(h_variables_checkbox, WM_SETFONT, (WPARAM)h_font, TRUE);

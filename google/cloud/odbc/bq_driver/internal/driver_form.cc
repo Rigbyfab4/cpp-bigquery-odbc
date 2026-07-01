@@ -585,8 +585,7 @@ void DriverForm::InitControls() {
       CreateEditBox(m_hwnd, kAxisX + 170, kAxisY + 465, kEditComboBoxWidth,
                     kEditBoxHeight, kIdcGcpFolder);
   SendMessage(h_gcp_parent_folder_text, WM_SETFONT, (WPARAM)h_font, TRUE);
-  SetWindowSubclass(GetDlgItem(m_hwnd, kIdcGcpFolder), InputSubclassProc, 0,
-  0);
+  SetWindowSubclass(GetDlgItem(m_hwnd, kIdcGcpFolder), InputSubclassProc, 0, 0);
 
   // This feature is turned off for the private release. It will be restored for
   // the public release with an accompanying documentation link.
