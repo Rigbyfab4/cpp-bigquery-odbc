@@ -310,11 +310,11 @@ void AdvanceOptions::CreateSessionControls(HFONT h_font) {
                  (enable_session_ == "1") ? BST_CHECKED : BST_UNCHECKED);
 
   HWND h_session_location_label =
-      CreateLabel(adv_hwnd, "Session location:", kXAxis, kYAxis + 340,
+      CreateLabel(adv_hwnd, "Session location:", kXAxis, kYAxis + 335,
                   kWidth * 2 + 30, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_session_location_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_session_location_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 335, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 330, kEditBoxWidth,
                     kEditBoxHeight, kIdcSessionLocationEdit);
   SendMessage(h_session_location_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcSessionLocationEdit),
@@ -329,11 +329,11 @@ void AdvanceOptions::CreateSessionControls(HFONT h_font) {
 void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   // max threads
   HWND h_max_threads_label =
-      CreateLabel(adv_hwnd, "Default number of Threads:", kXAxis, kYAxis + 365,
+      CreateLabel(adv_hwnd, "Default number of Threads:", kXAxis, kYAxis + 360,
                   kWidth * 7, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_max_threads_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_max_threads_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 360, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 355, kEditBoxWidth,
                     kEditBoxHeight, kIdcMaxThreadsEdit);
   SendMessage(h_max_threads_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
 
@@ -346,11 +346,11 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
 
   // max retries
   HWND h_max_retries_label =
-      CreateLabel(adv_hwnd, "Max Retries:", kXAxis, kYAxis + 390, kWidth * 7,
+      CreateLabel(adv_hwnd, "Max Retries:", kXAxis, kYAxis + 380, kWidth * 7,
                   kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_max_retries_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_max_retries_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 390, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 380, kEditBoxWidth,
                     kEditBoxHeight, kIdcMaxRetriesEdit);
   SendMessage(h_max_retries_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcMaxRetriesEdit), InputSubclassProc,
@@ -359,15 +359,14 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   SetWindowLongPtr(
       h_max_retries_edit, GWL_STYLE,
       GetWindowLongPtr(h_max_retries_edit, GWL_STYLE) | ES_RIGHT | ES_NUMBER);
-  // TODO(b/497725655): Enable UI feature after public release
-  // HWND h_variables_checkbox = CreateCheckBox(
-  //     adv_hwnd, "Use SQL_WVARCHAR instead of SQL_VARCHAR", kXAxis, kYAxis +
-  //     390, kWidth * 7, kHeight, kIdcVariableCheckbox);
-  // CheckDlgButton(adv_hwnd, kIdcVariableCheckbox,
-  //                (use_wchar_ == "1") ? BST_CHECKED : BST_UNCHECKED);
-  // SendMessage(h_variables_checkbox, WM_SETFONT, (WPARAM)h_font, TRUE);
-  // SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcVariableCheckbox),
-  //                   CheckboxSubclassProc, 0, 0);
+  HWND h_variables_checkbox = CreateCheckBox(
+      adv_hwnd, "Use SQL_WVARCHAR instead of SQL_VARCHAR", kXAxis, kYAxis + 400,
+      kWidth * 7, kHeight, kIdcVariableCheckbox);
+  CheckDlgButton(adv_hwnd, kIdcVariableCheckbox,
+                 (use_wchar_ == "1") ? BST_CHECKED : BST_UNCHECKED);
+  SendMessage(h_variables_checkbox, WM_SETFONT, (WPARAM)h_font, TRUE);
+  SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcVariableCheckbox),
+                    CheckboxSubclassProc, 0, 0);
   HWND h_additional_projects_label =
       CreateLabel(adv_hwnd, "Additional projects:", kXAxis, kYAxis + 420,
                   kWidth * 5, kHeight, WS_VISIBLE | SS_LEFT);
@@ -628,11 +627,10 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
           GetWindowText(h_activation_threshold, activation_threshold_buffer,
                         sizeof(activation_threshold_buffer));
           activation_threshold_ = activation_threshold_buffer;
-          // TODO(b/497725655): Enable UI feature after public release
-          // use_wchar_ =
-          //     (IsDlgButtonChecked(hwnd, kIdcVariableCheckbox) == BST_CHECKED)
-          //         ? "1"
-          //         : "0";
+          use_wchar_ =
+              (IsDlgButtonChecked(hwnd, kIdcVariableCheckbox) == BST_CHECKED)
+                  ? "1"
+                  : "0";
 
           enable_session_ =
               (IsDlgButtonChecked(hwnd, kIdcEnableSessionCheckbox) ==
@@ -785,8 +783,7 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
   query_properties_ = GetValueOrDefault(attribute_map, kQueryProperties);
   activation_threshold_ =
       GetValueOrDefault(attribute_map, kActivationThreshold);
-  // TODO(b/497725655): Enable UI feature after public release
-  // use_wchar_ = GetValueOrDefault(attribute_map, kUseWChar);
+  use_wchar_ = GetValueOrDefault(attribute_map, kUseWChar);
   enable_session_ = GetValueOrDefault(attribute_map, kSessionLocation);
   activation_threshold_checkbox_ =
       GetValueOrDefault(attribute_map, kHTAPIActivationThresholdCheck);
