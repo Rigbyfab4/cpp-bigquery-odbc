@@ -138,6 +138,11 @@ void ConnectionHandle::SetUp(Section& dsn_section,
   dsn_.max_retries =
       !max_retries.empty() ? std::stoull(max_retries) : kDefaultMaxRetries;
 
+  std::string use_wvarchar = dsn_section["USEWVARCHAR"];
+  if (!use_wvarchar.empty()) {
+    GetUpperStr(use_wvarchar);
+    dsn_.use_wvarchar = (use_wvarchar == "1" || use_wvarchar == "TRUE");
+  }
   dsn_.pem_file = dsn_section["TRUSTEDCERTS"];
   dsn_.kms_key_name = dsn_section["KMSKEYNAME"];
   dsn_.session_location = dsn_section["SESSIONLOCATION"];
