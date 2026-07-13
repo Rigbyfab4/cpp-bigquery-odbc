@@ -253,6 +253,8 @@ jobs:
         Write-Output "DSN creation completed."
 
     - name: Running testcases
+      id: tests
+      continue-on-error: true
       shell: bash
       run: |
         export VCPKG_ROOT="${TEMP}/.build/vcpkg"
@@ -300,3 +302,10 @@ jobs:
         gsutil -m cp `
           "$MSI_DIR/$MSI_FILE" `
           "gs://$env:GCS_BUCKET/odbc-windows/$arch/$MSI_FILE"
+
+    - name: Check test results
+      if: steps.tests.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "Tests failed!"
+        exit 1
