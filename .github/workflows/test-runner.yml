@@ -16,9 +16,22 @@ on:
           description: 'Run Windows tests'
           type: boolean
           default: true
+        run_benchmark_bq:
+          description: 'Run Benchmark: Google Driver'
+          type: boolean
+          default: false
+        run_benchmark_existing:
+          description: 'Run Benchmark: Existing Driver'
+          type: boolean
+          default: false
 
+# Concurrency configuration:
+# 1. Automated runs (push events) share the same group, so new commits cancel older in-progress runs.
+# 2. Manual dispatches (workflow_dispatch) use a unique group name containing github.run_id.
+#    This isolates manual runs from each other, allowing multiple manual dispatches
+#    (e.g., Run Windows tests vs Run Benchmark) to execute in parallel without blocking or cancelling.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -67,4 +80,32 @@ jobs:
     uses: ./.github/workflows/windows-cmake.yml
     with:
       checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
+    secrets: inherit
+
+  windows-benchmark-bq:
+    name: Windows-Benchmark (Google Driver)
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.run_benchmark_bq == true &&
+      (needs.windows-cmake.result == 'success' || needs.windows-cmake.result == 'skipped')
+    needs: [pre-flight, windows-cmake]
+    uses: ./.github/workflows/windows-benchmark.yml
+    with:
+      checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
+      build_shard: 'BqDriver'
+    secrets: inherit
+
+  windows-benchmark-existing:
+    name: Windows-Benchmark (Existing Driver)
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.run_benchmark_existing == true &&
+      (needs.windows-cmake.result == 'success' || needs.windows-cmake.result == 'skipped')
+    needs: [pre-flight, windows-cmake]
+    uses: ./.github/workflows/windows-benchmark.yml
+    with:
+      checkout-ref: ${{ needs.pre-flight.outputs.checkout-sha }}
+      build_shard: 'Core'
     secrets: inherit
