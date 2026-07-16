@@ -58,6 +58,26 @@ export ODBC_TESTS_DSN="SampleDSNGoogleDriver"
 export ASAN_OPTIONS="detect_container_overflow=0:detect_leaks=1"
 export LSAN_OPTIONS="use_tls=0:suppressions=/opt/odbc-driver/lsan.supp:print_suppressions=0"
 
+# Preload the ASan runtime library so that when the ODBC driver is loaded via
+# dlopen(), ASan shadow memory is already initialized. Without this, the
+# driver's static initialization (which includes protobuf's abseil hash tables)
+# can crash because the hash table memory was allocated by non-ASan code from
+# vcpkg dependencies, but the ASan-instrumented header templates try to
+# validate it.
+if command -v clang++ &>/dev/null; then
+  ASAN_LIB=$(clang++ -print-runtime-dir 2>/dev/null || true)
+  if [[ -n "${ASAN_LIB:-}" ]]; then
+    ASAN_LIB="${ASAN_LIB}/libclang_rt.asan-x86_64.so"
+  fi
+fi
+if [[ -z "${ASAN_LIB:-}" || ! -f "${ASAN_LIB:-}" ]] && command -v g++ &>/dev/null; then
+  ASAN_LIB=$(g++ -print-file-name=libasan.so 2>/dev/null || true)
+fi
+if [[ -n "${ASAN_LIB:-}" && -f "${ASAN_LIB:-}" ]]; then
+  export LD_PRELOAD="${ASAN_LIB}${LD_PRELOAD:+:$LD_PRELOAD}"
+  io::log "Preloaded ASan runtime: ${ASAN_LIB}"
+fi
+
 export CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX=${TRIGGER_NAME//[-:;.,?]/_}_${BRANCH_NAME//[-:;.,?]/_}
 
 # Check if unixODBC is installed

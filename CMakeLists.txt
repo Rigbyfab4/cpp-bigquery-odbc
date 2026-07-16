@@ -50,7 +50,7 @@ if (ENABLE_SANITIZER)
         set(CMAKE_EXE_LINKER_FLAGS
             "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
         set(CMAKE_SHARED_LINKER_FLAGS
-            "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address -shared-libasan")
+            "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
     else ()
         message(WARNING "AddressSanitizer is only supported on UNIX platforms")
     endif ()
