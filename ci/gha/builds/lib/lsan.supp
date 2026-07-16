@@ -2,6 +2,9 @@ leak:conv_text_m2d
 leak:__interceptor_malloc
 leak:__interceptor_calloc
 leak:_iodbcdm_driverload
+leak:_iodbcdm_driverunload
+leak:_iodbcdm_pushsqlerr
+leak:grpc_jwt_encode_and_sign
 leak:calloc
 leak:Diagnostics::AddStatusRecord
 leak:StatusRecord
