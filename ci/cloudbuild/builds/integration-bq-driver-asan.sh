@@ -89,33 +89,4 @@ io::run cmake --build cmake-out
 # Copy the roots.pem file to the .so directory to run test cases.
 cp /opt/odbc-driver/roots.pem "cmake-out/google/cloud/odbc/roots.pem"
 mapfile -t ctest_args < <(ctest::common_args)
-
-# Preload the ASan runtime library for the test run only (not during build).
-# When the ODBC driver is loaded via dlopen(), ASan shadow memory must already
-# be initialized. Without preloading, the driver's static initialization
-# (protobuf's abseil hash tables) can crash because the hash table memory was
-# allocated by non-ASan vcpkg code, but the ASan-instrumented header templates
-# try to validate it. This must be set AFTER cmake --build so it does not
-# interfere with vcpkg's git operations or the build itself.
-ASAN_LIB=""
-if command -v clang++ &>/dev/null; then
-  ASAN_LIB=$(clang++ -print-runtime-dir 2>/dev/null || true)
-  if [[ -n "${ASAN_LIB:-}" ]]; then
-    ASAN_LIB="${ASAN_LIB}/libclang_rt.asan-x86_64.so"
-  fi
-fi
-if [[ -z "${ASAN_LIB:-}" || ! -f "${ASAN_LIB:-}" ]] && command -v g++ &>/dev/null; then
-  ASAN_LIB=$(g++ -print-file-name=libasan.so 2>/dev/null || true)
-fi
-if [[ -z "${ASAN_LIB:-}" || ! -f "${ASAN_LIB:-}" ]] && command -v gcc &>/dev/null; then
-  ASAN_LIB=$(gcc -print-file-name=libasan.so 2>/dev/null || true)
-fi
-if [[ -z "${ASAN_LIB:-}" || ! -f "${ASAN_LIB:-}" ]]; then
-  ASAN_LIB=$(find /usr/lib* /usr/local/lib* -name 'libasan.so*' -type f 2>/dev/null | head -1 || true)
-fi
-if [[ -n "${ASAN_LIB:-}" && -f "${ASAN_LIB:-}" ]]; then
-  export LD_PRELOAD="${ASAN_LIB}${LD_PRELOAD:+:$LD_PRELOAD}"
-  io::log "Preloaded ASan runtime: ${ASAN_LIB}"
-fi
-
 io::run env -C cmake-out ctest "${ctest_args[@]}"

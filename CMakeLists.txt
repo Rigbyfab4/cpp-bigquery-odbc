@@ -47,10 +47,14 @@ if (ENABLE_SANITIZER)
         )
 
         # Add sanitizer flags to linker
+        # Use -shared-libasan so both the test executable and the dlopen'd ODBC
+        # driver .so use the same shared ASan runtime. Without this, the
+        # executable and the .so each get their own static ASan runtime, causing
+        # "incompatible ASan runtimes" errors when the driver is loaded.
         set(CMAKE_EXE_LINKER_FLAGS
-            "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+            "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -shared-libasan")
         set(CMAKE_SHARED_LINKER_FLAGS
-            "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
+            "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address -shared-libasan")
     else ()
         message(WARNING "AddressSanitizer is only supported on UNIX platforms")
     endif ()
