@@ -84,6 +84,29 @@ io::run cmake -B "$BUILD_DIR" \
   -DODBC_EXAMPLES=ON \
   -DODBC_UNIT_TESTING=OFF \
   -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF
+
+# Preload the ASan runtime library before building and testing, so that
+# gtest_discover_tests (which runs during cmake --build) and ctest can find
+# the shared ASAN library at runtime. This must be set AFTER cmake -B (which
+# triggers vcpkg install and its git operations) but BEFORE cmake --build.
+if command -v clang++ &>/dev/null; then
+  ASAN_LIB=$(clang++ -print-file-name=libclang_rt.asan-x86_64.so 2>/dev/null || true)
+  if [[ -z "${ASAN_LIB:-}" || "${ASAN_LIB:-}" == "libclang_rt.asan-x86_64.so" ]]; then
+    # -print-file-name may return just the filename if not found; use -print-runtime-dir
+    ASAN_DIR=$(clang++ -print-runtime-dir 2>/dev/null || true)
+    if [[ -n "${ASAN_DIR:-}" ]]; then
+      ASAN_LIB="${ASAN_DIR}/libclang_rt.asan-x86_64.so"
+    fi
+  fi
+fi
+if [[ -z "${ASAN_LIB:-}" || ! -f "${ASAN_LIB:-}" ]] && command -v g++ &>/dev/null; then
+  ASAN_LIB=$(g++ -print-file-name=libasan.so 2>/dev/null || true)
+fi
+if [[ -n "${ASAN_LIB:-}" && -f "${ASAN_LIB:-}" ]]; then
+  export LD_PRELOAD="${ASAN_LIB}${LD_PRELOAD:+:$LD_PRELOAD}"
+  io::log "Preloaded ASan runtime: ${ASAN_LIB}"
+fi
+
 io::run cmake --build cmake-out
 
 # Copy the roots.pem file to the .so directory to run test cases.
