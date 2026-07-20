@@ -89,4 +89,15 @@ io::run cmake --build cmake-out
 # Copy the roots.pem file to the .so directory to run test cases.
 cp /opt/odbc-driver/roots.pem "cmake-out/google/cloud/odbc/roots.pem"
 mapfile -t ctest_args < <(ctest::common_args)
+
+# Add Clang's ASan runtime library directory to LD_LIBRARY_PATH so the shared
+# ASan library (libclang_rt.asan-x86_64.so) can be found at runtime. This is
+# needed because -shared-libasan is used for both the executable and the
+# dlopen'd ODBC driver .so to ensure they share the same ASan runtime.
+CLANG_RT_DIR=$(clang++ -print-runtime-dir 2>/dev/null || true)
+if [[ -n "${CLANG_RT_DIR:-}" && -d "${CLANG_RT_DIR:-}" ]]; then
+  export LD_LIBRARY_PATH="${CLANG_RT_DIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  io::log "Added ASan runtime dir to LD_LIBRARY_PATH: ${CLANG_RT_DIR}"
+fi
+
 io::run env -C cmake-out ctest "${ctest_args[@]}"
