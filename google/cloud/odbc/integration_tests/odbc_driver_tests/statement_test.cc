@@ -17,6 +17,8 @@
 #include "google/cloud/odbc/testing/odbc_utils/descriptor.h"
 #include "absl/strings/match.h"
 #include <gmock/gmock.h>
+#include <chrono>
+#include <iostream>
 using ::testing::Contains;
 using ::testing::HasSubstr;
 
@@ -759,6 +761,159 @@ TEST_P(HTAPIParameterizedTest, SQLExecDirect_with_pagination) {
     }
   }
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+static void RunNyc311PerfTest(bool is_htapi, std::string const& query,
+                              std::string const& test_name) {
+  auto conn = std::make_shared<ODBCHandles>();
+  std::string connection_string = kDefaultConnectionString;
+  if (is_htapi) {
+    connection_string =
+        kDefaultConnectionString +
+        ";AllowHtapiForLargeResults=1;HTAPI_ActivationThreshold=0";
+  }
+  EXPECT_EQ(Connect(connection_string, conn), SQL_SUCCESS);
+
+  auto exec_start_time = std::chrono::steady_clock::now();
+  SQLRETURN status = SQLExecDirect(
+      conn->hstmt,
+      reinterpret_cast<SQLCHAR*>(const_cast<char*>(query.c_str())),
+      SQL_NTS);
+  auto exec_end_time = std::chrono::steady_clock::now();
+  CheckError(status, "SQLExecDirect", conn);
+
+  auto exec_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          exec_end_time - exec_start_time)
+                          .count();
+
+  SQLSMALLINT num_cols;
+  status = SQLNumResultCols(conn->hstmt, &num_cols);
+  CheckError(status, "SQLNumResultCols", conn);
+
+  std::vector<TestingDataBuffer> cols(num_cols);
+  for (int i = 0; i < num_cols; i++) {
+    status = SQLBindCol(conn->hstmt, static_cast<SQLUSMALLINT>(i + 1),
+                        SQL_C_CHAR, cols[i].target_value, cols[i].buffer_length,
+                        &(cols[i].str_len));
+    CheckError(status, "SQLBindCol", conn);
+  }
+
+  int row_count = 0;
+  auto fetch_start_time = std::chrono::steady_clock::now();
+  while (true) {
+    status = SQLFetch(conn->hstmt);
+    if (status == SQL_NO_DATA) {
+      break;
+    }
+    if (!SQL_SUCCEEDED(status)) {
+      CheckError(status, "SQLFetch", conn);
+      break;
+    }
+    row_count++;
+    Row row;
+    for (int i_c = 0; i_c < num_cols; i_c++) {
+      SQLLEN data_len = cols[i_c].str_len;
+      if (data_len == -1) {
+        continue;
+      }
+      row[i_c] = std::string(reinterpret_cast<char*>(cols[i_c].target_value),
+                             data_len);
+    }
+  }
+  auto fetch_end_time = std::chrono::steady_clock::now();
+  auto fetch_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           fetch_end_time - fetch_start_time)
+                           .count();
+
+  std::cout << "[          ] " << test_name << " ("
+            << (is_htapi ? "HTAPI" : "REST") << "):" << std::endl
+            << "[          ]   SQLExecDirect took: " << exec_elapsed << " ms" << std::endl
+            << "[          ]   SQLFetch took:       " << fetch_elapsed << " ms" << std::endl
+            << "[          ]   Total time:          " << (exec_elapsed + fetch_elapsed)
+            << " ms for " << row_count << " rows." << std::endl;
+
+  ASSERT_EQ(row_count, 100000) << "Row count mismatch.";
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
+TEST_P(HTAPIParameterizedTest, SQLExecDirect_Nyc311_50k_Original) {
+  bool is_htapi = GetParam();
+  std::string query =
+      "SELECT "
+      "  `nyc311`.`unique_key` AS `V1`, "
+      "  `nyc311`.`descriptor` AS `V2`, "
+      "  `nyc311`.`open_data_channel_type` AS `V3`, "
+      "  `nyc311`.`status` AS `V4`,"
+      "  `nyc311`.`incident_address` AS `V5`, "
+      "  `nyc311`.`street_name` AS `V7`, "
+      "  `nyc311`.`city` AS `V8`,"
+      "  `nyc311`.`incident_zip` AS `V9`, "
+      "  `nyc311`.`borough` AS `V10`, "
+      "  `nyc311`.`x_coordinate` AS `V11`, "
+      "  `nyc311`.`y_coordinate` AS `V12`, "
+      "  `nyc311`.`latitude` AS `V13`, "
+      "  `nyc311`.`longitude` AS `V14`,"
+      "  `nyc311`.`location` AS `V15`, "
+      "  `nyc311`.`community_board` AS `V16`, "
+      "  NULL AS `V17`, "
+      "  NULL AS `V18`, "
+      "  CAST(`nyc311`.`resolution_action_updated_date` AS STRING) AS `V19`, "
+      "  CAST(`nyc311`.`created_date` AS STRING) AS `V20`,"
+      "  CAST(`nyc311`.`resolution_action_updated_date` AS STRING) AS `V21`, "
+      "  CAST(`nyc311`.`closed_date` AS STRING) AS `V22` "
+      "FROM "
+      "  `bigquery-public-data.new_york_311.311_service_requests` AS `nyc311` "
+      "LIMIT 100000;";
+  RunNyc311PerfTest(is_htapi, query, "SQLExecDirect_Nyc311_50k_Original");
+}
+
+TEST_P(HTAPIParameterizedTest, SQLExecDirect_Nyc311_50k_String) {
+  bool is_htapi = GetParam();
+  std::string query =
+      "SELECT "
+      "  `nyc311`.`descriptor` AS `V2`, "
+      "  `nyc311`.`open_data_channel_type` AS `V3`, "
+      "  `nyc311`.`status` AS `V4`,"
+      "  `nyc311`.`incident_address` AS `V5`, "
+      "  `nyc311`.`street_name` AS `V7`, "
+      "  `nyc311`.`city` AS `V8`,"
+      "  `nyc311`.`incident_zip` AS `V9`, "
+      "  `nyc311`.`borough` AS `V10`, "
+      "  `nyc311`.`community_board` AS `V16`, "
+      "  CAST(`nyc311`.`resolution_action_updated_date` AS STRING) AS `V19`, "
+      "  CAST(`nyc311`.`created_date` AS STRING) AS `V20`,"
+      "  CAST(`nyc311`.`resolution_action_updated_date` AS STRING) AS `V21`, "
+      "  CAST(`nyc311`.`closed_date` AS STRING) AS `V22` "
+      "FROM "
+      "  `bigquery-public-data.new_york_311.311_service_requests` AS `nyc311` "
+      "LIMIT 100000;";
+  RunNyc311PerfTest(is_htapi, query, "SQLExecDirect_Nyc311_50k_String");
+}
+
+TEST_P(HTAPIParameterizedTest, SQLExecDirect_Nyc311_50k_Integer) {
+  bool is_htapi = GetParam();
+  std::string query =
+      "SELECT "
+      "  `nyc311`.`unique_key` AS `V1` "
+      "FROM "
+      "  `bigquery-public-data.new_york_311.311_service_requests` AS `nyc311` "
+      "LIMIT 100000;";
+  RunNyc311PerfTest(is_htapi, query, "SQLExecDirect_Nyc311_50k_Integer");
+}
+
+TEST_P(HTAPIParameterizedTest, SQLExecDirect_Nyc311_50k_Datetime) {
+  bool is_htapi = GetParam();
+  std::string query =
+      "SELECT "
+      "  `nyc311`.`resolution_action_updated_date` AS `V19`, "
+      "  `nyc311`.`created_date` AS `V20`,"
+      "  `nyc311`.`resolution_action_updated_date` AS `V21`, "
+      "  `nyc311`.`closed_date` AS `V22` "
+      "FROM "
+      "  `bigquery-public-data.new_york_311.311_service_requests` AS `nyc311` "
+      "LIMIT 100000;";
+  RunNyc311PerfTest(is_htapi, query, "SQLExecDirect_Nyc311_50k_Datetime");
 }
 
 TEST(StatementTest, SQLExecDirectW) {

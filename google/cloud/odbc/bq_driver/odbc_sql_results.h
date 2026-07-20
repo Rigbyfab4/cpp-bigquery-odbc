@@ -143,5 +143,7 @@ SQLRETURN SQLNativeSqlInternal(SQLHDBC connection_handle,
                                SQLCHAR* out_statement_text,
                                SQLINTEGER out_statement_text_buffer_len,
                                SQLINTEGER* out_statement_text_len);
+void ResetWriteRowsetTiming();
+std::int64_t GetWriteRowsetTiming();
 }  // namespace google::cloud::odbc_bq_driver
 #endif  // CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_ODBC_SQL_RESULTS_H

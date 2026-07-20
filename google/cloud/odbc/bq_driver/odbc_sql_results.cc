@@ -25,6 +25,8 @@
 #include "google/cloud/odbc/bq_driver/odbc_utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 #include "odbc_sql_results.h"
+#include <chrono>
+#include <iostream>
 
 namespace google::cloud::odbc_bq_driver {
 
@@ -54,6 +56,15 @@ using google::cloud::odbc_bq_driver_internal::WriteRowset;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
+
+static thread_local std::chrono::milliseconds::rep total_write_rowset_time_ms = 0;
+
+void ResetWriteRowsetTiming() {
+  total_write_rowset_time_ms = 0;
+}
+std::int64_t GetWriteRowsetTiming() {
+  return total_write_rowset_time_ms;
+}
 
 SQLRETURN SQLBindColInternal(SQLHSTMT statement_handle,
                              SQLUSMALLINT column_number,
@@ -200,6 +211,10 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
               << " is >= result set size: " << result_set.rows.size();
     StatusRecord next_page_status = FetchNextResultSet(handle);
     if (!next_page_status.ok()) {
+      if (next_page_status.sql_state == SQLStates::k_SQL_NO_DATA()) {
+        std::cout << "[          ]   WriteRowset (total data translation) took: "
+                  << total_write_rowset_time_ms << " ms" << std::endl;
+      }
       LOG(ERROR) << "SQLFetch:: " << next_page_status.message;
       return LogAndReturnCode(handle, next_page_status);
     }
@@ -212,7 +227,11 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
     rowset_size = 1;
   }
   DescriptorHandle& ird = handle.GetDescriptorHandle(DescriptorType::kIRD);
+  auto start = std::chrono::steady_clock::now();
   StatusRecord status_record = WriteRowset(result_set, rowset_size, ard, ird);
+  auto end = std::chrono::steady_clock::now();
+  total_write_rowset_time_ms +=
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   return LogAndReturnCode(handle, status_record);
 }
 

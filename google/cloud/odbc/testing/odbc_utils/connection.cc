@@ -268,12 +268,50 @@ SQLRETURN Disconnect(std::shared_ptr<ODBCHandles> const& conn) {
   return 0;
 }
 
+static std::string GetConnectionInfo(std::shared_ptr<ODBCHandles> const& conn,
+                                     SQLUSMALLINT info_type, bool use_ansi,
+                                     SQLRETURN& status) {
+#ifdef UNICODE
+  if (use_ansi) {
+    SQLCHAR info_buf[kBufferLength] = {0};
+    SQLSMALLINT out_len;
+    status = SQLGetInfoA(conn->hdbc, info_type, info_buf,
+                         sizeof(info_buf), &out_len);
+    if (!SQL_SUCCEEDED(status)) {
+      return "";
+    }
+    return std::string(reinterpret_cast<char*>(info_buf));
+  } else {
+    SQLWCHAR info_buf[kBufferLength] = {0};
+    SQLSMALLINT out_len;
+    status = SQLGetInfo(conn->hdbc, info_type, info_buf,
+                        sizeof(info_buf), &out_len);
+    if (!SQL_SUCCEEDED(status)) {
+      return "";
+    }
+    return ConvertSQLWCHARToString(info_buf, SQL_NTS);
+  }
+#else
+  SQLCHAR info_buf[kBufferLength] = {0};
+  SQLSMALLINT out_len;
+  if (use_ansi) {
+    status = SQLGetInfoA(conn->hdbc, info_type, info_buf,
+                         sizeof(info_buf), &out_len);
+  } else {
+    status = SQLGetInfo(conn->hdbc, info_type, info_buf,
+                        sizeof(info_buf), &out_len);
+  }
+  if (!SQL_SUCCEEDED(status)) {
+    return "";
+  }
+  return std::string(reinterpret_cast<char*>(info_buf));
+#endif
+}
+
 // Gets Info about the driver and populates conn.metadata
 SQLRETURN GetDriverInfo(std::shared_ptr<ODBCHandles> const& conn,
                         bool use_ansi) {
-  SQLCHAR buf[kBufferLength];
-  SQLSMALLINT out_len;
-  SQLRETURN status;
+  SQLRETURN status = SQL_SUCCESS;
 
   std::vector<std::tuple<SQLUSMALLINT, std::string, std::string*>> const
       k_metadata_fields_map{
@@ -290,18 +328,14 @@ SQLRETURN GetDriverInfo(std::shared_ptr<ODBCHandles> const& conn,
     auto info_type = std::get<0>(elem);
     auto info_name = std::get<1>(elem);
     auto* metadata_field_ptr = std::get<2>(elem);
-    if (use_ansi) {
-      status = SQLGetInfoA(conn->hdbc, info_type, buf, sizeof(buf), &out_len);
-    } else {
-      status = SQLGetInfo(conn->hdbc, info_type, buf, sizeof(buf), &out_len);
-    }
+
+    std::string val = GetConnectionInfo(conn, info_type, use_ansi, status);
     CheckError(status, "SqlGetInfo(" + info_name + ")", conn, use_ansi);
     if (SQL_SUCCEEDED(status)) {
       if (status == SQL_SUCCESS_WITH_INFO) {
         throw std::runtime_error("Buffer size is not enough for " + info_name +
                                  " InfoType");
       }
-      std::string val = reinterpret_cast<char*>(buf);
       *metadata_field_ptr = val;
       std::cout << info_name << ":: " << *metadata_field_ptr << std::endl;
     }
@@ -329,29 +363,17 @@ SQLRETURN GetEnvInfo(std::shared_ptr<ODBCHandles> const& conn) {
 // Print the version and the name of the connected driver
 SQLRETURN PrintDriverVerName(std::shared_ptr<ODBCHandles> const& conn,
                              bool use_ansi) {
-  SQLCHAR driver_info[kBufferLength];
-  SQLSMALLINT out_len;
-  SQLRETURN status;
-  if (use_ansi) {
-    status = SQLGetInfoA(conn->hdbc, SQL_DRIVER_VER, driver_info,
-                         NumSqlChar(driver_info), &out_len);
-  } else {
-    status = SQLGetInfo(conn->hdbc, SQL_DRIVER_VER, driver_info,
-                        NumSqlChar(driver_info), &out_len);
-  }
+  SQLRETURN status = SQL_SUCCESS;
+  std::string driver_ver =
+      GetConnectionInfo(conn, SQL_DRIVER_VER, use_ansi, status);
   CheckError(status, "SQLGetInfo", conn, use_ansi);
 
-  printf("Driver: %s", driver_info);
-  if (use_ansi) {
-    status = SQLGetInfoA(conn->hdbc, SQL_DRIVER_NAME, driver_info,
-                         NumSqlChar(driver_info), &out_len);
+  printf("Driver: %s", driver_ver.c_str());
 
-  } else {
-    status = SQLGetInfo(conn->hdbc, SQL_DRIVER_NAME, driver_info,
-                        NumSqlChar(driver_info), &out_len);
-  }
+  std::string driver_name =
+      GetConnectionInfo(conn, SQL_DRIVER_NAME, use_ansi, status);
   CheckError(status, "SQLGetInfo", conn, use_ansi);
-  printf(" (%s) \n\n", driver_info);
+  printf(" (%s) \n\n", driver_name.c_str());
   return status;
 }
 

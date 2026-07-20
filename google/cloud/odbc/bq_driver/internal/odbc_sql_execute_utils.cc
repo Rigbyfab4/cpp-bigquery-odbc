@@ -16,7 +16,10 @@
 #include "google/cloud/odbc/bq_client_interface/utils.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
+#include "google/cloud/odbc/bq_driver/odbc_sql_results.h"
 #include <thread>
+#include <chrono>
+#include <iostream>
 
 //////////////////////////////////////////////////////////////////
 // This file has query execution related utilities which can have
@@ -46,6 +49,8 @@ using google::cloud::odbc_bq_driver_internal::DoubleStrToInt;
 using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using google::cloud::odbc_internal::SQLStates;
 using chrono_ms = std::chrono::milliseconds;
+
+static thread_local std::chrono::milliseconds::rep total_process_record_batch_time_ms = 0;
 
 StatusRecord ConstructPositionalQueryParams(
     DescriptorHandle& apd, DescriptorHandle& ipd,
@@ -559,7 +564,14 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
       // To have SQLFetch read the rows from the start, we are setting the
       // cursor to default.
       result_set.cursor = -1;
-      return ProcessRecordBatch(schema, *record_batch_status, result_set);
+      auto start = std::chrono::steady_clock::now();
+      StatusRecord rc =
+          ProcessRecordBatch(schema, *record_batch_status, result_set);
+      auto end = std::chrono::steady_clock::now();
+      total_process_record_batch_time_ms +=
+          std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+              .count();
+      return rc;
     } else {
       return StatusRecord{
           SQLStates::k_HY000(),
@@ -569,6 +581,8 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
     stmt_handle.ClearReadRowsStream();
     stmt_handle.ClearReadRowsIterator();
     LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
+    std::cout << "[          ]   ProcessRecordBatch (total) took: "
+              << total_process_record_batch_time_ms << " ms" << std::endl;
     return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
   }
   return StatusRecord::Ok();
@@ -588,6 +602,11 @@ StatusRecord FetchBQDataReadArrow(StatementHandle& stmt_handle,
   auto* read_session = create_read_session_request.mutable_read_session();
   read_session->set_table(table_path);
   read_session->set_data_format(ARROW);
+
+  using ::google::cloud::bigquery::storage::v1::ArrowSerializationOptions;
+  auto* read_options = read_session->mutable_read_options();
+  auto* arrow_options = read_options->mutable_arrow_serialization_options();
+  arrow_options->set_buffer_compression(ArrowSerializationOptions::LZ4_FRAME);
 
   ConnectionHandle& conn_handle = *(stmt_handle.GetConnectionHandle());
   Options options;
@@ -691,6 +710,8 @@ StatusRecord CreateLargeDatasetIfNeeded(std::shared_ptr<ODBCBQClient> bq_client,
 
 StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
                              PostQueryRequest const& post_query_request) {
+  total_process_record_batch_time_ms = 0;
+  ::google::cloud::odbc_bq_driver::ResetWriteRowsetTiming();
   QueryRequest query_request = post_query_request.query_request();
   std::string query = query_request.query();
   Job job;
@@ -739,17 +760,26 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
   }
 
   // Insert job
+  auto insert_start = std::chrono::steady_clock::now();
   auto insert_response = bq_client->InsertJob(dsn.catalog, job, opt);
+  auto insert_end = std::chrono::steady_clock::now();
   if (!insert_response.Ok()) {
     return insert_response.GetStatusRecord();
   }
+  auto insert_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            insert_end - insert_start)
+                            .count();
+  std::cout << "[          ]   InsertJob took: " << insert_elapsed << " ms"
+            << std::endl;
+
   // Here we are replacing the dry run Job created during SQLPrepare.
   // This should be safe since the same query is executed during HTAPI flow too.
   stmt_handle.SetPreparedJob(*insert_response);
 
   // Wait for Job to complete
+  auto wait_start = std::chrono::steady_clock::now();
   std::string job_status = insert_response->status.state;
-  ExponentialBackoffPolicy backoff(chrono_ms(100), chrono_ms(200), 2);
+  ExponentialBackoffPolicy backoff(chrono_ms(100), chrono_ms(400), 2);
   StatusRecordOr<Job> get_job_response;
   while (job_status != "DONE") {
     std::this_thread::sleep_for(backoff.OnCompletion());
@@ -761,6 +791,12 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
     }
     job_status = get_job_response->status.state;
   }
+  auto wait_end = std::chrono::steady_clock::now();
+  auto wait_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          wait_end - wait_start)
+                          .count();
+  std::cout << "[          ]   Wait for Job took: " << wait_elapsed << " ms"
+            << std::endl;
   std::string error_message = get_job_response->status.error_result.message;
   if (!error_message.empty()) {
     LOG(ERROR) << "FetchBQDataRead:: " << error_message;
