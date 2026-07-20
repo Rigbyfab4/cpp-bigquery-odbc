@@ -51,10 +51,26 @@ if (ENABLE_SANITIZER)
         # driver .so use the same shared ASan runtime. Without this, the
         # executable and the .so each get their own static ASan runtime, causing
         # "incompatible ASan runtimes" errors when the driver is loaded.
-        set(CMAKE_EXE_LINKER_FLAGS
-            "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -shared-libasan")
-        set(CMAKE_SHARED_LINKER_FLAGS
-            "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address -shared-libasan")
+        # Use -Wl,-rpath to embed the Clang runtime directory path so the
+        # dynamic linker can find libclang_rt.asan-x86_64.so at runtime
+        # (including during gtest_discover_tests which runs during build).
+        execute_process(
+          COMMAND ${CMAKE_CXX_COMPILER} -print-runtime-dir
+          OUTPUT_VARIABLE CLANG_RT_DIR
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+          ERROR_QUIET
+        )
+        if (CLANG_RT_DIR)
+          set(CMAKE_EXE_LINKER_FLAGS
+              "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -shared-libasan -Wl,-rpath,${CLANG_RT_DIR}")
+          set(CMAKE_SHARED_LINKER_FLAGS
+              "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address -shared-libasan -Wl,-rpath,${CLANG_RT_DIR}")
+        else()
+          set(CMAKE_EXE_LINKER_FLAGS
+              "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+          set(CMAKE_SHARED_LINKER_FLAGS
+              "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
+        endif()
     else ()
         message(WARNING "AddressSanitizer is only supported on UNIX platforms")
     endif ()
