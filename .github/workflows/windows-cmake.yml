@@ -170,6 +170,15 @@ jobs:
         chmod +x c:/b/external_auth_token.sh
         c:/b/external_auth_token.sh c:/b/tkn.txt
         sed -i.bak "s|<some-path>|c:/b|g" c:/b/external_account_auth_keys.json
+        # The external-auth tests fail with "error reading subject token file"
+        # if the token file referenced by credential_source.file is missing.
+        # Fail fast here (instead of inside ctest) and show which path the
+        # credentials JSON actually points at.
+        grep -o '"file"[^,}]*' c:/b/external_account_auth_keys.json
+        if [ ! -s c:/b/tkn.txt ]; then
+          echo "ERROR: c:/b/tkn.txt is missing or empty; external_auth_token.sh did not produce a subject token"
+          exit 1
+        fi
         export CPP_BIGQUERY_ODBC_TEST_EXTERNAL_ACCOUNT_AUTH_KEY="c:\\b\\external_account_auth_keys.json"
         export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="C:\\b\\service_account_auth_keys.json"
         export GOOGLE_APPLICATION_CREDENTIALS="C:\\b\\service_account_auth_keys.json"
