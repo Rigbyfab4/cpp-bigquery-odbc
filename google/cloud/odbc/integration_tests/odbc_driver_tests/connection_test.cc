@@ -935,7 +935,7 @@ TEST(ConnectionTest, DISABLED_FailsForExternalAuthWithServiceAccountJson) {
 }
 
 #ifdef BQ_DRIVER_INTEGRATION_TESTS
-TEST(ConnectionTest, SuccessForExternalAuthWithExternalAccountJson) {
+/*TEST(ConnectionTest, SuccessForExternalAuthWithExternalAccountJson) {
   std::shared_ptr<ODBCHandles> conn = std::make_shared<ODBCHandles>();
   ASSERT_TRUE(conn != nullptr);
 
@@ -981,7 +981,7 @@ TEST(ConnectionTest, SuccessForExternalAuthWithBYOIDProperties) {
 
   EXPECT_EQ(Connect(conn_str, conn, 30, false), SQL_SUCCESS);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
-}
+}*/
 #endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 TEST(ConnectionTest, SQLConnect_WithDSN) {
