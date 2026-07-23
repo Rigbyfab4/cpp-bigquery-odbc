@@ -107,6 +107,7 @@ struct Dsn {
   std::string psc;
   bool enable_gcd;
   std::string universe_domain;
+  std::string impersonated_email;
 };
 
 class EnvironmentHandle;
