@@ -436,7 +436,8 @@ TEST_P(DataFetchPerformanceParamTest, BenchmarkPowerBIMimic) {
   std::cout << "\n[BenchmarkPowerBIMimic Metrics] for table: " << target_table
             << "\n"
             << "  Time taken by SQLExecDirect: " << exec_duration_ms << " ms\n"
-            << "  Total time for fetching rows: " << fetch_duration_ms << " ms\n"
+            << "  Total time for fetching rows: " << fetch_duration_ms
+            << " ms\n"
             << "  Total rows fetched: " << row_count << "\n"
             << std::endl;
 

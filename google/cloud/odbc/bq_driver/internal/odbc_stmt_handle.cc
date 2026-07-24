@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
 #include "google/cloud/odbc/bq_client_interface/odbc_bq_client.h"
 #include "google/cloud/odbc/bq_client_interface/utils.h"
@@ -23,6 +22,7 @@
 #include "google/cloud/odbc/bq_driver/internal/odbc_transactions.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
+#include <iostream>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
@@ -560,9 +560,7 @@ void StatementHandle::CloseCursor() {
   }
 }
 
-StatementHandle::~StatementHandle() {
-  PrintPerformanceMetrics();
-}
+StatementHandle::~StatementHandle() { PrintPerformanceMetrics(); }
 
 void StatementHandle::PrintPerformanceMetrics() {
   if (performance_metrics_printed_) {

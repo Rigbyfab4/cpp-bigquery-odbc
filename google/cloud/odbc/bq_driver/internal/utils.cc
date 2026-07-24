@@ -754,14 +754,15 @@ odbc_internal::StatusRecordOr<std::string> Utf16ToUtf8(
 }
 
 odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
-    std::string const& utf_8_str) {
+    std::string_view utf_8_str) {
   if (utf_8_str.empty()) {
     return std::wstring();
   }
 #ifdef _WIN32
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
   int utf16Length =
-      MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1, NULL, 0);
+      MultiByteToWideChar(CP_UTF8, 0, utf_8_str.data(),
+                          static_cast<int>(utf_8_str.length()), NULL, 0);
   if (utf16Length == 0) {
     return StatusRecord{
         SQLStates::k_HY000(),
@@ -769,7 +770,8 @@ odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
   }
   std::wstring utf16Str(utf16Length, 0);
   // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
-  int result = MultiByteToWideChar(CP_UTF8, 0, utf_8_str.c_str(), -1,
+  int result = MultiByteToWideChar(CP_UTF8, 0, utf_8_str.data(),
+                                   static_cast<int>(utf_8_str.length()),
                                    &utf16Str[0], utf16Length);
   if (result == 0) {
     return StatusRecord{SQLStates::k_HY000(),

@@ -16,10 +16,10 @@
 #include "google/cloud/odbc/bq_client_interface/utils.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
-#include <thread>
-#include "absl/time/time.h"
 #include "absl/time/civil_time.h"
+#include "absl/time/time.h"
 #include <arrow/array/array_decimal.h>
+#include <thread>
 
 //////////////////////////////////////////////////////////////////
 // This file has query execution related utilities which can have
@@ -449,7 +449,8 @@ StatusRecord ProcessRecordBatch(
       }
       case arrow::Type::TIMESTAMP: {
         auto ts_arr = std::static_pointer_cast<arrow::TimestampArray>(column);
-        auto ts_type = std::static_pointer_cast<arrow::TimestampType>(column->type());
+        auto ts_type =
+            std::static_pointer_cast<arrow::TimestampType>(column->type());
         arrow::TimeUnit::type unit = ts_type->unit();
         absl::TimeZone utc = absl::UTCTimeZone();
 
@@ -513,7 +514,8 @@ StatusRecord ProcessRecordBatch(
       }
       case arrow::Type::TIME64: {
         auto time_arr = std::static_pointer_cast<arrow::Time64Array>(column);
-        auto time_type = std::static_pointer_cast<arrow::Time64Type>(column->type());
+        auto time_type =
+            std::static_pointer_cast<arrow::Time64Type>(column->type());
         arrow::TimeUnit::type unit = time_type->unit();
 
         for (int64_t row = 0; row < num_rows; ++row) {
@@ -661,7 +663,8 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
       // cursor to default.
       result_set.cursor = -1;
       auto start = std::chrono::high_resolution_clock::now();
-      StatusRecord process_status = ProcessRecordBatch(schema, *record_batch_status, result_set);
+      StatusRecord process_status =
+          ProcessRecordBatch(schema, *record_batch_status, result_set);
       auto end = std::chrono::high_resolution_clock::now();
       stmt_handle.AccumulateProcessRecordBatchDuration(
           std::chrono::duration_cast<std::chrono::microseconds>(end - start));
