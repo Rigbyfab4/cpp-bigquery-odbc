@@ -42,6 +42,15 @@ git checkout "$VCPKG_VERSION"
 ./bootstrap-vcpkg.sh -disableMetrics
 
 cd "$WORKSPACE_DIR"
+
+# Configure git for more robust operations with HTTPS and larger buffers
+# This fixes "Could not read from remote repository" errors during vcpkg builds
+git config --global http.version HTTP/1.1
+git config --global http.postBuffer 524288000
+git config --global http.lowSpeedLimit 0
+git config --global http.lowSpeedTime 999999
+git config --global core.compression 0
+
 # This runs all the unit tests
 mapfile -t args < <(bazel::common_args)
 mapfile -t unit_tests_args < <(unit_tests::bazel_args)
@@ -87,7 +96,8 @@ io::run cmake -B "$BUILD_DIR" \
   -DODBC_DEMO_TESTING=ON \
   -DODBC_EXAMPLES=ON \
   -DODBC_UNIT_TESTING=OFF \
-  -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF
+  -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF \
+  -DVCPKG_FORCE_SOURCE_ONLY=ON
 
 # Preload the ASan runtime library before building and testing, so that
 # gtest_discover_tests (which runs during cmake --build) and ctest can find
