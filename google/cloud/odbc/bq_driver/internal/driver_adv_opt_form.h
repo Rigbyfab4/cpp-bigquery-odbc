@@ -25,7 +25,6 @@ static int const kIdcUseDefaultCheckbox = 128;
 static int const kIdcDatasetNameEdit = 129;
 static int const kIdcTempExpirationEdit = 130;
 static int const kIdcAllowHighThroughputCheckbox = 131;
-static int const kIdcActivationThresholdEdit = 132;
 static int const kIdcEncryptionKeyEdit = 133;
 static int const kIdcRowsPerBlockEdit = 134;
 static int const kIdcDefaultStringEdit = 135;
@@ -86,13 +85,10 @@ class AdvanceOptions {
   inline std::string const& GetTempTableExpiration() const {
     return temp_expiration_;
   }
-  inline std::string const& GetActivationThreshold() const {
-    return activation_threshold_;
-  }
   inline std::string const& GetUseWchar() const { return use_wchar_; }
   inline std::string const& GetEnableSession() const { return enable_session_; }
-  inline std::string const& GetActivationThresholdCheckbox() const {
-    return activation_threshold_checkbox_;
+  inline std::string const& GetAllowHtapiForLargeResultsCheckbox() const {
+    return allow_htapi_for_large_results_checkbox_;
   }
   inline std::string const& GetAllowLargeResults() const {
     return allow_large_results_;
@@ -129,10 +125,9 @@ class AdvanceOptions {
   static std::string session_location_;
   static std::string additional_projects_;
   static std::string query_properties_;
-  static std::string activation_threshold_;
   static std::string use_wchar_;
   static std::string enable_session_;
-  static std::string activation_threshold_checkbox_;
+  static std::string allow_htapi_for_large_results_checkbox_;
   static std::string allow_large_results_;
   static std::string use_default_large_results_;
   static std::string encryption_type_;

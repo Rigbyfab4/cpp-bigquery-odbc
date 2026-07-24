@@ -147,12 +147,10 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
       GetValueOrDefault(section, additional_projects_key);
   std::string query_properties =
       GetValueOrDefault(section, query_properties_key);
-  std::string activation_threshold =
-      GetValueOrDefault(section, activation_threshold_key);
   // std::string use_wchar = GetValueOrDefault(section, use_wchar_key);
   std::string enable_session = GetValueOrDefault(section, enable_session_key);
-  std::string htapi_activation_threshold_check =
-      GetValueOrDefault(section, htapi_activation_threshold_check_key);
+  std::string allow_htapi_for_large_results =
+      GetValueOrDefault(section, allow_htapi_for_large_results_key);
   std::string allow_large_results =
       GetValueOrDefault(section, allow_large_results_key);
   std::string use_default_large_results_dataset =
@@ -197,13 +195,11 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
         {session_location_key, session_location},
         {additional_projects_key, additional_projects},
         {query_properties_key, query_properties},
-        {activation_threshold_key, activation_threshold},
         // {use_wchar_key, use_wchar},
         {enable_session_key, enable_session},
         {max_threads_key, max_threads},
         {max_retries_key, max_retries},
-        {htapi_activation_threshold_check_key,
-         htapi_activation_threshold_check},
+        {allow_htapi_for_large_results_key, allow_htapi_for_large_results},
         {allow_large_results_key, allow_large_results},
         {use_default_large_results_dataset_key,
          use_default_large_results_dataset},
@@ -262,13 +258,12 @@ bool ConfigDSNInternal(HWND hwnd_parent, WORD f_request, LPCSTR lpsz_driver,
     session_location = advance_form.GetSessionLocation();
     additional_projects = advance_form.GetAdditionalProjects();
     query_properties = advance_form.GetQueryProperties();
-    activation_threshold = advance_form.GetActivationThreshold();
     // use_wchar = advance_form.GetUseWchar();
     enable_session = advance_form.GetEnableSession();
     max_threads = advance_form.GetMaxThreads();
     max_retries = advance_form.GetMaxRetries();
-    htapi_activation_threshold_check =
-        advance_form.GetActivationThresholdCheckbox();
+    allow_htapi_for_large_results =
+        advance_form.GetAllowHtapiForLargeResultsCheckbox();
     allow_large_results = advance_form.GetAllowLargeResults();
     use_default_large_results_dataset =
         advance_form.GetUseDefaultLargeResults();

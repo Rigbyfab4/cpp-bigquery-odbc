@@ -30,8 +30,6 @@ std::string const kDefaultStringLength = "16384";
 std::string const kDefaultEncryptionType = "Google-managed encryption key";
 std::string const kDefaultLargeResultsDatasetId = "_odbc_temp_tables";
 
-std::string AdvanceOptions::activation_threshold_;
-
 // Specifies the default SQL dialect used for queries.
 // The default is "Standard SQL", but it may be overridden by the user.
 std::string AdvanceOptions::language_dialect_ = kDefaultLanguageDialect;
@@ -58,7 +56,7 @@ std::string AdvanceOptions::additional_projects_;
 std::string AdvanceOptions::query_properties_;
 std::string AdvanceOptions::use_wchar_;
 std::string AdvanceOptions::enable_session_;
-std::string AdvanceOptions::activation_threshold_checkbox_;
+std::string AdvanceOptions::allow_htapi_for_large_results_checkbox_;
 std::string AdvanceOptions::allow_large_results_;
 std::string AdvanceOptions::use_default_large_results_;
 std::string AdvanceOptions::encryption_type_ = kDefaultEncryptionType;
@@ -78,10 +76,9 @@ std::string const kLargeResultsTempTableExpirationTime =
 std::string const kSessionLocation = "SessionLocation";
 std::string const kAdditionalProjects = "AdditionalProjects";
 std::string const kQueryProperties = "QueryProperties";
-std::string const kActivationThreshold = "HTAPI_ActivationThreshold";
 std::string const kUseWChar = "UseWVarChar";
 std::string const kEnableSession = "EnableSession";
-std::string const kHTAPIActivationThresholdCheck = "AllowHtapiForLargeResults";
+std::string const kAllowHtapiForLargeResults = "AllowHtapiForLargeResults";
 std::string const kAllowLargeResults = "AllowLargeResults";
 std::string const kUseDefaultLargeResultsDataset =
     "UseDefaultLargeResultsDataset";
@@ -100,7 +97,7 @@ int const kButtonWidth = 68;
 int const kXAxis = 10;
 int const kOkButtonX = 330;
 int const kCancelButtonX = 410;
-int const kButtonY = 638;
+int const kButtonY = 613;
 int const kYAxis = 20;
 int const kEditBoxWidth = 260;
 int const kEditBoxHeight = 17;
@@ -114,14 +111,6 @@ AdvanceOptions::~AdvanceOptions() {
     DestroyWindow(adv_hwnd);
   }
   UnregisterClass(CLASS_NAME, g_hDllInstance);
-}
-
-void SetActivationThresholdEnabled(HWND hwnd, bool enabled) {
-  EnableWindow(GetDlgItem(hwnd, kIdcActivationThresholdEdit),
-               enabled ? TRUE : FALSE);
-  if (!enabled) {
-    SetWindowText(GetDlgItem(hwnd, kIdcActivationThresholdEdit), TEXT(""));
-  }
 }
 
 void SetPscGcdEnabled(HWND hwnd, bool enabled) {
@@ -157,7 +146,7 @@ void AdvanceOptions::CreateLanguageControls(HFONT h_font) {
 void AdvanceOptions::CreateLargeResultsControls(HFONT h_font) {
   HWND h_large_results_header =
       CreateGroupBox(adv_hwnd, "Large results options", kXAxis, kYAxis + 25,
-                     kWidth + 445, kHeight + 153, KIdcLargeResultHeader);
+                     kWidth + 445, kHeight + 128, KIdcLargeResultHeader);
   SendMessage(h_large_results_header, WM_SETFONT, (WPARAM)h_font, TRUE);
 
   HWND h_allow_large_results_checkbox = CreateCheckBox(
@@ -213,44 +202,27 @@ void AdvanceOptions::CreateLargeResultsControls(HFONT h_font) {
 
 void AdvanceOptions::CreateHighThroughputControls(HFONT h_font) {
   HWND h_allow_high_throughput_checkbox = CreateCheckBox(
-      adv_hwnd,
-      "Allow BigQuery Storage API for large results queries:", kXAxis + 5,
-      kYAxis + 150, kWidth * 7 + 20, kHeight, kIdcAllowHighThroughputCheckbox);
+      adv_hwnd, "Allow BigQuery Storage API for large results queries",
+      kXAxis + 5, kYAxis + 150, kWidth * 7 + 20, kHeight,
+      kIdcAllowHighThroughputCheckbox);
   SendMessage(h_allow_high_throughput_checkbox, WM_SETFONT, (WPARAM)h_font,
               TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcAllowHighThroughputCheckbox),
                     CheckboxSubclassProc, 0, 0);
-  CheckDlgButton(
-      adv_hwnd, kIdcAllowHighThroughputCheckbox,
-      (activation_threshold_checkbox_ == "1") ? BST_CHECKED : BST_UNCHECKED);
-
-  HWND h_activation_threshold_label = CreateLabel(
-      adv_hwnd, "Activation threshold for BigQuery Storage API:", kXAxis + 5,
-      kYAxis + 175, kWidth * 4.5, kHeight, WS_VISIBLE | SS_LEFT);
-  SendMessage(h_activation_threshold_label, WM_SETFONT, (WPARAM)h_font, TRUE);
-
-  HWND h_activation_threshold_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 175, kEditBoxWidth,
-                    kEditBoxHeight, kIdcActivationThresholdEdit);
-  SendMessage(h_activation_threshold_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
-  SetWindowLong(
-      h_activation_threshold_edit, GWL_STYLE,
-      GetWindowLong(h_activation_threshold_edit, GWL_STYLE) | ES_NUMBER);
-  SetWindowText(h_activation_threshold_edit, activation_threshold_.c_str());
-  SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcActivationThresholdEdit),
-                    InputSubclassProc, 0, 0);
-  SetActivationThresholdEnabled(adv_hwnd,
-                                activation_threshold_checkbox_ == "1");
+  CheckDlgButton(adv_hwnd, kIdcAllowHighThroughputCheckbox,
+                 (allow_htapi_for_large_results_checkbox_ == "1")
+                     ? BST_CHECKED
+                     : BST_UNCHECKED);
 }
 
 void AdvanceOptions::CreatePscGcdControls(HFONT h_font) {
   HWND h_psc_header = CreateGroupBox(
       adv_hwnd, "Private Service Connect and Google Cloud Dedicated Options",
-      kXAxis, kYAxis + 211, kWidth + 445, kHeight + 72, 0);
+      kXAxis, kYAxis + 186, kWidth + 445, kHeight + 72, 0);
   SendMessage(h_psc_header, WM_SETFONT, (WPARAM)h_font, TRUE);
 
   HWND h_enable_psc_gcd_checkbox = CreateCheckBox(
-      adv_hwnd, "Enable PSC and GCD Configuration", kXAxis + 5, kYAxis + 226,
+      adv_hwnd, "Enable PSC and GCD Configuration", kXAxis + 5, kYAxis + 201,
       kWidth * 7, kHeight, kIdcEnablePscGcdCheckbox);
   SendMessage(h_enable_psc_gcd_checkbox, WM_SETFONT, (WPARAM)h_font, TRUE);
   CheckDlgButton(adv_hwnd, kIdcEnablePscGcdCheckbox,
@@ -260,11 +232,11 @@ void AdvanceOptions::CreatePscGcdControls(HFONT h_font) {
                     CheckboxSubclassProc, 0, 0);
 
   HWND h_private_service_name_label =
-      CreateLabel(adv_hwnd, "Private Service name:", kXAxis + 5, kYAxis + 254,
+      CreateLabel(adv_hwnd, "Private Service name:", kXAxis + 5, kYAxis + 229,
                   kWidth * 4, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_private_service_name_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_private_service_name_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 250, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 225, kEditBoxWidth,
                     kEditBoxHeight, kIdcPrivateServiceNameEdit);
   SendMessage(h_private_service_name_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowText(h_private_service_name_edit,
@@ -273,11 +245,11 @@ void AdvanceOptions::CreatePscGcdControls(HFONT h_font) {
                     InputSubclassProc, 0, 0);
 
   HWND h_universe_domain_label =
-      CreateLabel(adv_hwnd, "Universe Domain:", kXAxis + 5, kYAxis + 282,
+      CreateLabel(adv_hwnd, "Universe Domain:", kXAxis + 5, kYAxis + 257,
                   kWidth * 4, kHeight - 5, WS_VISIBLE | SS_LEFT);
   SendMessage(h_universe_domain_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_universe_domain_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 278, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 253, kEditBoxWidth,
                     kEditBoxHeight, kIdcUniverseDomainEdit);
   SendMessage(h_universe_domain_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowText(h_universe_domain_edit, universe_domain_.c_str());
@@ -291,12 +263,12 @@ void AdvanceOptions::CreatePscGcdControls(HFONT h_font) {
 
 void AdvanceOptions::CreateEncryptionControls(HFONT h_font) {
   HWND h_high_encryption_header =
-      CreateLabel(adv_hwnd, "Encryption", kXAxis, kYAxis + 306, kWidth * 5,
+      CreateLabel(adv_hwnd, "Encryption", kXAxis, kYAxis + 281, kWidth * 5,
                   kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_high_encryption_header, WM_SETFONT, (WPARAM)h_font, TRUE);
 
   HWND h_encryption_combo_box =
-      CreateComboBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 306, kEditBoxWidth,
+      CreateComboBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 281, kEditBoxWidth,
                      KComboBoxHeight, kIdcEncryptionKeyComboBox);
   SendMessage(h_encryption_combo_box, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcEncryptionKeyComboBox),
@@ -314,11 +286,11 @@ void AdvanceOptions::CreateEncryptionControls(HFONT h_font) {
 
   HWND h_encryption_key_header =
       CreateLabel(adv_hwnd, "Customer-managed encryption key:", kXAxis,
-                  kYAxis + 335, kWidth * 4.3, kHeight, WS_VISIBLE | SS_LEFT);
+                  kYAxis + 310, kWidth * 4.3, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_encryption_key_header, WM_SETFONT, (WPARAM)h_font, TRUE);
 
   HWND h_encryption_key_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 335, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 310, kEditBoxWidth,
                     kEditBoxHeight, kIdcEncryptionKeyEdit);
   SendMessage(h_encryption_key_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcEncryptionKeyEdit),
@@ -334,11 +306,11 @@ void AdvanceOptions::CreateEncryptionControls(HFONT h_font) {
 
 void AdvanceOptions::CreateSessionControls(HFONT h_font) {
   HWND h_rows_per_block_label =
-      CreateLabel(adv_hwnd, "Rows per block:", kXAxis, kYAxis + 360, kWidth * 3,
+      CreateLabel(adv_hwnd, "Rows per block:", kXAxis, kYAxis + 335, kWidth * 3,
                   kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_rows_per_block_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_rows_per_block_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 360, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 335, kEditBoxWidth,
                     kEditBoxHeight, kIdcRowsPerBlockEdit);
   SendMessage(h_rows_per_block_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcRowsPerBlockEdit),
@@ -349,10 +321,10 @@ void AdvanceOptions::CreateSessionControls(HFONT h_font) {
                        ES_RIGHT | ES_NUMBER);
   HWND h_default_string_label =
       CreateLabel(adv_hwnd, "Default string column length:", kXAxis,
-                  kYAxis + 385, kWidth * 4.3, kHeight, WS_VISIBLE | SS_LEFT);
+                  kYAxis + 360, kWidth * 4.3, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_default_string_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_default_string_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 385, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 360, kEditBoxWidth,
                     kEditBoxHeight, kIdcDefaultStringEdit);
   SendMessage(h_default_string_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcDefaultStringEdit),
@@ -363,7 +335,7 @@ void AdvanceOptions::CreateSessionControls(HFONT h_font) {
                        ES_RIGHT | ES_NUMBER);
 
   HWND h_enable_session_checkbox =
-      CreateCheckBox(adv_hwnd, "Enable session", kXAxis, kYAxis + 410,
+      CreateCheckBox(adv_hwnd, "Enable session", kXAxis, kYAxis + 385,
                      kWidth * 2 + 30, kHeight, kIdcEnableSessionCheckbox);
   SendMessage(h_enable_session_checkbox, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcEnableSessionCheckbox),
@@ -372,11 +344,11 @@ void AdvanceOptions::CreateSessionControls(HFONT h_font) {
                  (enable_session_ == "1") ? BST_CHECKED : BST_UNCHECKED);
 
   HWND h_session_location_label =
-      CreateLabel(adv_hwnd, "Session location:", kXAxis, kYAxis + 440,
+      CreateLabel(adv_hwnd, "Session location:", kXAxis, kYAxis + 415,
                   kWidth * 2 + 30, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_session_location_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_session_location_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 435, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 410, kEditBoxWidth,
                     kEditBoxHeight, kIdcSessionLocationEdit);
   SendMessage(h_session_location_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcSessionLocationEdit),
@@ -391,11 +363,11 @@ void AdvanceOptions::CreateSessionControls(HFONT h_font) {
 void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   // max threads
   HWND h_max_threads_label =
-      CreateLabel(adv_hwnd, "Default number of Threads:", kXAxis, kYAxis + 465,
+      CreateLabel(adv_hwnd, "Default number of Threads:", kXAxis, kYAxis + 440,
                   kWidth * 7, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_max_threads_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_max_threads_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 460, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 435, kEditBoxWidth,
                     kEditBoxHeight, kIdcMaxThreadsEdit);
   SendMessage(h_max_threads_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
 
@@ -408,11 +380,11 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
 
   // max retries
   HWND h_max_retries_label =
-      CreateLabel(adv_hwnd, "Max Retries:", kXAxis, kYAxis + 490, kWidth * 7,
+      CreateLabel(adv_hwnd, "Max Retries:", kXAxis, kYAxis + 465, kWidth * 7,
                   kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_max_retries_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_max_retries_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 490, kEditBoxWidth,
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 465, kEditBoxWidth,
                     kEditBoxHeight, kIdcMaxRetriesEdit);
   SendMessage(h_max_retries_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcMaxRetriesEdit), InputSubclassProc,
@@ -431,11 +403,11 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   // SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcVariableCheckbox),
   //                   CheckboxSubclassProc, 0, 0);
   HWND h_additional_projects_label =
-      CreateLabel(adv_hwnd, "Additional projects:", kXAxis, kYAxis + 520,
+      CreateLabel(adv_hwnd, "Additional projects:", kXAxis, kYAxis + 495,
                   kWidth * 5, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_additional_projects_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_additional_projects_edit =
-      CreateScrollableEditBox(adv_hwnd, kXAxis, kYAxis + 540, kWidth + 445,
+      CreateScrollableEditBox(adv_hwnd, kXAxis, kYAxis + 515, kWidth + 445,
                               kHeight + 32, kIdcAdditionalProjectsEdit);
   SendMessage(h_additional_projects_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
 
@@ -444,11 +416,11 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
                     InputSubclassProc, 0, 0);
 
   HWND h_query_properties_label =
-      CreateLabel(adv_hwnd, "Query properties:", kXAxis, kYAxis + 600,
+      CreateLabel(adv_hwnd, "Query properties:", kXAxis, kYAxis + 575,
                   kWidth * 5, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_query_properties_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_query_properties_edit =
-      CreateScrollableEditBox(adv_hwnd, kXAxis, kYAxis + 620, kWidth + 445,
+      CreateScrollableEditBox(adv_hwnd, kXAxis, kYAxis + 595, kWidth + 445,
                               kHeight + 13, kIdcQueryPropertiesEdit);
   SendMessage(h_query_properties_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
 
@@ -685,13 +657,6 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
             return 0;
           }
 
-          HWND h_activation_threshold =
-              GetDlgItem(hwnd, kIdcActivationThresholdEdit);
-          char activation_threshold_buffer[1024] = {0};
-          GetWindowText(h_activation_threshold, activation_threshold_buffer,
-                        sizeof(activation_threshold_buffer));
-          activation_threshold_ = activation_threshold_buffer;
-
           HWND h_private_service_name_edit =
               GetDlgItem(hwnd, kIdcPrivateServiceNameEdit);
           char private_service_name_buffer[1024] = {0};
@@ -718,7 +683,7 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
                   ? "1"
                   : "0";
 
-          activation_threshold_checkbox_ =
+          allow_htapi_for_large_results_checkbox_ =
               (IsDlgButtonChecked(hwnd, kIdcAllowHighThroughputCheckbox) ==
                BST_CHECKED)
                   ? "1"
@@ -754,14 +719,6 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
             } else {
               EnableWindow(h_dataset_name_edit, TRUE);
             }
-          }
-          break;
-        }
-        case kIdcAllowHighThroughputCheckbox: {
-          if (HIWORD(w_param) == BN_CLICKED) {
-            BOOL is_checked =
-                IsDlgButtonChecked(hwnd, kIdcAllowHighThroughputCheckbox);
-            SetActivationThresholdEnabled(hwnd, is_checked == BST_CHECKED);
           }
           break;
         }
@@ -875,13 +832,11 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
   session_location_ = GetValueOrDefault(attribute_map, kSessionLocation);
   additional_projects_ = GetValueOrDefault(attribute_map, kAdditionalProjects);
   query_properties_ = GetValueOrDefault(attribute_map, kQueryProperties);
-  activation_threshold_ =
-      GetValueOrDefault(attribute_map, kActivationThreshold);
   // TODO(b/497725655): Enable UI feature after public release
   // use_wchar_ = GetValueOrDefault(attribute_map, kUseWChar);
   enable_session_ = GetValueOrDefault(attribute_map, kEnableSession);
-  activation_threshold_checkbox_ =
-      GetValueOrDefault(attribute_map, kHTAPIActivationThresholdCheck);
+  allow_htapi_for_large_results_checkbox_ =
+      GetValueOrDefault(attribute_map, kAllowHtapiForLargeResults);
   allow_large_results_ = GetValueOrDefault(attribute_map, kAllowLargeResults);
   use_default_large_results_ =
       GetValueOrDefault(attribute_map, kUseDefaultLargeResultsDataset);
@@ -904,10 +859,9 @@ void AdvanceOptions::ResetToDefaults() {
   session_location_.clear();
   additional_projects_.clear();
   query_properties_.clear();
-  activation_threshold_.clear();
   // use_wchar_.clear();
   enable_session_.clear();
-  activation_threshold_checkbox_.clear();
+  allow_htapi_for_large_results_checkbox_.clear();
   allow_large_results_.clear();
   use_default_large_results_.clear();
   encryption_type_ = kDefaultEncryptionType;
@@ -936,7 +890,7 @@ void AdvanceOptions::Show(HWND hwnd) {
   RegisterClass(&wc_adv);
 
   int window_width = 525;
-  int window_height = 745;
+  int window_height = 720;
   int screen_width = GetSystemMetrics(SM_CXSCREEN);
   int screen_height = GetSystemMetrics(SM_CYSCREEN);
   int x_pos = (screen_width - window_width) / 2;
