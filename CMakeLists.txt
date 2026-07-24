@@ -19,6 +19,9 @@ cmake_minimum_required(VERSION 3.14)
 if (NOT DEFINED PROJECT_VERSION)
     set(PROJECT_VERSION "1.0.0")
 endif ()
+set(VCPKG_OVERLAY_TRIPLETS
+    "${CMAKE_CURRENT_LIST_DIR}/ci/etc/triplets"
+    CACHE PATH "Path to custom triplets")
 
 project(
     cpp-bigquery-odbc
