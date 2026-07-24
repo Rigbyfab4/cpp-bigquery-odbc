@@ -559,7 +559,12 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
       // To have SQLFetch read the rows from the start, we are setting the
       // cursor to default.
       result_set.cursor = -1;
-      return ProcessRecordBatch(schema, *record_batch_status, result_set);
+      auto start = std::chrono::high_resolution_clock::now();
+      StatusRecord process_status = ProcessRecordBatch(schema, *record_batch_status, result_set);
+      auto end = std::chrono::high_resolution_clock::now();
+      stmt_handle.AccumulateProcessRecordBatchDuration(
+          std::chrono::duration_cast<std::chrono::microseconds>(end - start));
+      return process_status;
     } else {
       return StatusRecord{
           SQLStates::k_HY000(),

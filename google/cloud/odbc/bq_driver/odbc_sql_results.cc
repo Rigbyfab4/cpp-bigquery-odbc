@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
 #include "google/cloud/odbc/bq_driver/odbc_sql_results.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_query.h"
@@ -212,7 +213,11 @@ SQLRETURN SQLFetchInternal(SQLHSTMT statement_handle) {
     rowset_size = 1;
   }
   DescriptorHandle& ird = handle.GetDescriptorHandle(DescriptorType::kIRD);
+  auto start = std::chrono::high_resolution_clock::now();
   StatusRecord status_record = WriteRowset(result_set, rowset_size, ard, ird);
+  auto end = std::chrono::high_resolution_clock::now();
+  handle.AccumulateWriteRowsetDuration(
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start));
   return LogAndReturnCode(handle, status_record);
 }
 
@@ -300,7 +305,11 @@ SQLRETURN SQLFetchScrollInternal(SQLHSTMT statement_handle,
     rowset_size = 1;
   }
   DescriptorHandle& ird = handle.GetDescriptorHandle(DescriptorType::kIRD);
+  auto start = std::chrono::high_resolution_clock::now();
   status_record = WriteRowset(result_set, rowset_size, ard, ird);
+  auto end = std::chrono::high_resolution_clock::now();
+  handle.AccumulateWriteRowsetDuration(
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start));
   return LogAndReturnCode(handle, status_record);
 }
 

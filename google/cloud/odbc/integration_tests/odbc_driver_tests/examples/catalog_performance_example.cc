@@ -394,7 +394,11 @@ TEST_P(DataFetchPerformanceParamTest, BenchmarkPowerBIMimic) {
   std::string query =
       "SELECT * FROM `" + target_table + "` LIMIT " + std::to_string(limit);
 
+  auto exec_start = std::chrono::high_resolution_clock::now();
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
+  auto exec_end = std::chrono::high_resolution_clock::now();
+  double exec_duration_ms =
+      std::chrono::duration<double, std::milli>(exec_end - exec_start).count();
   CheckError(ret, "SQLExecDirect", conn);
 
   SQLSMALLINT num_cols;
@@ -417,12 +421,24 @@ TEST_P(DataFetchPerformanceParamTest, BenchmarkPowerBIMimic) {
   }
 
   int row_count = 0;
+  auto fetch_start = std::chrono::high_resolution_clock::now();
   while ((ret = SQLFetch(conn->hstmt)) == SQL_SUCCESS ||
          ret == SQL_SUCCESS_WITH_INFO) {
     row_count++;
   }
+  auto fetch_end = std::chrono::high_resolution_clock::now();
+  double fetch_duration_ms =
+      std::chrono::duration<double, std::milli>(fetch_end - fetch_start)
+          .count();
   EXPECT_EQ(ret, SQL_NO_DATA)
       << "Fetch ended unexpectedly with return code: " << ret;
+
+  std::cout << "\n[BenchmarkPowerBIMimic Metrics] for table: " << target_table
+            << "\n"
+            << "  Time taken by SQLExecDirect: " << exec_duration_ms << " ms\n"
+            << "  Total time for fetching rows: " << fetch_duration_ms << " ms\n"
+            << "  Total rows fetched: " << row_count << "\n"
+            << std::endl;
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
@@ -434,7 +450,7 @@ INSTANTIATE_TEST_SUITE_P(
             "bigquery-devtools-drivers.kirltest.new_timestamp_table", 200000),
         std::make_tuple(
             "bigquery-devtools-drivers.INTEGRATION_TEST_FORMAT.all_bq_types_2",
-            200000)
+            500000)
         // TODO: Re-enable this benchmark once HTAPI Arrow supports all data
         // types. Currently SQLExecDirect fails with:
         // "[Google][ODBC BigQuery Driver] Internal Error: Unsupported arrow

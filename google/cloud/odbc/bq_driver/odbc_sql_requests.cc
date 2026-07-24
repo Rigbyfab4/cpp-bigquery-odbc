@@ -222,6 +222,7 @@ SQLRETURN HandleAsyncExecute(StatementHandle& handle_ref) {
 StatusRecord ActuallyProcessExecute(StatementHandle& stmt_handle,
                                     StmtStates failure_state,
                                     bool is_data_buff_req = false) {
+  stmt_handle.ResetPerformanceMetrics();
   stmt_handle.SetStmtState(StmtStates::kStatementStillExecuting);
 
   ConnectionHandle& conn_handle = *(stmt_handle.GetConnectionHandle());

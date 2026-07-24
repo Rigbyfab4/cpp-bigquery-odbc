@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
 #include "google/cloud/odbc/bq_driver/internal/odbc_stmt_handle.h"
 #include "google/cloud/odbc/bq_client_interface/odbc_bq_client.h"
 #include "google/cloud/odbc/bq_client_interface/utils.h"
@@ -549,12 +550,36 @@ StatusRecord StatementHandle::PopulateIpd(DescriptorHandle& handle,
 }
 
 void StatementHandle::CloseCursor() {
+  PrintPerformanceMetrics();
   ResultSet result_set;
   result_set_ = result_set;
   if (StatementPrepared()) {
     SetStmtState(StmtStates::kStatementPrepared);
   } else {
     SetStmtState(StmtStates::kStatementNotPrepared);
+  }
+}
+
+StatementHandle::~StatementHandle() {
+  PrintPerformanceMetrics();
+}
+
+void StatementHandle::PrintPerformanceMetrics() {
+  if (performance_metrics_printed_) {
+    return;
+  }
+  if (process_record_batch_duration_.count() > 0 ||
+      write_rowset_duration_.count() > 0) {
+    std::cout << "\n[Performance Metrics] For Query: " << query_str_ << "\n"
+              << "  Total ProcessRecordBatch Time: "
+              << (static_cast<double>(process_record_batch_duration_.count()) /
+                  1000.0)
+              << " ms\n"
+              << "  Total WriteRowset Time: "
+              << (static_cast<double>(write_rowset_duration_.count()) / 1000.0)
+              << " ms\n"
+              << std::endl;
+    performance_metrics_printed_ = true;
   }
 }
 

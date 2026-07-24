@@ -64,7 +64,25 @@ class StatementHandle : public Handle {
         descriptors_(std::move(descriptors)),
         attributes_(kDefaultAttributes) {};
 
-  ~StatementHandle() = default;
+  ~StatementHandle();
+
+  inline void ResetPerformanceMetrics() {
+    process_record_batch_duration_ = std::chrono::microseconds(0);
+    write_rowset_duration_ = std::chrono::microseconds(0);
+    performance_metrics_printed_ = false;
+  }
+
+  inline void AccumulateProcessRecordBatchDuration(
+      std::chrono::microseconds duration) {
+    process_record_batch_duration_ += duration;
+  }
+
+  inline void AccumulateWriteRowsetDuration(
+      std::chrono::microseconds duration) {
+    write_rowset_duration_ += duration;
+  }
+
+  void PrintPerformanceMetrics();
 
   StatementHandle(StatementHandle const& statementHandle);
   StatementHandle& operator=(StatementHandle const& statementHandle);
@@ -369,6 +387,9 @@ class StatementHandle : public Handle {
   std::vector<std::pair<std::string, std::string>> job_data_;
   bool is_statement_prepared_ = false;
   PagingInfo paging_info_;
+  std::chrono::microseconds process_record_batch_duration_{0};
+  std::chrono::microseconds write_rowset_duration_{0};
+  bool performance_metrics_printed_{false};
 };
 
 }  // namespace google::cloud::odbc_bq_driver_internal
