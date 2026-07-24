@@ -255,8 +255,27 @@ jobs:
         export MSVC_VERSION="${{ matrix.msvc }}"
         export BRANCH_IDENTIFIER=$(echo "${{ github.ref_name }}" | tr '[:punct:]' '_')
         export CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX="windows_${BRANCH_IDENTIFIER}_${MSVC_VERSION//[-:;.,?\/]/_}_${DRIVER_ARCH}_$BUILD_SHARD"
+
+        export GOOGLE_APPLICATION_CREDENTIALS="$GOOGLE_GHA_CREDS_PATH"
+        export CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE="$GOOGLE_GHA_CREDS_PATH"
+
+        gcloud secrets versions access latest --secret=external-account-auth-keys --out-file="c:/b/external_account_auth_keys.json"
+        gcloud secrets versions access latest --secret=external-auth-token-script --out-file="c:/b/external_auth_token_raw.sh"
+
+        sed 's/print-access-token/print-access-token | tr -d "\\r"/g' c:/b/external_auth_token_raw.sh > c:/b/external_auth_token_patched.sh
+        tr -d '\r' < c:/b/external_auth_token_patched.sh > c:/b/external_auth_token.sh
+        chmod +x c:/b/external_auth_token.sh
+        c:/b/external_auth_token.sh c:/b/tkn.txt
+        if [ ! -s "c:/b/tkn.txt" ]; then
+          echo "Error: c:/b/tkn.txt is empty or does not exist!" >&2
+          exit 1
+        fi
+
+        jq '.credential_source.file = "c:\\b\\tkn.txt"' c:/b/external_account_auth_keys.json > c:/b/external_account_auth_keys_final.json
+        export CPP_BIGQUERY_ODBC_TEST_EXTERNAL_ACCOUNT_AUTH_KEY="c:\\b\\external_account_auth_keys_final.json"
         export CPP_BIGQUERY_ODBC_TEST_SERVICE_ACCOUNT_AUTH_KEY="C:\\b\\service_account_auth_keys.json"
         export GOOGLE_APPLICATION_CREDENTIALS="C:\\b\\service_account_auth_keys.json"
+
         if [ "$BUILD_SHARD" == "Core" ]; then
           export ODBC_TESTS_DSN="SampleDSN"
           export ODBC_TRANSACTIONS_TESTS_DSN="ODBCTransactionsTestsDSN"
