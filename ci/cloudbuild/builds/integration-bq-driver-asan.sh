@@ -55,7 +55,11 @@ mapfile -t cmake_args < <(cmake::common_args)
 BUILD_DIR="/opt/odbc-driver"
 # This is the name of DSN set in odbc.ini
 export ODBC_TESTS_DSN="SampleDSNGoogleDriver"
-export ASAN_OPTIONS="detect_container_overflow=0:detect_leaks=1"
+# Disable leak detection during the build phase. The LD_PRELOAD of the ASan
+# runtime causes the linker itself to run under ASan instrumentation, and
+# libbfd (used by the linker) has allocations that appear as leaks, causing
+# link failures. Leak detection will be re-enabled before running tests.
+export ASAN_OPTIONS="detect_container_overflow=0:detect_leaks=0"
 export LSAN_OPTIONS="use_tls=0:suppressions=/opt/odbc-driver/lsan.supp:print_suppressions=0"
 
 export CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX=${TRIGGER_NAME//[-:;.,?]/_}_${BRANCH_NAME//[-:;.,?]/_}
@@ -111,5 +115,9 @@ io::run cmake --build cmake-out
 
 # Copy the roots.pem file to the .so directory to run test cases.
 cp /opt/odbc-driver/roots.pem "cmake-out/google/cloud/odbc/roots.pem"
+
+# Re-enable leak detection for test execution. Leak detection was disabled
+# during the build phase to avoid false positives from libbfd in the linker.
+export ASAN_OPTIONS="detect_container_overflow=0:detect_leaks=1"
 mapfile -t ctest_args < <(ctest::common_args)
 io::run env -C cmake-out ctest "${ctest_args[@]}"
