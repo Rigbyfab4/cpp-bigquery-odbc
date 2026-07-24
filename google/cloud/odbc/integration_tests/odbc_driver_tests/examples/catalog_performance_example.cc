@@ -447,7 +447,7 @@ INSTANTIATE_TEST_SUITE_P(
     Tables, DataFetchPerformanceParamTest,
     ::testing::Values(
         std::make_tuple(
-            "bigquery-devtools-drivers.kirltest.new_timestamp_table", 200000),
+            "bigquery-devtools-drivers.kirltest.new_timestamp_table", 500000),
         std::make_tuple(
             "bigquery-devtools-drivers.INTEGRATION_TEST_FORMAT.all_bq_types_2",
             500000)

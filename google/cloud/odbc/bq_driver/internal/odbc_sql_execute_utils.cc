@@ -19,6 +19,7 @@
 #include <thread>
 #include "absl/time/time.h"
 #include "absl/time/civil_time.h"
+#include <arrow/array/array_decimal.h>
 
 //////////////////////////////////////////////////////////////////
 // This file has query execution related utilities which can have
@@ -545,6 +546,30 @@ StatusRecord ProcessRecordBatch(
         }
         break;
       }
+      case arrow::Type::DECIMAL128: {
+        auto dec_arr = std::static_pointer_cast<arrow::Decimal128Array>(column);
+        for (int64_t row = 0; row < num_rows; ++row) {
+          if (dec_arr->IsNull(row)) {
+            result_set.rows[row][col_i] = kNullValue;
+          } else {
+            NumericToDSValue(dec_arr->FormatValue(row),
+                             result_set.rows[row][col_i]);
+          }
+        }
+        break;
+      }
+      case arrow::Type::DECIMAL256: {
+        auto dec_arr = std::static_pointer_cast<arrow::Decimal256Array>(column);
+        for (int64_t row = 0; row < num_rows; ++row) {
+          if (dec_arr->IsNull(row)) {
+            result_set.rows[row][col_i] = kNullValue;
+          } else {
+            NumericToDSValue(dec_arr->FormatValue(row),
+                             result_set.rows[row][col_i]);
+          }
+        }
+        break;
+      }
       // For complex types, we fall back to the existing logic but apply it
       // column-wise. We still avoid the GetScalar() overhead where possible,
       // but use ToString() to maintain compatibility with the existing parsing
@@ -575,11 +600,6 @@ StatusRecord ProcessRecordBatch(
                 if (pos != std::string::npos) data = data.substr(pos);
               }
               StringToDSValue(data, row_val);
-              break;
-            }
-            case arrow::Type::DECIMAL128:
-            case arrow::Type::DECIMAL256: {
-              NumericToDSValue(data, row_val);
               break;
             }
             default: {
@@ -838,7 +858,7 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
   // Wait for Job to complete
   std::string job_status = insert_response->status.state;
   ExponentialBackoffPolicy backoff(chrono_ms(100), chrono_ms(200), 2);
-  StatusRecordOr<Job> get_job_response;
+  StatusRecordOr<Job> get_job_response = insert_response;
   while (job_status != "DONE") {
     std::this_thread::sleep_for(backoff.OnCompletion());
     get_job_response = bq_client->GetJob(
