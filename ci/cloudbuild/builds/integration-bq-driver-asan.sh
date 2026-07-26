@@ -97,7 +97,9 @@ io::run cmake -B "$BUILD_DIR" \
   -DODBC_EXAMPLES=ON \
   -DODBC_UNIT_TESTING=OFF \
   -DCLIENT_LIBRARY_INTEGRATION_TESTING=OFF \
-  -DVCPKG_FORCE_SOURCE_ONLY=ON
+  -DVCPKG_FORCE_SOURCE_ONLY=ON \
+  -DVCPKG_TARGET_TRIPLET=x64-linux-asan \
+  -DVCPKG_OVERLAY_TRIPLETS="${WORKSPACE_DIR}/cmake/triplets"
 
 # Preload the ASan runtime library before building and testing, so that
 # gtest_discover_tests (which runs during cmake --build) and ctest can find
