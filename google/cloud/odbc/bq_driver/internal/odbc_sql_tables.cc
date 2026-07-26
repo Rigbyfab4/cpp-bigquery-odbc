@@ -17,6 +17,7 @@
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include <algorithm>
+#include <optional>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
@@ -53,6 +54,37 @@ std::string NormalizeRestTableType(std::string type) {
   return type;
 }
 }  // namespace
+
+std::optional<std::string> LiteralFromOdbcPattern(std::string const& filter,
+                                                  SQLULEN metadata_id) {
+  if (metadata_id == SQL_TRUE) {
+    std::string literal = filter;
+    RTrim(literal);
+    return literal;
+  }
+  if (filter.empty()) {
+    return std::nullopt;
+  }
+  std::string literal;
+  literal.reserve(filter.size());
+  for (size_t i = 0; i < filter.size(); ++i) {
+    char c = filter[i];
+    if (c == '\\') {
+      // Escape: the next char is a literal (consume both). A lone trailing
+      // backslash is dropped, matching CastOdbcRegexToCppRegex().
+      if (i + 1 < filter.size()) {
+        literal.push_back(filter[i + 1]);
+        ++i;
+      }
+    } else if (c == '%' || c == '_') {
+      // A genuine wildcard: the filter must be expanded by enumeration.
+      return std::nullopt;
+    } else {
+      literal.push_back(c);
+    }
+  }
+  return literal;
+}
 
 StatusRecord ValidateInputParameters(
     const SQLCHAR* catalog_name, SQLSMALLINT catalog_name_len,
@@ -116,9 +148,19 @@ StatusRecordOr<std::vector<std::string>> GetFilteredDatasetIds(
   StatusRecordOr<std::vector<ListFormatDataset>> datasets =
       bq_client.FilterDatasets(project_id, filter, options);
   if (!datasets) {
-    LOG(ERROR) << "GetFilteredDatasetIds::FilterDatasets:: "
-               << datasets.GetStatusRecord().message;
-    return datasets.GetStatusRecord();
+    auto const& status = datasets.GetStatusRecord();
+    // A catalog passed as a literal (no wildcard) is used directly without
+    // first confirming it via projects.list; an unknown/inaccessible project
+    // then surfaces here. Treat "not found" as an empty catalog rather than
+    // failing the whole call, matching the pattern-based path (which would
+    // simply not match the project) and GetFilteredTables' 404 handling.
+    if (status.native_error_code == 404) {
+      LOG(WARNING) << "GetFilteredDatasetIds:: Skipping project not found: '"
+                   << project_id << "': " << status.message;
+      return std::vector<std::string>{};
+    }
+    LOG(ERROR) << "GetFilteredDatasetIds::FilterDatasets:: " << status.message;
+    return status;
   }
   for (auto const& dataset : *datasets) {
     if ((!metadata_id && datasets_filter == "%") ||
@@ -416,12 +458,14 @@ StatusRecordOr<ResultSet> GetResultSetForTables(
     std::string const& project_filter, std::string const& dataset_filter,
     std::string const& table_filter, std::string const& table_type_filter,
     SQLULEN metadata_id) {
-  // When SQL_ATTR_METADATA_ID is true, the catalog argument is an exact project
-  // identifier (not a pattern). Skip enumerating every accessible project via
-  // projects.list and use the name directly.
+  // When the catalog argument is an exact project identifier -- either because
+  // SQL_ATTR_METADATA_ID is true, or because the LIKE pattern contains no
+  // wildcard -- skip enumerating every accessible project via projects.list and
+  // use the name directly.
   std::vector<std::string> project_list;
-  if (metadata_id == SQL_TRUE) {
-    project_list = {project_filter};
+  if (auto project_literal =
+          LiteralFromOdbcPattern(project_filter, metadata_id)) {
+    project_list = {std::move(*project_literal)};
   } else {
     auto projects_status_record_or =
         GetFilteredProjectIds(bq_client, project_filter, metadata_id);
@@ -447,12 +491,13 @@ StatusRecordOr<ResultSet> GetResultSetForTables(
   std::shared_ptr<TraceOptions> trace_option = TraceOptions::GetTraceOption();
   int max_threads = trace_option->max_threads;
 
-  if (metadata_id == SQL_TRUE) {
-    // When SQL_ATTR_METADATA_ID is true, the schema argument is an exact
-    // dataset identifier (not a pattern). Skip listing every dataset in the
-    // project via datasets.list
+  if (auto dataset_literal =
+          LiteralFromOdbcPattern(dataset_filter, metadata_id)) {
+    // The schema argument is an exact dataset identifier (SQL_ATTR_METADATA_ID
+    // is true, or the LIKE pattern contains no wildcard). Skip listing every
+    // dataset in the project via datasets.list and address the dataset directly.
     for (auto const& project_id : project_list) {
-      tasks.push_back({project_id, dataset_filter});
+      tasks.push_back({project_id, *dataset_literal});
     }
   } else {
     // Enumerate datasets for each project in parallel. Previously this was a
