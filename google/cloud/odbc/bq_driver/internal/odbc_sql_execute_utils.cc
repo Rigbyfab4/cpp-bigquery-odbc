@@ -855,21 +855,44 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
   // This should be safe since the same query is executed during HTAPI flow too.
   stmt_handle.SetPreparedJob(*insert_response);
 
-  // Wait for Job to complete
-  std::string job_status = insert_response->status.state;
-  ExponentialBackoffPolicy backoff(chrono_ms(100), chrono_ms(200), 2);
-  StatusRecordOr<Job> get_job_response;
-  while (job_status != "DONE") {
+  // Wait for the job to complete, bounded by the statement's query timeout
+  // (SQL_ATTR_QUERY_TIMEOUT, carried in the request's timeout field) so a job
+  // stuck in the queue returns HYT00 instead of polling forever. This mirrors
+  // the deadline handling in FetchNextPageOfQueryResults(). The backoff cap is
+  // 1s (was 200ms): completion is server-side work, and polling faster only
+  // multiplies jobs.get calls -- and quota pressure when many statements are
+  // waiting -- without finishing the job any sooner.
+  ExponentialBackoffPolicy backoff(chrono_ms(100), chrono_ms(1000), 2);
+  auto start_time = std::chrono::system_clock::now();
+  auto timeout_ms =
+      std::chrono::milliseconds(post_query_request.query_request().timeout());
+  // Track the last observed job so the post-loop error check works even when
+  // InsertJob itself reported the terminal state (in which case the loop body
+  // never runs and there is no GetJob response to read).
+  Job job_response = *insert_response;
+  while (job_response.status.state != "DONE") {
+    if (timeout_ms.count() > 0 &&
+        std::chrono::system_clock::now() > start_time + timeout_ms) {
+      std::string message = "The query timeout period of " +
+                            std::to_string(timeout_ms.count()) +
+                            "ms has expired";
+      LOG(ERROR) << "FetchBQDataRead:: " << message;
+      // Best-effort cancel so the abandoned job stops consuming project
+      // resources; a failure to cancel does not change the outcome.
+      bq_client->CancelJob(dsn.catalog, job_response.job_reference.job_id,
+                           job_response.job_reference.location, opt);
+      return StatusRecord{SQLStates::k_HYT00(), message};
+    }
     std::this_thread::sleep_for(backoff.OnCompletion());
-    get_job_response = bq_client->GetJob(
-        conn_handle.GetDsn().catalog, insert_response->job_reference.job_id,
+    auto get_job_response = bq_client->GetJob(
+        dsn.catalog, insert_response->job_reference.job_id,
         insert_response->job_reference.location, opt);
     if (!get_job_response.Ok()) {
       return get_job_response.GetStatusRecord();
     }
-    job_status = get_job_response->status.state;
+    job_response = *get_job_response;
   }
-  std::string error_message = get_job_response->status.error_result.message;
+  std::string error_message = job_response.status.error_result.message;
   if (!error_message.empty()) {
     LOG(ERROR) << "FetchBQDataRead:: " << error_message;
     return StatusRecord{SQLStates::k_HY000(), error_message};
