@@ -4321,7 +4321,7 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   std::string call_proc = "CALL " + procedure_name + "(?, ?, ?)";
   status = SQLPrepare(conn->hstmt, (SQLCHAR*)call_proc.c_str(), SQL_NTS);
   CheckError(status, "SQLPrepare (call procedure)", conn);
-  
+
   // Bind parameters
   SQLCHAR str_val[] = "Test String 5";
   SQLLEN str_ind = SQL_NTS;

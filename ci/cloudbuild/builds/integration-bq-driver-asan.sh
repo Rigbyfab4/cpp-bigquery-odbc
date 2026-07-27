@@ -57,7 +57,8 @@ BUILD_DIR="/opt/odbc-driver"
 # This is the name of DSN set in odbc.ini
 export ODBC_TESTS_DSN="SampleDSNGoogleDriver"
 export LSAN_OPTIONS="use_tls=0:suppressions=/opt/odbc-driver/lsan.supp:print_suppressions=0:fast_unwind_on_malloc=0"
-export ASAN_SYMBOLIZER_PATH="$(command -v llvm-symbolizer)"
+ASAN_SYMBOLIZER_PATH="$(command -v llvm-symbolizer)"
+export ASAN_SYMBOLIZER_PATH
 
 export CPP_BIGQUERY_ODBC_TEST_TABLE_PREFIX=${TRIGGER_NAME//[-:;.,?]/_}_${BRANCH_NAME//[-:;.,?]/_}
 
