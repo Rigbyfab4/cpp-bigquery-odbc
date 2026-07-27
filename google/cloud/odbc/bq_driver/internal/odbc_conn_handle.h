@@ -30,7 +30,7 @@ using google::cloud::odbc_bigquery_client_interface::OauthMechanism;
 using google::cloud::odbc_bigquery_client_interface::ODBCBQClient;
 
 std::string const kDefaultDestDatasetId = "_bqodbc_temp_tables";
-std::string const kDefaultLargeResultsTableExpiration = "3600000";
+//std::string const kDefaultLargeResultsTableExpiration = "3600000";
 inline std::uint32_t const kDefaultMaxRetries = 6;
 
 // Details of authentication provided in the odbc.ini/Windows Registry
@@ -80,7 +80,7 @@ struct Dsn {
   bool use_default_large_results_dataset = true;
   std::string large_results_dataset_id;
   bool allow_htapi = false;
-  std::string large_table_expiration_time = kDefaultLargeResultsTableExpiration;
+ // std::string large_table_expiration_time = kDefaultLargeResultsTableExpiration;
 
   /////////////////////////////////////////////////////////////////
   // Optional BYOID Properties needed for external authentication.

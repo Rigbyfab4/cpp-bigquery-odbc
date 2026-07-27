@@ -40,8 +40,8 @@ std::string AdvanceOptions::adv_dataset_name_;
 // It is used as a default configuration for temporary resource cleanup
 // in the existing driver, ensuring unused resources do not persist
 // indefinitely.
-std::string AdvanceOptions::temp_expiration_ =
-    kDefaultLargeResultsTableExpiration;
+// std::string AdvanceOptions::temp_expiration_ =
+//     kDefaultLargeResultsTableExpiration;
 std::string AdvanceOptions::encryption_key_;
 
 // Defines the number of rows per data block when fetching results.
@@ -71,8 +71,8 @@ std::string const kLargeResultsDatasetId = "LargeResultsDatasetId";
 std::string const kEncryptionKey = "KMSKeyName";
 std::string const kRowsFetchedPerBlock = "RowsFetchedPerBlock";
 std::string const kDefaultStringColumnLength = "DefaultStringColumnLength";
-std::string const kLargeResultsTempTableExpirationTime =
-    "LargeResultsTempTableExpirationTime";
+// std::string const kLargeResultsTempTableExpirationTime =
+//     "LargeResultsTempTableExpirationTime";
 std::string const kSessionLocation = "SessionLocation";
 std::string const kAdditionalProjects = "AdditionalProjects";
 std::string const kQueryProperties = "QueryProperties";
@@ -184,7 +184,7 @@ void AdvanceOptions::CreateLargeResultsControls(HFONT h_font) {
     CheckDlgButton(adv_hwnd, kIdcUseDefaultCheckbox, BST_CHECKED);
     EnableWindow(h_dataset_name_edit, FALSE);
   }
-  HWND h_temp_expiration_label = CreateLabel(
+  /*HWND h_temp_expiration_label = CreateLabel(
       adv_hwnd, "Default temp table expiration time (ms):", kXAxis + 5,
       kYAxis + 125, kWidth * 4.3, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_temp_expiration_label, WM_SETFONT, (WPARAM)h_font, TRUE);
@@ -198,7 +198,7 @@ void AdvanceOptions::CreateLargeResultsControls(HFONT h_font) {
                 GetWindowLong(h_temp_expiration_edit, GWL_STYLE) | ES_NUMBER);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcTempExpirationEdit),
                     InputSubclassProc, 0, 0);
-}
+}*/
 
 void AdvanceOptions::CreateHighThroughputControls(HFONT h_font) {
   HWND h_allow_high_throughput_checkbox = CreateCheckBox(
@@ -536,7 +536,7 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
                         sizeof(dataset_name_buffer));
           adv_dataset_name_ = dataset_name_buffer;
 
-          HWND h_temp_expiration_edit =
+          /*HWND h_temp_expiration_edit =
               GetDlgItem(hwnd, kIdcTempExpirationEdit);
           char temp_expiration_buffer[256] = {0};
           GetWindowText(h_temp_expiration_edit, temp_expiration_buffer,
@@ -550,7 +550,7 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
                 std::to_string(UINT32_MAX) + "]";
             ShowErrorWindow(hwnd, err_msg);
             return true;
-          }
+          }*/
           HWND h_encryption_key_edit = GetDlgItem(hwnd, kIdcEncryptionKeyEdit);
           char encryption_key_buffer[256] = {0};
           GetWindowText(h_encryption_key_edit, encryption_key_buffer,
@@ -822,9 +822,9 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
                                       kDefaultRowsPerBlock);
   default_string_length_ = GetValueOrDefault(
       attribute_map, kDefaultStringColumnLength, kDefaultStringLength);
-  temp_expiration_ =
-      GetValueOrDefault(attribute_map, kLargeResultsTempTableExpirationTime,
-                        kDefaultLargeResultsTableExpiration);
+  // temp_expiration_ =
+  //     GetValueOrDefault(attribute_map, kLargeResultsTempTableExpirationTime,
+  //                       kDefaultLargeResultsTableExpiration);
   max_threads_ = GetValueOrDefault(attribute_map, kMaxThreads,
                                    std::to_string(kDefaultMaxThreads));
   max_retries_ = GetValueOrDefault(attribute_map, kMaxRetries,
@@ -850,7 +850,7 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
 void AdvanceOptions::ResetToDefaults() {
   language_dialect_ = kDefaultLanguageDialect;
   adv_dataset_name_ = kDefaultLargeResultsDatasetId;
-  temp_expiration_ = kDefaultLargeResultsTableExpiration;
+  //temp_expiration_ = kDefaultLargeResultsTableExpiration;
   encryption_key_.clear();
   rows_per_block_ = kDefaultRowsPerBlock;
   default_string_length_ = kDefaultStringLength;

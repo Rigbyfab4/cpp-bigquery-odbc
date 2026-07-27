@@ -23,7 +23,7 @@ namespace google::cloud::odbc_bq_driver_internal {
 // NEXTID:153
 static int const kIdcUseDefaultCheckbox = 128;
 static int const kIdcDatasetNameEdit = 129;
-static int const kIdcTempExpirationEdit = 130;
+//static int const kIdcTempExpirationEdit = 130;
 static int const kIdcAllowHighThroughputCheckbox = 131;
 static int const kIdcEncryptionKeyEdit = 133;
 static int const kIdcRowsPerBlockEdit = 134;
@@ -82,9 +82,9 @@ class AdvanceOptions {
   inline std::string const& GetDefaultStringLength() const {
     return default_string_length_;
   }
-  inline std::string const& GetTempTableExpiration() const {
-    return temp_expiration_;
-  }
+  // inline std::string const& GetTempTableExpiration() const {
+  //   return temp_expiration_;
+  // }
   inline std::string const& GetUseWchar() const { return use_wchar_; }
   inline std::string const& GetEnableSession() const { return enable_session_; }
   inline std::string const& GetAllowHtapiForLargeResultsCheckbox() const {
@@ -118,7 +118,7 @@ class AdvanceOptions {
   static std::string language_dialect_;
   static std::string adv_dataset_name_;
   static std::string default_large_result_dataset_;
-  static std::string temp_expiration_;
+  // static std::string temp_expiration_;
   static std::string encryption_key_;
   static std::string rows_per_block_;
   static std::string default_string_length_;

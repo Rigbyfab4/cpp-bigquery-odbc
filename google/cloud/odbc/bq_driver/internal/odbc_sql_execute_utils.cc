@@ -743,7 +743,7 @@ StatusRecord CreateLargeDatasetIfNeeded(std::shared_ptr<ODBCBQClient> bq_client,
                                         std::string project_id,
                                         std::string dataset_id,
                                         std::string location,
-                                        std::string large_table_expiration_time,
+                                        //std::string large_table_expiration_time,
                                         Options opt) {
   // 1. Construct the CREATE SCHEMA DDL.
   std::string full_dataset_name = "`" + project_id + "." + dataset_id + "`";
@@ -752,7 +752,7 @@ StatusRecord CreateLargeDatasetIfNeeded(std::shared_ptr<ODBCBQClient> bq_client,
   // 2. Handle Expiration Time Conversion.
   // The input is in milliseconds (string), but SQL DDL OPTIONS expects
   // 'default_table_expiration_days'.
-  if (!large_table_expiration_time.empty()) {
+  /*if (!large_table_expiration_time.empty()) {
     try {
       long long expiration_ms = std::stoll(large_table_expiration_time);
       if (expiration_ms <= 0) {
@@ -773,7 +773,7 @@ StatusRecord CreateLargeDatasetIfNeeded(std::shared_ptr<ODBCBQClient> bq_client,
       LOG(ERROR) << err_msg;
       return StatusRecord{SQLStates::k_HY000(), err_msg};
     }
-  }
+  }*/
   LOG(INFO) << "CreateLargeDatasetIfNeeded:: Executing DDL: " << query;
 
   // 3. Prepare the QueryRequest.
@@ -841,7 +841,7 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
   StatusRecord create_dataset_status = CreateLargeDatasetIfNeeded(
       bq_client, dsn.catalog,
       job.configuration.query.destination_table.dataset_id, location,
-      dsn.large_table_expiration_time, opt);
+      opt);
   if (!create_dataset_status.ok()) {
     return create_dataset_status;
   }

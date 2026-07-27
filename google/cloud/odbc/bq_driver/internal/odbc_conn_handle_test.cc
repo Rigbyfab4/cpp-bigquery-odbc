@@ -117,8 +117,8 @@ TEST(ConnectionHandle, DsnSetupHtapiDefaultValues) {
   EXPECT_TRUE(actual.use_default_large_results_dataset);
   EXPECT_FALSE(actual.allow_htapi);
   EXPECT_EQ(actual.large_results_dataset_id, kDefaultDestDatasetId);
-  EXPECT_EQ(actual.large_table_expiration_time,
-            kDefaultLargeResultsTableExpiration);
+  // EXPECT_EQ(actual.large_table_expiration_time,
+  //           kDefaultLargeResultsTableExpiration);
 }
 
 TEST(ConnectionHandle, DsnSetupHtapiBasic) {
@@ -127,7 +127,7 @@ TEST(ConnectionHandle, DsnSetupHtapiBasic) {
   dsn_section["USEDEFAULTLARGERESULTSDATASET"] = "0";
   dsn_section["LARGERESULTSDATASETID"] = "large_dataset";
   dsn_section["ALLOWHTAPIFORLARGERESULTS"] = "1";
-  dsn_section["LARGERESULTSTEMPTABLEEXPIRATIONTIME"] = "36000";
+  //dsn_section["LARGERESULTSTEMPTABLEEXPIRATIONTIME"] = "36000";
 
   conn_handle.SetUp(dsn_section, kDsnName);
   Dsn actual = conn_handle.GetDsn();
@@ -135,7 +135,7 @@ TEST(ConnectionHandle, DsnSetupHtapiBasic) {
   EXPECT_FALSE(actual.use_default_large_results_dataset);
   EXPECT_EQ(actual.large_results_dataset_id, "large_dataset");
   EXPECT_TRUE(actual.allow_htapi);
-  EXPECT_EQ(actual.large_table_expiration_time, "36000");
+ // EXPECT_EQ(actual.large_table_expiration_time, "36000");
 }
 
 TEST(ConnectionHandle, DsnSetupByoid) {
