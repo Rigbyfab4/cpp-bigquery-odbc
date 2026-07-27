@@ -43,13 +43,6 @@ git checkout "$VCPKG_VERSION"
 
 cd "$WORKSPACE_DIR"
 
-# Configure git for more robust operations with HTTPS and larger buffers
-# This fixes "Could not read from remote repository" errors during vcpkg builds
-git config --global http.version HTTP/1.1
-git config --global http.postBuffer 524288000
-git config --global http.lowSpeedLimit 0
-git config --global http.lowSpeedTime 999999
-git config --global core.compression 0
 
 # This runs all the unit tests
 mapfile -t args < <(bazel::common_args)
