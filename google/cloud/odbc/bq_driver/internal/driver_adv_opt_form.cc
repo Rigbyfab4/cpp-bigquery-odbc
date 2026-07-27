@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/driver_adv_opt_form.h"
+#include "google/cloud/odbc/bq_driver/internal/driver_form.h"
 #include "google/cloud/odbc/bq_driver/internal/odbc_internal_commons.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
+#include <set>
 #include <shellapi.h>
 
 namespace google::cloud::odbc_bq_driver_internal {
@@ -53,6 +55,7 @@ std::string AdvanceOptions::rows_per_block_ = kDefaultRowsPerBlock;
 std::string AdvanceOptions::default_string_length_ = kDefaultStringLength;
 std::string AdvanceOptions::session_location_;
 std::string AdvanceOptions::additional_projects_;
+std::string AdvanceOptions::allowed_projects_;
 std::string AdvanceOptions::query_properties_;
 std::string AdvanceOptions::use_wchar_;
 std::string AdvanceOptions::enable_session_;
@@ -75,6 +78,7 @@ std::string const kLargeResultsTempTableExpirationTime =
     "LargeResultsTempTableExpirationTime";
 std::string const kSessionLocation = "SessionLocation";
 std::string const kAdditionalProjects = "AdditionalProjects";
+std::string const kAllowedProjects = "AllowedProjects";
 std::string const kQueryProperties = "QueryProperties";
 std::string const kUseWChar = "UseWVarChar";
 std::string const kEnableSession = "EnableSession";
@@ -97,7 +101,11 @@ int const kButtonWidth = 68;
 int const kXAxis = 10;
 int const kOkButtonX = 330;
 int const kCancelButtonX = 410;
-int const kButtonY = 613;
+// The allowed-projects pick list and its "Load Projects" button occupy the
+// space below the query-properties box, so the OK/Cancel row sits lower than
+// the other control offsets in this file would suggest.
+int const kButtonY = 753;
+int const kAllowedProjectsListHeight = 100;
 int const kYAxis = 20;
 int const kEditBoxWidth = 260;
 int const kEditBoxHeight = 17;
@@ -428,6 +436,25 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcQueryPropertiesEdit),
                     InputSubclassProc, 0, 0);
 
+  HWND h_allowed_projects_label = CreateLabel(
+      adv_hwnd, "Allowed projects (all accessible if none checked):", kXAxis,
+      kYAxis + 635, kWidth * 6, kHeight, WS_VISIBLE | SS_LEFT);
+  SendMessage(h_allowed_projects_label, WM_SETFONT, (WPARAM)h_font, TRUE);
+
+  HWND h_load_projects_button =
+      CreateButton(adv_hwnd, "Load Projects", kXAxis + 400, kYAxis + 633,
+                   kButtonWidth + 22, kButtonHeight, kIdcLoadProjectsButton);
+  SendMessage(h_load_projects_button, WM_SETFONT, (WPARAM)h_font, TRUE);
+
+  HWND h_allowed_projects_list_view =
+      CreateListView(adv_hwnd, kXAxis, kYAxis + 655, kWidth + 445,
+                     kAllowedProjectsListHeight, kIdcAllowedProjectsListView);
+  SendMessage(h_allowed_projects_list_view, WM_SETFONT, (WPARAM)h_font, TRUE);
+  // Without contacting the account, the ids saved in the DSN are all we know.
+  // Show them ticked so OK round-trips the value even if the user never
+  // presses "Load Projects".
+  PopulateAllowedProjectsListView(h_allowed_projects_list_view, {});
+
   // This feature is turned off for the private release. It will be restored for
   // the public release with an accompanying documentation link.
   // TODO(b/461668255):Restore BigQuery documentation URL
@@ -441,6 +468,77 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   //                          kButtonY + 10, kWidth + 90, kHeight,
   //                          kIdcHyperlink2);
   // SendMessage(h_hyperlink, WM_SETFONT, (WPARAM)h_font, TRUE);
+}
+
+void AdvanceOptions::PopulateAllowedProjectsListView(
+    HWND h_list_view, std::vector<std::string> const& project_ids) {
+  if (!h_list_view) {
+    return;
+  }
+
+  // Ticked ids must survive a reload, whether they came from the saved DSN or
+  // from ticks the user made before pressing "Load Projects".
+  std::set<std::string> checked;
+  for (auto& project_id : Split(allowed_projects_, ",")) {
+    Trim(project_id);
+    if (!project_id.empty()) {
+      checked.insert(project_id);
+    }
+  }
+  int const existing_count = ListView_GetItemCount(h_list_view);
+  for (int i = 0; i < existing_count; ++i) {
+    char buffer[256] = {0};
+    ListView_GetItemText(h_list_view, i, 0, buffer,
+                         static_cast<int>(sizeof(buffer)));
+    if (buffer[0] != '\0' && ListView_GetCheckState(h_list_view, i)) {
+      checked.insert(buffer);
+    }
+  }
+
+  // Keep ticked ids the account no longer reports, so reloading the list never
+  // silently drops a value the user had already saved.
+  std::vector<std::string> rows = project_ids;
+  std::set<std::string> const listed(project_ids.begin(), project_ids.end());
+  for (auto const& project_id : checked) {
+    if (listed.find(project_id) == listed.end()) {
+      rows.push_back(project_id);
+    }
+  }
+
+  ListView_DeleteAllItems(h_list_view);
+  for (size_t i = 0; i < rows.size(); ++i) {
+    LVITEM item = {};
+    item.mask = LVIF_TEXT;
+    item.iItem = static_cast<int>(i);
+    item.iSubItem = 0;
+    item.pszText = const_cast<char*>(rows[i].c_str());
+    int const index = ListView_InsertItem(h_list_view, &item);
+    if (index >= 0 && checked.find(rows[i]) != checked.end()) {
+      ListView_SetCheckState(h_list_view, index, TRUE);
+    }
+  }
+}
+
+std::string AdvanceOptions::CollectCheckedProjects(HWND h_list_view) {
+  // Without the control there is nothing to read; keep the value already held
+  // rather than clearing it.
+  if (!h_list_view) {
+    return allowed_projects_;
+  }
+  std::vector<std::string> checked;
+  int const count = ListView_GetItemCount(h_list_view);
+  for (int i = 0; i < count; ++i) {
+    if (!ListView_GetCheckState(h_list_view, i)) {
+      continue;
+    }
+    char buffer[256] = {0};
+    ListView_GetItemText(h_list_view, i, 0, buffer,
+                         static_cast<int>(sizeof(buffer)));
+    if (buffer[0] != '\0') {
+      checked.push_back(buffer);
+    }
+  }
+  return Join(checked, ",");
 }
 
 void AdvanceOptions::CreateButtons(HFONT h_font) {
@@ -639,6 +737,9 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
                         sizeof(additional_projects_buffer));
           additional_projects_ = additional_projects_buffer;
 
+          allowed_projects_ = CollectCheckedProjects(
+              GetDlgItem(hwnd, kIdcAllowedProjectsListView));
+
           HWND h_query_properties_edit =
               GetDlgItem(hwnd, kIdcQueryPropertiesEdit);
           char query_properties_buffer[1024] = {0};
@@ -770,6 +871,59 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
           break;
         }
 
+        case kIdcLoadProjectsButton: {
+          if (HIWORD(w_param) != BN_CLICKED) {
+            break;
+          }
+          // The credentials live on the parent DSN dialog; this dialog holds no
+          // copy of them.
+          HWND h_parent = GetParent(hwnd);
+          char key_file_buffer[1024] = {0};
+          char auth_buffer[256] = {0};
+          if (h_parent) {
+            GetWindowText(GetDlgItem(h_parent, kIdcKeyfileEdit),
+                          key_file_buffer, sizeof(key_file_buffer));
+            GetWindowText(GetDlgItem(h_parent, kIdcAuthBox), auth_buffer,
+                          sizeof(auth_buffer));
+          }
+          if (auth_buffer[0] == '\0') {
+            ShowErrorWindow(hwnd,
+                            "Select an OAuth mechanism on the main dialog "
+                            "before loading projects.");
+            break;
+          }
+          bool const is_adc =
+              (strcmp(auth_buffer, "Application Default Credentials") == 0);
+          if (!is_adc && key_file_buffer[0] == '\0') {
+            ShowErrorWindow(hwnd,
+                            "Enter a key file path on the main dialog before "
+                            "loading projects.");
+            break;
+          }
+
+          auto projects_or = DriverForm::GetCatalogAndDataset(
+              "Catalog", is_adc ? "" : key_file_buffer, auth_buffer, "");
+          if (!projects_or.Ok()) {
+            LOG(ERROR) << "AdvanceOptions::AdvanceOptProc::GetCatalogAndDataset"
+                          ":: "
+                       << projects_or.GetStatusRecord().message;
+            MessageBox(hwnd, projects_or.GetStatusRecord().message.c_str(),
+                       "Error", MB_OK | MB_ICONERROR);
+            break;
+          }
+
+          std::vector<std::string> project_ids;
+          for (auto& project_id : Split(projects_or.GetValue(), ";")) {
+            Trim(project_id);
+            if (!project_id.empty()) {
+              project_ids.push_back(std::move(project_id));
+            }
+          }
+          PopulateAllowedProjectsListView(
+              GetDlgItem(hwnd, kIdcAllowedProjectsListView), project_ids);
+          break;
+        }
+
         case kIdcCancelButton:
           DestroyWindow(hwnd);  // Close the window
           break;
@@ -831,6 +985,7 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
                                    std::to_string(kDefaultMaxRetries));
   session_location_ = GetValueOrDefault(attribute_map, kSessionLocation);
   additional_projects_ = GetValueOrDefault(attribute_map, kAdditionalProjects);
+  allowed_projects_ = GetValueOrDefault(attribute_map, kAllowedProjects);
   query_properties_ = GetValueOrDefault(attribute_map, kQueryProperties);
   // TODO(b/497725655): Enable UI feature after public release
   // use_wchar_ = GetValueOrDefault(attribute_map, kUseWChar);
@@ -858,6 +1013,7 @@ void AdvanceOptions::ResetToDefaults() {
   max_retries_ = std::to_string(kDefaultMaxRetries);
   session_location_.clear();
   additional_projects_.clear();
+  allowed_projects_.clear();
   query_properties_.clear();
   // use_wchar_.clear();
   enable_session_.clear();
@@ -884,13 +1040,15 @@ void AdvanceOptions::Show(HWND hwnd) {
       (HBRUSH)(COLOR_WINDOW + 1);  // Sets background to white
   INITCOMMONCONTROLSEX icc;
   icc.dwSize = sizeof(INITCOMMONCONTROLSEX);
-  icc.dwICC = ICC_STANDARD_CLASSES;
+  // ICC_LISTVIEW_CLASSES registers WC_LISTVIEW, which the allowed-projects pick
+  // list needs; the other controls on this dialog are standard classes.
+  icc.dwICC = ICC_STANDARD_CLASSES | ICC_LISTVIEW_CLASSES;
   InitCommonControlsEx(&icc);
 
   RegisterClass(&wc_adv);
 
   int window_width = 525;
-  int window_height = 720;
+  int window_height = 860;
   int screen_width = GetSystemMetrics(SM_CXSCREEN);
   int screen_height = GetSystemMetrics(SM_CYSCREEN);
   int x_pos = (screen_width - window_width) / 2;

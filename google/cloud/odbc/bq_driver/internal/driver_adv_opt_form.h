@@ -20,7 +20,7 @@
 #pragma comment(lib, "Comctl32.lib")  // Link with Comctl32.lib
 
 namespace google::cloud::odbc_bq_driver_internal {
-// NEXTID:153
+// NEXTID:155
 static int const kIdcUseDefaultCheckbox = 128;
 static int const kIdcDatasetNameEdit = 129;
 static int const kIdcTempExpirationEdit = 130;
@@ -45,6 +45,8 @@ static int const kIdcMaxRetriesEdit = 149;
 static int const kIdcEnablePscGcdCheckbox = 150;
 static int const kIdcPrivateServiceNameEdit = 151;
 static int const kIdcUniverseDomainEdit = 152;
+static int const kIdcAllowedProjectsListView = 153;
+static int const kIdcLoadProjectsButton = 154;
 
 class AdvanceOptions {
  public:
@@ -74,6 +76,9 @@ class AdvanceOptions {
   }
   inline std::string const& GetAdditionalProjects() const {
     return additional_projects_;
+  }
+  inline std::string const& GetAllowedProjects() const {
+    return allowed_projects_;
   }
   inline std::string const& GetQueryProperties() const {
     return query_properties_;
@@ -124,6 +129,7 @@ class AdvanceOptions {
   static std::string default_string_length_;
   static std::string session_location_;
   static std::string additional_projects_;
+  static std::string allowed_projects_;
   static std::string query_properties_;
   static std::string use_wchar_;
   static std::string enable_session_;
@@ -136,6 +142,16 @@ class AdvanceOptions {
   static std::string private_service_connect_uris_;
   static std::string enable_gcd_;
   static std::string universe_domain_;
+
+  // Fill the allowed-projects pick list with 'project_ids', keeping ticked any
+  // id that is currently ticked as well as any id already in
+  // 'allowed_projects_'. Used both when the dialog opens and when the user
+  // reloads the list from the account.
+  static void PopulateAllowedProjectsListView(
+      HWND h_list_view, std::vector<std::string> const& project_ids);
+
+  // Comma-join the ticked rows of the allowed-projects pick list.
+  static std::string CollectCheckedProjects(HWND h_list_view);
 
   static LRESULT CALLBACK AdvanceOptProc(HWND hwnd, UINT uMsg, WPARAM w_param,
                                          LPARAM l_param);
