@@ -44,7 +44,7 @@ substitutions:
   _LOGS_BUCKET: 'odbc-cpp-community-publiclogs'
   _TAG1: 'team-only'
 
-timeout: 12600s
+timeout: 21600s
 tags: [
   '${_TRIGGER_TYPE}',
   '${_BUILD_NAME}',

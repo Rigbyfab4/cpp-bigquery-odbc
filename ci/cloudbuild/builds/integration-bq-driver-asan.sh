@@ -81,6 +81,7 @@ fi
 
 io::run cmake -B "$BUILD_DIR" \
   "${cmake_args[@]}" \
+  -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
   -DCMAKE_CXX_STANDARD=17 \
   -DODBC_INTEGRATION_TESTING=ON \
