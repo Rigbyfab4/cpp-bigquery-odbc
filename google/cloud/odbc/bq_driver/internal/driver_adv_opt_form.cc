@@ -68,6 +68,8 @@ std::string AdvanceOptions::max_retries_ = std::to_string(kDefaultMaxRetries);
 std::string AdvanceOptions::private_service_connect_uris_;
 std::string AdvanceOptions::enable_gcd_;
 std::string AdvanceOptions::universe_domain_;
+int AdvanceOptions::scroll_pos_ = 0;
+int AdvanceOptions::wheel_remainder_ = 0;
 
 std::string const kLanguageDialect = "SQLDialect";
 std::string const kLargeResultsDatasetId = "LargeResultsDatasetId";
@@ -111,6 +113,14 @@ int const kEditBoxWidth = 260;
 int const kEditBoxHeight = 17;
 int const kinputComboBoxXAxis = 237;
 int const KComboBoxHeight = 100;
+
+// Full height of the laid-out controls. The window is clamped to the desktop
+// work area, so on a short or DPI-scaled display this is larger than the client
+// area and the difference is what scrolls.
+int const kContentHeight = kButtonY + 44 + kButtonHeight + 10;
+
+// Pixels scrolled per scrollbar arrow click.
+int const kScrollLine = 20;
 
 HWND AdvanceOptions::GetHwnd() const { return adv_hwnd; }
 AdvanceOptions::AdvanceOptions() : adv_hwnd(NULL) {}
@@ -468,6 +478,57 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   //                          kButtonY + 10, kWidth + 90, kHeight,
   //                          kIdcHyperlink2);
   // SendMessage(h_hyperlink, WM_SETFONT, (WPARAM)h_font, TRUE);
+}
+
+void AdvanceOptions::UpdateScrollInfo(HWND hwnd) {
+  RECT client = {};
+  GetClientRect(hwnd, &client);
+  int const page = client.bottom - client.top;
+
+  SCROLLINFO si = {};
+  si.cbSize = sizeof(si);
+  si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
+  si.nMin = 0;
+  si.nMax = kContentHeight - 1;
+  si.nPage = page;
+  si.nPos = scroll_pos_;
+  SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
+
+  // Growing the window can leave us scrolled past the end; pull the content
+  // back so there is never blank space below the last control.
+  int const max_pos = (kContentHeight > page) ? kContentHeight - page : 0;
+  if (scroll_pos_ > max_pos) {
+    ScrollWindow(hwnd, 0, scroll_pos_ - max_pos, NULL, NULL);
+    scroll_pos_ = max_pos;
+    si.fMask = SIF_POS;
+    si.nPos = scroll_pos_;
+    SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
+  }
+}
+
+void AdvanceOptions::ScrollTo(HWND hwnd, int new_pos) {
+  RECT client = {};
+  GetClientRect(hwnd, &client);
+  int const page = client.bottom - client.top;
+  int const max_pos = (kContentHeight > page) ? kContentHeight - page : 0;
+  new_pos = std::max(0, std::min(new_pos, max_pos));
+  if (new_pos == scroll_pos_) {
+    return;
+  }
+
+  int const delta = scroll_pos_ - new_pos;
+  scroll_pos_ = new_pos;
+  // ScrollWindow shifts the child controls along with the client area, which is
+  // what makes absolutely-positioned controls scroll without repositioning each
+  // one by hand.
+  ScrollWindow(hwnd, 0, delta, NULL, NULL);
+
+  SCROLLINFO si = {};
+  si.cbSize = sizeof(si);
+  si.fMask = SIF_POS;
+  si.nPos = scroll_pos_;
+  SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
+  UpdateWindow(hwnd);
 }
 
 void AdvanceOptions::PopulateAllowedProjectsListView(
@@ -875,17 +936,26 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
           if (HIWORD(w_param) != BN_CLICKED) {
             break;
           }
-          // The credentials live on the parent DSN dialog; this dialog holds no
-          // copy of them.
-          HWND h_parent = GetParent(hwnd);
+          // The credentials live on the main DSN dialog; this dialog holds no
+          // copy of them. This is a top-level owned window rather than a child,
+          // and GetParent only reports the owner for WS_POPUP windows, so ask
+          // for the owner explicitly.
+          HWND h_parent = GetWindow(hwnd, GW_OWNER);
+          if (h_parent == NULL) {
+            h_parent = GetParent(hwnd);
+          }
+          if (h_parent == NULL) {
+            ShowErrorWindow(hwnd,
+                            "Internal error: cannot locate the main dialog to "
+                            "read the connection settings from.");
+            break;
+          }
           char key_file_buffer[1024] = {0};
           char auth_buffer[256] = {0};
-          if (h_parent) {
-            GetWindowText(GetDlgItem(h_parent, kIdcKeyfileEdit),
-                          key_file_buffer, sizeof(key_file_buffer));
-            GetWindowText(GetDlgItem(h_parent, kIdcAuthBox), auth_buffer,
-                          sizeof(auth_buffer));
-          }
+          GetWindowText(GetDlgItem(h_parent, kIdcKeyfileEdit), key_file_buffer,
+                        sizeof(key_file_buffer));
+          GetWindowText(GetDlgItem(h_parent, kIdcAuthBox), auth_buffer,
+                        sizeof(auth_buffer));
           if (auth_buffer[0] == '\0') {
             ShowErrorWindow(hwnd,
                             "Select an OAuth mechanism on the main dialog "
@@ -930,6 +1000,76 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
       }
       break;
     }
+    case WM_VSCROLL: {
+      RECT client = {};
+      GetClientRect(hwnd, &client);
+      int const page = client.bottom - client.top;
+      int pos = scroll_pos_;
+      switch (LOWORD(w_param)) {
+        case SB_TOP:
+          pos = 0;
+          break;
+        case SB_BOTTOM:
+          pos = kContentHeight;
+          break;
+        case SB_LINEUP:
+          pos -= kScrollLine;
+          break;
+        case SB_LINEDOWN:
+          pos += kScrollLine;
+          break;
+        case SB_PAGEUP:
+          pos -= page;
+          break;
+        case SB_PAGEDOWN:
+          pos += page;
+          break;
+        case SB_THUMBTRACK:
+        case SB_THUMBPOSITION: {
+          SCROLLINFO si = {};
+          si.cbSize = sizeof(si);
+          si.fMask = SIF_TRACKPOS;
+          if (GetScrollInfo(hwnd, SB_VERT, &si)) {
+            pos = si.nTrackPos;
+          }
+          break;
+        }
+        default:
+          break;
+      }
+      ScrollTo(hwnd, pos);
+      return 0;
+    }
+    case WM_MOUSEWHEEL: {
+      // Accumulate: precision trackpads and high-resolution wheels send deltas
+      // smaller than WHEEL_DELTA, which would round to zero on their own.
+      wheel_remainder_ += GET_WHEEL_DELTA_WPARAM(w_param);
+      int const notches = wheel_remainder_ / WHEEL_DELTA;
+      if (notches == 0) {
+        return 0;
+      }
+      wheel_remainder_ -= notches * WHEEL_DELTA;
+
+      // Honour the system "roll the mouse wheel to scroll" setting.
+      UINT lines_per_notch = 3;
+      if (!SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &lines_per_notch,
+                                0)) {
+        lines_per_notch = 3;
+      }
+      RECT client = {};
+      GetClientRect(hwnd, &client);
+      int step = 0;
+      if (lines_per_notch == WHEEL_PAGESCROLL) {
+        step = client.bottom - client.top;
+      } else {
+        step = static_cast<int>(lines_per_notch) * kScrollLine;
+      }
+      ScrollTo(hwnd, scroll_pos_ - notches * step);
+      return 0;
+    }
+    case WM_SIZE:
+      UpdateScrollInfo(hwnd);
+      break;
     case WM_KEYDOWN:  // Capture global key presses
       if (w_param == VK_ESCAPE) {
         if (p_current_window) {
@@ -1047,17 +1187,40 @@ void AdvanceOptions::Show(HWND hwnd) {
 
   RegisterClass(&wc_adv);
 
-  int window_width = 525;
+  scroll_pos_ = 0;
+  wheel_remainder_ = 0;
+
+  // The vertical scrollbar is carved out of the client area, so widen the frame
+  // by its width; otherwise every right-aligned control loses that many pixels
+  // and the edit boxes are clipped.
+  int window_width = 525 + GetSystemMetrics(SM_CXVSCROLL);
   int window_height = 860;
-  int screen_width = GetSystemMetrics(SM_CXSCREEN);
-  int screen_height = GetSystemMetrics(SM_CYSCREEN);
-  int x_pos = (screen_width - window_width) / 2;
-  int y_pos = (screen_height - window_height) / 2;
+
+  // Never open taller than the desktop work area: on a short or DPI-scaled
+  // display the full control layout does not fit, and a window whose OK button
+  // sits below the screen edge cannot be dismissed. Whatever does not fit is
+  // reachable through the vertical scrollbar instead.
+  RECT work_area = {};
+  int work_left = 0;
+  int work_top = 0;
+  int work_width = GetSystemMetrics(SM_CXSCREEN);
+  int work_height = GetSystemMetrics(SM_CYSCREEN);
+  if (SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0)) {
+    work_left = work_area.left;
+    work_top = work_area.top;
+    work_width = work_area.right - work_area.left;
+    work_height = work_area.bottom - work_area.top;
+  }
+  if (window_height > work_height) {
+    window_height = work_height;
+  }
+  int x_pos = work_left + (work_width - window_width) / 2;
+  int y_pos = work_top + (work_height - window_height) / 2;
 
   adv_hwnd = CreateWindowEx(
       WS_EX_TOPMOST, CLASS_NAME, "Advanced Options",
-      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_DLGFRAME, x_pos, y_pos,
-      window_width, window_height, hwnd, NULL, g_hDllInstance, this);
+      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_DLGFRAME | WS_VSCROLL, x_pos,
+      y_pos, window_width, window_height, hwnd, NULL, g_hDllInstance, this);
   if (adv_hwnd) {
     HFONT h_font =
         CreateFont(-10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -1072,6 +1235,8 @@ void AdvanceOptions::Show(HWND hwnd) {
     CreateSessionControls(h_font);
     CreateAdditionalControls(h_font);
     CreateButtons(h_font);
+
+    UpdateScrollInfo(adv_hwnd);
 
     ShowWindow(adv_hwnd, SW_SHOW);
     UpdateWindow(adv_hwnd);
