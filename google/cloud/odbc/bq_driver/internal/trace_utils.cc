@@ -308,6 +308,21 @@ TraceOptions::CreateTraceOptionsFile(
   return options_file_;
 }
 
+bool ShouldLog(LogLevel level){
+  if (!kTraceOptsFile.Ok()) return false;
+  auto const& trace_opts = kTraceOptsFile.GetValue();
+  if(trace_opts->logging_enabled){
+    if(level == LogLevel::kLogError ){
+      return true;
+    }else if(level == LogLevel::kLogInfo){
+      return true;
+    }else if (level == LogLevel::kLogWarning){
+      return true;
+    }
+  }
+ return false;
+}
+
 std::shared_ptr<TraceOptions> TraceOptions::GetTraceOption() {
   return options_file_;
 }

@@ -35,8 +35,10 @@ inline odbc_internal::StatusRecord CheckLimitsArithmetic(SrcType value) {
   using odbc_internal::SQLStates;
   using odbc_internal::StatusRecord;
   if (!std::is_arithmetic_v<SrcType> || !std::is_arithmetic_v<DestType>) {
-    LOG(ERROR)
-        << "CheckLimitsArithmetic::Invalid datatypes for conversion check!";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR)
+            << "CheckLimitsArithmetic::Invalid datatypes for conversion check!";
+  }
     return odbc_internal::StatusRecord{
         SQLStates::k_HY000(), "Invalid datatypes for conversion check!"};
   }
@@ -57,7 +59,9 @@ inline odbc_internal::StatusRecord CheckLimitsArithmetic(SrcType value) {
       static_cast<double>(value) <=
           static_cast<double>(std::numeric_limits<DestType>::max());
   if (!status) {
-    LOG(ERROR) << "CheckLimitsArithmetic::Numeric value out of range";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "CheckLimitsArithmetic::Numeric value out of range";
+  }
     return StatusRecord{SQLStates::k_22003(), "Numeric value out of range"};
   }
 
@@ -67,7 +71,9 @@ inline odbc_internal::StatusRecord CheckLimitsArithmetic(SrcType value) {
     bool status =
         (value == static_cast<DestType>(value));  // Check for truncation
     if (!status) {
-      LOG(WARNING) << "CheckLimitsArithmetic::Fractional truncation";
+        if(ShouldLog(LogLevel::kLogWarning)){
+          LOG(WARNING) << "CheckLimitsArithmetic::Fractional truncation";
+  }
       return StatusRecord{SQLStates::k_01S07(), "Fractional truncation"};
     }
   }
@@ -335,14 +341,18 @@ inline odbc_internal::StatusRecordOr<SQLDOUBLE> ConvertToDouble(
 
   if (endptr == str.c_str() || *endptr != '\0' || errno == ERANGE) {
     // Conversion failed or overflow/underflow occurred
-    LOG(ERROR) << "ConvertToDouble::Invalid conversion from string: " << str;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "ConvertToDouble::Invalid conversion from string: " << str;
+  }
     return StatusRecord{SQLStates::k_HY000(), "Invalid conversion"};
   }
 
   // Check for NaN or infinity
   if (!std::isfinite(result)) {
-    LOG(ERROR) << "ConvertToDouble::Value is NaN or infinity for string: "
-               << str;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "ConvertToDouble::Value is NaN or infinity for string: "
+                   << str;
+  }
     return StatusRecord{SQLStates::k_HY000(), "Value is NaN"};
   }
   return result;

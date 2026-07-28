@@ -51,6 +51,8 @@ using google::cloud::odbc_bq_driver_internal::StmtStates;
 using google::cloud::odbc_bq_driver_internal::StringValueToOutputBufferResponse;
 using google::cloud::odbc_bq_driver_internal::ToSqlPointer;
 using google::cloud::odbc_bq_driver_internal::WriteRowset;
+using ::google::cloud::odbc_bq_driver_internal::ShouldLog;
+using ::google::cloud::odbc_bq_driver_internal::LogLevel;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
@@ -306,12 +308,16 @@ SQLRETURN SQLFetchScrollInternal(SQLHSTMT statement_handle,
 
 SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
                                    SQLSMALLINT* column_count_ptr) {
-  LOG(INFO) << "SQLNumResultColsInternal:: Start";
+          if(ShouldLog(LogLevel::kLogInfo)){
+            LOG(INFO) << "SQLNumResultColsInternal:: Start";
+          }
   StatusRecordOr<StatementHandle*> handle_result =
       ValidateStatementHandle(statement_handle);
   if (!handle_result) {
-    LOG(ERROR) << "SQLNumResultCols::ValidateStatementHandle:: "
-               << handle_result.GetStatusRecord().message;
+             if(ShouldLog(LogLevel::kLogError)){
+               LOG(ERROR) << "SQLNumResultCols::ValidateStatementHandle:: "
+                          << handle_result.GetStatusRecord().message;
+          }
     return handle_result.GetCalculatedReturnCode();
   }
   StatementHandle* handle = *handle_result;
@@ -319,7 +325,9 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
   if (column_count_ptr == nullptr) {
     status_record = {SQLStates::k_HY001(),
                      "Parameter 'column_count_ptr' cannot be null"};
-    LOG(ERROR) << "SQLNumResultCols:: " << status_record.message;
+                              if(ShouldLog(LogLevel::kLogError)){
+                                LOG(ERROR) << "SQLNumResultCols:: " << status_record.message;
+          }
     return LogAndReturnCode(*handle, status_record);
   }
 
@@ -344,15 +352,19 @@ SQLRETURN SQLNumResultColsInternal(SQLHSTMT statement_handle,
       break;
   }
   if (!status_record.ok()) {
-    LOG(ERROR) << "SQLNumResultCols::StmtState:: " << status_record.message;
+             if(ShouldLog(LogLevel::kLogError)){
+               LOG(ERROR) << "SQLNumResultCols::StmtState:: " << status_record.message;
+          }
     return LogAndReturnCode(*handle, status_record);
   }
   DescriptorHandle ird = handle->GetDescriptorHandle(DescriptorType::kIRD);
   if (ird.GetHeaderRecord().count < 0) {
     status_record = {SQLStates::k_07006(),
                      "ColumnCount should not be less than 0"};
-    LOG(ERROR) << "SQLNumResultCols::GetHeaderRecord:: "
-               << status_record.message;
+                              if(ShouldLog(LogLevel::kLogError)){
+                                LOG(ERROR) << "SQLNumResultCols::GetHeaderRecord:: "
+                                           << status_record.message;
+          }
     return LogAndReturnCode(*handle, status_record);
   }
   *column_count_ptr = ird.GetHeaderRecord().count;

@@ -53,8 +53,10 @@ StatusRecordOr<std::string> ConvertFromArithmeticValue(SrcType src_val,
         SQLREAL dest_val = src_val;
         return std::to_string(dest_val);
       }
-      LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
-                 << check_status.message;
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
+                     << check_status.message;
+  }
       return check_status;
     }
     case SQL_DOUBLE: {
@@ -65,8 +67,10 @@ StatusRecordOr<std::string> ConvertFromArithmeticValue(SrcType src_val,
         SQLDOUBLE dest_val = src_val;
         return std::to_string(dest_val);
       }
-      LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
-                 << check_status.message;
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
+                     << check_status.message;
+  }
       return check_status;
     }
     case SQL_BIGINT: {
@@ -78,8 +82,10 @@ StatusRecordOr<std::string> ConvertFromArithmeticValue(SrcType src_val,
         auto dest_val = static_cast<SQLBIGINT>(+src_val);
         return std::to_string(dest_val);
       }
-      LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
-                 << check_status.message;
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
+                     << check_status.message;
+  }
       return check_status;
     }
     case SQL_SMALLINT: {
@@ -91,8 +97,10 @@ StatusRecordOr<std::string> ConvertFromArithmeticValue(SrcType src_val,
         auto dest_val = static_cast<SQLSMALLINT>(+src_val);
         return std::to_string(dest_val);
       }
-      LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
-                 << check_status.message;
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
+                     << check_status.message;
+  }
       return check_status;
     }
     case SQL_TINYINT: {
@@ -103,8 +111,10 @@ StatusRecordOr<std::string> ConvertFromArithmeticValue(SrcType src_val,
         SQLCHAR dest_val = src_val;
         return std::to_string(dest_val);
       }
-      LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
-                 << check_status.message;
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
+                     << check_status.message;
+  }
       return check_status;
     }
     case SQL_INTEGER: {
@@ -116,14 +126,18 @@ StatusRecordOr<std::string> ConvertFromArithmeticValue(SrcType src_val,
         auto dest_val = static_cast<SQLINTEGER>(+src_val);
         return std::to_string(dest_val);
       }
-      LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
-                 << check_status.message;
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "ConvertFromArithmeticValue::CheckLimitsArithmetic:: "
+                     << check_status.message;
+  }
       return check_status;
     }
     default: {
-      LOG(WARNING) << "ConvertFromArithmeticValue::Conversion is unsupported "
-                      "for sql_type: "
-                   << sql_type;
+        if(ShouldLog(LogLevel::kLogWarning)){
+          LOG(WARNING) << "ConvertFromArithmeticValue::Conversion is unsupported "
+                          "for sql_type: "
+                       << sql_type;
+  }
       return StatusRecord{SQLStates::k_HY000(), "Conversion is unsupported"};
     }
   }

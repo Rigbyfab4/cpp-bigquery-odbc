@@ -223,8 +223,10 @@ StatusRecord DescriptorRecord::SetOtherCType(SQLSMALLINT const value,
       datetime_interval_precision = 0;
       break;
     default:
-      LOG(ERROR) << "DescriptorRecord::SetOtherCType:: " << error_message
-                 << ": " << value;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "DescriptorRecord::SetOtherCType:: " << error_message
+                   << ": " << value;
+  }
       return StatusRecord{SQLStates::k_HY021(), error_message};
   }
   datetime_interval_code = scale = 0;
@@ -303,8 +305,10 @@ StatusRecord DescriptorRecord::SetOtherSQLType(
       length = 36;
       break;
     default:
-      LOG(ERROR) << "DescriptorRecord::SetOtherSQLType:: " << error_message
-                 << ": " << value;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "DescriptorRecord::SetOtherSQLType:: " << error_message
+                   << ": " << value;
+  }
       return StatusRecord{SQLStates::k_HY021(), error_message};
   }
   datetime_interval_code = 0;
@@ -315,8 +319,10 @@ StatusRecord DescriptorRecord::SetDisplaySize(SQLSMALLINT type,
                                               SQLINTEGER value,
                                               SQLINTEGER precision) {
   if (!type) {
-    LOG(ERROR) << "DescriptorRecord::SetDisplaySize:: Invalid attribute/option "
-                  "identifier (type is null).";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "DescriptorRecord::SetDisplaySize:: Invalid attribute/option "
+                      "identifier (type is null).";
+  }
     return StatusRecord{SQLStates::k_HY092(),
                         "Invalid attribute/option identifier"};
   }

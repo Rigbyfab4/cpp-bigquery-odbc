@@ -15,6 +15,7 @@
 #include "google/cloud/odbc/bq_driver/odbc_lock.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include "google/cloud/odbc/bq_driver/odbc_utils.h"
+#include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include "google/cloud/odbc/internal/status_record_or.h"
 
 namespace google::cloud::odbc_bq_driver {
@@ -29,6 +30,8 @@ using ::google::cloud::odbc_bq_driver_internal::HandleType;
 using ::google::cloud::odbc_bq_driver_internal::StatementHandle;
 using ::google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
+using ::google::cloud::odbc_bq_driver_internal::ShouldLog;
+using ::google::cloud::odbc_bq_driver_internal::LogLevel;
 
 SQLRETURN AcquireHandleMutex(SQLHANDLE handle, SQLSMALLINT handle_type,
                              bool is_global) {
@@ -127,7 +130,9 @@ SQLRETURN ReleaseHandleMutex(SQLHANDLE handle, SQLSMALLINT handle_type,
 SQLRETURN GetParentHandles(SQLHANDLE& handle, SQLSMALLINT& handle_type,
                            bool& is_global) {
   if (!handle) {
+  if(ShouldLog(LogLevel::kLogError)){
     LOG(ERROR) << "GetParentHandles::NULL SQL Handle";
+  }
     return SQL_NULL_HANDLE;
   }
 
@@ -142,7 +147,9 @@ SQLRETURN GetParentHandles(SQLHANDLE& handle, SQLSMALLINT& handle_type,
       auto* conn_handle_ptr = reinterpret_cast<ConnectionHandle*>(handle);
       if (!conn_handle_ptr ||
           conn_handle_ptr->kType != HandleType::kConnHandle) {
-        LOG(ERROR) << "GetParentHandles::Invalid Connection Handle Acquire";
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "GetParentHandles::Invalid Connection Handle Acquire";
+  }
         return SQL_INVALID_HANDLE;
       }
       handle = conn_handle_ptr->GetEnvironmentHandle();
@@ -154,7 +161,9 @@ SQLRETURN GetParentHandles(SQLHANDLE& handle, SQLSMALLINT& handle_type,
       auto* stmt_handle_ptr = reinterpret_cast<StatementHandle*>(handle);
       if (!stmt_handle_ptr ||
           stmt_handle_ptr->kType != HandleType::kStmtHandle) {
-        LOG(ERROR) << "GetParentHandles::Invalid Statement Handle Acquire";
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "GetParentHandles::Invalid Statement Handle Acquire";
+  }
         return SQL_INVALID_HANDLE;
       }
       handle = stmt_handle_ptr->GetConnectionHandle();
@@ -166,7 +175,9 @@ SQLRETURN GetParentHandles(SQLHANDLE& handle, SQLSMALLINT& handle_type,
       auto* desc_handle_ptr = reinterpret_cast<DescriptorHandle*>(handle);
       if (!desc_handle_ptr ||
           desc_handle_ptr->kType != HandleType::kDescHandle) {
-        LOG(ERROR) << "GetParentHandles::Invalid Descriptor Handle Acquire";
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "GetParentHandles::Invalid Descriptor Handle Acquire";
+  }
         return SQL_INVALID_HANDLE;
       }
 
@@ -184,7 +195,9 @@ SQLRETURN GetParentHandles(SQLHANDLE& handle, SQLSMALLINT& handle_type,
     }
 
     default:
-      LOG(ERROR) << "GetParentHandles::Invalid SQL Handle Acquire";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "GetParentHandles::Invalid SQL Handle Acquire";
+  }
       return SQL_INVALID_HANDLE;
   }
 }
@@ -201,8 +214,10 @@ void HandleLock::Acquire(bool lock_parent) {
   if (lock_parent) {
     SQLRETURN result = GetParentHandles(handle_, handle_type_, is_global_);
     if (result != SQL_SUCCESS) {
-      LOG(ERROR) << "HandleLock::Acquire::GetParentHandles::Failed to get "
-                    "parent handles";
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "HandleLock::Acquire::GetParentHandles::Failed to get "
+                        "parent handles";
+  }
       return;
     }
   }
@@ -211,8 +226,10 @@ void HandleLock::Acquire(bool lock_parent) {
   if (result == SQL_SUCCESS) {
     locked_ = true;
   } else {
-    LOG(ERROR) << "HandleLock::Acquire::AcquireHandleMutex::Failed to acquire "
-                  "handle mutex";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "HandleLock::Acquire::AcquireHandleMutex::Failed to acquire "
+                      "handle mutex";
+  }
   }
 }
 
@@ -229,8 +246,9 @@ void HandleLockError(SQLSMALLINT handleType, SQLHANDLE inputHandle,
   StatusRecord record{SQLStates::k_HY000(),
                       "Failed to create handle lock. Possible resource "
                       "exhaustion or initialization failure."};
-
-  LOG(ERROR) << context << "::HandleLock creation failed: " << record.message;
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << context << "::HandleLock creation failed: " << record.message;
+    }
 
   if (!inputHandle) return;
 

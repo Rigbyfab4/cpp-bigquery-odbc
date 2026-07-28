@@ -50,6 +50,8 @@ using google::cloud::odbc_bq_driver_internal::ResultSet;
 using google::cloud::odbc_bq_driver_internal::StatementHandle;
 using google::cloud::odbc_bq_driver_internal::StmtStates;
 using google::cloud::odbc_bq_driver_internal::StringValueToOutputBufferResponse;
+using ::google::cloud::odbc_bq_driver_internal::ShouldLog;
+using ::google::cloud::odbc_bq_driver_internal::LogLevel;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
 using google::cloud::odbc_internal::StatusRecordOr;
@@ -95,7 +97,9 @@ SQLRETURN HandleAsyncPrepare(StatementHandle& handle_ref) {
     auto status_record =
         StatusRecord{SQLStates::k_HY000(),
                      "Internal error: cannot prepare query asynchronously"};
-    LOG(ERROR) << "HandleAsyncPrepare::" << status_record.message;
+  if(ShouldLog(LogLevel::kLogError)){
+                             LOG(ERROR) << "HandleAsyncPrepare::" << status_record.message;
+      }
     return LogAndReturnCode(handle_ref, status_record);
   }
   // User has requested cancellation of an ongoing prepare operation.
@@ -125,7 +129,9 @@ SQLRETURN HandleAsyncExecDirect(StatementHandle& stmt_handle,
     auto status_record =
         StatusRecord{SQLStates::k_HY000(),
                      "Internal error: cannot execute query asynchronously"};
-    LOG(ERROR) << "HandleAsyncExecDirect::" << status_record.message;
+                       if(ShouldLog(LogLevel::kLogError)){
+                         LOG(ERROR) << "HandleAsyncExecDirect::" << status_record.message;
+  }
     return LogAndReturnCode(stmt_handle, status_record);
   }
   // If future was already processed...
@@ -230,16 +236,20 @@ StatusRecord ActuallyProcessExecute(StatementHandle& stmt_handle,
   // Retrieve query timeout
   auto query_timeout_status = stmt_handle.GetAttribute(SQL_ATTR_QUERY_TIMEOUT);
   if (!query_timeout_status) {
-    LOG(ERROR) << "ActuallyProcessExecute::GetAttribute::"
-               << query_timeout_status.GetStatusRecord().message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "ActuallyProcessExecute::GetAttribute::"
+                   << query_timeout_status.GetStatusRecord().message;
+      }
     return query_timeout_status.GetStatusRecord();
   }
   int query_timeout = *query_timeout_status;
 
   // Ensure a prepared job exists
   if (!stmt_handle.GetPreparedJob().has_value()) {
-    LOG(ERROR)
-        << "ActuallyProcessExecute::Internal state error when executing query";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR)
+            << "ActuallyProcessExecute::Internal state error when executing query";
+      }
     return StatusRecord{SQLStates::k_HY000(),
                         "Internal state error when executing query"};
   }
@@ -263,8 +273,10 @@ StatusRecord ActuallyProcessExecute(StatementHandle& stmt_handle,
     StatusRecord status = ConstructPositionalQueryParams(apd, ipd, query_params,
                                                          is_data_buff_req);
     if (!status.ok()) {
-      LOG(ERROR) << "ActuallyProcessExecute::ConstructPositionalQueryParams::"
-                 << status.message;
+            if(ShouldLog(LogLevel::kLogError)){
+              LOG(ERROR) << "ActuallyProcessExecute::ConstructPositionalQueryParams::"
+                         << status.message;
+      }
       return status;
     }
 
@@ -295,8 +307,10 @@ StatusRecord ActuallyProcessExecute(StatementHandle& stmt_handle,
 
   if (!ds_status_record_or) {
     stmt_handle.SetStmtState(failure_state);
-    LOG(ERROR) << "ActuallyProcessExecute::FetchBQData:: "
-               << ds_status_record_or.GetStatusRecord().message;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ActuallyProcessExecute::FetchBQData:: "
+                       << ds_status_record_or.GetStatusRecord().message;
+      }
     return ds_status_record_or.GetStatusRecord();
   }
 
@@ -306,8 +320,10 @@ StatusRecord ActuallyProcessExecute(StatementHandle& stmt_handle,
   if (statement_type == "SCRIPT" && stmt_handle.HasJobData()) {
     auto job_status = stmt_handle.GetNextJobData();
     if (!job_status.Ok()) {
-      LOG(ERROR) << "ActuallyProcessExecute:: "
-                 << job_status.GetStatusRecord().message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "ActuallyProcessExecute:: "
+                   << job_status.GetStatusRecord().message;
+      }
       return job_status.GetStatusRecord();
     }
     sub_statement_type = job_status.GetValue().second;
@@ -317,8 +333,10 @@ StatusRecord ActuallyProcessExecute(StatementHandle& stmt_handle,
   auto rs_status_record_or = ProcessQueryResults(*ds_status_record_or);
   if (!rs_status_record_or) {
     stmt_handle.SetStmtState(failure_state);
-    LOG(ERROR) << "ActuallyProcessExecute::ProcessQueryResults::"
-               << rs_status_record_or.GetStatusRecord().message;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ActuallyProcessExecute::ProcessQueryResults::"
+                       << rs_status_record_or.GetStatusRecord().message;
+      }
     return rs_status_record_or.GetStatusRecord();
   }
 
@@ -345,7 +363,9 @@ StatusRecord ActuallyProcessExecute(StatementHandle& stmt_handle,
     stmt_handle.SetStmtState(StmtStates::kStatementExecutedWithoutRs);
     // Note: The message is not supposed to be propagated to the application in
     // case of SQL_NO_DATA
-    LOG(WARNING) << "ActuallyProcessExecute::No data found";
+          if(ShouldLog(LogLevel::kLogWarning)){
+            LOG(WARNING) << "ActuallyProcessExecute::No data found";
+      }
     return StatusRecord{SQLStates::k_SQL_NO_DATA(), "No data found"};
   } else {
     stmt_handle.SetStmtState(StmtStates::kStatementExecutedWithoutRs);
@@ -368,8 +388,10 @@ StatusRecord ActuallyProcessExecDirect(StatementHandle& stmt_handle) {
   //  SQLExecDirect is called.
   StatusRecord prepare_status = stmt_handle.PrepareQuery(query_str);
   if (!prepare_status.ok()) {
-    LOG(ERROR) << "ActuallyProcessExecDirect::PrepareQuery:: "
-               << prepare_status.message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "ActuallyProcessExecDirect::PrepareQuery:: "
+                   << prepare_status.message;
+      }
     return prepare_status;
   }
   return ActuallyProcessExecute(stmt_handle, StmtStates::kStatementNotPrepared);
@@ -1034,19 +1056,25 @@ SQLRETURN SQLExecuteInternal(SQLHSTMT statement_handle) {
 SQLRETURN SQLExecDirectInternal(SQLHSTMT statement_handle,
                                 SQLCHAR* in_statement_text,
                                 SQLINTEGER in_text_length) {
-  LOG(INFO) << "SQLExecDirectInternal:: Start";
+  if(ShouldLog(LogLevel::kLogInfo)){
+    LOG(INFO) << "SQLExecDirectInternal:: Start";
+  }
   StatusRecordOr<StatementHandle*> handle_result =
       ValidateStatementHandle(statement_handle);
   if (!handle_result) {
-    LOG(ERROR) << "SQLExecDirect::ValidateStatementHandle:: "
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << "SQLExecDirect::ValidateStatementHandle:: "
                << handle_result.GetStatusRecord().message;
+  }
     return handle_result.GetCalculatedReturnCode();
   }
   StatementHandle& stmt_handle = *(*handle_result);
 
   if ((in_text_length < 1) && (in_text_length != SQL_NTS)) {
     StatusRecord status_record = {SQLStates::k_HY090(), "Invalid query length"};
-    LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+    }
     return LogAndReturnCode(stmt_handle, status_record);
   }
 
@@ -1060,7 +1088,9 @@ SQLRETURN SQLExecDirectInternal(SQLHSTMT statement_handle,
   if (stmt_handle.GetStmtState() == StmtStates::kStatementExecutedWithRs) {
     auto status_record =
         StatusRecord{SQLStates::k_24000(), "Invalid cursor state."};
-    LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+    }
     return LogAndReturnCode(stmt_handle, status_record);
   }
 
@@ -1068,7 +1098,9 @@ SQLRETURN SQLExecDirectInternal(SQLHSTMT statement_handle,
   if (query_str.empty()) {
     auto status_record =
         StatusRecord{SQLStates::k_HY000(), "Query text is null or empty"};
-    LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+    }
     return LogAndReturnCode(stmt_handle, status_record);
   }
   stmt_handle.SetQueryString(query_str);
@@ -1121,14 +1153,18 @@ SQLRETURN SQLExecDirectInternal(SQLHSTMT statement_handle,
         // We don't need to return SQL_ERROR if it failed.
         // Log the error in cancellation.
         if (!server_cancel_status) {
-          LOG(ERROR) << "SQLExecDirect:: "
-                     << server_cancel_status.GetStatusRecord().message;
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << "SQLExecDirect:: "
+                 << server_cancel_status.GetStatusRecord().message;
+    }
         }
       }
       // For current ExecDirect request, return operation canceled.
       auto status_record =
           StatusRecord{SQLStates::k_HY008(), "Operation canceled"};
-      LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "SQLExecDirect:: " << status_record.message;
+      }
       return LogAndReturnCode(stmt_handle, status_record);
     }
     // For current ExecDirect request.
@@ -1138,8 +1174,10 @@ SQLRETURN SQLExecDirectInternal(SQLHSTMT statement_handle,
   StatusRecordOr<SQLULEN> async_enable_status =
       stmt_handle.GetAttribute(SQL_ATTR_ASYNC_ENABLE);
   if (!async_enable_status) {
-    LOG(ERROR) << "SQLExecDirect::GetAttribute:: "
-               << async_enable_status.GetStatusRecord().message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "SQLExecDirect::GetAttribute:: "
+                   << async_enable_status.GetStatusRecord().message;
+      }
     return LogAndReturnCode(stmt_handle, async_enable_status.GetStatusRecord());
   }
 

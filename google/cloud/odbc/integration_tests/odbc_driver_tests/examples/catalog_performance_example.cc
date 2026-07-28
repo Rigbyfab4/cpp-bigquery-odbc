@@ -382,35 +382,78 @@ TEST(DataFetchPerformance, BenchmarkPowerBIMimicNewTimestampTable) {
 
   std::string target_table =
       "bigquery-devtools-drivers.kirltest.new_timestamp_table";
-  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 100000";
-
+  std::string query = "SELECT * FROM `" + target_table + "` LIMIT 1000";
+ auto start = std::chrono::high_resolution_clock::now();
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
+   auto end = std::chrono::high_resolution_clock::now();
+auto duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    std::cout << "SQLExecDirect took "
+              << duration.count()
+              << " ms\n";
+
   CheckError(ret, "SQLExecDirect", conn);
 
   SQLSMALLINT num_cols;
+ auto start_1 = std::chrono::high_resolution_clock::now();
+
   ret = SQLNumResultCols(conn->hstmt, &num_cols);
+  std::cout << "Number of columns: " << num_cols << "\n";
+ auto end_1 = std::chrono::high_resolution_clock::now();
+auto duration_1 =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_1 - start_1);
+
+    std::cout << "SQLNumResultCols took "
+              << duration_1.count()
+              << " ms\n";
   CheckError(ret, "SQLNumResultCols", conn);
 
   std::vector<std::shared_ptr<Column>> cols(num_cols);
   for (int i = 1; i <= num_cols; i++) {
     auto col_ptr = std::make_shared<Column>();
     cols[i - 1] = col_ptr;
+ auto start_2 = std::chrono::high_resolution_clock::now();
 
     DescribeCol(conn, col_ptr, i);
+ auto end_2 = std::chrono::high_resolution_clock::now();
+auto duration_2 =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_2 - start_2);
+
+    std::cout << "DescribeCol took "
+              << duration_2.count()
+              << " ms\n";
 
     SqlToCdataTypes(col_ptr);
+ auto start_3 = std::chrono::high_resolution_clock::now();
 
     ret = SQLBindCol(
         conn->hstmt, i, col_ptr->data_type, col_ptr->data_buf.target_value,
         col_ptr->data_buf.buffer_length, &(col_ptr->data_buf.str_len));
+ auto end_3 = std::chrono::high_resolution_clock::now();
+auto duration_3 =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_3 - start_3);
+
+    std::cout << "SQLBindCol took "
+              << duration_3.count()
+              << " ms\n";
+
     CheckError(ret, "SQLBindCol(" + std::to_string(i) + ")", conn);
   }
+   auto start_4 = std::chrono::high_resolution_clock::now();
 
   int row_count = 0;
   while ((ret = SQLFetch(conn->hstmt)) == SQL_SUCCESS ||
          ret == SQL_SUCCESS_WITH_INFO) {
     row_count++;
   }
+   auto end_4 = std::chrono::high_resolution_clock::now();
+auto duration_4 =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_4 - start_4);
+
+    std::cout << "SQLFetch took "
+              << duration_4.count()
+              << " ms\n";
   EXPECT_EQ(ret, SQL_NO_DATA)
       << "Fetch ended unexpectedly with return code: " << ret;
 

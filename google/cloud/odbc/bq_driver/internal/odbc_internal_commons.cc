@@ -221,8 +221,10 @@ StatusRecord ConvertUnixTimestampToTimestampStruct(
 StatusRecordOr<SQL_DATE_STRUCT> ConvertStringToDateStruct(
     std::string const& date_str) {
   if (date_str.empty() || date_str.size() < SQL_DATE_LEN) {
-    LOG(ERROR) << "ConvertStringToDateStruct::Invalid date string format: "
-               << date_str;
+         if(ShouldLog(LogLevel::kLogError)){
+           LOG(ERROR) << "ConvertStringToDateStruct::Invalid date string format: "
+                      << date_str;
+          }
     return StatusRecord{
         SQLStates::k_HY000(),
         "Invalid date string format: the string is either empty or too short."};
@@ -502,9 +504,11 @@ StatusRecordOr<SQL_TIMESTAMP_STRUCT> ConvertStringToTimestampStruct(
                   &year, &month, &day, &hour, &minute, &second, fraction_str);
 
   if (matched < 6) {
-    LOG(ERROR) << "ConvertStringToTimestampStruct::sscanf:: String not "
-                  "correctly converted to timestamp. Input: "
-               << cleaned_date_str;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ConvertStringToTimestampStruct::sscanf:: String not "
+                          "correctly converted to timestamp. Input: "
+                       << cleaned_date_str;
+          }
     return StatusRecord{SQLStates::k_HY000(),
                         "String not correctly converted to timestamp"};
   }
@@ -514,9 +518,11 @@ StatusRecordOr<SQL_TIMESTAMP_STRUCT> ConvertStringToTimestampStruct(
     int len = 0;
     for (char ch : std::string(fraction_str)) {
       if (!std::isdigit(ch)) {
-        LOG(ERROR) << "ConvertStringToTimestampStruct:: Fractional part is not "
-                      "a valid number. Input: "
-                   << cleaned_date_str;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ConvertStringToTimestampStruct:: Fractional part is not "
+                          "a valid number. Input: "
+                       << cleaned_date_str;
+          }
         return StatusRecord{SQLStates::k_HY000(),
                             "Fractional part is not a valid number"};
       }
@@ -552,8 +558,10 @@ StatusRecordOr<ResultSet> ProcessResultSetRows(
     StatusRecordOr<BQDataType> type_status_record =
         ConvertDSType(table_field_schema.type);
     if (!type_status_record.Ok()) {
-      LOG(ERROR) << "ProcessResultSetRows::ConvertDSType:: "
-                 << type_status_record.GetStatusRecord().message;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ProcessResultSetRows::ConvertDSType:: "
+                       << type_status_record.GetStatusRecord().message;
+          }
       return type_status_record.GetStatusRecord();
     }
 
@@ -700,8 +708,10 @@ StatusRecordOr<ResultSet> ProcessPostQueryResults(
     // If this method is being called then the assumption is PostQueryResults
     // contains all the results which in turn means job_complete would be set to
     // true.
-    LOG(ERROR) << "ProcessPostQueryResults:: Unexpected value for "
-                  "job_complete: expecting true.";
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ProcessPostQueryResults:: Unexpected value for "
+                          "job_complete: expecting true.";
+          }
     return StatusRecord{
         SQLStates::k_HY000(),
         "Internal Error: Unexpected value for job_complete: expecting true"};
@@ -716,8 +726,10 @@ StatusRecordOr<ResultSet> ProcessGetQueryResults(
     // If this method is being called then the assumption is GetQueryResults
     // contains all the results which in turn means job_complete would be set to
     // true.
-    LOG(ERROR) << "ProcessGetQueryResults:: Unexpected value for job_complete: "
-                  "expecting true.";
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ProcessGetQueryResults:: Unexpected value for job_complete: "
+                          "expecting true.";
+          }
     return StatusRecord{
         SQLStates::k_HY000(),
         "Internal Error: Unexpected value for job_complete: expecting true"};
@@ -740,8 +752,10 @@ StatusRecordOr<ResultSet> ProcessQueryResults(DSResults const& query_results) {
     return ProcessGetQueryResults(
         absl::get<GetQueryResults>(query_results.data_source_results));
   }
-  LOG(ERROR) << "ProcessPostQueryResults:: Unexpected value for job_complete: "
-                "expecting true.";
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ProcessPostQueryResults:: Unexpected value for job_complete: "
+                          "expecting true.";
+          }
   return StatusRecord{SQLStates::k_HY000(), "Invalid query results object"};
 }
 
@@ -782,20 +796,26 @@ StatusRecordOr<Job> CancelBQJob(ConnectionHandle& conn_handle,
                                 std::string const& location) {
   // validate we have a job.
   if (job_id.empty()) {
-    LOG(ERROR) << "CancelBQJob:: Invalid or empty job id.";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "CancelBQJob:: Invalid or empty job id.";
+  }
     return StatusRecord{SQLStates::k_HY000(), "Invalid or empty job id"};
   }
   // Validate the  connection handle.
   if (!conn_handle.IsConnected()) {
-    LOG(ERROR) << "CancelBQJob:: Connection to the data source is broken.";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "CancelBQJob:: Connection to the data source is broken.";
+  }
     return StatusRecord{SQLStates::k_08S01(),
                         "Connection to the data source is broken"};
   }
   // Validate we have a bq client.
   auto bq_client = conn_handle.GetClient();
   if (!bq_client) {
-    LOG(ERROR) << "CancelBQJob:: Invalid or null BQ Client within the "
-                  "connection handle.";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "CancelBQJob:: Invalid or null BQ Client within the "
+                      "connection handle.";
+  }
     return StatusRecord{
         SQLStates::k_HY000(),
         "Invalid or null BQ Client within the connection handle"};
@@ -803,8 +823,10 @@ StatusRecordOr<Job> CancelBQJob(ConnectionHandle& conn_handle,
   // validate we have a project_id.
   std::string project_id = conn_handle.GetDsn().catalog;
   if (project_id.empty()) {
-    LOG(ERROR)
-        << "CancelBQJob:: Invalid or empty catalog in connection handle.";
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR)
+            << "CancelBQJob:: Invalid or empty catalog in connection handle.";
+  }
     return StatusRecord{SQLStates::k_HY000(),
                         "Invalid or empty catalog in connection handle"};
   }
@@ -818,9 +840,11 @@ StatusRecordOr<PostQueryResults> PostQueryWithoutResults(
     std::shared_ptr<ODBCBQClient> const& bq_client,
     PostQueryRequest const& post_query_request, Options const& options) {
   if (!bq_client) {
-    LOG(ERROR)
-        << "PostQueryWithoutResults:: Invalid or null BQ Client within the "
-           "connection handle.";
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR)
+                << "PostQueryWithoutResults:: Invalid or null BQ Client within the "
+                   "connection handle.";
+      }
     return StatusRecord{
         SQLStates::k_HY000(),
         "Invalid or null BQ Client within the connection handle"};
@@ -829,8 +853,10 @@ StatusRecordOr<PostQueryResults> PostQueryWithoutResults(
   // We can set timeout here as needed later.
   auto pq_status = bq_client->PostQuery(post_query_request, options);
   if (!pq_status) {
-    LOG(ERROR) << "PostQueryWithoutResults::PostQuery:: "
-               << pq_status.GetStatusRecord().message;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "PostQueryWithoutResults::PostQuery:: "
+                       << pq_status.GetStatusRecord().message;
+      }
     return pq_status.GetStatusRecord();
   }
   return pq_status;
@@ -840,8 +866,10 @@ StatusRecordOr<PostQueryResults> PostQueryWithoutResults(
     ConnectionHandle& conn_handle, PostQueryRequest const& post_query_request) {
   // Validate the  connection handle.
   if (!conn_handle.IsConnected()) {
-    LOG(ERROR)
-        << "PostQueryWithoutResults:: Connection to the data source is broken.";
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR)
+                << "PostQueryWithoutResults:: Connection to the data source is broken.";
+      }
     return StatusRecord{SQLStates::k_08S01(),
                         "Connection to the data source is broken"};
   }
@@ -964,7 +992,9 @@ StatusRecordOr<BQDataType> ConvertDSType(std::string const& type) {
   }
   std::string err_msg = "Invalid Data Type: ";
   err_msg.append(type);
-  LOG(ERROR) << "ConvertDSType:: " << err_msg;
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << "ConvertDSType:: " << err_msg;
+  }
   return StatusRecord{SQLStates::k_HY000(), err_msg};
 }
 
@@ -1243,7 +1273,9 @@ odbc_internal::StatusRecordOr<SQLSMALLINT> GetSQLDataType(
   }
   std::string err_msg = "Invalid Data Type: ";
   err_msg.append(type);
-  LOG(ERROR) << "GetSQLDataType:: " << err_msg;
+    if(ShouldLog(LogLevel::kLogError)){
+      LOG(ERROR) << "GetSQLDataType:: " << err_msg;
+  }
   return StatusRecord{SQLStates::k_HY000(), err_msg};
 }
 

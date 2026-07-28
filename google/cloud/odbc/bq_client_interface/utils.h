@@ -21,8 +21,11 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 
 namespace google::cloud::odbc_bigquery_client_interface {
+using ::google::cloud::odbc_bq_driver_internal::ShouldLog;
+using ::google::cloud::odbc_bq_driver_internal::LogLevel;
 struct MaxRetriesOption {
   using Type = int;
 };
@@ -58,7 +61,9 @@ auto RetryLoop(Functor&& functor, std::string const& operation_name,
     response = functor();
 
     if (response.ok()) {
-      LOG(INFO) << operation_name << " succeeded on attempt " << attempt;
+        if(ShouldLog(LogLevel::kLogInfo)){
+          LOG(INFO) << operation_name << " succeeded on attempt " << attempt;
+  }
       return response;
     }
 
@@ -71,17 +76,21 @@ auto RetryLoop(Functor&& functor, std::string const& operation_name,
 
     if ((code != google::cloud::StatusCode::kDeadlineExceeded &&
          !is_rate_limit)) {
-      LOG(WARNING) << operation_name
-                   << " failed permanently: " << response.status();
+            if(ShouldLog(LogLevel::kLogWarning)){
+              LOG(WARNING) << operation_name
+                           << " failed permanently: " << response.status();
+  }
       return response;
     }
 
     auto delay = backoff_policy.OnCompletion();
-    LOG(WARNING)
-        << operation_name << " failed (attempt " << attempt
-        << "): " << response.status() << " -- retrying after "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(delay).count()
-        << "ms";
+      if(ShouldLog(LogLevel::kLogWarning)){
+        LOG(WARNING)
+            << operation_name << " failed (attempt " << attempt
+            << "): " << response.status() << " -- retrying after "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(delay).count()
+            << "ms";
+  }
 
     std::this_thread::sleep_for(delay);
     ++attempt;

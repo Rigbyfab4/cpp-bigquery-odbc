@@ -33,8 +33,10 @@ StatusRecord BeginTransactionIfNeeded(ConnectionHandle& conn_handle) {
   auto attribute_status =
       conn_handle.GetAttribute(SQL_ATTR_AUTOCOMMIT, &auto_commit, 0, nullptr);
   if (!attribute_status.ok()) {
-    LOG(ERROR) << "BeginTransactionIfNeeded::GetAttribute:: "
-               << attribute_status.message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "BeginTransactionIfNeeded::GetAttribute:: "
+                   << attribute_status.message;
+  }
     return attribute_status;
   }
   if (auto_commit == SQL_AUTOCOMMIT_ON) {
@@ -48,8 +50,10 @@ StatusRecord BeginTransactionIfNeeded(ConnectionHandle& conn_handle) {
   auto bq_client = conn_handle.GetClient();
   auto pq_status_or = PostQueryWithoutResults(conn_handle, post_request);
   if (!pq_status_or) {
-    LOG(ERROR) << "BeginTransactionIfNeeded::FetchBQData:: "
-               << pq_status_or.GetStatusRecord().message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "BeginTransactionIfNeeded::FetchBQData:: "
+                   << pq_status_or.GetStatusRecord().message;
+  }
     return pq_status_or.GetStatusRecord();
   }
   conn_handle.SetTransactionActive(true);

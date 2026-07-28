@@ -53,9 +53,11 @@ StatusRecord ConstructPositionalQueryParams(
   std::vector<SQLLEN> owned_octet_lengths;  // Owns any needed octet lengths
   for (int param_ind = 0; param_ind < basic_query_params.size(); param_ind++) {
     if (!apd.HasDescriptorRecord(param_ind + 1)) {
-      LOG(ERROR) << "ConstructPositionalQueryParams:: APD record missing for "
-                    "parameter "
-                 << (param_ind + 1);
+            if(ShouldLog(LogLevel::kLogError)){
+              LOG(ERROR) << "ConstructPositionalQueryParams:: APD record missing for "
+                            "parameter "
+                         << (param_ind + 1);
+      }
       return StatusRecord{
           SQLStates::k_07002(),
           "Expected descriptor record does not exist during query execution."};
@@ -76,17 +78,21 @@ StatusRecord ConstructPositionalQueryParams(
     }
 
     if (!is_data_buff_req && is_data_at_exec) {
-      LOG(INFO) << "ConstructPositionalQueryParams:: Parameter "
-                << (param_ind + 1) << " requires data-at-execution.";
+            if(ShouldLog(LogLevel::kLogInfo)){
+              LOG(INFO) << "ConstructPositionalQueryParams:: Parameter "
+                        << (param_ind + 1) << " requires data-at-execution.";
+      }
       return StatusRecord{
           SQLStates::k_SQL_NEED_DATA(),
           "The bound param is set for SQL_DATA_AT_EXEC/SQL_LEN_DATA_AT_EXEC"};
     }
 
     if (!is_data_buff_req && apd_rec.data_ptr == nullptr) {
-      LOG(ERROR) << "ConstructPositionalQueryParams:: Bound parameter buffer "
-                    "was null for parameter "
-                 << (param_ind + 1);
+            if(ShouldLog(LogLevel::kLogError)){
+              LOG(ERROR) << "ConstructPositionalQueryParams:: Bound parameter buffer "
+                            "was null for parameter "
+                         << (param_ind + 1);
+      }
       return StatusRecord{SQLStates::k_HY009(),
                           "The bound param buffer was null"};
     }
@@ -112,9 +118,11 @@ StatusRecord ConstructPositionalQueryParams(
 
     DescriptorRecord& ipd_rec = ipd.GetDescriptorRecord(param_ind + 1);
     if (!ipd.HasDescriptorRecord(param_ind + 1)) {
-      LOG(ERROR) << "ConstructPositionalQueryParams:: IPD record missing for "
-                    "parameter "
-                 << (param_ind + 1);
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "ConstructPositionalQueryParams:: IPD record missing for "
+                      "parameter "
+                   << (param_ind + 1);
+      }
       return StatusRecord{
           SQLStates::k_07002(),
           "Expected descriptor record does not exist during query execution."};
@@ -122,8 +130,10 @@ StatusRecord ConstructPositionalQueryParams(
     SQLSMALLINT sql_type = ipd_rec.concise_type;
     StatusRecordOr<std::string> conv_status = ConvertFromBuffer(data, sql_type);
     if (!conv_status) {
-      LOG(ERROR) << "ConstructPositionalQueryParams::ConvertFromBuffer:: "
-                 << conv_status.GetStatusRecord().message;
+      if(ShouldLog(LogLevel::kLogError)){
+        LOG(ERROR) << "ConstructPositionalQueryParams::ConvertFromBuffer:: "
+                   << conv_status.GetStatusRecord().message;
+      }
       return conv_status.GetStatusRecord();
     }
     std::string& value_str = *conv_status;
@@ -148,21 +158,27 @@ StatusRecordOr<DSResults> ExecuteScript(
     StatementHandle& stmt_handle, PostQueryRequest const& post_query_request) {
   ConnectionHandle* conn_handle = stmt_handle.GetConnectionHandle();
   if (!conn_handle) {
-    LOG(ERROR) << "ExecuteScript:: Invalid connection handle.";
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "ExecuteScript:: Invalid connection handle.";
+          }
     return StatusRecord{SQLStates::k_HY009(), "Invalid statement handle"};
   }
 
   // Validate connection handle
   if (!conn_handle->IsConnected()) {
-    LOG(ERROR) << "ExecuteScript:: Connection to the data source is broken.";
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ExecuteScript:: Connection to the data source is broken.";
+          }
     return StatusRecord{SQLStates::k_08S01(),
                         "Connection to the data source is broken"};
   }
 
   auto bq_client = conn_handle->GetClient();
   if (!bq_client) {
-    LOG(ERROR) << "ExecuteScript:: Invalid or null BQ Client within the "
-                  "connection handle.";
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ExecuteScript:: Invalid or null BQ Client within the "
+                              "connection handle.";
+          }
     return StatusRecord{
         SQLStates::k_HY000(),
         "Invalid or null BQ Client within the connection handle"};
@@ -172,8 +188,10 @@ StatusRecordOr<DSResults> ExecuteScript(
   post_query_options.set<MaxRetriesOption>(conn_handle->GetDsn().max_retries);
   auto pq_status = bq_client->PostQuery(post_query_request, post_query_options);
   if (!pq_status) {
-    LOG(ERROR) << "ExecuteScript::PostQuery:: "
-               << pq_status.GetStatusRecord().message;
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ExecuteScript::PostQuery:: "
+                           << pq_status.GetStatusRecord().message;
+          }
     return pq_status.GetStatusRecord();
   }
 
@@ -189,8 +207,10 @@ StatusRecordOr<DSResults> ExecuteScript(
         pq_status->job_reference.location,
         post_query_request.query_request().timeout(), post_query_options);
     if (!gq_status) {
-      LOG(ERROR) << "ExecuteScript::GetAllQueryResults:: "
-                 << gq_status.GetStatusRecord().message;
+                if(ShouldLog(LogLevel::kLogError)){
+                  LOG(ERROR) << "ExecuteScript::GetAllQueryResults:: "
+                             << gq_status.GetStatusRecord().message;
+          }
       return gq_status.GetStatusRecord();
     }
     results.num_dml_affected_rows = gq_status->num_dml_affected_rows;
@@ -204,8 +224,10 @@ StatusRecordOr<DSResults> ExecuteScript(
       bq_client->ListAllJobs(pq_status->job_reference.project_id,
                              pq_status->job_reference.job_id, list_job_options);
   if (!all_jobs_status) {
-    LOG(ERROR) << "ExecuteScript::ListAllJobs:: "
-               << all_jobs_status.GetStatusRecord().message;
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ExecuteScript::ListAllJobs:: "
+                           << all_jobs_status.GetStatusRecord().message;
+          }
     return all_jobs_status.GetStatusRecord();
   }
 
@@ -226,8 +248,10 @@ StatusRecordOr<DSResults> ExecuteScript(
   }
   auto job_status = stmt_handle.GetNextJobData();
   if (!job_status.Ok()) {
-    LOG(ERROR) << "ExecuteScript::GetNextJobData:: "
-               << job_status.GetStatusRecord().message;
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ExecuteScript::GetNextJobData:: "
+                           << job_status.GetStatusRecord().message;
+          }
     return job_status.GetStatusRecord();
   }
   auto job_data = job_status.GetValue();
@@ -243,8 +267,10 @@ StatusRecordOr<DSResults> ExecuteScript(
       post_query_request.query_request().timeout(), query_results_options);
 
   if (!gq_status) {
-    LOG(ERROR) << "ExecuteScript::GetAllQueryResults:: "
-               << gq_status.GetStatusRecord().message;
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ExecuteScript::GetAllQueryResults:: "
+                           << gq_status.GetStatusRecord().message;
+          }
     return gq_status.GetStatusRecord();
   }
 
@@ -568,7 +594,9 @@ StatusRecord ReadNextResultsFromStream(StatementHandle& stmt_handle) {
   } else {
     stmt_handle.ClearReadRowsStream();
     stmt_handle.ClearReadRowsIterator();
-    LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
+          if(ShouldLog(LogLevel::kLogInfo)){
+            LOG(INFO) << "FetchBQDataReadArrow:: Read stream ended.";
+      }
     return StatusRecord({SQLStates::k_SQL_NO_DATA(), "Read stream ended."});
   }
   return StatusRecord::Ok();
@@ -662,11 +690,15 @@ StatusRecord CreateLargeDatasetIfNeeded(std::shared_ptr<ODBCBQClient> bq_client,
           "CreateLargeDatasetIfNeeded:: Invalid large_table_expiration_time "
           "format: " +
           large_table_expiration_time;
-      LOG(ERROR) << err_msg;
+                if(ShouldLog(LogLevel::kLogError)){
+                  LOG(ERROR) << err_msg;
+      }
       return StatusRecord{SQLStates::k_HY000(), err_msg};
     }
   }
-  LOG(INFO) << "CreateLargeDatasetIfNeeded:: Executing DDL: " << query;
+        if(ShouldLog(LogLevel::kLogInfo)){
+          LOG(INFO) << "CreateLargeDatasetIfNeeded:: Executing DDL: " << query;
+      }
 
   // 3. Prepare the QueryRequest.
   QueryRequest query_request;
@@ -682,8 +714,10 @@ StatusRecord CreateLargeDatasetIfNeeded(std::shared_ptr<ODBCBQClient> bq_client,
   // 5. Execute using the helper function.
   auto result = PostQueryWithoutResults(bq_client, post_query_request, opt);
   if (!result.Ok()) {
-    LOG(ERROR) << "CreateLargeDatasetIfNeeded:: Failed to create dataset: "
-               << result.GetStatusRecord().message;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "CreateLargeDatasetIfNeeded:: Failed to create dataset: "
+                       << result.GetStatusRecord().message;
+      }
     return result.GetStatusRecord();
   }
   return StatusRecord::Ok();
@@ -763,7 +797,9 @@ StatusRecord FetchBQDataRead(StatementHandle& stmt_handle,
   }
   std::string error_message = get_job_response->status.error_result.message;
   if (!error_message.empty()) {
-    LOG(ERROR) << "FetchBQDataRead:: " << error_message;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "FetchBQDataRead:: " << error_message;
+      }
     return StatusRecord{SQLStates::k_HY000(), error_message};
   }
 
@@ -806,8 +842,10 @@ StatusRecordOr<DSResults> FetchBQData(
     auto gq_status =
         FetchNextPageOfQueryResults(stmt_handle, post_query_request);
     if (!gq_status) {
-      LOG(ERROR) << "FetchBQData::FetchNextPageOfQueryResults:: "
-                 << gq_status.GetStatusRecord().message;
+            if(ShouldLog(LogLevel::kLogError)){
+              LOG(ERROR) << "FetchBQData::FetchNextPageOfQueryResults:: "
+                         << gq_status.GetStatusRecord().message;
+      }
       return gq_status.GetStatusRecord();
     }
     results.num_dml_affected_rows = gq_status->num_dml_affected_rows;
@@ -872,9 +910,10 @@ StatusRecordOr<GetQueryResults> FetchNextPageOfQueryResults(
   auto* connection_handle = stmt_handle.GetConnectionHandle();
   Options options;
   auto job_client = stmt_handle.GetConnectionHandle()->GetClient();
-
-  LOG(INFO) << "FetchNextPageOfQueryResults:: Request body: "
-            << get_query_results_request.DebugString("");
+      if(ShouldLog(LogLevel::kLogInfo)){
+        LOG(INFO) << "FetchNextPageOfQueryResults:: Request body: "
+                  << get_query_results_request.DebugString("");
+      }
 
   while (true) {
     if (timeout_ms.count() > 0 &&
@@ -882,7 +921,9 @@ StatusRecordOr<GetQueryResults> FetchNextPageOfQueryResults(
       std::string message = "The query timeout period of " +
                             std::to_string(timeout_ms.count()) +
                             "ms has expired";
-      LOG(ERROR) << "FetchNextPageOfQueryResults:: " << message;
+        if(ShouldLog(LogLevel::kLogError)){
+          LOG(ERROR) << "FetchNextPageOfQueryResults:: " << message;
+      }
       return StatusRecord{SQLStates::k_HYT00(), message};
     }
 
@@ -890,8 +931,10 @@ StatusRecordOr<GetQueryResults> FetchNextPageOfQueryResults(
         job_client->GetQueryResults(get_query_results_request, options);
 
     if (!get_query_results_partial) {
-      LOG(ERROR) << "FetchNextPageOfQueryResults::QueryResults failed: "
-                 << get_query_results_partial.status().message();
+            if(ShouldLog(LogLevel::kLogError)){
+              LOG(ERROR) << "FetchNextPageOfQueryResults::QueryResults failed: "
+                         << get_query_results_partial.status().message();
+      }
       return StatusRecord::ConvertFrom(get_query_results_partial.status());
     }
 
@@ -901,9 +944,10 @@ StatusRecordOr<GetQueryResults> FetchNextPageOfQueryResults(
       std::this_thread::sleep_for(backoff.OnCompletion());
       continue;
     }
-
-    LOG(INFO) << "FetchNextPageOfQueryResults:: Response body: "
-              << get_query_results_partial->DebugString("");
+      if(ShouldLog(LogLevel::kLogInfo)){
+        LOG(INFO) << "FetchNextPageOfQueryResults:: Response body: "
+                  << get_query_results_partial->DebugString("");
+      }
 
     // Replace get_query_results with this latest result
     GetQueryResults get_query_results = *get_query_results_partial;

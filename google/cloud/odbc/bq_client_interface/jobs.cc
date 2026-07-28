@@ -19,6 +19,7 @@
 #include "google/cloud/bigquery/v2/minimal/internal/job_client.h"
 #include "google/cloud/bigquery/v2/minimal/internal/job_request.h"
 #include "absl/log/log.h"
+#include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
 #include <thread>
 
 namespace google::cloud::odbc_bigquery_client_interface {
@@ -37,6 +38,8 @@ using ::google::cloud::bigquery_v2_minimal_internal::PostQueryRequest;
 using ::google::cloud::bigquery_v2_minimal_internal::PostQueryResults;
 using ::google::cloud::bigquery_v2_minimal_internal::Projection;
 using ::google::cloud::bigquery_v2_minimal_internal::QueryRequest;
+using ::google::cloud::odbc_bq_driver_internal::ShouldLog;
+using ::google::cloud::odbc_bq_driver_internal::LogLevel;
 using ::google::cloud::internal::ExponentialBackoffPolicy;
 using google::cloud::odbc_internal::SQLStates;
 using google::cloud::odbc_internal::StatusRecord;
@@ -119,17 +122,23 @@ StatusRecordOr<Job> GetJob(JobClient& job_client, std::string const& project_id,
   get_job_request.set_project_id(project_id);
   get_job_request.set_job_id(job_id);
   get_job_request.set_location(location);
-  LOG(INFO) << "GetJob:: Request body: " << get_job_request.DebugString("");
+            if(ShouldLog(LogLevel::kLogInfo)){
+              LOG(INFO) << "GetJob:: Request body: " << get_job_request.DebugString("");
+          }
   auto max_retries = options.get<MaxRetriesOption>();
   auto response =
       RetryLoop([&] { return job_client.GetJob(get_job_request, options); },
                 "GetJob", max_retries);
 
   if (!response.ok()) {
-    LOG(WARNING) << "GetJob:: Request failed: " << response.status();
+              if(ShouldLog(LogLevel::kLogInfo)){
+                LOG(WARNING) << "GetJob:: Request failed: " << response.status();
+          }
     return StatusRecordOr<Job>::ConvertFromStatusOr(response.status());
   }
-  LOG(INFO) << "GetJob:: Response body: " << GetJsonRegResp<Job>(*response);
+            if(ShouldLog(LogLevel::kLogInfo)){
+              LOG(INFO) << "GetJob:: Response body: " << GetJsonRegResp<Job>(*response);
+          }
   return StatusRecordOr<Job>::ConvertFromStatusOr(*response);
 }
 #pragma clang attribute pop
@@ -141,12 +150,16 @@ StatusRecordOr<std::vector<ListFormatJob>> ListAllJobs(
     std::string const& parent_job_id, Options const& options) {
   // Validate inputs
   if (project_id.empty()) {
-    LOG(ERROR) << "ListAllJobs:: project_id cannot be empty";
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ListAllJobs:: project_id cannot be empty";
+          }
     return StatusRecord::ConvertFrom(
         Status(StatusCode::kInvalidArgument, "project_id cannot be empty"));
   }
   if (parent_job_id.empty()) {
-    LOG(ERROR) << "ListAllJobs:: parent_job_id cannot be empty";
+              if(ShouldLog(LogLevel::kLogError)){
+                LOG(ERROR) << "ListAllJobs:: parent_job_id cannot be empty";
+          }
     return StatusRecord::ConvertFrom(
         Status(StatusCode::kInvalidArgument, "parent_job_id cannot be empty"));
   }
@@ -157,18 +170,24 @@ StatusRecordOr<std::vector<ListFormatJob>> ListAllJobs(
   request.set_all_users(false);
   request.set_max_results(kMaxChildJobsResults);
   request.set_projection(Projection::Full());
-  LOG(INFO) << "ListAllJobs:: Request body: " << request.DebugString("");
+            if(ShouldLog(LogLevel::kLogInfo)){
+              LOG(INFO) << "ListAllJobs:: Request body: " << request.DebugString("");
+          }
   StreamRange<ListFormatJob> jobs_response =
       job_client.ListJobs(request, options);
 
   std::vector<ListFormatJob> jobs;
   for (auto const& job : jobs_response) {
     if (!job) {
-      LOG(ERROR) << "ListAllJobs:: " << job.status().message();
+                if(ShouldLog(LogLevel::kLogError)){
+                  LOG(ERROR) << "ListAllJobs:: " << job.status().message();
+          }
       return StatusRecord::ConvertFrom(job.status());
     }
-    LOG(INFO) << "ListAllJobs:: Response body: "
-              << GetJsonRegResp<ListFormatJob>(*job);
+              if(ShouldLog(LogLevel::kLogInfo)){
+                LOG(INFO) << "ListAllJobs:: Response body: "
+                          << GetJsonRegResp<ListFormatJob>(*job);
+          }
     jobs.push_back(*job);
   }
 
@@ -248,18 +267,23 @@ StatusRecordOr<Job> InsertJob(JobClient& job_client,
   request.set_project_id(project_id);
   request.set_job(job);
   request.set_json_filter_keys(CreateKeysToFilterOut(job));
-
-  LOG(INFO) << "InsertJob:: Request body: " << request.DebugString("");
+  if(ShouldLog(LogLevel::kLogInfo)){
+    LOG(INFO) << "InsertJob:: Request body: " << request.DebugString("");
+  }
   auto max_retries = options.get<MaxRetriesOption>();
   auto response =
       RetryLoop([&] { return job_client.InsertJob(request, options); },
                 "InsertJob", max_retries);
 
   if (!response.ok()) {
-    LOG(WARNING) << "InsertJob:: Request failed: " << response.status();
+      if(ShouldLog(LogLevel::kLogWarning)){
+        LOG(WARNING) << "InsertJob:: Request failed: " << response.status();
+  }
     return StatusRecordOr<Job>::ConvertFromStatusOr(response.status());
   }
-  LOG(INFO) << "InsertJob: Response body: " << GetJsonRegResp<Job>(*response);
+    if(ShouldLog(LogLevel::kLogInfo)){
+      LOG(INFO) << "InsertJob: Response body: " << GetJsonRegResp<Job>(*response);
+  }
   return StatusRecordOr<Job>::ConvertFromStatusOr(*response);
 }
 #pragma clang attribute pop
@@ -280,17 +304,23 @@ StatusRecordOr<Job> CancelJob(JobClient& job_client,
   if (!location.empty()) {
     request.set_location(location);
   }
-  LOG(INFO) << "CancelJob:: Request body: " << request.DebugString("");
+    if(ShouldLog(LogLevel::kLogInfo)){
+      LOG(INFO) << "CancelJob:: Request body: " << request.DebugString("");
+  }
   auto max_retries = options.get<MaxRetriesOption>();
   auto response =
       RetryLoop([&] { return job_client.CancelJob(request, options); },
                 "CancelJob", max_retries);
 
   if (!response.ok()) {
-    LOG(WARNING) << "CancelJob:: Request failed: " << response.status();
+      if(ShouldLog(LogLevel::kLogWarning)){
+        LOG(WARNING) << "CancelJob:: Request failed: " << response.status();
+  }
     return StatusRecordOr<Job>::ConvertFromStatusOr(response.status());
   }
-  LOG(INFO) << "CancelJob:: Response body: " << GetJsonRegResp<Job>(*response);
+    if(ShouldLog(LogLevel::kLogInfo)){
+      LOG(INFO) << "CancelJob:: Response body: " << GetJsonRegResp<Job>(*response);
+  }
   return StatusRecordOr<Job>::ConvertFromStatusOr(*response);
 }
 #pragma clang attribute pop
@@ -305,20 +335,26 @@ StatusRecordOr<PostQueryResults> Query(JobClient& job_client,
   post_query_request.set_project_id(project_id);
   post_query_request.set_query_request(query_request);
   post_query_request.set_json_filter_keys(CreateKeysToFilterOut(query_request));
-
-  LOG(INFO) << "Query:: Request body: " << post_query_request.DebugString("");
+  
+  if(ShouldLog(LogLevel::kLogInfo)){
+    LOG(INFO) << "Query:: Request body: " << post_query_request.DebugString("");
+  }
   auto max_retries = options.get<MaxRetriesOption>();
   auto response =
       RetryLoop([&] { return job_client.Query(post_query_request, options); },
                 "Query", max_retries);
 
   if (!response.ok()) {
-    LOG(WARNING) << "Query:: Request failed: " << response.status();
+    if(ShouldLog(LogLevel::kLogWarning)){
+      LOG(WARNING) << "Query:: Request failed: " << response.status();
+    }
     return StatusRecordOr<PostQueryResults>::ConvertFromStatusOr(
         response.status());
   }
-  LOG(INFO) << "Query:: Response body: "
-            << GetJsonRegResp<PostQueryResults>(*response);
+  if(ShouldLog(LogLevel::kLogInfo)){
+    LOG(INFO) << "Query:: Response body: "
+              << GetJsonRegResp<PostQueryResults>(*response);
+  }
   return StatusRecordOr<PostQueryResults>::ConvertFromStatusOr(*response);
 }
 #pragma clang attribute pop
@@ -352,7 +388,9 @@ StatusRecordOr<GetQueryResults> GetAllQueryResults(
       std::string message = "The query timeout period of " +
                             std::to_string(timeout_ms.count()) +
                             "ms has expired";
-      LOG(ERROR) << "GetAllQueryResults:: " << message;
+                                      if(ShouldLog(LogLevel::kLogError)){
+                                        LOG(ERROR) << "GetAllQueryResults:: " << message;
+          }
       return StatusRecord{SQLStates::k_HYT00(), message};
     }
     std::this_thread::sleep_for(chrono_ms(200));
@@ -360,12 +398,16 @@ StatusRecordOr<GetQueryResults> GetAllQueryResults(
         job_client.QueryResults(get_query_results_request, options);
 
     if (!get_query_results_partial) {
-      LOG(ERROR) << "GetAllQueryResults::QueryResults:: "
-                 << get_query_results_partial.status().message();
+                if(ShouldLog(LogLevel::kLogError)){
+                  LOG(ERROR) << "GetAllQueryResults::QueryResults:: "
+                             << get_query_results_partial.status().message();
+          }
       return StatusRecord::ConvertFrom(get_query_results_partial.status());
     }
-    LOG(INFO) << "GetAllQueryResults::QueryResults:: Response body: "
-              << get_query_results_partial->DebugString("");
+              if(ShouldLog(LogLevel::kLogInfo)){
+                LOG(INFO) << "GetAllQueryResults::QueryResults:: Response body: "
+                          << get_query_results_partial->DebugString("");
+          }
     // If job_complete is false, there would be no rows and we should wait for
     // job completion
     if (!get_query_results_partial->job_complete &&
@@ -389,8 +431,10 @@ StatusRecordOr<GetQueryResults> GetAllQueryResults(
     get_query_results_request.set_page_token(
         get_query_results_partial->page_token);
   }
-  LOG(INFO) << "GetAllQueryResults:: Request body: "
-            << get_query_results_request.DebugString("");
+            if(ShouldLog(LogLevel::kLogInfo)){
+              LOG(INFO) << "GetAllQueryResults:: Request body: "
+                        << get_query_results_request.DebugString("");
+          }
   return get_query_results;
 }
 #pragma clang attribute pop

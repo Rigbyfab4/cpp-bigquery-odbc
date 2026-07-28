@@ -129,8 +129,10 @@ StatusRecord DoubleStrToInt(std::string& double_str) {
   int64_t int_value;
   iss >> int_value;
   if (iss.fail()) {
-    LOG(ERROR) << "DoubleStrToInt:: Not a valid floating point value: "
-               << double_str;
+          if(ShouldLog(LogLevel::kLogError)){
+            LOG(ERROR) << "DoubleStrToInt:: Not a valid floating point value: "
+                       << double_str;
+          }
     return StatusRecord{SQLStates::k_HY000(),
                         "Internal error: Not a valid floating point value"};
   }
