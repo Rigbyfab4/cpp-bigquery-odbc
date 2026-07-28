@@ -639,12 +639,20 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
       return 1;  // Indicate we handled the background redraw
     }
     case WM_LBUTTONDOWN: {
+      // Same guard as in driver_form.cc: the documentation hyperlink is not
+      // created at present, so without checking for a NULL control the
+      // uninitialised rect can swallow clicks anywhere on the dialog.
+      HWND h_hyperlink = GetDlgItem(hwnd, kIdcHyperlink2);
+      if (h_hyperlink == NULL) {
+        break;
+      }
+      RECT rect = {};
+      if (!GetClientRect(h_hyperlink, &rect)) {
+        break;
+      }
       POINT pt;
       GetCursorPos(&pt);
       ScreenToClient(hwnd, &pt);
-      HWND h_hyperlink = GetDlgItem(hwnd, kIdcHyperlink2);
-      RECT rect;
-      GetClientRect(h_hyperlink, &rect);
       MapWindowPoints(h_hyperlink, hwnd, (LPPOINT)&rect, 2);
       if (PtInRect(&rect, pt)) {
         ShellExecute(NULL, "open", kBigQueryDocsURL, NULL, NULL, SW_SHOWNORMAL);
