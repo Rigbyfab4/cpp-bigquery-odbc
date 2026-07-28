@@ -449,7 +449,7 @@ TEST(DataFetchPerformanceParamTest, Benchmark311ServiceRequests) {
       "CAST(nyc311.resolution_action_updated_date AS STRING) AS V21, "
       "CAST(nyc311.closed_date AS STRING) AS V22 FROM "
       "`bigquery-public-data.new_york_311.311_service_requests` AS nyc311 "
-      "LIMIT 100000;";
+      "LIMIT 1000000;";
 
   SQLRETURN ret = SQLExecDirect(conn->hstmt, ToSqlChar(query.c_str()), SQL_NTS);
   CheckError(ret, "SQLExecDirect", conn);
@@ -488,10 +488,10 @@ INSTANTIATE_TEST_SUITE_P(
     Tables, DataFetchPerformanceParamTest,
     ::testing::Values(
         std::make_tuple(
-            "bigquery-devtools-drivers.kirltest.new_timestamp_table", 200000),
+            "bigquery-devtools-drivers.kirltest.new_timestamp_table", 1000000),
         std::make_tuple(
             "bigquery-devtools-drivers.INTEGRATION_TEST_FORMAT.all_bq_types_2",
-            200000)
+            1000000)
         // TODO: Re-enable this benchmark once HTAPI Arrow supports all data
         // types. Currently SQLExecDirect fails with:
         // "[Google][ODBC BigQuery Driver] Internal Error: Unsupported arrow
