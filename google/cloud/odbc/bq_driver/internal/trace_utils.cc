@@ -32,6 +32,10 @@ static std::once_flag absl_log_init_flag;
 std::shared_ptr<TraceOptions> TraceOptions::options_file_ = nullptr;
 std::mutex TraceOptions::mu_;
 
+odbc_internal::StatusRecordOr<std::shared_ptr<TraceOptions>> const
+    kTraceOptsFile =
+        TraceOptions::CreateTraceOptionsFile(GetOdbcTraceConfigPath());
+
 #ifdef _WIN32
 constexpr char kPathSeparator = '\\';
 #else
@@ -295,6 +299,10 @@ TraceOptions::CreateTraceOptionsFile(
       log_file_size = std::strtol(s.second.c_str(), nullptr, 10);
     } else if (s.first == kMaxThreadsParam) {
       max_threads = std::stoull(s.second);
+#if !defined(_WIN32)
+    } else if (s.first == kWcharEncoding) {
+      SetWcharEncodingFromConfig(s.second);
+#endif
     }
   }
 

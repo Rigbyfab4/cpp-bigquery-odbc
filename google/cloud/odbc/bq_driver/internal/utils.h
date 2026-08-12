@@ -224,7 +224,37 @@ odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
     std::string_view utf_8_str);
 
 odbc_internal::StatusRecordOr<std::string> BqConvertSQLWCHARToString(
-    SQLWCHAR* in_str, SQLINTEGER in_str_len);
+    SQLWCHAR const* in_str, SQLINTEGER in_str_len);
+
+// Returns true when WcharEncoding=UTF-16LE is set in
+// Supported wire encodings for SQLWCHAR buffers across the ODBC driver
+// boundary.
+enum class WireEncoding {
+  kDefault,  // Inferred from build: UTF-16LE on Windows/unixODBC (2 bytes),
+             // UTF-32LE on iODBC (4 bytes)
+  kUtf8,     // 1 byte per character (UTF-8)
+  kUtf16Le,  // 2 bytes per character (UTF-16LE, e.g. SAP HANA,
+             // DriverUnicodeType=1)
+  kUtf32Le   // 4 bytes per character (UTF-32LE, e.g. iODBC native)
+};
+
+// Returns the effective wire encoding in use at runtime.
+WireEncoding GetEffectiveWireEncoding();
+
+// Apply the WcharEncoding value read from googlebigqueryodbc.ini. Accepted
+// values:
+//   "UTF-8"     1-byte UTF-8 wire format
+//   "UTF-16LE"  2-byte UTF-16LE wire format
+//   "UTF-32LE"  4-byte UTF-32LE wire format
+//   "" / "default" default: based on sizeof(SQLWCHAR)
+// No-op on Windows.
+void SetWcharEncodingFromConfig(std::string const& value);
+
+// Bytes per character on the wire between this driver and its caller.
+// Returns 1 for UTF-8, 2 for UTF-16LE, 4 for UTF-32LE.
+// Use this in arithmetic expressions converting between byte counts and
+// character counts on buffers that cross the driver/caller boundary.
+size_t WireWcharSize();
 
 std::wstring SQLWcharToWstring(const SQLWCHAR* in_str);
 

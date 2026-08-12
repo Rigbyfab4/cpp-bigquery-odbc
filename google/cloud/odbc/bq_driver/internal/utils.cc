@@ -21,6 +21,7 @@
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/internal/getenv.h"
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <random>
 #include <sstream>
@@ -39,6 +40,62 @@ bool g_suppress_dropdown = false;
 using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecord;
 using ::google::cloud::odbc_internal::StatusRecordOr;
+#if defined(_WIN32)
+WireEncoding GetEffectiveWireEncoding() { return WireEncoding::kUtf16Le; }
+
+size_t WireWcharSize() { return sizeof(SQLWCHAR); }
+
+void SetWcharEncodingFromConfig(std::string const&) {
+  // No-op on Windows: SQLWCHAR is always 2-byte UTF-16LE.
+}
+#else
+namespace {
+std::atomic<WireEncoding> g_wire_encoding{WireEncoding::kDefault};
+}  // namespace
+
+WireEncoding GetEffectiveWireEncoding() {
+  auto configured = g_wire_encoding.load(std::memory_order_relaxed);
+  if (configured != WireEncoding::kDefault) {
+    return configured;
+  }
+  // Default is based on compile-time SQLWCHAR size
+  return (sizeof(SQLWCHAR) == 2) ? WireEncoding::kUtf16Le
+                                 : WireEncoding::kUtf32Le;
+}
+
+size_t WireWcharSize() {
+  switch (GetEffectiveWireEncoding()) {
+    case WireEncoding::kUtf32Le:
+    case WireEncoding::kDefault:
+      return 4;
+    case WireEncoding::kUtf16Le:
+      return 2;
+    case WireEncoding::kUtf8:
+      return 1;
+  }
+  return sizeof(SQLWCHAR);
+}
+
+void SetWcharEncodingFromConfig(std::string const& value) {
+  if (value == "UTF-8" || value == "UTF8") {
+    g_wire_encoding.store(WireEncoding::kUtf8, std::memory_order_relaxed);
+    LOG(INFO) << "WcharEncoding: UTF-8 wire format (1 byte/char)";
+  } else if (value == "UTF-16LE" || value == "UTF16LE" || value == "UTF-16") {
+    g_wire_encoding.store(WireEncoding::kUtf16Le, std::memory_order_relaxed);
+    LOG(INFO) << "WcharEncoding: UTF-16LE wire format (2 bytes/char)";
+  } else if (value == "UTF-32LE" || value == "UTF32LE" || value == "UTF-32" ||
+             value == "UCS-4LE") {
+    g_wire_encoding.store(WireEncoding::kUtf32Le, std::memory_order_relaxed);
+    LOG(INFO) << "WcharEncoding: UTF-32LE wire format (4 bytes/char)";
+  } else if (value.empty() || value == "default") {
+    g_wire_encoding.store(WireEncoding::kDefault, std::memory_order_relaxed);
+    LOG(INFO) << "WcharEncoding: default (sizeof(SQLWCHAR) bytes/char)";
+  } else {
+    LOG(WARNING) << "WcharEncoding: unrecognised value '" << value << "'";
+  }
+}
+#endif
+
 #ifdef _WIN32
 using google::cloud::odbc_bigquery_client_interface::OauthMechanism;
 static std::string const kOAuthMechanism = "OAuthMechanism";
@@ -166,7 +223,7 @@ size_t BufferSizeForType(SQLSMALLINT type, size_t requested) {
       minimum_size = sizeof(SQL_TIMESTAMP_STRUCT);
       break;
     case SQL_C_WCHAR:
-      minimum_size = sizeof(SQLWCHAR);
+      minimum_size = WireWcharSize();
       break;
     case SQL_C_SBIGINT:
       minimum_size = sizeof(SQLBIGINT);
@@ -671,7 +728,7 @@ std::string GetOdbcTraceConfigPath() {
     return *path;
   }
   // Default to using ~ path directly
-  return "/etc/google.googlebigqueryodbc.ini";
+  return "/etc/googlebigqueryodbc.ini";
 #else
   return k_trace_reg_path;
 #endif  // _WIN32
@@ -777,7 +834,10 @@ odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
     return StatusRecord{SQLStates::k_HY000(),
                         "Error while converting string to wstring"};
   }
-  utf16Str.push_back(L'\0');
+  // MultiByteToWideChar was called with an explicit input length, so
+  // utf16Length is the character count without a null terminator and
+  // wstring::size() already reflects the actual character count,
+  // matching the Linux iconv path behaviour.
   return utf16Str;
 #else
   iconv_t cd = iconv_open(kFromCode.c_str(), "UTF-8");
@@ -809,31 +869,82 @@ odbc_internal::StatusRecordOr<std::wstring> Utf8ToUtf16(
 
   iconv_close(cd);
 
-  // Resize the output string to the actual converted size
+  // Resize the output string to the actual converted size. No trailing NUL is
+  // appended: wstring::size() is the character count, matching the Windows
+  // MultiByteToWideChar path above. Callers own their own NUL termination.
   utf16str.resize((outbuf - reinterpret_cast<char*>(utf16str.data())) /
                   sizeof(wchar_t));
-  utf16str.push_back(L'\0');
   return utf16str;
 #endif
 }
 
 odbc_internal::StatusRecordOr<std::string> BqConvertSQLWCHARToString(
-    SQLWCHAR* in_str, SQLINTEGER in_str_len) {
+    SQLWCHAR const* in_str, SQLINTEGER in_str_len) {
   if (in_str == nullptr) {
     return StatusRecord{SQLStates::k_HY000(), "in_str string is empty/Null"};
   }
-  if (((in_str != nullptr) && (in_str[0] == '\0'))) {
+
+#if defined(_WIN32)
+  if (in_str[0] == '\0') {
     return std::string();
   }
-  if (in_str_len == SQL_NTS || in_str_len == NULL) {
+  if (in_str_len == SQL_NTS || in_str_len == 0) {
     in_str_len =
         static_cast<SQLINTEGER>(std::char_traits<SQLWCHAR>::length(in_str));
   }
-
-  // Directly create a wide string
   std::wstring wstr(in_str, in_str + in_str_len);
-
   return Utf16ToUtf8(wstr);
+#else
+  switch (GetEffectiveWireEncoding()) {
+    case WireEncoding::kUtf32Le:
+    case WireEncoding::kDefault: {
+      auto const* utf32 = reinterpret_cast<uint32_t const*>(in_str);
+      if (utf32[0] == 0) {
+        return std::string();
+      }
+      SQLINTEGER count = in_str_len;
+      if (count == SQL_NTS || count == 0) {
+        count = 0;
+        while (utf32[count] != 0) ++count;
+      }
+      std::wstring wstr;
+      wstr.reserve(count);
+      for (SQLINTEGER i = 0; i < count; ++i) {
+        wstr.push_back(static_cast<wchar_t>(utf32[i]));
+      }
+      return Utf16ToUtf8(wstr);
+    }
+    case WireEncoding::kUtf16Le: {
+      auto const* utf16 = reinterpret_cast<uint16_t const*>(in_str);
+      if (utf16[0] == 0) {
+        return std::string();
+      }
+      SQLINTEGER count = in_str_len;
+      if (count == SQL_NTS || count == 0) {
+        count = 0;
+        while (utf16[count] != 0) ++count;
+      }
+      std::wstring wstr;
+      wstr.reserve(count);
+      for (SQLINTEGER i = 0; i < count; ++i) {
+        wstr.push_back(static_cast<wchar_t>(utf16[i]));
+      }
+      return Utf16ToUtf8(wstr);
+    }
+    case WireEncoding::kUtf8: {
+      auto const* bytes = reinterpret_cast<char const*>(in_str);
+      if (bytes[0] == '\0') {
+        return std::string();
+      }
+      if (in_str_len == SQL_NTS || in_str_len == 0) {
+        return std::string(bytes);
+      }
+      return std::string(bytes, in_str_len);
+    }
+  }
+
+  return std::string();
+#endif
 }
 
 bool IsDiagIdentifierString(SQLSMALLINT DiagIdentifier) {

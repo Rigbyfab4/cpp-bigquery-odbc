@@ -15,11 +15,14 @@
 #ifndef CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_TYPE_UTILS_H
 #define CPP_BIGQUERY_ODBC_GOOGLE_CLOUD_ODBC_BQ_DRIVER_INTERNAL_ODBC_TYPE_UTILS_H
 
+#include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include "google/cloud/odbc/internal/diagnostic_records.h"
 #include "google/cloud/odbc/internal/sql_state_constants.h"
+#include <cstdint>
 #include <cstring>
 #include <map>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace google::cloud::odbc_bq_driver_internal {
@@ -175,13 +178,75 @@ SQLRETURN IntValueToOutputBufferResponse(T val, SQLPOINTER buffer_ptr,
   return SQL_SUCCESS;
 }
 
+// Writes `count` wide characters from `src` directly into `dest` using the
+// current wire encoding. If `null_terminate` is true, writes a NUL terminator
+// at index `count`. `dest` must point to caller-owned storage of at least
+// `(count + (null_terminate ? 1 : 0)) * WireWcharSize()` bytes.
+inline void WriteWideToWireBuffer(std::wstring const& src, void* dest,
+                                  size_t count, bool null_terminate = false) {
+  if (count > src.size()) count = src.size();
+
+#if defined(_WIN32)
+  std::memcpy(dest, src.data(), count * sizeof(SQLWCHAR));
+  if (null_terminate) {
+    auto* d = static_cast<SQLWCHAR*>(dest);
+    d[count] = 0;
+  }
+#else
+  switch (GetEffectiveWireEncoding()) {
+    case WireEncoding::kUtf32Le:
+    case WireEncoding::kDefault: {
+      auto* d = static_cast<uint32_t*>(dest);
+      for (size_t i = 0; i < count; ++i) {
+        d[i] = static_cast<uint32_t>(
+            static_cast<std::make_unsigned_t<wchar_t> >(src[i]));
+      }
+      if (null_terminate) {
+        d[count] = 0;
+      }
+      return;
+    }
+    case WireEncoding::kUtf16Le: {
+      auto* d = static_cast<uint16_t*>(dest);
+      for (size_t i = 0; i < count; ++i) {
+        d[i] = static_cast<uint16_t>(
+            static_cast<std::make_unsigned_t<wchar_t> >(src[i]));
+      }
+      if (null_terminate) {
+        d[count] = 0;
+      }
+      return;
+    }
+    case WireEncoding::kUtf8: {
+      auto* d = static_cast<char*>(dest);
+      auto utf8_res = Utf16ToUtf8(src.substr(0, count));
+      std::string const& utf8_str = utf8_res.Ok() ? *utf8_res : std::string();
+      std::memcpy(dest, utf8_str.data(), utf8_str.size());
+      if (null_terminate) {
+        d[utf8_str.size()] = '\0';
+      }
+      return;
+    }
+  }
+#endif
+}
+
+// Writes a single wire-format NUL terminator (one code unit, 2 or 4 bytes)
+// at byte offset `char_index * WireWcharSize()` from `dest`.
+inline void WriteWireNul(void* dest, size_t char_index) {
+  size_t const wire_sz = WireWcharSize();
+  std::memset(static_cast<uint8_t*>(dest) + (char_index * wire_sz), 0, wire_sz);
+}
+
 inline odbc_internal::StatusRecord WStrToOutputBufferResponse(
-    std::wstring wstr, SQLPOINTER dest_buf, SQLLEN buffer_length,
+    std::wstring const& wstr, SQLPOINTER dest_buf, SQLLEN buffer_length,
     SQLINTEGER src_len, SQLINTEGER supp_max_len, SQLLEN* res_len) {
   auto status_record = odbc_internal::StatusRecord::Ok();
+  size_t const wire_sz = WireWcharSize();
+
   if (wstr.empty()) {
     if (dest_buf && buffer_length > 0) {
-      reinterpret_cast<SQLWCHAR*>(dest_buf)[0] = L'\0';
+      WriteWireNul(dest_buf, 0);
     }
     if (res_len) {
       *res_len = 0;
@@ -189,21 +254,17 @@ inline odbc_internal::StatusRecord WStrToOutputBufferResponse(
     return status_record;
   }
 
-  std::vector<SQLWCHAR> wstr_data(wstr.begin(), wstr.end());
-
-  auto* dest = reinterpret_cast<SQLWCHAR*>(dest_buf);
   if (buffer_length > src_len) {
     if (res_len) {
-      *res_len = src_len * sizeof(SQLWCHAR);
+      *res_len = src_len * static_cast<SQLLEN>(wire_sz);
     }
-    std::memcpy(dest, wstr_data.data(), (src_len) * sizeof(SQLWCHAR));
-    dest[src_len] = L'\0';
+    WriteWideToWireBuffer(wstr, dest_buf, src_len, /*null_terminate=*/true);
   } else if (supp_max_len <= buffer_length && buffer_length <= src_len) {
     if (res_len) {
-      *res_len = buffer_length * sizeof(SQLWCHAR);
+      *res_len = buffer_length * static_cast<SQLLEN>(wire_sz);
     }
-    std::memcpy(dest, wstr_data.data(), (buffer_length) * sizeof(SQLWCHAR));
-    dest[buffer_length - 1] = L'\0';
+    WriteWideToWireBuffer(wstr, dest_buf, buffer_length - 1,
+                          /*null_terminate=*/true);
     status_record = odbc_internal::StatusRecord{
         google::cloud::odbc_internal::SQLStates::k_01004(), "Data truncated"};
   } else {
@@ -221,7 +282,7 @@ SQLRETURN AddressToPointer(SQLPOINTER ptr, SQLPOINTER out_buf,
                            SQLSMALLINT* str_len_ptr);
 
 odbc_internal::StatusRecord WStrIntervalBufferResponse(
-    std::wstring wstr, SQLPOINTER dest_buf, SQLLEN buffer_length,
+    std::wstring const& wstr, SQLPOINTER dest_buf, SQLLEN buffer_length,
     SQLINTEGER char_len, SQLINTEGER whole_digits_count, SQLLEN* res_len);
 }  // namespace google::cloud::odbc_bq_driver_internal
 
