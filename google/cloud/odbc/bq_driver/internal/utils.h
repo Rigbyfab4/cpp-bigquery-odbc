@@ -131,6 +131,11 @@ odbc_internal::StatusRecordOr<std::vector<TaskResult>> ExecuteParallelTasks(
     }
   };
 
+  // A max_threads of 0 (a misconfigured MaxThreads) would make the slot-wait
+  // loop below spin forever: the condition 0 >= 0 holds while there is no
+  // future to drain. Treat it as serial execution.
+  if (max_threads == 0) max_threads = 1;
+
   for (auto const& input : inputs) {
     // If we have hit the thread limit, wait for at least one thread to finish
     while (active_futures.size() >= max_threads) {
@@ -396,6 +401,17 @@ std::string GetDefaultPemFile();
 // std::regex_replace calls to avoid std::regex DFA initialization crashes
 // on some hosts (e.g. SAP HANA with libstdc++/libc++).
 std::string CastOdbcRegexToCppRegex(std::string const& str);
+
+// Escapes the ODBC LIKE metacharacters in `identifier` -- '%', '_', and the
+// escape character '\' itself -- so that it matches only itself when the result
+// is interpreted as a search pattern.
+//
+// Required wherever an exact identifier that did not come from the application
+// (e.g. the DSN's configured default dataset) is substituted into an argument
+// the ODBC spec defines as a pattern. BigQuery dataset and table names
+// routinely contain '_', which would otherwise act as a single-character
+// wildcard and match objects the user never configured.
+std::string EscapeOdbcPattern(std::string const& identifier);
 
 std::vector<std::string> SplitTableTypes(std::string const& table_types);
 

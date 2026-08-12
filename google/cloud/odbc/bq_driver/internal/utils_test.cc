@@ -27,6 +27,7 @@ using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecord;
 using ::google::cloud::odbc_internal::StatusRecordOr;
 using google::cloud::odbc_testing_utils::StatusRecordIs;
+using ::testing::ElementsAre;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
 using ::testing::UnorderedElementsAre;
@@ -1014,6 +1015,46 @@ TEST(ExecuteParallelTasksTest, RespectsSlidingWindow) {
   // sequential batches.
 
   EXPECT_GE(duration, (task_count / max_threads) * min_sleep_ms);
+}
+
+TEST(ExecuteParallelTasksTest, ZeroMaxThreadsRunsSerially) {
+  // A misconfigured MaxThreads of 0 must not hang; it degrades to serial
+  // execution.
+  std::vector<int> inputs = {1, 2, 3};
+  auto task = [](int input) -> StatusRecordOr<int> { return input * 2; };
+
+  auto result = ExecuteParallelTasks<int, int>(0, inputs, task);
+
+  ASSERT_STATUS_RECORD_OK(result);
+  EXPECT_THAT(*result, ElementsAre(2, 4, 6));
+}
+
+TEST(EscapeOdbcPattern, PlainNameUnchanged) {
+  EXPECT_EQ(EscapeOdbcPattern("kirltest"), "kirltest");
+}
+
+TEST(EscapeOdbcPattern, EscapesUnderscores) {
+  // '_' is an ODBC single-character wildcard; a configured dataset name
+  // containing it must match only itself.
+  EXPECT_EQ(EscapeOdbcPattern("ODBC_TEST_DATASET"), "ODBC\\_TEST\\_DATASET");
+}
+
+TEST(EscapeOdbcPattern, EscapesPercentAndBackslash) {
+  EXPECT_EQ(EscapeOdbcPattern("a%b"), "a\\%b");
+  EXPECT_EQ(EscapeOdbcPattern("a\\b"), "a\\\\b");
+}
+
+TEST(EscapeOdbcPattern, EscapedNameMatchesOnlyItself) {
+  // The escaped form must compile to a regex that matches the literal name and
+  // rejects the wildcard expansions the unescaped form would have accepted.
+  auto regex = BuildRegex(EscapeOdbcPattern("ODBC_TEST_DATASET"), SQL_FALSE);
+  EXPECT_TRUE(re2::RE2::FullMatch("ODBC_TEST_DATASET", *regex));
+  EXPECT_FALSE(re2::RE2::FullMatch("ODBCxTESTyDATASET", *regex));
+  EXPECT_FALSE(re2::RE2::FullMatch("ODBC-TEST-DATASET", *regex));
+
+  // Without escaping, '_' acts as a wildcard -- the behaviour being fixed.
+  auto unescaped = BuildRegex("ODBC_TEST_DATASET", SQL_FALSE);
+  EXPECT_TRUE(re2::RE2::FullMatch("ODBCxTESTyDATASET", *unescaped));
 }
 
 }  // namespace google::cloud::odbc_bq_driver_internal
