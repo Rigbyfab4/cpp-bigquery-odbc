@@ -253,6 +253,7 @@ StatusRecordOr<std::string> ConstructQuery(
 }
 
 std::vector<std::string> AppendAdditionalProjectsIfMissing(
+    ODBCBQClient& bq_client, SQLULEN metadata_id,
     std::vector<std::string> base_projects,
     std::string const& additional_projects) {
   std::set<std::string> existing_ids(base_projects.begin(),
@@ -261,13 +262,31 @@ std::vector<std::string> AppendAdditionalProjectsIfMissing(
   std::stringstream ss(additional_projects);
   std::string project_id;
   while (std::getline(ss, project_id, ',')) {
-    // Trim leading/trailing whitespace
-    project_id.erase(0, project_id.find_first_not_of(" \t"));
-    project_id.erase(project_id.find_last_not_of(" \t") + 1);
+    // Trim leading whitespace (spaces, tabs, newlines)
+    project_id.erase(0, project_id.find_first_not_of(" \t\n\r"));
+    // Trim trailing whitespace (spaces, tabs, newlines)
+    project_id.erase(project_id.find_last_not_of(" \t\n\r") + 1);
 
-    if (!project_id.empty() &&
-        existing_ids.find(project_id) == existing_ids.end()) {
+    if (project_id.empty() || existing_ids.count(project_id)) {
+      continue;
+    }
+    auto validation_status =
+        GetFilteredDatasetIds(bq_client, project_id, "%", metadata_id);
+
+    if (validation_status.Ok()) {
       base_projects.push_back(project_id);
+      existing_ids.insert(project_id);
+    } else {
+      auto const& status_record = validation_status.GetStatusRecord();
+
+      if (status_record.native_error_code == 404) {
+        LOG(INFO) << "Additional project '" << project_id
+                  << "' from DSN is not found or inaccessible. Skipping.";
+      } else {
+        LOG(ERROR) << "Validation of additional project '" << project_id
+                   << "' failed with code " << status_record.native_error_code
+                   << ": " << status_record.message;
+      }
     }
   }
   return base_projects;
@@ -289,10 +308,10 @@ StatusRecordOr<std::vector<FilteredTableResponse>> GetFilteredTables(
     auto const& status = tables_status.GetStatusRecord();
     // A dataset may be deleted between listing datasets and reading its tables;
     // treat "not found" as an empty dataset rather than failing the whole call.
-    if (status.native_error_code == 404) {
-      LOG(WARNING) << "GetFilteredTables:: Skipping dataset not found: '"
-                   << project_id << "." << dataset_id
-                   << "': " << status.message;
+    if (status.native_error_code == 404 || status.native_error_code == 403) {
+      LOG(WARNING)
+          << "GetFilteredTables:: Skipping inaccessible or missing dataset: '"
+          << project_id << "." << dataset_id << "': " << status.message;
       return std::vector<FilteredTableResponse>{};
     }
     LOG(ERROR) << "GetFilteredTables::ListAllTables:: " << status.message;
@@ -400,8 +419,8 @@ StatusRecordOr<ResultSet> GetResultSetForProjects(
 
   std::vector<std::string> project_list = *project_ids_status;
   if (!additional_projects.empty()) {
-    project_list = AppendAdditionalProjectsIfMissing(std::move(project_list),
-                                                     additional_projects);
+    project_list = AppendAdditionalProjectsIfMissing(
+        bq_client, metadata_id, std::move(project_list), additional_projects);
   }
 
   return CreateResultSetForProjects(project_list);
@@ -421,8 +440,8 @@ StatusRecordOr<ResultSet> GetResultSetForDatasets(
   std::vector<std::string> project_list = *project_ids_status;
 
   if (!additional_projects.empty()) {
-    project_list = AppendAdditionalProjectsIfMissing(std::move(project_list),
-                                                     additional_projects);
+    project_list = AppendAdditionalProjectsIfMissing(
+        bq_client, metadata_id, std::move(project_list), additional_projects);
   }
 
   // Fetch datasets for each project in parallel. Previously this was a serial
@@ -431,7 +450,19 @@ StatusRecordOr<ResultSet> GetResultSetForDatasets(
   using DatasetTaskResult = std::vector<std::string>;
   auto dataset_task =
       [&](std::string const& project_id) -> StatusRecordOr<DatasetTaskResult> {
-    return GetFilteredDatasetIds(bq_client, project_id, kMatchAll, metadata_id);
+    auto dataset_ids_or =
+        GetFilteredDatasetIds(bq_client, project_id, kMatchAll, metadata_id);
+    if (!dataset_ids_or) {
+      auto const& status = dataset_ids_or.GetStatusRecord();
+      if (status.native_error_code == 403 || status.native_error_code == 404) {
+        LOG(WARNING)
+            << "GetResultSetForDatasets:: Skipping inaccessible project: '"
+            << project_id << "': " << status.message;
+        return DatasetTaskResult{};
+      }
+      return status;
+    }
+    return dataset_ids_or;
   };
 
   std::shared_ptr<TraceOptions> trace_option = TraceOptions::GetTraceOption();
@@ -481,7 +512,8 @@ StatusRecordOr<ResultSet> GetResultSetForTables(
   ConnectionHandle& conn_handle = *(stmt_handle.GetConnectionHandle());
   // Append additional projects if any
   project_list = AppendAdditionalProjectsIfMissing(
-      std::move(project_list), conn_handle.GetDsn().additional_projects);
+      bq_client, metadata_id, std::move(project_list),
+      conn_handle.GetDsn().additional_projects);
 
   // 1. Prepare the list of tasks (Project + Dataset combinations)
   struct TaskInput {
@@ -515,9 +547,17 @@ StatusRecordOr<ResultSet> GetResultSetForTables(
       auto datasets_status_record_or = GetFilteredDatasetIds(
           bq_client, project_id, dataset_filter, metadata_id);
       if (!datasets_status_record_or) {
+        auto const& status = datasets_status_record_or.GetStatusRecord();
+        if (status.native_error_code == 403 ||
+            status.native_error_code == 404) {
+          LOG(WARNING)
+              << "GetResultSetForTables:: Skipping inaccessible project: '"
+              << project_id << "': " << status.message;
+          return std::vector<TaskInput>{};
+        }
         LOG(ERROR) << "GetResultSetForTables::GetFilteredDatasetIds:: "
-                   << datasets_status_record_or.GetStatusRecord().message;
-        return datasets_status_record_or.GetStatusRecord();
+                   << status.message;
+        return status;
       }
       std::vector<TaskInput> project_tasks;
       project_tasks.reserve(datasets_status_record_or->size());
