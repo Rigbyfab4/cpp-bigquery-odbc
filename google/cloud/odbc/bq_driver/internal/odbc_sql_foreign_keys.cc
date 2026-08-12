@@ -13,11 +13,17 @@
 // limitations under the License.
 
 #include "google/cloud/odbc/bq_driver/internal/odbc_sql_foreign_keys.h"
+#include "google/cloud/odbc/bq_driver/internal/odbc_sql_columns.h"
 #include "google/cloud/odbc/bq_driver/internal/trace_utils.h"
+#include "absl/strings/match.h"
+#include <algorithm>
+#include <string>
 #include <variant>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
+using ::google::cloud::bigquery_v2_minimal_internal::ColumnReference;
+using ::google::cloud::bigquery_v2_minimal_internal::ForeignKey;
 using ::google::cloud::odbc_internal::SQLStates;
 using ::google::cloud::odbc_internal::StatusRecord;
 using ::google::cloud::odbc_internal::StatusRecordOr;
@@ -79,6 +85,120 @@ std::string const kBasicForeignKeysQueryPrefix =
 
 std::string const kBasicForeignKeysQuerySuffix =
     "ORDER BY pk_table, pk_column_ordinal_position, pk_column";
+
+// BigQuery INFORMATION_SCHEMA reports constraint names as
+// "<table_id>.<constraint_name>", where the primary key constraint name is
+// always "pk$" (BigQuery primary keys cannot be named) and an unnamed foreign
+// key constraint is named "fk$<n>" by order of declaration, which is the order
+// tables.get lists them in. These suffixes let the tables.get based path below
+// produce the same constraint names as the INFORMATION_SCHEMA query path.
+std::string const kPrimaryKeyNameSuffix = ".pk$";
+std::string const kForeignKeyNameSuffix = ".fk$";
+
+// Fetches the foreign keys of a single, exactly named table by reading the
+// table's constraints via the tables.get REST API, the same way
+// FetchPKResultSetFromTableMetaData does for SQLPrimaryKeys. This avoids the
+// several seconds of fixed latency an INFORMATION_SCHEMA query job carries
+// (table names are ordinary identifiers, not search patterns, per the ODBC
+// spec). When pk_table_name is non-empty, only foreign keys referencing that
+// table are returned. The rows are returned as a ready ResultSet inside
+// DSResults, which ProcessQueryResults passes through unchanged.
+StatusRecordOr<DSResults> FetchForeignKeysFromTableMetadata(
+    StatementHandle& stmt_handle, std::string const& catalog_name,
+    std::string const& schema_name, std::string const& pk_table_name,
+    std::string const& fk_table_name) {
+  ConnectionHandle& conn_handle = *(stmt_handle.GetConnectionHandle());
+  auto bq_table_status =
+      FetchBQTableData(conn_handle, catalog_name, schema_name, fk_table_name);
+  ResultSet result_set;
+  result_set.row_schema.resize(kForeignKeysMap.size());
+  for (auto const& [_, schema] : kForeignKeysMap) {
+    result_set.row_schema[schema.col_index] = schema;
+  }
+  if (!bq_table_status) {
+    auto const& status = bq_table_status.GetStatusRecord();
+    // An unknown table produces an empty result set, matching the
+    // INFORMATION_SCHEMA query path.
+    if (status.native_error_code == 404) {
+      LOG(INFO) << "FetchForeignKeysFromTableMetadata:: Table not found: '"
+                << catalog_name << "." << schema_name << "." << fk_table_name
+                << "'";
+      DSResults ds_results;
+      ds_results.data_source_results = std::move(result_set);
+      return ds_results;
+    }
+    LOG(ERROR) << "FetchForeignKeysFromTableMetadata::FetchBQTableData:: "
+               << status.message;
+    stmt_handle.GetDiagnostics().AddStatusRecord(status);
+    return status;
+  }
+  // Ordinal of the foreign key within the table's constraints, which is what
+  // BigQuery numbers the unnamed ones by. Counted over all of them, not just
+  // the ones kept by the pk_table_name filter below.
+  int fk_ordinal = 0;
+  for (ForeignKey const& foreign_key :
+       bq_table_status->table_constraints.foreign_keys) {
+    ++fk_ordinal;
+    if (!pk_table_name.empty() &&
+        foreign_key.referenced_table.table_id != pk_table_name) {
+      continue;
+    }
+    // INFORMATION_SCHEMA reports constraint names prefixed with the table id,
+    // e.g. "my_table.fk$1" / "my_table.my_named_fk"; reproduce that. The name
+    // of an explicitly named constraint is not available here: tables.get
+    // reports it in "name", but google-cloud-cpp parses it from "keyName", so
+    // ForeignKey::key_name always arrives empty and such a constraint is
+    // reported as "fk$<n>" instead of its declared name. key_name is still
+    // preferred when present, so this corrects itself if the dependency does.
+    DSValue fk_name_value;
+    if (foreign_key.key_name.empty()) {
+      StringToDSValue(
+          fk_table_name + kForeignKeyNameSuffix + std::to_string(fk_ordinal),
+          fk_name_value);
+    } else {
+      StringToDSValue(fk_table_name + "." + foreign_key.key_name,
+                      fk_name_value);
+    }
+    DSValue pk_name_value;
+    StringToDSValue(
+        foreign_key.referenced_table.table_id + kPrimaryKeyNameSuffix,
+        pk_name_value);
+    SQLBIGINT key_seq = 0;
+    for (ColumnReference const& column_ref : foreign_key.column_references) {
+      ++key_seq;
+      DSRow row(kForeignKeysMap.size());
+      StringToDSValue(foreign_key.referenced_table.project_id,
+                      row[0]);  // PKTABLE_CAT
+      StringToDSValue(foreign_key.referenced_table.dataset_id,
+                      row[1]);  // PKTABLE_SCHEM
+      StringToDSValue(foreign_key.referenced_table.table_id,
+                      row[2]);                                 // PKTABLE_NAME
+      StringToDSValue(column_ref.referenced_column, row[3]);   // PKCOLUMN_NAME
+      StringToDSValue(catalog_name, row[4]);                   // FKTABLE_CAT
+      StringToDSValue(schema_name, row[5]);                    // FKTABLE_SCHEM
+      StringToDSValue(fk_table_name, row[6]);                  // FKTABLE_NAME
+      StringToDSValue(column_ref.referencing_column, row[7]);  // FKCOLUMN_NAME
+      ArithmeticToDSValue<SQLBIGINT>(key_seq, row[8]);         // KEY_SEQ
+      row[9] = kNullValue;                                     // UPDATE_RULE
+      row[10] = kNullValue;                                    // DELETE_RULE
+      row[11] = fk_name_value;                                 // FK_NAME
+      row[12] = pk_name_value;                                 // PK_NAME
+      ArithmeticToDSValue<SQLBIGINT>(2, row[13]);              // DEFERRABILITY
+      result_set.rows.push_back(std::move(row));
+    }
+  }
+  // Match the query path ordering: PKTABLE_NAME, then key sequence.
+  std::stable_sort(result_set.rows.begin(), result_set.rows.end(),
+                   [](DSRow const& a, DSRow const& b) {
+                     if (a[2] != b[2]) return a[2] < b[2];
+                     DSValue seq_a = a[8];
+                     DSValue seq_b = b[8];
+                     return DSValueToInt(seq_a) < DSValueToInt(seq_b);
+                   });
+  DSResults ds_results;
+  ds_results.data_source_results = std::move(result_set);
+  return ds_results;
+}
 
 }  // namespace
 
@@ -155,6 +275,17 @@ odbc_internal::StatusRecordOr<DSResults> FetchForeignKeysFromDataSource(
                                       "Internal connection handle is null"};
     stmt_handle.GetDiagnostics().AddStatusRecord(status_record);
     return status_record;
+  }
+  // Fast path: the foreign key table is specified with an exact (non-pattern)
+  // name — read that table's constraints directly via the tables.get REST API
+  // instead of running an INFORMATION_SCHEMA query job. This covers both the
+  // FK-only and the PK+FK cases; the PK-only case cannot use it because the
+  // referencing tables are not known upfront. Names containing '%' fall back
+  // to the query below, which preserves the historical LIKE matching.
+  if (!fk_table_name.empty() && !absl::StrContains(fk_table_name, '%') &&
+      !absl::StrContains(pk_table_name, '%')) {
+    return FetchForeignKeysFromTableMetadata(
+        stmt_handle, catalog_name, schema_name, pk_table_name, fk_table_name);
   }
   // Construct named query for foreign keys.
   std::string foreign_keys_query(kBasicForeignKeysQueryPrefix);
