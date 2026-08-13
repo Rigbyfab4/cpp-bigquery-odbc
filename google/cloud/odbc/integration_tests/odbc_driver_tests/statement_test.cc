@@ -4399,6 +4399,7 @@ TEST(SQLMoreResults, ProcedureWithDescriptorAndQueryParams) {
   table.Drop(conn);
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+
 class IgnoreTransactionsTransactionTest
     : public ::testing::TestWithParam<
           std::tuple<std::string,     // IgnoreTransactions

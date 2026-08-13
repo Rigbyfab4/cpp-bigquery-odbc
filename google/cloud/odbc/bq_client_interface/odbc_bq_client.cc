@@ -193,6 +193,11 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
   options.set<google::cloud::UserAgentProductsOption>(
       {"Google-Bigquery-ODBC/" + std::string(DRIVER_VERSION)});
 
+  if (oauth.gcd.enable_gcd && oauth.gcd.universe_domain != "googleapis.com") {
+    options.set<google::cloud::internal::UniverseDomainOption>(
+        oauth.gcd.universe_domain);
+  }
+
   StatusRecordOr<std::shared_ptr<Credentials>> credentials =
       CreateCredentials(oauth, options);
   if (!credentials.Ok()) {
@@ -208,12 +213,20 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
         "Failed to create credentials: null pointer returned"};
   }
 
-  options.set<google::cloud::UnifiedCredentialsOption>(*credentials);
-
-  if (oauth.gcd.enable_gcd && oauth.gcd.universe_domain != "googleapis.com") {
-    options.set<google::cloud::internal::UniverseDomainOption>(
-        oauth.gcd.universe_domain);
+  if (!oauth.impersonated_email.empty()) {
+    credentials = google::cloud::MakeImpersonateServiceAccountCredentials(
+        credentials.GetValue(), oauth.impersonated_email, options);
+    if (credentials.GetValue() == nullptr) {
+      LOG(ERROR)
+          << "CreateBQClient::MakeImpersonateServiceAccountCredentials:: "
+             "credentials pointer is null";
+      return google::cloud::odbc_internal::StatusRecord{
+          google::cloud::odbc_internal::SQLStates::k_HY000(),
+          "Failed to create impersonated credentials: null pointer returned"};
+    }
   }
+
+  options.set<google::cloud::UnifiedCredentialsOption>(*credentials);
 
   // Handle Private Service Connect URIs
   std::string bigquery_endpoint;
@@ -250,12 +263,9 @@ StatusRecordOr<std::shared_ptr<ODBCBQClient>> ODBCBQClient::CreateBQClient(
 
   Options read_options = options;
 
-  // Disable background threads for BQ Read Connection so we don't end up
-  // blocking the main thread with the shared driver library.
-  // This needs to be done for GRPC clients, in this case storage read client
-  // and resource manager client.
-  CompletionQueue cq;
-  read_options.set<GrpcCompletionQueueOption>(cq);
+  // Note: We will not override GrpcCompletionQueueOption with an unserviced
+  // local CompletionQueue, as asynchronous credential resolution (e.g. service
+  // account impersonation) will hang waiting on completion events.
 
   grpc::ChannelArguments channel_arguments;
   channel_arguments.SetUserAgentPrefix("Google-Bigquery-ODBC/" +
