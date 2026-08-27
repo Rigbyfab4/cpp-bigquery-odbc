@@ -443,11 +443,6 @@ SQLRETURN SQLTablesInternal(SQLHSTMT stmt_handle, SQLCHAR* catalog_name,
     return LogAndReturnCode(handle, input_param_status);
   }
 
-  std::string project_filter = ToCharStr(catalog_name, kMatchAll);
-  std::string dataset_filter = ToCharStr(schema_name, kMatchAll);
-  std::string table_filter = ToCharStr(table_name, kMatchAll);
-  std::string table_type_filter = ToCharStr(table_type, kMatchAll);
-
   if (handle.GetConnectionHandle() == nullptr) {
     LOG(ERROR) << "SQLTables:: Internal connection handle is null";
     return LogAndReturnCode(handle,
@@ -455,6 +450,25 @@ SQLRETURN SQLTablesInternal(SQLHSTMT stmt_handle, SQLCHAR* catalog_name,
                                          "Internal connection handle is null"});
   }
   ConnectionHandle& conn_handle = *(handle.GetConnectionHandle());
+  std::string catalog_str;
+  if (catalog_name == nullptr || catalog_name_len == 0) {
+    SQLINTEGER catalog_len = 0;
+    SQLCHAR current_catalog[256] = {0};
+    conn_handle.GetAttribute(SQL_ATTR_CURRENT_CATALOG, current_catalog,
+                             sizeof(current_catalog), &catalog_len);
+
+    if (catalog_len > 0) {
+      catalog_str.assign(reinterpret_cast<char*>(current_catalog), catalog_len);
+      catalog_name = reinterpret_cast<SQLCHAR*>(catalog_str.data());
+      catalog_name_len = static_cast<SQLSMALLINT>(catalog_str.size());
+    }
+  }
+
+  std::string project_filter = ToCharStr(catalog_name, kMatchAll);
+  std::string dataset_filter = ToCharStr(schema_name, kMatchAll);
+  std::string table_filter = ToCharStr(table_name, kMatchAll);
+  std::string table_type_filter = ToCharStr(table_type, kMatchAll);
+
   if (!metadata_id && dataset_filter == kMatchAll) {
     auto const dsn = conn_handle.GetDsn();
     if (dsn.filter_tables_on_default_dataset && !dsn.default_dataset.empty()) {

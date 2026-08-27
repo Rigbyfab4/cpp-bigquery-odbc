@@ -2164,4 +2164,55 @@ TEST(SQLTables, Check_SQLTablesDescriptors) {
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
 
+TEST(CatalogTest, SQLTables_NullCatalogFiltersToCurrentProject) {
+  auto conn = std::make_shared<ODBCHandles>();
+  ASSERT_EQ(Connect(kDefaultConnectionString, conn), SQL_SUCCESS);
+
+  SQLRETURN status = SQLSetStmtAttr(conn->hstmt, SQL_ATTR_METADATA_ID,
+                                    (SQLPOINTER)SQL_FALSE, 0);
+  CheckError(status, "SQLSetStmtAttr", conn);
+
+  SQLCHAR current_catalog[256] = {0};
+  SQLINTEGER catalog_len = 0;
+  SQLRETURN attr_status =
+      SQLGetConnectAttr(conn->hdbc, SQL_ATTR_CURRENT_CATALOG, current_catalog,
+                        sizeof(current_catalog), &catalog_len);
+
+  ASSERT_TRUE(SQL_SUCCEEDED(attr_status))
+      << "Failed to get SQL_ATTR_CURRENT_CATALOG";
+  std::string expected_catalog(reinterpret_cast<char*>(current_catalog));
+
+  SQLCHAR table_type[] = "TABLE,VIEW";
+  SQLRETURN rc = SQLTables(conn->hstmt, NULL, 0,  // Catalog (NULL)
+                           NULL, 0,               // Schema
+                           NULL, 0,               // Table name
+                           table_type, SQL_NTS);  // Table type
+
+  ASSERT_TRUE(SQL_SUCCEEDED(rc)) << "SQLTables call failed.";
+
+  SQLCHAR out_catalog[256] = {0};
+  SQLLEN out_len = 0;
+  SQLBindCol(conn->hstmt, 1, SQL_C_CHAR, out_catalog, sizeof(out_catalog),
+             &out_len);
+
+  int row_count = 0;
+  bool foreign_catalog_found = false;
+
+  while (SQLFetch(conn->hstmt) == SQL_SUCCESS) {
+    row_count++;
+    std::string fetched_catalog(reinterpret_cast<char*>(out_catalog));
+
+    if (fetched_catalog != expected_catalog) {
+      foreign_catalog_found = true;
+    }
+  }
+
+  EXPECT_FALSE(foreign_catalog_found)
+      << "SQLTables returned data for projects outside the configured DSN.";
+  EXPECT_GT(row_count, 0)
+      << "Expected to find at least one table/view in the default project.";
+
+  EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
+}
+
 }  // namespace google::cloud::odbc_tests
