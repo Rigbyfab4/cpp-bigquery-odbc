@@ -65,6 +65,7 @@ std::string AdvanceOptions::max_retries_ = std::to_string(kDefaultMaxRetries);
 std::string AdvanceOptions::private_service_connect_uris_;
 std::string AdvanceOptions::enable_gcd_;
 std::string AdvanceOptions::universe_domain_;
+std::string AdvanceOptions::maximum_bytes_billed_;
 int AdvanceOptions::scroll_pos_ = 0;
 int AdvanceOptions::wheel_remainder_ = 0;
 
@@ -90,6 +91,7 @@ std::string const kMaxRetries = "MaxRetries";
 std::string const kPrivateServiceConnectUris = "PrivateServiceConnectUris";
 std::string const kEnableGcd = "EnableGCD";
 std::string const kUniverseDomain = "UniverseDomain";
+std::string const kMaximumBytesBilled = "MaximumBytesBilled";
 
 // Control dimensions and positions
 int const kHeight = 20;
@@ -99,7 +101,7 @@ int const kButtonWidth = 68;
 int const kXAxis = 10;
 int const kOkButtonX = 330;
 int const kCancelButtonX = 410;
-int const kButtonY = 613;
+int const kButtonY = 663;
 int const kYAxis = 20;
 int const kEditBoxWidth = 260;
 int const kEditBoxHeight = 17;
@@ -439,6 +441,30 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcQueryPropertiesEdit),
                     InputSubclassProc, 0, 0);
 
+  HWND h_maximum_bytes_billed_label = CreateLabel(
+      adv_hwnd, "Maximum bytes billed:", kXAxis, kYAxis + 635, kWidth * 4,
+      kHeight, WS_VISIBLE | SS_LEFT);
+  SendMessage(h_maximum_bytes_billed_label, WM_SETFONT, (WPARAM)h_font, TRUE);
+  HWND h_maximum_bytes_billed_edit = CreateEditBox(
+      adv_hwnd, kinputComboBoxXAxis, kYAxis + 635, kEditBoxWidth,
+      kEditBoxHeight, kIdcMaximumBytesBilledEdit);
+  SendMessage(h_maximum_bytes_billed_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
+  SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcMaximumBytesBilledEdit),
+                    InputSubclassProc, 0, 0);
+  SetWindowText(h_maximum_bytes_billed_edit, maximum_bytes_billed_.c_str());
+  SetWindowLongPtr(h_maximum_bytes_billed_edit, GWL_STYLE,
+                   GetWindowLongPtr(h_maximum_bytes_billed_edit, GWL_STYLE) |
+                       ES_RIGHT | ES_NUMBER);
+
+  // A raw byte count is hard to read back, so restate it underneath in the
+  // binary units BigQuery bills in. Spans the row so a long count is not
+  // clipped.
+  HWND h_maximum_bytes_billed_hint =
+      CreateLabel(adv_hwnd, "", kXAxis, kYAxis + 658, kWidth + 445, kHeight,
+                  kIdcMaximumBytesBilledHint);
+  SendMessage(h_maximum_bytes_billed_hint, WM_SETFONT, (WPARAM)h_font, TRUE);
+  UpdateMaximumBytesBilledHint(adv_hwnd);
+
   // This feature is turned off for the private release. It will be restored for
   // the public release with an accompanying documentation link.
   // TODO(b/461668255):Restore BigQuery documentation URL
@@ -452,6 +478,18 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   //                          kButtonY + 10, kWidth + 90, kHeight,
   //                          kIdcHyperlink2);
   // SendMessage(h_hyperlink, WM_SETFONT, (WPARAM)h_font, TRUE);
+}
+
+void AdvanceOptions::UpdateMaximumBytesBilledHint(HWND hwnd) {
+  HWND h_edit = GetDlgItem(hwnd, kIdcMaximumBytesBilledEdit);
+  HWND h_hint = GetDlgItem(hwnd, kIdcMaximumBytesBilledHint);
+  if (!h_edit || !h_hint) {
+    return;
+  }
+  char buffer[32] = {0};
+  GetWindowText(h_edit, buffer, sizeof(buffer));
+  std::string const hint = DescribeMaximumBytesBilled(buffer);
+  SetWindowText(h_hint, hint.c_str());
 }
 
 void AdvanceOptions::UpdateScrollInfo(HWND hwnd) {
@@ -579,6 +617,13 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
     case WM_COMMAND: {
       int wm_id = LOWORD(w_param);
       switch (wm_id) {
+        case kIdcMaximumBytesBilledEdit:
+          // Restate the byte count as the user types, so a mistyped number of
+          // zeroes is obvious before the dialog is accepted.
+          if (HIWORD(w_param) == EN_CHANGE) {
+            UpdateMaximumBytesBilledHint(hwnd);
+          }
+          break;
         case kIdcHyperlink2:
           if (HIWORD(w_param) == STN_CLICKED) {
             ShellExecute(NULL, "open", kBigQueryDocsURL, NULL, NULL,
@@ -690,6 +735,26 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
             std::string err_msg =
                 "Invalid number of max retries: Valid values are in range [0," +
                 std::to_string(UINT32_MAX) + "]";
+            ShowErrorWindow(hwnd, err_msg);
+            return true;
+          }
+
+          HWND h_maximum_bytes_billed_edit =
+              GetDlgItem(hwnd, kIdcMaximumBytesBilledEdit);
+          char maximum_bytes_billed_buff[32] = {0};
+          GetWindowText(h_maximum_bytes_billed_edit,
+                        maximum_bytes_billed_buff,
+                        sizeof(maximum_bytes_billed_buff));
+          // Empty is a valid state: it means no cap, which is the default.
+          if (maximum_bytes_billed_buff[0] == '\0') {
+            maximum_bytes_billed_.clear();
+          } else if (isValidInt64(maximum_bytes_billed_buff)) {
+            maximum_bytes_billed_ = maximum_bytes_billed_buff;
+          } else {
+            std::string err_msg =
+                "Invalid maximum bytes billed: enter a whole number of bytes "
+                "in range [0," +
+                std::to_string(INT64_MAX) + "], or leave it empty for no limit";
             ShowErrorWindow(hwnd, err_msg);
             return true;
           }
@@ -977,6 +1042,8 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
       GetValueOrDefault(attribute_map, kPrivateServiceConnectUris);
   enable_gcd_ = GetValueOrDefault(attribute_map, kEnableGcd);
   universe_domain_ = GetValueOrDefault(attribute_map, kUniverseDomain);
+  maximum_bytes_billed_ =
+      GetValueOrDefault(attribute_map, kMaximumBytesBilled);
 }
 
 void AdvanceOptions::ResetToDefaults() {
@@ -1000,6 +1067,8 @@ void AdvanceOptions::ResetToDefaults() {
   private_service_connect_uris_.clear();
   enable_gcd_.clear();
   universe_domain_.clear();
+  // Unset means no cap, which is the shipped default.
+  maximum_bytes_billed_.clear();
 }
 
 void AdvanceOptions::Show(HWND hwnd) {

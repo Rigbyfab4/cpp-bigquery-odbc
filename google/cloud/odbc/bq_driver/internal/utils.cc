@@ -23,6 +23,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <iomanip>
 #include <random>
 #include <sstream>
 #include <string>
@@ -1063,6 +1064,38 @@ StatusRecordOr<std::int64_t> ParseStringToInt64(std::string const& input) {
     value = value * 10 + digit;
   }
   return value;  // success
+}
+
+std::string DescribeMaximumBytesBilled(std::string const& bytes) {
+  if (bytes.empty()) {
+    return "";
+  }
+  auto parsed = ParseStringToInt64(bytes);
+  if (!parsed || parsed.GetValue() <= 0) {
+    return "";
+  }
+  std::int64_t const value = parsed.GetValue();
+
+  // BigQuery prices on-demand analysis per TiB and reports bytes processed in
+  // the same binary units, so scale by 1024 rather than 1000.
+  static char const* const kUnits[] = {"bytes", "KiB", "MiB", "GiB", "TiB",
+                                       "PiB"};
+  int const kUnitCount = 6;
+  int unit = 0;
+  double scaled = static_cast<double>(value);
+  while (scaled >= 1024.0 && unit + 1 < kUnitCount) {
+    scaled /= 1024.0;
+    ++unit;
+  }
+
+  std::ostringstream out;
+  out << "= ";
+  if (unit == 0) {
+    out << value << " " << kUnits[unit];
+  } else {
+    out << std::fixed << std::setprecision(1) << scaled << " " << kUnits[unit];
+  }
+  return out.str();
 }
 
 bool IsFieldIdentifierString(SQLSMALLINT FieldIdentifier) {

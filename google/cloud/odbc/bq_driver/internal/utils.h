@@ -439,6 +439,21 @@ inline bool isValidUint32(char const* str) {
          (t.size() == kMaxVal.size() && t <= kMaxVal);
 }
 
+// As isValidUint32, but against INT64_MAX. Needed where a uint32 ceiling of
+// about 4 GB is too small to express the value, e.g. a byte count.
+inline bool isValidInt64(char const* str) {
+  if (!str || *str == '\0') return false;
+  std::string t = str;
+  for (char c : t) {
+    if (c < '0' || c > '9') return false;
+  }
+  t.erase(0, t.find_first_not_of('0'));
+
+  static std::string const kMaxVal = std::to_string(INT64_MAX);
+  return (t.size() < kMaxVal.size()) ||
+         (t.size() == kMaxVal.size() && t <= kMaxVal);
+}
+
 inline void RemoveQuotes(std::string& str) {
   str.erase(std::remove(str.begin(), str.end(), '\''), str.end());
   str.erase(std::remove(str.begin(), str.end(), '\"'), str.end());
@@ -492,6 +507,18 @@ odbc_internal::StatusRecordOr<SQLUINTEGER> ParseStringToInteger(
 // count. An empty input yields 0, so callers must check for empty first.
 odbc_internal::StatusRecordOr<std::int64_t> ParseStringToInt64(
     std::string const& input);
+
+// Describes a byte count for display next to a MaximumBytesBilled entry field.
+//
+// Uses the binary units BigQuery bills and reports in -- on-demand analysis is
+// priced per TiB (2^40 bytes), and the console reports bytes processed the same
+// way -- so the figure shown here lines up with what the user is charged for.
+// Deliberately reports no monetary estimate: the per-TiB rate varies by region
+// and edition, and reservation customers are not billed per byte at all.
+//
+// Returns an empty string when 'bytes' is not a positive integer, so a caller
+// can render nothing rather than a misleading "0 B".
+std::string DescribeMaximumBytesBilled(std::string const& bytes);
 
 std::string GetLocationfromPSC(std::string const& psc);
 }  // namespace google::cloud::odbc_bq_driver_internal

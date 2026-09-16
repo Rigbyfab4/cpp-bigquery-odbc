@@ -20,7 +20,7 @@
 #pragma comment(lib, "Comctl32.lib")  // Link with Comctl32.lib
 
 namespace google::cloud::odbc_bq_driver_internal {
-// NEXTID:153
+// NEXTID:155
 static int const kIdcUseDefaultCheckbox = 128;
 static int const kIdcDatasetNameEdit = 129;
 static int const kIdcTempExpirationEdit = 130;
@@ -45,6 +45,10 @@ static int const kIdcMaxRetriesEdit = 149;
 static int const kIdcEnablePscGcdCheckbox = 150;
 static int const kIdcPrivateServiceNameEdit = 151;
 static int const kIdcUniverseDomainEdit = 152;
+static int const kIdcMaximumBytesBilledEdit = 153;
+// Read-only label under the entry field, showing the byte count in the binary
+// units BigQuery bills in.
+static int const kIdcMaximumBytesBilledHint = 154;
 
 class AdvanceOptions {
  public:
@@ -105,6 +109,9 @@ class AdvanceOptions {
   inline std::string const& GetUniverseDomain() const {
     return universe_domain_;
   }
+  inline std::string const& GetMaximumBytesBilled() const {
+    return maximum_bytes_billed_;
+  }
   void SetValues(Section const& attributes_map);
   void ResetToDefaults();
 
@@ -136,6 +143,12 @@ class AdvanceOptions {
   static std::string private_service_connect_uris_;
   static std::string enable_gcd_;
   static std::string universe_domain_;
+  // Empty means unset, which leaves queries uncapped. Held as the raw byte
+  // count so it round-trips to the DSN key unchanged.
+  static std::string maximum_bytes_billed_;
+
+  // Refresh the hint label beneath the entry field from its current text.
+  static void UpdateMaximumBytesBilledHint(HWND hwnd);
 
   // Current vertical scroll offset, in pixels, of the control area. The dialog
   // is taller than the work area on small or scaled displays, so it scrolls.
