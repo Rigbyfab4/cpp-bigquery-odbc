@@ -137,6 +137,23 @@ class AdvanceOptions {
   static std::string enable_gcd_;
   static std::string universe_domain_;
 
+  // Current vertical scroll offset, in pixels, of the control area. The dialog
+  // is taller than the work area on small or scaled displays, so it scrolls.
+  static int scroll_pos_;
+
+  // Leftover wheel movement smaller than one notch. High-resolution wheels and
+  // precision trackpads report fractions of WHEEL_DELTA, which would otherwise
+  // be rounded away to nothing.
+  static int wheel_remainder_;
+
+  // Recompute the scrollbar range/page from the current client height. Call
+  // after the controls are created and whenever the window is resized.
+  static void UpdateScrollInfo(HWND hwnd);
+
+  // Scroll the control area to 'new_pos' pixels, clamped to the scrollable
+  // range. Moves the child controls with it.
+  static void ScrollTo(HWND hwnd, int new_pos);
+
   static LRESULT CALLBACK AdvanceOptProc(HWND hwnd, UINT uMsg, WPARAM w_param,
                                          LPARAM l_param);
   static char const CLASS_NAME[];
