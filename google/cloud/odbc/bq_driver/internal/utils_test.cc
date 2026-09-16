@@ -584,6 +584,50 @@ TEST(ParseStringToInt64, ParseStringToInt64Invalid) {
                              HasSubstr("Input value must be an integer")));
 }
 
+TEST(IsValidInt64, AcceptsValuesBeyondUint32) {
+  // The whole reason this exists: a byte count easily exceeds a uint32.
+  EXPECT_TRUE(isValidInt64("1099511627776"));
+  EXPECT_TRUE(isValidInt64("100000000000"));
+  // Boundary: INT64_MAX itself is in range, one more digit is not.
+  EXPECT_TRUE(isValidInt64("9223372036854775807"));
+  EXPECT_FALSE(isValidInt64("92233720368547758070"));
+}
+
+TEST(IsValidInt64, RejectsNonDigitsAndEmpty) {
+  EXPECT_FALSE(isValidInt64(""));
+  EXPECT_FALSE(isValidInt64(nullptr));
+  EXPECT_FALSE(isValidInt64("abc"));
+  EXPECT_FALSE(isValidInt64("12a4"));
+  // A negative cap is meaningless and must not be accepted as a number.
+  EXPECT_FALSE(isValidInt64("-1"));
+  EXPECT_FALSE(isValidInt64("1.5"));
+}
+
+TEST(DescribeMaximumBytesBilled, UsesBinaryUnitsBigQueryBillsIn) {
+  // On-demand analysis is priced per TiB (2^40), so scaling is by 1024.
+  EXPECT_EQ(DescribeMaximumBytesBilled("1099511627776"), "= 1.0 TiB");
+  EXPECT_EQ(DescribeMaximumBytesBilled("107374182400"), "= 100.0 GiB");
+  EXPECT_EQ(DescribeMaximumBytesBilled("1073741824"), "= 1.0 GiB");
+}
+
+TEST(DescribeMaximumBytesBilled, ScalesSmallerCapsToBinaryUnits) {
+  // Purely a unit conversion: no judgement about whether the cap is workable.
+  EXPECT_EQ(DescribeMaximumBytesBilled("1000000"), "= 976.6 KiB");
+  EXPECT_EQ(DescribeMaximumBytesBilled("104857600"), "= 100.0 MiB");
+  EXPECT_EQ(DescribeMaximumBytesBilled("1024"), "= 1.0 KiB");
+}
+
+TEST(DescribeMaximumBytesBilled, EmptyForUnsetOrInvalid) {
+  // Unset must render as nothing rather than a misleading "0 bytes".
+  EXPECT_EQ(DescribeMaximumBytesBilled(""), "");
+  EXPECT_EQ(DescribeMaximumBytesBilled("0"), "");
+  EXPECT_EQ(DescribeMaximumBytesBilled("abc"), "");
+}
+
+TEST(DescribeMaximumBytesBilled, ReportsRawBytesBelowOneKiB) {
+  EXPECT_THAT(DescribeMaximumBytesBilled("512"), HasSubstr("512 bytes"));
+}
+
 TEST(IsInfoTypeString, IsInfoTypeStringTrue) {
   EXPECT_TRUE(IsInfoTypeString(SQL_CATALOG_NAME));
   EXPECT_TRUE(IsInfoTypeString(SQL_CATALOG_NAME_SEPARATOR));
