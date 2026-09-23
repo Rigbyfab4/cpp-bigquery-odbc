@@ -441,13 +441,13 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcQueryPropertiesEdit),
                     InputSubclassProc, 0, 0);
 
-  HWND h_maximum_bytes_billed_label = CreateLabel(
-      adv_hwnd, "Maximum bytes billed:", kXAxis, kYAxis + 635, kWidth * 4,
-      kHeight, WS_VISIBLE | SS_LEFT);
+  HWND h_maximum_bytes_billed_label =
+      CreateLabel(adv_hwnd, "Maximum bytes billed:", kXAxis, kYAxis + 635,
+                  kWidth * 4, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_maximum_bytes_billed_label, WM_SETFONT, (WPARAM)h_font, TRUE);
-  HWND h_maximum_bytes_billed_edit = CreateEditBox(
-      adv_hwnd, kinputComboBoxXAxis, kYAxis + 635, kEditBoxWidth,
-      kEditBoxHeight, kIdcMaximumBytesBilledEdit);
+  HWND h_maximum_bytes_billed_edit =
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 635, kEditBoxWidth,
+                    kEditBoxHeight, kIdcMaximumBytesBilledEdit);
   SendMessage(h_maximum_bytes_billed_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcMaximumBytesBilledEdit),
                     InputSubclassProc, 0, 0);
@@ -742,8 +742,7 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
           HWND h_maximum_bytes_billed_edit =
               GetDlgItem(hwnd, kIdcMaximumBytesBilledEdit);
           char maximum_bytes_billed_buff[32] = {0};
-          GetWindowText(h_maximum_bytes_billed_edit,
-                        maximum_bytes_billed_buff,
+          GetWindowText(h_maximum_bytes_billed_edit, maximum_bytes_billed_buff,
                         sizeof(maximum_bytes_billed_buff));
           // Empty is a valid state: it means no cap, which is the default.
           if (maximum_bytes_billed_buff[0] == '\0') {
@@ -1042,8 +1041,7 @@ void AdvanceOptions::SetValues(Section const& attribute_map) {
       GetValueOrDefault(attribute_map, kPrivateServiceConnectUris);
   enable_gcd_ = GetValueOrDefault(attribute_map, kEnableGcd);
   universe_domain_ = GetValueOrDefault(attribute_map, kUniverseDomain);
-  maximum_bytes_billed_ =
-      GetValueOrDefault(attribute_map, kMaximumBytesBilled);
+  maximum_bytes_billed_ = GetValueOrDefault(attribute_map, kMaximumBytesBilled);
 }
 
 void AdvanceOptions::ResetToDefaults() {
