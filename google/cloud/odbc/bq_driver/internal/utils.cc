@@ -1078,8 +1078,8 @@ std::string DescribeMaximumBytesBilled(std::string const& bytes) {
 
   // BigQuery prices on-demand analysis per TiB and reports bytes processed in
   // the same binary units, so scale by 1024 rather than 1000.
-  static char const* const kUnits[] = {"bytes", "KiB", "MiB", "GiB", "TiB",
-                                       "PiB"};
+  static char const* const kUnits[] = {"bytes", "KiB", "MiB",
+                                       "GiB",   "TiB", "PiB"};
   int const kUnitCount = 6;
   int unit = 0;
   double scaled = static_cast<double>(value);
