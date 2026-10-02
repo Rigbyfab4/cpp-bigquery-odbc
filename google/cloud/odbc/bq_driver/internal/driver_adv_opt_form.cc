@@ -66,8 +66,6 @@ std::string AdvanceOptions::private_service_connect_uris_;
 std::string AdvanceOptions::enable_gcd_;
 std::string AdvanceOptions::universe_domain_;
 std::string AdvanceOptions::maximum_bytes_billed_;
-int AdvanceOptions::scroll_pos_ = 0;
-int AdvanceOptions::wheel_remainder_ = 0;
 
 std::string const kLanguageDialect = "SQLDialect";
 std::string const kLargeResultsDatasetId = "LargeResultsDatasetId";
@@ -101,20 +99,12 @@ int const kButtonWidth = 68;
 int const kXAxis = 10;
 int const kOkButtonX = 330;
 int const kCancelButtonX = 410;
-int const kButtonY = 663;
+int const kButtonY = 613;
 int const kYAxis = 20;
 int const kEditBoxWidth = 260;
 int const kEditBoxHeight = 17;
 int const kinputComboBoxXAxis = 237;
 int const KComboBoxHeight = 100;
-
-// Full height of the laid-out controls. The window is clamped to the desktop
-// work area, so on a short or DPI-scaled display this is larger than the client
-// area and the difference is what scrolls.
-int const kContentHeight = kButtonY + 44 + kButtonHeight + 10;
-
-// Pixels scrolled per scrollbar arrow click.
-int const kScrollLine = 20;
 
 HWND AdvanceOptions::GetHwnd() const { return adv_hwnd; }
 AdvanceOptions::AdvanceOptions() : adv_hwnd(NULL) {}
@@ -406,6 +396,23 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   SetWindowLongPtr(
       h_max_retries_edit, GWL_STYLE,
       GetWindowLongPtr(h_max_retries_edit, GWL_STYLE) | ES_RIGHT | ES_NUMBER);
+
+  // maximum bytes billed
+  HWND h_maximum_bytes_billed_label =
+      CreateLabel(adv_hwnd, "Maximum bytes billed (bytes):", kXAxis,
+                  kYAxis + 490, kWidth * 4 + 25, kHeight, WS_VISIBLE | SS_LEFT);
+  SendMessage(h_maximum_bytes_billed_label, WM_SETFONT, (WPARAM)h_font, TRUE);
+  HWND h_maximum_bytes_billed_edit =
+      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 490, kEditBoxWidth,
+                    kEditBoxHeight, kIdcMaximumBytesBilledEdit);
+  SendMessage(h_maximum_bytes_billed_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
+  SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcMaximumBytesBilledEdit),
+                    InputSubclassProc, 0, 0);
+  SetWindowText(h_maximum_bytes_billed_edit, maximum_bytes_billed_.c_str());
+  SetWindowLongPtr(h_maximum_bytes_billed_edit, GWL_STYLE,
+                   GetWindowLongPtr(h_maximum_bytes_billed_edit, GWL_STYLE) |
+                       ES_RIGHT | ES_NUMBER);
+
   // TODO(b/497725655): Enable UI feature after public release
   // HWND h_variables_checkbox = CreateCheckBox(
   //     adv_hwnd, "Use SQL_WVARCHAR instead of SQL_VARCHAR", kXAxis, kYAxis +
@@ -416,12 +423,12 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   // SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcVariableCheckbox),
   //                   CheckboxSubclassProc, 0, 0);
   HWND h_additional_projects_label =
-      CreateLabel(adv_hwnd, "Additional projects:", kXAxis, kYAxis + 495,
+      CreateLabel(adv_hwnd, "Additional projects:", kXAxis, kYAxis + 515,
                   kWidth * 5, kHeight, WS_VISIBLE | SS_LEFT);
   SendMessage(h_additional_projects_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_additional_projects_edit =
-      CreateScrollableEditBox(adv_hwnd, kXAxis, kYAxis + 515, kWidth + 445,
-                              kHeight + 32, kIdcAdditionalProjectsEdit);
+      CreateScrollableEditBox(adv_hwnd, kXAxis, kYAxis + 535, kWidth + 445,
+                              kHeight + 16, kIdcAdditionalProjectsEdit);
   SendMessage(h_additional_projects_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
 
   SetWindowText(h_additional_projects_edit, additional_projects_.c_str());
@@ -434,36 +441,12 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   SendMessage(h_query_properties_label, WM_SETFONT, (WPARAM)h_font, TRUE);
   HWND h_query_properties_edit =
       CreateScrollableEditBox(adv_hwnd, kXAxis, kYAxis + 595, kWidth + 445,
-                              kHeight + 13, kIdcQueryPropertiesEdit);
+                              kHeight + 6, kIdcQueryPropertiesEdit);
   SendMessage(h_query_properties_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
 
   SetWindowText(h_query_properties_edit, query_properties_.c_str());
   SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcQueryPropertiesEdit),
                     InputSubclassProc, 0, 0);
-
-  HWND h_maximum_bytes_billed_label =
-      CreateLabel(adv_hwnd, "Maximum bytes billed:", kXAxis, kYAxis + 635,
-                  kWidth * 4, kHeight, WS_VISIBLE | SS_LEFT);
-  SendMessage(h_maximum_bytes_billed_label, WM_SETFONT, (WPARAM)h_font, TRUE);
-  HWND h_maximum_bytes_billed_edit =
-      CreateEditBox(adv_hwnd, kinputComboBoxXAxis, kYAxis + 635, kEditBoxWidth,
-                    kEditBoxHeight, kIdcMaximumBytesBilledEdit);
-  SendMessage(h_maximum_bytes_billed_edit, WM_SETFONT, (WPARAM)h_font, TRUE);
-  SetWindowSubclass(GetDlgItem(adv_hwnd, kIdcMaximumBytesBilledEdit),
-                    InputSubclassProc, 0, 0);
-  SetWindowText(h_maximum_bytes_billed_edit, maximum_bytes_billed_.c_str());
-  SetWindowLongPtr(h_maximum_bytes_billed_edit, GWL_STYLE,
-                   GetWindowLongPtr(h_maximum_bytes_billed_edit, GWL_STYLE) |
-                       ES_RIGHT | ES_NUMBER);
-
-  // A raw byte count is hard to read back, so restate it underneath in the
-  // binary units BigQuery bills in. Spans the row so a long count is not
-  // clipped.
-  HWND h_maximum_bytes_billed_hint =
-      CreateLabel(adv_hwnd, "", kXAxis, kYAxis + 658, kWidth + 445, kHeight,
-                  kIdcMaximumBytesBilledHint);
-  SendMessage(h_maximum_bytes_billed_hint, WM_SETFONT, (WPARAM)h_font, TRUE);
-  UpdateMaximumBytesBilledHint(adv_hwnd);
 
   // This feature is turned off for the private release. It will be restored for
   // the public release with an accompanying documentation link.
@@ -478,69 +461,6 @@ void AdvanceOptions::CreateAdditionalControls(HFONT h_font) {
   //                          kButtonY + 10, kWidth + 90, kHeight,
   //                          kIdcHyperlink2);
   // SendMessage(h_hyperlink, WM_SETFONT, (WPARAM)h_font, TRUE);
-}
-
-void AdvanceOptions::UpdateMaximumBytesBilledHint(HWND hwnd) {
-  HWND h_edit = GetDlgItem(hwnd, kIdcMaximumBytesBilledEdit);
-  HWND h_hint = GetDlgItem(hwnd, kIdcMaximumBytesBilledHint);
-  if (!h_edit || !h_hint) {
-    return;
-  }
-  char buffer[32] = {0};
-  GetWindowText(h_edit, buffer, sizeof(buffer));
-  std::string const hint = DescribeMaximumBytesBilled(buffer);
-  SetWindowText(h_hint, hint.c_str());
-}
-
-void AdvanceOptions::UpdateScrollInfo(HWND hwnd) {
-  RECT client = {};
-  GetClientRect(hwnd, &client);
-  int const page = client.bottom - client.top;
-
-  SCROLLINFO si = {};
-  si.cbSize = sizeof(si);
-  si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
-  si.nMin = 0;
-  si.nMax = kContentHeight - 1;
-  si.nPage = page;
-  si.nPos = scroll_pos_;
-  SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
-
-  // Growing the window can leave us scrolled past the end; pull the content
-  // back so there is never blank space below the last control.
-  int const max_pos = (kContentHeight > page) ? kContentHeight - page : 0;
-  if (scroll_pos_ > max_pos) {
-    ScrollWindow(hwnd, 0, scroll_pos_ - max_pos, NULL, NULL);
-    scroll_pos_ = max_pos;
-    si.fMask = SIF_POS;
-    si.nPos = scroll_pos_;
-    SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
-  }
-}
-
-void AdvanceOptions::ScrollTo(HWND hwnd, int new_pos) {
-  RECT client = {};
-  GetClientRect(hwnd, &client);
-  int const page = client.bottom - client.top;
-  int const max_pos = (kContentHeight > page) ? kContentHeight - page : 0;
-  new_pos = std::max(0, std::min(new_pos, max_pos));
-  if (new_pos == scroll_pos_) {
-    return;
-  }
-
-  int const delta = scroll_pos_ - new_pos;
-  scroll_pos_ = new_pos;
-  // ScrollWindow shifts the child controls along with the client area, which is
-  // what makes absolutely-positioned controls scroll without repositioning each
-  // one by hand.
-  ScrollWindow(hwnd, 0, delta, NULL, NULL);
-
-  SCROLLINFO si = {};
-  si.cbSize = sizeof(si);
-  si.fMask = SIF_POS;
-  si.nPos = scroll_pos_;
-  SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
-  UpdateWindow(hwnd);
 }
 
 void AdvanceOptions::CreateButtons(HFONT h_font) {
@@ -617,13 +537,6 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
     case WM_COMMAND: {
       int wm_id = LOWORD(w_param);
       switch (wm_id) {
-        case kIdcMaximumBytesBilledEdit:
-          // Restate the byte count as the user types, so a mistyped number of
-          // zeroes is obvious before the dialog is accepted.
-          if (HIWORD(w_param) == EN_CHANGE) {
-            UpdateMaximumBytesBilledHint(hwnd);
-          }
-          break;
         case kIdcHyperlink2:
           if (HIWORD(w_param) == STN_CLICKED) {
             ShellExecute(NULL, "open", kBigQueryDocsURL, NULL, NULL,
@@ -741,21 +654,24 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
 
           HWND h_maximum_bytes_billed_edit =
               GetDlgItem(hwnd, kIdcMaximumBytesBilledEdit);
-          char maximum_bytes_billed_buff[32] = {0};
+          char maximum_bytes_billed_buff[256] = {0};
           GetWindowText(h_maximum_bytes_billed_edit, maximum_bytes_billed_buff,
                         sizeof(maximum_bytes_billed_buff));
           // Empty is a valid state: it means no cap, which is the default.
           if (maximum_bytes_billed_buff[0] == '\0') {
             maximum_bytes_billed_.clear();
-          } else if (isValidInt64(maximum_bytes_billed_buff)) {
-            maximum_bytes_billed_ = maximum_bytes_billed_buff;
           } else {
-            std::string err_msg =
-                "Invalid maximum bytes billed: enter a whole number of bytes "
-                "in range [0," +
-                std::to_string(INT64_MAX) + "], or leave it empty for no limit";
-            ShowErrorWindow(hwnd, err_msg);
-            return true;
+            auto parsed = ParseStringToInt64(maximum_bytes_billed_buff);
+            if (!parsed || parsed.GetValue() < 0) {
+              std::string err_msg =
+                  "Invalid maximum bytes billed: Valid values are in range "
+                  "[0," +
+                  std::to_string(INT64_MAX) +
+                  "] or leave it empty for no limit";
+              ShowErrorWindow(hwnd, err_msg);
+              return true;
+            }
+            maximum_bytes_billed_ = maximum_bytes_billed_buff;
           }
 
           HWND h_additional_projects_edit =
@@ -902,76 +818,7 @@ LRESULT CALLBACK AdvanceOptions::AdvanceOptProc(HWND hwnd, UINT u_msg,
       }
       break;
     }
-    case WM_VSCROLL: {
-      RECT client = {};
-      GetClientRect(hwnd, &client);
-      int const page = client.bottom - client.top;
-      int pos = scroll_pos_;
-      switch (LOWORD(w_param)) {
-        case SB_TOP:
-          pos = 0;
-          break;
-        case SB_BOTTOM:
-          pos = kContentHeight;
-          break;
-        case SB_LINEUP:
-          pos -= kScrollLine;
-          break;
-        case SB_LINEDOWN:
-          pos += kScrollLine;
-          break;
-        case SB_PAGEUP:
-          pos -= page;
-          break;
-        case SB_PAGEDOWN:
-          pos += page;
-          break;
-        case SB_THUMBTRACK:
-        case SB_THUMBPOSITION: {
-          SCROLLINFO si = {};
-          si.cbSize = sizeof(si);
-          si.fMask = SIF_TRACKPOS;
-          if (GetScrollInfo(hwnd, SB_VERT, &si)) {
-            pos = si.nTrackPos;
-          }
-          break;
-        }
-        default:
-          break;
-      }
-      ScrollTo(hwnd, pos);
-      return 0;
-    }
-    case WM_MOUSEWHEEL: {
-      // Accumulate: precision trackpads and high-resolution wheels send deltas
-      // smaller than WHEEL_DELTA, which would round to zero on their own.
-      wheel_remainder_ += GET_WHEEL_DELTA_WPARAM(w_param);
-      int const notches = wheel_remainder_ / WHEEL_DELTA;
-      if (notches == 0) {
-        return 0;
-      }
-      wheel_remainder_ -= notches * WHEEL_DELTA;
 
-      // Honour the system "roll the mouse wheel to scroll" setting.
-      UINT lines_per_notch = 3;
-      if (!SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &lines_per_notch,
-                                0)) {
-        lines_per_notch = 3;
-      }
-      RECT client = {};
-      GetClientRect(hwnd, &client);
-      int step = 0;
-      if (lines_per_notch == WHEEL_PAGESCROLL) {
-        step = client.bottom - client.top;
-      } else {
-        step = static_cast<int>(lines_per_notch) * kScrollLine;
-      }
-      ScrollTo(hwnd, scroll_pos_ - notches * step);
-      return 0;
-    }
-    case WM_SIZE:
-      UpdateScrollInfo(hwnd);
-      break;
     case WM_KEYDOWN:  // Capture global key presses
       if (w_param == VK_ESCAPE) {
         if (p_current_window) {
@@ -1088,40 +935,17 @@ void AdvanceOptions::Show(HWND hwnd) {
 
   RegisterClass(&wc_adv);
 
-  scroll_pos_ = 0;
-  wheel_remainder_ = 0;
-
-  // The vertical scrollbar is carved out of the client area, so widen the frame
-  // by its width; otherwise every right-aligned control loses that many pixels
-  // and the edit boxes are clipped.
-  int window_width = 525 + GetSystemMetrics(SM_CXVSCROLL);
+  int window_width = 525;
   int window_height = 720;
-
-  // Never open taller than the desktop work area: on a short or DPI-scaled
-  // display the full control layout does not fit, and a window whose OK button
-  // sits below the screen edge cannot be dismissed. Whatever does not fit is
-  // reachable through the vertical scrollbar instead.
-  RECT work_area = {};
-  int work_left = 0;
-  int work_top = 0;
-  int work_width = GetSystemMetrics(SM_CXSCREEN);
-  int work_height = GetSystemMetrics(SM_CYSCREEN);
-  if (SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0)) {
-    work_left = work_area.left;
-    work_top = work_area.top;
-    work_width = work_area.right - work_area.left;
-    work_height = work_area.bottom - work_area.top;
-  }
-  if (window_height > work_height) {
-    window_height = work_height;
-  }
-  int x_pos = work_left + (work_width - window_width) / 2;
-  int y_pos = work_top + (work_height - window_height) / 2;
+  int screen_width = GetSystemMetrics(SM_CXSCREEN);
+  int screen_height = GetSystemMetrics(SM_CYSCREEN);
+  int x_pos = (screen_width - window_width) / 2;
+  int y_pos = (screen_height - window_height) / 2;
 
   adv_hwnd = CreateWindowEx(
       WS_EX_TOPMOST, CLASS_NAME, "Advanced Options",
-      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_DLGFRAME | WS_VSCROLL, x_pos,
-      y_pos, window_width, window_height, hwnd, NULL, g_hDllInstance, this);
+      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_DLGFRAME, x_pos, y_pos,
+      window_width, window_height, hwnd, NULL, g_hDllInstance, this);
   if (adv_hwnd) {
     HFONT h_font =
         CreateFont(-10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -1136,8 +960,6 @@ void AdvanceOptions::Show(HWND hwnd) {
     CreateSessionControls(h_font);
     CreateAdditionalControls(h_font);
     CreateButtons(h_font);
-
-    UpdateScrollInfo(adv_hwnd);
 
     ShowWindow(adv_hwnd, SW_SHOW);
     UpdateWindow(adv_hwnd);

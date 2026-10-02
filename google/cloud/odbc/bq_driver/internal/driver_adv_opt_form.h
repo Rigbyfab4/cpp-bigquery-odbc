@@ -20,7 +20,7 @@
 #pragma comment(lib, "Comctl32.lib")  // Link with Comctl32.lib
 
 namespace google::cloud::odbc_bq_driver_internal {
-// NEXTID:155
+// NEXTID:154
 static int const kIdcUseDefaultCheckbox = 128;
 static int const kIdcDatasetNameEdit = 129;
 static int const kIdcTempExpirationEdit = 130;
@@ -46,9 +46,6 @@ static int const kIdcEnablePscGcdCheckbox = 150;
 static int const kIdcPrivateServiceNameEdit = 151;
 static int const kIdcUniverseDomainEdit = 152;
 static int const kIdcMaximumBytesBilledEdit = 153;
-// Read-only label under the entry field, showing the byte count in the binary
-// units BigQuery bills in.
-static int const kIdcMaximumBytesBilledHint = 154;
 
 class AdvanceOptions {
  public:
@@ -143,29 +140,7 @@ class AdvanceOptions {
   static std::string private_service_connect_uris_;
   static std::string enable_gcd_;
   static std::string universe_domain_;
-  // Empty means unset, which leaves queries uncapped. Held as the raw byte
-  // count so it round-trips to the DSN key unchanged.
   static std::string maximum_bytes_billed_;
-
-  // Refresh the hint label beneath the entry field from its current text.
-  static void UpdateMaximumBytesBilledHint(HWND hwnd);
-
-  // Current vertical scroll offset, in pixels, of the control area. The dialog
-  // is taller than the work area on small or scaled displays, so it scrolls.
-  static int scroll_pos_;
-
-  // Leftover wheel movement smaller than one notch. High-resolution wheels and
-  // precision trackpads report fractions of WHEEL_DELTA, which would otherwise
-  // be rounded away to nothing.
-  static int wheel_remainder_;
-
-  // Recompute the scrollbar range/page from the current client height. Call
-  // after the controls are created and whenever the window is resized.
-  static void UpdateScrollInfo(HWND hwnd);
-
-  // Scroll the control area to 'new_pos' pixels, clamped to the scrollable
-  // range. Moves the child controls with it.
-  static void ScrollTo(HWND hwnd, int new_pos);
 
   static LRESULT CALLBACK AdvanceOptProc(HWND hwnd, UINT uMsg, WPARAM w_param,
                                          LPARAM l_param);
