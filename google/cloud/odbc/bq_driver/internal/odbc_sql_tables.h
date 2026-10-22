@@ -58,7 +58,8 @@ odbc_internal::StatusRecord ValidateInputParameters(
 // Return the project ids from the comma-separated 'allowed_projects' allowlist
 // that match 'projects_filter', using the same LIKE-pattern /
 // SQL_ATTR_METADATA_ID semantics as GetFilteredProjectIds. Blank entries are
-// ignored and surrounding whitespace is trimmed. Makes no REST calls.
+// ignored, surrounding whitespace is trimmed, and duplicate entries are
+// deduplicated while preserving order. Makes no REST calls.
 std::vector<std::string> FilterAllowedProjects(
     std::string const& allowed_projects, std::string const& projects_filter,
     SQLULEN metadata_id);

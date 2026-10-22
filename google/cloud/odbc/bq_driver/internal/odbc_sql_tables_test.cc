@@ -255,6 +255,13 @@ TEST(FilterAllowedProjects, BlankEntriesAreIgnored) {
               ElementsAre("project-1"));
 }
 
+TEST(FilterAllowedProjects, DuplicateEntriesAreDeduplicatedPreservingOrder) {
+  EXPECT_THAT(FilterAllowedProjects(
+                  "project-1, project-2, project-1, project-3, project-2", "%",
+                  SQL_FALSE),
+              ElementsAre("project-1", "project-2", "project-3"));
+}
+
 TEST(FilterAllowedProjects, LikePatternFiltersAllowlist) {
   EXPECT_THAT(FilterAllowedProjects("prod-a,prod-b,dev-c", "prod%", SQL_FALSE),
               ElementsAre("prod-a", "prod-b"));

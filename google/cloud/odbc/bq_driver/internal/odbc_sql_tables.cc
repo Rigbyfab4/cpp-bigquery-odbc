@@ -18,6 +18,7 @@
 #include "google/cloud/odbc/bq_driver/internal/utils.h"
 #include <algorithm>
 #include <optional>
+#include <unordered_set>
 
 namespace google::cloud::odbc_bq_driver_internal {
 
@@ -115,11 +116,15 @@ std::vector<std::string> FilterAllowedProjects(
     std::string const& allowed_projects, std::string const& projects_filter,
     SQLULEN metadata_id) {
   std::vector<std::string> project_ids;
+  // Track seen project IDs to eliminate duplicates and prevent duplicate
+  // queries across projects, datasets, and tables, while preserving the
+  // user-specified order of appearance.
+  std::unordered_set<std::string> seen;
   auto filter_regex = BuildRegex(projects_filter, metadata_id);
   std::vector<std::string> allowed_ids = Split(allowed_projects, ",");
   for (auto& project_id : allowed_ids) {
     Trim(project_id);
-    if (project_id.empty()) {
+    if (project_id.empty() || !seen.insert(project_id).second) {
       continue;
     }
     if ((!metadata_id && projects_filter == kMatchAll) ||
@@ -521,7 +526,20 @@ StatusRecordOr<ResultSet> GetResultSetForTables(
   std::vector<std::string> project_list;
   if (auto project_literal =
           LiteralFromOdbcPattern(project_filter, metadata_id)) {
-    project_list = {std::move(*project_literal)};
+    auto const& allowed_projects = conn_handle.GetDsn().allowed_projects;
+    if (!allowed_projects.empty()) {
+      // When an explicit allowlist is configured, verify that the literal
+      // project is present in the allowlist. Since LiteralFromOdbcPattern
+      // extracts an exact identifier (with escapes resolved), match it as
+      // an exact identifier (SQL_TRUE) so any '_' or '%' in the project ID
+      // is treated as a literal character rather than an ODBC wildcard.
+      // This ensures exact catalog filters cannot bypass the AllowedProjects
+      // restriction.
+      project_list =
+          FilterAllowedProjects(allowed_projects, *project_literal, SQL_TRUE);
+    } else {
+      project_list = {std::move(*project_literal)};
+    }
   } else {
     auto projects_status_record_or =
         GetFilteredProjectIds(bq_client, project_filter, metadata_id,
