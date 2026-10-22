@@ -506,6 +506,7 @@ error
 }
 */
 
+#ifdef BQ_DRIVER_INTEGRATION_TESTS
 TEST(CatalogTest, SQLTables_AllowedProjects) {
   // First learn every project the test principal can reach, so the allow-listed
   // run below can be compared against it.
@@ -562,6 +563,7 @@ TEST(CatalogTest, SQLTables_AllowedProjects) {
 
   EXPECT_EQ(Disconnect(conn), SQL_SUCCESS);
 }
+#endif  // BQ_DRIVER_INTEGRATION_TESTS
 
 TEST(CatalogTest, SQLTables_AllDatasets) {
   auto conn = std::make_shared<ODBCHandles>();
